@@ -1,0 +1,45 @@
+# NIVASafe
+
+سامانه مدیریت HSE با پشته قطعی زیر:
+
+- React 19 + TypeScript + Vite (Frontend، پورت 5043)
+- Node.js 22 + Fastify + TypeScript (Backend، پورت 5044)
+- MySQL/MariaDB + Prisma ORM (Database، پورت 3306)
+
+## اجرای محلی با XAMPP
+
+1. MySQL را در XAMPP روشن کنید.
+2. `.env.example` را به `.env` کپی کنید.
+3. اجرا کنید:
+
+```cmd
+START-NIVASAFE-XAMPP.cmd
+```
+
+آدرس‌ها:
+
+- Frontend: `http://localhost:5043`
+- API health: `http://localhost:5044/api/v1/health`
+- Swagger: `http://localhost:5044/docs`
+
+## کنترل کیفیت
+
+```bash
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm verify:contract
+pnpm smoke
+```
+
+`pnpm smoke` به API در حال اجرا متصل می‌شود. اطلاعات ورود را با `SMOKE_EMAIL` و `SMOKE_PASSWORD` تعیین کنید.
+
+## استقرار
+
+جزئیات در `docs/deployment.md` است. برای Docker از `.env.docker.example` و برای Node/PM2 از `.env.production.example` استفاده کنید. migrationهای موجود فقط MySQL هستند؛ تمام تنظیمات قدیمی PostgreSQL از نسخه تحویل حذف شده‌اند.
+
+## گزارش تحویل
+
+- `RELEASE-TEST-REPORT.md`: نتیجه آزمون‌های نهایی و محدودیت‌ها
+- `SERVER-DEPLOY-CHECKLIST.md`: چک‌لیست استقرار و UAT سرور
+- `database/nivasafe-mysql-schema.sql`: ساختار دستی MySQL
