@@ -1,0 +1,34 @@
+# Dependencies and generated output
+node_modules/
+.turbo/
+dist/
+build/
+.next/
+coverage/
+*.tsbuildinfo
+
+# Local configuration and secrets (safe templates remain tracked)
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.docker.example
+!.env.production.example
+
+# Runtime data and local caches
+backend/uploads/
+uploads/
+tmp/
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.log
+
+# Certificates, keys, and credentials
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+service-account*.json

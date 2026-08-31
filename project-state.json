@@ -1,0 +1,56 @@
+{
+  "project": "NIVASafe",
+  "version": "0.1.0",
+  "task": "Form auto-save and draft recovery",
+  "classification": "focused-cross-cutting-change",
+  "status": "complete",
+  "scope": [
+    "Per-input autosave and draft recovery for operational forms",
+    "Assessment IndexedDB drafts with per-input persistence",
+    "Credential and binary-file exclusion from browser drafts",
+    "Autosave status feedback and cleanup after successful submit",
+    "Shared phone normalization/validation and editable phone-field enforcement"
+  ],
+  "decisions": [
+    "Operational form drafts are scoped by authenticated user and organization.",
+    "Every input and change event persists immediately to browser storage; IndexedDB is used for assessment drafts and storage fallback.",
+    "Passwords, recovery tokens and file inputs are never persisted in drafts.",
+    "Successful submissions clear the corresponding draft while failed submissions retain it for recovery.",
+    "Phone values remain canonical local Iranian mobile numbers matching ^09\\d{9}$; the backend is authoritative."
+  ],
+  "validation": {
+    "frontendTests": "PASS (8 tests)",
+    "frontendTypecheck": "PASS",
+    "frontendBuild": "PASS",
+    "lint": "PASS",
+    "domainTests": "PASS",
+    "backendTests": "PASS",
+    "apiContract": "PASS",
+    "releaseVerification": "PASS",
+    "dependencyAudit": "PASS",
+    "fullValidation": "PASS",
+    "runtimeSmoke": "PASS (all authenticated API and CRUD/report/file/AI/chat flows)",
+    "productionDeployment": "NOT_PERFORMED (not requested)"
+  },
+  "changedFiles": [
+    "shared/domain/src/validation.ts",
+    "shared/domain/src/index.test.ts",
+    "frontend/src/features/account/RegistrationPage.tsx",
+    "frontend/src/features/account/AccountPages.tsx",
+    "frontend/src/ui-rules.test.ts",
+    "docs/api.md",
+    "docs/security.md",
+    "docs/testing.md",
+    "scripts/verify-release.mjs",
+    "frontend/src/forms/autoSave.ts",
+    "frontend/src/forms/autoSave.test.ts",
+    "frontend/src/forms/AutoSaveForm.tsx",
+    "frontend/src/features/general/GeneralPages.tsx",
+    "frontend/src/features/assessments/AssessmentPages.tsx",
+    "frontend/src/features/files/FilesPage.tsx",
+    "frontend/src/features/assistant/AssistantPage.tsx",
+    "frontend/src/styles.css",
+    "project-integrity-manifest.md",
+    "project-state.json"
+  ]
+}
