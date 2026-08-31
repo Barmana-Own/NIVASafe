@@ -32,3 +32,6 @@ tmp/
 *.pfx
 credentials*.json
 service-account*.json
+
+# OS metadata
+.DS_Store
