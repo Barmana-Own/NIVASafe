@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
+import { getCurrentLocale } from "../api/client";
+import { translate, useI18n } from "../i18n";
 
 export type IconName =
   | "dashboard" | "projects" | "fmea" | "rula" | "actions" | "files"
@@ -69,12 +71,13 @@ type DialogApi = { confirm: (message: string) => Promise<boolean>; prompt: (mess
 const DialogContext = createContext<DialogApi | null>(null);
 
 export function DialogProvider({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const [state, setState] = useState<DialogState>(null);
   const [inputValue, setInputValue] = useState("");
   function confirm(message: string) { return new Promise<boolean>((resolve) => { setInputValue(""); setState({ kind: "confirm", message, resolve }); }); }
   function prompt(message: string, initialValue = "") { return new Promise<string | null>((resolve) => { setInputValue(initialValue); setState({ kind: "prompt", message, resolve }); }); }
   function close(value: boolean | string | null) { if (state?.kind === "confirm") state.resolve(value === true); else if (state?.kind === "prompt") state.resolve(typeof value === "string" ? value : null); setState(null); }
-  const view = state ? <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) close(state.kind === "confirm" ? false : null); }}><section className="app-dialog" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title"><h2 id="app-dialog-title">تأیید عملیات</h2><p>{state.message}</p>{state.kind === "prompt" && <input className="dialog-input" autoFocus value={inputValue} aria-label="مقدار جدید" onChange={(event) => setInputValue(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") close(inputValue.trim()); if (event.key === "Escape") close(null); }}/>}<div className="dialog-actions"><button className="ghost" type="button" onClick={() => close(state.kind === "confirm" ? false : null)}>انصراف</button><button className="primary" type="button" onClick={() => close(state.kind === "prompt" ? inputValue.trim() : true)}>{state.kind === "prompt" ? "ذخیره" : "تأیید"}</button></div></section></div> : null;
+  const view = state ? <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) close(state.kind === "confirm" ? false : null); }}><section className="app-dialog" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title"><h2 id="app-dialog-title">{t("dialog.confirmOperation")}</h2><p>{state.message}</p>{state.kind === "prompt" && <input className="dialog-input" autoFocus value={inputValue} aria-label={t("dialog.newValue")} onChange={(event) => setInputValue(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") close(inputValue.trim()); if (event.key === "Escape") close(null); }}/>}<div className="dialog-actions"><button className="ghost" type="button" onClick={() => close(state.kind === "confirm" ? false : null)}>{t("dialog.cancel")}</button><button className="primary" type="button" onClick={() => close(state.kind === "prompt" ? inputValue.trim() : true)}>{state.kind === "prompt" ? t("dialog.save") : t("dialog.confirm")}</button></div></section></div> : null;
   return <DialogContext.Provider value={{ confirm, prompt, view }}>{children}{view}</DialogContext.Provider>;
 }
 
@@ -84,14 +87,14 @@ export function useDialog() {
   return context;
 }
 
-const statusMap: Record<string, { label: string; tone: string }> = {
-  ACTIVE: { label: "فعال", tone: "success" }, TRIALING: { label: "آزمایشی", tone: "info" }, PENDING_PAYMENT: { label: "در انتظار پرداخت", tone: "warning" }, PAST_DUE: { label: "پرداخت معوق", tone: "danger" }, EXPIRED: { label: "منقضی", tone: "danger" }, CANCELED: { label: "لغوشده", tone: "neutral" }, DRAFT: { label: "پیش‌نویس", tone: "neutral" }, ON_HOLD: { label: "متوقف", tone: "warning" }, COMPLETED: { label: "تکمیل‌شده", tone: "success" }, ARCHIVED: { label: "بایگانی", tone: "neutral" },
-  OPEN: { label: "باز", tone: "danger" }, IN_PROGRESS: { label: "در حال انجام", tone: "info" }, WAITING_FOR_REVIEW: { label: "در انتظار بازبینی", tone: "warning" }, REJECTED: { label: "ردشده", tone: "danger" }, CANCELLED: { label: "لغوشده", tone: "neutral" }, APPROVED: { label: "تأییدشده", tone: "success" },
-  LOW: { label: "کم", tone: "success" }, MEDIUM: { label: "متوسط", tone: "warning" }, HIGH: { label: "زیاد", tone: "orange" }, CRITICAL: { label: "بحرانی", tone: "danger" },
-  PENDING: { label: "در صف", tone: "warning" }, PROCESSING: { label: "در حال پردازش", tone: "info" }, SUCCEEDED: { label: "موفق", tone: "success" }, FAILED: { label: "ناموفق", tone: "danger" }, WAITING_FOR_PROVIDER: { label: "در انتظار سرویس", tone: "warning" },
+const statusMap: Record<string, { key: string; tone: string }> = {
+  ACTIVE: { key: "status.active", tone: "success" }, TRIALING: { key: "status.trialing", tone: "info" }, PENDING_PAYMENT: { key: "status.pendingPayment", tone: "warning" }, PAST_DUE: { key: "status.pastDue", tone: "danger" }, EXPIRED: { key: "status.expired", tone: "danger" }, CANCELED: { key: "status.canceled", tone: "neutral" }, DRAFT: { key: "status.draft", tone: "neutral" }, ON_HOLD: { key: "status.onHold", tone: "warning" }, COMPLETED: { key: "status.completed", tone: "success" }, ARCHIVED: { key: "status.archived", tone: "neutral" },
+  OPEN: { key: "status.open", tone: "danger" }, IN_PROGRESS: { key: "status.inProgress", tone: "info" }, WAITING_FOR_REVIEW: { key: "status.waitingForReview", tone: "warning" }, REJECTED: { key: "status.rejected", tone: "danger" }, CANCELLED: { key: "status.cancelled", tone: "neutral" }, APPROVED: { key: "status.approved", tone: "success" },
+  LOW: { key: "status.low", tone: "success" }, MEDIUM: { key: "status.medium", tone: "warning" }, HIGH: { key: "status.high", tone: "orange" }, CRITICAL: { key: "status.critical", tone: "danger" },
+  PENDING: { key: "status.pending", tone: "warning" }, PROCESSING: { key: "status.processing", tone: "info" }, SUCCEEDED: { key: "status.succeeded", tone: "success" }, FAILED: { key: "status.failed", tone: "danger" }, WAITING_FOR_PROVIDER: { key: "status.waitingForProvider", tone: "warning" },
 };
 
-export function StatusBadge({ value }: { value: string }) { const item = statusMap[value] ?? { label: value, tone: "neutral" }; return <span className={`status-badge ${item.tone}`}>{item.label}</span>; }
-export function roleLabel(role: string) { return ({ SUPER_ADMIN: "مدیر کل", ORG_ADMIN: "مدیر سازمان", HSE_MANAGER: "مدیر HSE", ASSESSOR: "ارزیاب", VIEWER: "مشاهده‌گر" } as Record<string, string>)[role] ?? role; }
-export function priorityLabel(value: string) { return statusMap[value]?.label ?? value; }
-export function formatDate(value?: string, withTime = false) { if (!value) return "—"; const date = new Date(value); return Number.isNaN(date.getTime()) ? "—" : withTime ? date.toLocaleString("fa-IR") : date.toLocaleDateString("fa-IR"); }
+export function StatusBadge({ value }: { value: string }) { const { t } = useI18n(); const item = statusMap[value]; return <span className={`status-badge ${item?.tone ?? "neutral"}`}>{item ? t(item.key) : value}</span>; }
+export function roleLabel(role: string) { const key = ({ SUPER_ADMIN: "role.superAdmin", ORG_ADMIN: "role.orgAdmin", HSE_MANAGER: "role.hseManager", ASSESSOR: "role.assessor", VIEWER: "role.viewer" } as Record<string, string>)[role]; return key ? translate(key) : role; }
+export function priorityLabel(value: string) { const item = statusMap[value]; return item ? translate(item.key) : value; }
+export function formatDate(value?: string, withTime = false) { if (!value) return "—"; const date = new Date(value); const locale = getCurrentLocale() === "en" ? "en-US" : "fa-IR"; return Number.isNaN(date.getTime()) ? "—" : withTime ? date.toLocaleString(locale) : date.toLocaleDateString(locale); }

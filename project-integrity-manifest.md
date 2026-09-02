@@ -21,6 +21,7 @@ This lightweight baseline protects the existing product surface while focused cr
 ## Baseline comparison for the current change
 
 - No page, route, API resource, database entity, role, permission or asset was removed.
+- Existing pages, routes, assets and API contracts remain available; localization was added as a presentation-layer capability without removing the Persian defaults.
 - The phone contract was tightened at shared, server and editable-client boundaries.
 - Existing data is preserved; no destructive migration was introduced.
 - Autosave was added through reusable form infrastructure and existing protected pages/routes remain intact; password/recovery forms stay intentionally excluded from drafts.

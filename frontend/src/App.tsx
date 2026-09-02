@@ -9,9 +9,10 @@ import { AssistantPage } from "./features/assistant/AssistantPage";
 import { FilesPage } from "./features/files/FilesPage";
 import { ActionsPage, AuditPage, DashboardPage, HealthPage, KnowledgePage, NotificationsPage, OrganizationsPage, ProjectsPage } from "./features/general/GeneralPages";
 import { DialogProvider } from "./components/UI";
+import { useI18n } from "./i18n";
 
 function ProtectedLayout() { return getSession().session ? <AppLayout /> : <Navigate to="/login" replace />; }
-function NotFound() { return <div className="state"><h2>صفحه پیدا نشد</h2><a href="/">بازگشت به داشبورد</a></div>; }
+function NotFound() { const { t } = useI18n(); return <div className="state"><h2>{t("shell.notFound")}</h2><a href="/">{t("shell.backToDashboard")}</a></div>; }
 
 export default function App() {
   return <DialogProvider><BrowserRouter><Routes>

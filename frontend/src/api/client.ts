@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+export type Locale = "fa" | "en";
 export type Organization = { id: string; nameFa: string; nameEn: string; role: string; active?: boolean; subscriptionPlan?: string; subscriptionStatus?: string; subscriptionExpiresAt?: string | null };
 export type Session = { accessToken: string; refreshToken: string; user: { id: string; email: string; displayName: string; locale?: string; globalRole?: string }; organizations: Organization[] };
 export type ApiEnvelope<T> = { data: T; meta?: { page: number; limit: number; total: number } };
@@ -8,8 +9,12 @@ const API = (import.meta.env.VITE_API_URL ?? "http://localhost:5044/api/v1").rep
 const SESSION_KEY = "nivasafe-session";
 const ORG_KEY = "nivasafe-org";
 
-export function getCurrentLocale(): "fa" | "en" {
+export function getCurrentLocale(): Locale {
   return localStorage.getItem("nivasafe-locale") === "en" ? "en" : "fa";
+}
+
+function localizedMessage(persian: string, english: string) {
+  return getCurrentLocale() === "en" ? english : persian;
 }
 
 export function directionForLocale(locale: string = getCurrentLocale()): "ltr" | "rtl" {
@@ -88,9 +93,9 @@ async function refreshSession(session: Session): Promise<Session> {
     let response: Response;
     try {
       response = await fetch(`${API}/auth/refresh`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ refreshToken: session.refreshToken }) });
-    } catch { throw new Error("ارتباط با سرور برقرار نشد."); }
+    } catch { throw new Error(localizedMessage("ارتباط با سرور برقرار نشد.", "Unable to connect to the server.")); }
     const value = await parseResponse(response) as ApiEnvelope<{ accessToken: string; refreshToken: string }> & { error?: { message?: string } };
-    if (!response.ok) throw new Error(value.error?.message ?? "نشست منقضی شده است");
+    if (!response.ok) throw new Error(value.error?.message ?? localizedMessage("نشست منقضی شده است", "Your session has expired."));
     const next = { ...session, ...value.data };
     saveSession(next, isSessionRemembered());
     return next;
@@ -124,16 +129,16 @@ export async function api<T>(path: string, options: RequestInit = {}, retry = tr
       },
     });
   } catch {
-    throw new Error("ارتباط با سرور برقرار نشد. مطمئن شوید Backend روی پورت 5044 اجرا شده است.");
+    throw new Error(localizedMessage("ارتباط با سرور برقرار نشد. مطمئن شوید Backend روی پورت 5044 اجرا شده است.", "Unable to connect to the server. Make sure the backend is running on port 5044."));
   }
   if (response.status === 401 && retry && session?.refreshToken && !path.includes("/auth/refresh")) {
     try { await refreshSession(session); return api<T>(path, options, false); }
-    catch { expireSession(); throw new Error("نشست شما منقضی شده است؛ دوباره وارد شوید."); }
+    catch { expireSession(); throw new Error(localizedMessage("نشست شما منقضی شده است؛ دوباره وارد شوید.", "Your session expired. Please sign in again.")); }
   }
   const value = await parseResponse(response);
   if (!response.ok) {
     const details = (value as { error?: { code?: string; message?: string; requestId?: string } }).error;
-    const error = new Error(details?.message || `خطای سرور (${response.status})`) as ApiError;
+    const error = new Error(details?.message || localizedMessage(`خطای سرور (${response.status})`, `Server error (${response.status})`)) as ApiError;
     error.code = details?.code;
     error.requestId = details?.requestId;
     throw error;
@@ -145,14 +150,14 @@ export async function download(path: string, retry = true): Promise<Blob> {
   const { session, orgId } = getSession();
   let response: Response;
   try { response = await fetch(`${API}${path}`, { headers: authHeaders(session, orgId) }); }
-  catch { throw new Error("ارتباط با سرور برقرار نشد. مطمئن شوید Backend روی پورت 5044 اجرا شده است."); }
+  catch { throw new Error(localizedMessage("ارتباط با سرور برقرار نشد. مطمئن شوید Backend روی پورت 5044 اجرا شده است.", "Unable to connect to the server. Make sure the backend is running on port 5044.")); }
   if (response.status === 401 && retry && session?.refreshToken) {
     try { await refreshSession(session); return download(path, false); }
-    catch { expireSession(); throw new Error("نشست شما منقضی شده است؛ دوباره وارد شوید."); }
+    catch { expireSession(); throw new Error(localizedMessage("نشست شما منقضی شده است؛ دوباره وارد شوید.", "Your session expired. Please sign in again.")); }
   }
   if (!response.ok) {
     const value = await parseResponse(response);
-    throw new Error((value as { error?: { message?: string } }).error?.message ?? "دانلود فایل ناموفق بود");
+    throw new Error((value as { error?: { message?: string } }).error?.message ?? localizedMessage("دانلود فایل ناموفق بود", "File download failed"));
   }
   return response.blob();
 }

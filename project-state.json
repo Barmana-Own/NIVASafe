@@ -1,7 +1,7 @@
 {
   "project": "NIVASafe",
   "version": "0.1.0",
-  "task": "Form auto-save and draft recovery",
+  "task": "Bilingual interface and locale-aware brand alignment, preserving form auto-save and draft recovery",
   "classification": "focused-cross-cutting-change",
   "status": "complete",
   "scope": [
@@ -9,20 +9,25 @@
     "Assessment IndexedDB drafts with per-input persistence",
     "Credential and binary-file exclusion from browser drafts",
     "Autosave status feedback and cleanup after successful submit",
-    "Shared phone normalization/validation and editable phone-field enforcement"
+    "Shared phone normalization/validation and editable phone-field enforcement",
+    "Persian and English localization across public authentication, registration, app shell, dashboards, operational pages and admin views",
+    "Locale-specific Persian and English NIVASafe wordmarks with RTL/LTR alignment"
   ],
   "decisions": [
     "Operational form drafts are scoped by authenticated user and organization.",
     "Every input and change event persists immediately to browser storage; IndexedDB is used for assessment drafts and storage fallback.",
     "Passwords, recovery tokens and file inputs are never persisted in drafts.",
     "Successful submissions clear the corresponding draft while failed submissions retain it for recovery.",
-    "Phone values remain canonical local Iranian mobile numbers matching ^09\\d{9}$; the backend is authoritative."
+    "Phone values remain canonical local Iranian mobile numbers matching ^09\\d{9}$; the backend is authoritative.",
+    "Locale is persisted locally for continuity, applied to the document language and direction, and synchronized to the authenticated profile when changed."
   ],
   "validation": {
-    "frontendTests": "PASS (8 tests)",
+    "frontendTests": "PASS (12 tests)",
     "frontendTypecheck": "PASS",
-    "frontendBuild": "PASS",
+    "frontendBuild": "PASS (Vite build; existing large-chunk warning)",
     "lint": "PASS",
+    "browserLocalizationQa": "PASS (desktop Persian/English login verified with locale-specific wordmarks, RTL/LTR alignment and no document scrolling)",
+    "backendHealth": "NOT_HEALTHY (local MySQL unavailable; unrelated to the frontend localization change)",
     "domainTests": "PASS",
     "backendTests": "PASS",
     "apiContract": "PASS",
@@ -50,6 +55,13 @@
     "frontend/src/features/files/FilesPage.tsx",
     "frontend/src/features/assistant/AssistantPage.tsx",
     "frontend/src/styles.css",
+    "frontend/src/App.tsx",
+    "frontend/src/api/client.ts",
+    "frontend/src/components/UI.tsx",
+    "frontend/src/layout/AppLayout.tsx",
+    "frontend/src/main.tsx",
+    "frontend/src/pwa/PwaManager.tsx",
+    "frontend/src/i18n.tsx",
     "project-integrity-manifest.md",
     "project-state.json"
   ]

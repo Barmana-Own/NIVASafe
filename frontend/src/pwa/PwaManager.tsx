@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "../components/UI";
+import { useI18n } from "../i18n";
 
 type InstallOutcome = "accepted" | "dismissed";
 type BeforeInstallPromptEvent = Event & {
@@ -33,6 +34,7 @@ function rememberInstallDismissal() {
 }
 
 export function PwaManager() {
+  const { t } = useI18n();
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installVisible, setInstallVisible] = useState(false);
@@ -141,10 +143,10 @@ export function PwaManager() {
 
   const showIosHint = ios && !installed && canShowInstallHint();
   return <>
-    {installVisible && !installed && (installPrompt || showIosHint) && <aside className="pwa-install" role="dialog" aria-label="نصب اپلیکیشن NIVASafe">
-      <div className="pwa-install-copy"><span className="pwa-install-icon"><Icon name="download" size={21}/></span><div><strong>نصب اپلیکیشن NIVASafe</strong><p>{showIosHint ? "از منوی Share گزینه Add to Home Screen را انتخاب کنید." : "دسترسی سریع، اجرای مستقل و استفادهٔ روان‌تر روی دستگاه شما."}</p></div></div>
-      <div className="pwa-install-actions">{installPrompt ? <button className="primary" onClick={() => void install()} disabled={installBusy}>{installBusy ? "در حال نصب…" : "نصب"}</button> : <button className="ghost" onClick={dismissInstall}>راهنما</button>}<button className="text-button" onClick={dismissInstall}>بعداً</button></div>
+    {installVisible && !installed && (installPrompt || showIosHint) && <aside className="pwa-install" role="dialog" aria-label={t("pwa.install")}>
+      <div className="pwa-install-copy"><span className="pwa-install-icon"><Icon name="download" size={21}/></span><div><strong>{t("pwa.install")}</strong><p>{showIosHint ? t("pwa.iosHint") : t("pwa.installDescription")}</p></div></div>
+      <div className="pwa-install-actions">{installPrompt ? <button className="primary" onClick={() => void install()} disabled={installBusy}>{installBusy ? t("pwa.installing") : t("pwa.installButton")}</button> : <button className="ghost" onClick={dismissInstall}>{t("pwa.help")}</button>}<button className="text-button" onClick={dismissInstall}>{t("pwa.later")}</button></div>
     </aside>}
-    {updateReady && updateVisible && <aside className="pwa-update" role="status"><span>نسخهٔ جدید NIVASafe آماده است.</span><div className="pwa-update-actions"><button className="primary" onClick={applyUpdate}>به‌روزرسانی</button><button className="text-button" onClick={() => setUpdateVisible(false)}>بعداً</button></div></aside>}
+    {updateReady && updateVisible && <aside className="pwa-update" role="status"><span>{t("pwa.updateReady")}</span><div className="pwa-update-actions"><button className="primary" onClick={applyUpdate}>{t("pwa.update")}</button><button className="text-button" onClick={() => setUpdateVisible(false)}>{t("pwa.later")}</button></div></aside>}
   </>;
 }

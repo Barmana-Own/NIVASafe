@@ -6,6 +6,7 @@ const appSource = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
 const appLayoutSource = readFileSync(new URL("./layout/AppLayout.tsx", import.meta.url), "utf8");
 const generalPagesSource = readFileSync(new URL("./features/general/GeneralPages.tsx", import.meta.url), "utf8");
 const accountPagesSource = readFileSync(new URL("./features/account/AccountPages.tsx", import.meta.url), "utf8");
+const stylesSource = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
 const autoSaveSource = readFileSync(new URL("./forms/AutoSaveForm.tsx", import.meta.url), "utf8");
 const autoSaveRulesSource = readFileSync(new URL("./forms/autoSave.ts", import.meta.url), "utf8");
 
@@ -24,9 +25,9 @@ describe("first-run assessment navigation", () => {
 
 describe("organization navigation wording", () => {
   it("uses the company-only label without CRM wording", () => {
-    expect(appLayoutSource).toContain('label: "شرکت‌ها"');
-    expect(appLayoutSource).not.toContain('label: "شرکت‌ها و CRM"');
-    expect(generalPagesSource).toContain('eyebrow="مدیریت سازمان"');
+    expect(appLayoutSource).toContain('labelKey: "nav.organizations"');
+    expect(appLayoutSource).not.toContain("شرکت‌ها و CRM");
+    expect(generalPagesSource).toContain('eyebrow={t("organization.management")}');
     expect(generalPagesSource).not.toContain('eyebrow="CRM و مدیریت سازمان"');
   });
 });
@@ -39,6 +40,33 @@ describe("production login safety", () => {
     expect(accountPagesSource).not.toContain('placeholder="••••••••"');
     expect(accountPagesSource).toContain('autoComplete="username"');
     expect(accountPagesSource).toContain('autoComplete="current-password"');
+  });
+
+  it("keeps the public brand message concise", () => {
+    expect(accountPagesSource).toContain("<h1>NIVASafe</h1>");
+    expect(accountPagesSource).not.toContain("پلتفرم هوشمند ایمنی و بهداشت حرفه‌ای");
+    expect(accountPagesSource).not.toContain("سامانه یکپارچه مدیریت ارزیابی ریسک، ارگونومی و اقدامات اصلاحی سازمان");
+  });
+});
+
+describe("fixed authentication viewport", () => {
+  it("locks the login shell to the viewport and prevents document scrolling", () => {
+    expect(stylesSource).toContain("height: 100dvh");
+    expect(stylesSource).toContain("overflow: hidden");
+    expect(stylesSource).toContain("body:has(.login)");
+    expect(stylesSource).toContain("grid-template-rows: auto minmax(0, 1fr)");
+  });
+
+  it("moves narrow screens to a focused, non-cramped form layout", () => {
+    expect(stylesSource).toContain("@media (max-width: 900px)");
+    expect(stylesSource).toContain(".login-hero-content, .login-approvals { display: none; }");
+    expect(stylesSource).toContain("align-self: start");
+  });
+
+  it("keeps the desktop marketing panel centered and fluid", () => {
+    expect(stylesSource).toContain("align-items: center; margin-inline: auto; text-align: center;");
+    expect(stylesSource).toContain("grid-template-columns: repeat(2, minmax(0, 1fr));");
+    expect(stylesSource).toContain("width: min(720px, 100%)");
   });
 });
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEventHandler, type FormHTMLAttributes, type ReactNode } from "react";
 import { del as deleteIndexedDraft, get as getIndexedDraft, set as setIndexedDraft } from "idb-keyval";
 import { Icon } from "../components/UI";
+import { useI18n } from "../i18n";
 import { clearStoredDraft, readStoredDraft, restoreForm, snapshotForm, writeStoredDraft, type AutoSaveDraft } from "./autoSave";
 
 type AutoSaveFormProps = Omit<FormHTMLAttributes<HTMLFormElement>, "children" | "onSubmit"> & {
@@ -57,7 +58,9 @@ export function AutoSaveForm({ storageKey, children, className, onSubmit, exclud
 }
 
 export function AutoSaveStatus({ state = "saved", lastSaved }: { state?: SaveState; lastSaved: Date | null }) {
-  const label = state === "saving" ? "در حال ذخیره خودکار…" : state === "error" ? "ذخیره خودکار ناموفق بود" : lastSaved ? `ذخیره خودکار فعال است · آخرین ذخیره: ${lastSaved.toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" })}` : "ذخیره خودکار فعال است";
+  const { locale, t } = useI18n();
+  const timeLocale = locale === "en" ? "en-US" : "fa-IR";
+  const label = state === "saving" ? t("assessment.autosaveSaving") : state === "error" ? t("assessment.autosaveError") : lastSaved ? `${t("assessment.autosaveActive")} · ${t("assessment.lastSaved", { time: lastSaved.toLocaleTimeString(timeLocale, { hour: "2-digit", minute: "2-digit" }) })}` : t("assessment.autosaveActive");
   return <small className={`autosave-status ${state === "error" ? "autosave-error" : ""}`} role="status"><Icon name={state === "error" ? "warning" : "check"} size={14}/>{label}</small>;
 }
 
