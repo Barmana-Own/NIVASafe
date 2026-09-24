@@ -425,6 +425,15 @@ input:disabled { background: #f1f5f4; color: #71817e; }
 .fmea-description-field textarea { min-height: 118px; }
 .fmea-description-meta { display: flex; align-items: center; justify-content: space-between; gap: .6rem; min-height: 1.35rem; }
 .fmea-description-meta .ai-status { padding: .22rem .45rem; }
+.fmea-description-suggestion { display: grid; gap: .55rem; margin-top: .55rem; padding: .7rem .75rem; border: 1px solid #b9d9ec; border-radius: 12px; background: linear-gradient(145deg, #f7fcff, #edf7fd); }
+.fmea-description-suggestion-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .7rem; }
+.fmea-description-suggestion-head > div { min-width: 0; display: grid; gap: .18rem; }
+.fmea-description-suggestion-head strong { color: #174e86; font-size: .74rem; }
+.fmea-description-suggestion-head small { color: #6e899d; font-size: .61rem; line-height: 1.7; }
+.fmea-description-suggestion-head .ai-status { padding: .22rem .42rem; font-size: .57rem; }
+.fmea-description-suggestion p { margin: 0; padding: .55rem .6rem; border: 1px solid #d7e8f2; border-radius: 9px; background: rgba(255,255,255,.88); color: #315978; font-size: .7rem; line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; }
+.fmea-description-suggestion-actions { display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: .45rem; }
+.fmea-description-suggestion-actions > button { min-height: 31px; padding: .38rem .58rem; font-size: .61rem; }
 .fmea-description-assist-error { display: block; margin-top: .35rem; }
 .field-counter { display: block; margin-top: .3rem; color: #8598a7; font-size: .62rem; font-weight: 500; }
 .fmea-process-image-field { display: grid; grid-column: 2; grid-row: 2; gap: .45rem; min-width: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
@@ -483,6 +492,8 @@ input:disabled { background: #f1f5f4; color: #71817e; }
   .fmea-suggestion-board-head > .fmea-suggestion-board-actions { width: 100%; justify-content: flex-start; margin-inline-start: 0; }
   .fmea-description-head { align-items: stretch; flex-direction: column; }
   .fmea-description-ai { align-self: flex-start; }
+  .fmea-description-suggestion-head { flex-direction: column; }
+  .fmea-description-suggestion-head .ai-status { justify-self: start; }
   .fmea-process-image-head { align-items: flex-start; flex-direction: column; }
   .fmea-process-image-field { grid-column: auto; grid-row: auto; }
   .fmea-process-image-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }

@@ -697,6 +697,7 @@ function FmeaProcessPage() {
   const [descriptionLoading, setDescriptionLoading] = useState(false);
   const [descriptionAiStatus, setDescriptionAiStatus] = useState<ProcessSuggestionResponse["aiStatus"] | null>(null);
   const [descriptionAiError, setDescriptionAiError] = useState("");
+  const [descriptionSuggestion, setDescriptionSuggestion] = useState("");
   const [specialConditions, setSpecialConditions] = useState(() => draftValue(readLocalDraft(draftKey), "specialConditions"));
   const [selectedItems, setSelectedItems] = useState<ProcessSuggestions>(() => ({
     equipment: [],
@@ -1029,6 +1030,7 @@ function FmeaProcessPage() {
     if (processImageInputRef.current) processImageInputRef.current.value = "";
     setDescriptionAiStatus(null);
     setDescriptionAiError("");
+    setDescriptionSuggestion("");
     setSpecialConditions("");
     setSelectedItems(emptyProcessSuggestions());
     setProcessImageAnalysis(null);
@@ -1057,6 +1059,7 @@ function FmeaProcessPage() {
     processImageAnalysisRequestId.current += 1;
     setSuggestionLoading(false);
     setDescriptionLoading(false);
+    setDescriptionSuggestion("");
     setAutofillLoading(false);
     setProcessImageAnalysisLoading(false);
     clearFmeaImageRiskRows();
@@ -1082,6 +1085,7 @@ function FmeaProcessPage() {
     setAutofillError("");
     setDescriptionAiStatus(null);
     setDescriptionAiError("");
+    setDescriptionSuggestion("");
     setJobSearchOpen(true);
     setJobSearchError("");
     setError("");
@@ -1109,6 +1113,7 @@ function FmeaProcessPage() {
     setProcessAiSuggestionsRequested(false);
     setDescriptionAiStatus(null);
     setDescriptionAiError("");
+    setDescriptionSuggestion("");
     setJobSearchOpen(false);
     setJobSearchError("");
     setError("");
@@ -1134,6 +1139,7 @@ function FmeaProcessPage() {
     setProcessAiSuggestionsRequested(false);
     setDescriptionAiStatus(null);
     setDescriptionAiError("");
+    setDescriptionSuggestion("");
     setJobSearchOpen(false);
     setJobSearchError("");
     setError("");
@@ -1162,6 +1168,7 @@ function FmeaProcessPage() {
       setProcessAiSuggestionsRequested(false);
     }
     setJobQuery(value);
+    setDescriptionSuggestion("");
     if (selectedJob && value.trim() !== localizedJobTitle(selectedJob, locale)) {
       cancelAssistantRequests();
       setSelectedJob(null);
@@ -1411,6 +1418,7 @@ function FmeaProcessPage() {
     const requestId = ++descriptionRequestId.current;
     setDescriptionLoading(true);
     setDescriptionAiError("");
+    setDescriptionSuggestion("");
     try {
       const result = await api<ProcessSuggestionResponse>("/fmea/process-suggestions", {
         method: "POST",
@@ -1420,14 +1428,8 @@ function FmeaProcessPage() {
       setDescriptionAiStatus(result.data.aiStatus);
       const suggestion = result.data.descriptionSuggestion?.trim() ?? "";
       if (suggestion && countShortDescriptionSentences(suggestion) <= 2) {
-        autofilledFields.current.add("activityDescription");
-        setActivityDescription(suggestion);
+        setDescriptionSuggestion(suggestion);
         setDescriptionAiError("");
-        setError("");
-        window.setTimeout(() => {
-          queueCurrentDraft();
-          document.getElementById("fmea-activity-description")?.focus();
-        }, 0);
       } else setDescriptionAiError(t("assessment.descriptionSuggestionUnavailable"));
     } catch {
       if (requestId === descriptionRequestId.current) {
@@ -1437,6 +1439,24 @@ function FmeaProcessPage() {
     } finally {
       if (requestId === descriptionRequestId.current) setDescriptionLoading(false);
     }
+  }
+
+  function acceptDescriptionSuggestion() {
+    const suggestion = descriptionSuggestion.trim();
+    if (!suggestion) return;
+    autofilledFields.current.add("activityDescription");
+    setActivityDescription(suggestion);
+    setDescriptionSuggestion("");
+    setDescriptionAiError("");
+    setError("");
+    window.setTimeout(() => {
+      queueCurrentDraft();
+      document.getElementById("fmea-activity-description")?.focus();
+    }, 0);
+  }
+
+  function dismissDescriptionSuggestion() {
+    setDescriptionSuggestion("");
   }
 
   function toggleItem(category: ProcessSuggestionCategory, item: string) {
@@ -1777,8 +1797,9 @@ function FmeaProcessPage() {
             <label><span className="fmea-field-label"><span>{t("assessment.department")}</span><span className="optional-label">{t("common.optional")}</span></span><input name="department" value={department} onChange={(event) => { autofilledFields.current.delete("department"); setDepartment(event.target.value); }} placeholder={t("assessment.departmentPlaceholder")}/></label>
             <div className="fmea-description-field">
               <div className="fmea-description-head"><label htmlFor="fmea-activity-description"><span className="fmea-field-label"><span>{t("assessment.activityDescription")}</span><span className="required-label">{t("common.required")}</span></span></label><button type="button" className="fmea-description-ai" onClick={() => void requestDescriptionSuggestion()} disabled={descriptionLoading} aria-busy={descriptionLoading}><Icon name="sparkles" size={15}/>{descriptionLoading ? t("assessment.aiDescriptionWorking") : t(activityDescription.trim() ? "assessment.improveDescriptionWithAi" : "assessment.suggestDescriptionWithAi")}</button></div>
-              <textarea id="fmea-activity-description" name="activityDescription" value={activityDescription} maxLength={FMEA_PROCESS_DESCRIPTION_MAX} rows={4} required aria-invalid={countShortDescriptionSentences(activityDescription) > 2} aria-describedby="fmea-activity-description-hint fmea-activity-description-error" placeholder={t("assessment.activityDescriptionPlaceholder")} onChange={(event) => { autofilledFields.current.delete("activityDescription"); setActivityDescription(event.target.value); setDescriptionAiError(""); setDescriptionAiStatus(null); }}/>
+              <textarea id="fmea-activity-description" name="activityDescription" value={activityDescription} maxLength={FMEA_PROCESS_DESCRIPTION_MAX} rows={4} required aria-invalid={countShortDescriptionSentences(activityDescription) > 2} aria-describedby="fmea-activity-description-hint fmea-activity-description-error" placeholder={t("assessment.activityDescriptionPlaceholder")} onChange={(event) => { autofilledFields.current.delete("activityDescription"); setActivityDescription(event.target.value); setDescriptionSuggestion(""); setDescriptionAiError(""); setDescriptionAiStatus(null); }}/>
               <div className="fmea-description-meta"><span id="fmea-activity-description-hint" className="field-counter">{activityDescription.length.toLocaleString(numberLocale)} / {Number(FMEA_PROCESS_DESCRIPTION_MAX).toLocaleString(numberLocale)} · {t("assessment.activityDescriptionLimit")}</span>{descriptionAiStatus && !descriptionLoading && <span className={`ai-status ${descriptionAiStatus}`}>{t(`assessment.aiStatus.${descriptionAiStatus}`)}</span>}</div>
+              {descriptionSuggestion && <div className="fmea-description-suggestion" role="status" aria-live="polite"><div className="fmea-description-suggestion-head"><div><strong>{t("assessment.descriptionSuggestionTitle")}</strong><small>{t("assessment.descriptionSuggestionHint")}</small></div><span className={`ai-status ${descriptionAiStatus ?? "connected"}`}>{descriptionAiStatus ? t(`assessment.aiStatus.${descriptionAiStatus}`) : "AI"}</span></div><p>{descriptionSuggestion}</p><div className="fmea-description-suggestion-actions"><button type="button" className="primary" onClick={acceptDescriptionSuggestion}>{t("assessment.useDescriptionSuggestion")}</button><button type="button" className="ghost" onClick={dismissDescriptionSuggestion}>{t("assessment.dismissDescriptionSuggestion")}</button></div></div>}
               {countShortDescriptionSentences(activityDescription) > 2 && <small id="fmea-activity-description-error" className="field-error" role="alert">{t("assessment.activityDescriptionSentenceLimit")}</small>}
               {descriptionAiError && <small className="field-error fmea-description-assist-error" role="status">{descriptionAiError}</small>}
             </div>

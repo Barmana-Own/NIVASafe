@@ -214,10 +214,14 @@ describe("FMEA process information", () => {
     expect(stylesSource).toContain(".fmea-suggestion-board-head > .fmea-suggestion-board-actions");
     expect(assessmentPagesSource).toContain('className="fmea-description-ai"');
     expect(assessmentPagesSource).toContain('setActivityDescription(suggestion)');
-    expect(assessmentPagesSource).not.toContain('descriptionSuggestion &&');
+    expect(assessmentPagesSource).toContain('const [descriptionSuggestion, setDescriptionSuggestion] = useState("")');
+    expect(assessmentPagesSource).toContain('descriptionSuggestion &&');
+    expect(assessmentPagesSource).toContain('className="fmea-description-suggestion"');
+    expect(assessmentPagesSource).toContain('onClick={acceptDescriptionSuggestion}');
+    expect(assessmentPagesSource).toContain('onClick={dismissDescriptionSuggestion}');
     expect(assessmentPagesSource).not.toContain('fmea-job-ai-actions');
     expect(stylesSource).toContain(".fmea-description-ai {");
-    expect(stylesSource).not.toContain(".fmea-description-suggestion {");
+    expect(stylesSource).toContain(".fmea-description-suggestion {");
     expect(assessmentPagesSource).toContain('name="fmeaProcessImage"');
     expect(assessmentPagesSource).toContain("const FMEA_PROCESS_IMAGE_MAX_COUNT = 3");
     expect(assessmentPagesSource).toContain('fmeaProcessImageCount", { count: processImages.length, max: FMEA_PROCESS_IMAGE_MAX_COUNT }');
