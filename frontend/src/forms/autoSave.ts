@@ -80,6 +80,7 @@ export function restoreForm(form: HTMLFormElement, draft: AutoSaveDraft): void {
       continue;
     }
     field.value = Array.isArray(value) ? value[0] ?? "" : String(value);
+    if (field instanceof HTMLSelectElement) field.dispatchEvent(new Event("change", { bubbles: true }));
   }
 }
 

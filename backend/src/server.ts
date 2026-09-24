@@ -18,9 +18,10 @@ if (process.env.NODE_ENV !== "production") {
 const [{ validateEnvironment }, { buildApp }, { prisma }] = await Promise.all([import("./config.js"), import("./app.js"), import("./core.js")]);
 const { port } = validateEnvironment();
 const app = await buildApp();
+const host = process.env.HOST ?? (process.env.NODE_ENV === "production" ? "127.0.0.1" : "0.0.0.0");
 
-await app.listen({ port, host: "0.0.0.0" });
-app.log.info(`NIVASafe API is listening on http://localhost:${port}`);
+await app.listen({ port, host });
+app.log.info(`NIVASafe API is listening on http://${host}:${port}`);
 
 async function shutdown() {
   await app.close();

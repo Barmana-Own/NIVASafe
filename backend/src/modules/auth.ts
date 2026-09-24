@@ -1,16 +1,55 @@
 import type { FastifyInstance } from "fastify";
 import bcrypt from "bcryptjs";
 import { randomBytes, randomUUID } from "node:crypto";
-import { DISPLAY_NAME_MAX_LENGTH, EMAIL_MAX_LENGTH, isForbiddenDisplayName, isStrongPassword, isValidDisplayName, isValidEmail, isValidPhone, normalizeDisplayName, normalizeEmail, normalizePhone, PASSWORD_MIN_LENGTH } from "@nivasafe/domain";
+import { DISPLAY_NAME_MAX_LENGTH, EMAIL_MAX_LENGTH, detectContactInput, isForbiddenDisplayName, isStrongPassword, isValidDisplayName, isValidEmail, isValidIranianNationalId, isValidPhone, normalizeDisplayName, normalizeEmail, normalizeNationalId, normalizePhone, PASSWORD_MIN_LENGTH, SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@nivasafe/domain";
 import { z } from "zod";
 import { authenticate } from "../auth-guard.js";
+import { getLoginRateLimit } from "../config.js";
 import { audit, envelope, parse, prisma, safeUser, tokenHash } from "../core.js";
 import { scheduleEmail } from "../mail.js";
+import { defaultProjectForLocale, workspaceForRegistration } from "../onboarding.js";
+import { createSubscriptionFields } from "../subscription.js";
 
 const credentials = z.object({ email: z.string().trim().min(1).max(EMAIL_MAX_LENGTH), password: z.string().min(8).max(128) });
-const registrationInput = z.object({ email: z.string().trim().min(1).max(EMAIL_MAX_LENGTH), password: z.string().min(1).max(128), displayName: z.string().trim().min(1).max(DISPLAY_NAME_MAX_LENGTH), registrationKind: z.enum(["personal", "organization"]).default("personal"), locale: z.enum(["fa", "en"]).default("fa"), phone: z.string().trim().max(32).nullable().optional(), jobTitle: z.string().trim().max(120).nullable().optional() });
+const subscriptionPlanInput = z.enum(SUBSCRIPTION_PLANS.map((plan) => plan.id) as [SubscriptionPlan, ...SubscriptionPlan[]]);
+const registrationInput = z.object({
+  email: z.string().trim().min(1).max(EMAIL_MAX_LENGTH),
+  password: z.string().min(1).max(128),
+  displayName: z.string().trim().min(1).max(DISPLAY_NAME_MAX_LENGTH),
+  firstName: z.string().trim().min(1).max(40).optional(),
+  lastName: z.string().trim().min(1).max(40).optional(),
+  registrationKind: z.enum(["personal", "organization"]).default("personal"),
+  locale: z.enum(["fa", "en"]).default("fa"),
+  phone: z.string().trim().max(32).nullable().optional(),
+  jobTitle: z.string().trim().max(120).nullable().optional(),
+  companyName: z.string().trim().min(2).max(191).nullable().optional(),
+  activityArea: z.string().trim().max(120).nullable().optional(),
+  industry: z.string().trim().max(120).nullable().optional(),
+  employeeCount: z.number().int().min(0).max(10_000_000).nullable().optional(),
+  nationalId: z.string().trim().max(50).nullable().optional(),
+  subscriptionPlan: subscriptionPlanInput.default("STARTER"),
+}).strict().superRefine((value, context) => {
+  if (value.registrationKind === "organization" && !value.companyName?.trim()) {
+    context.addIssue({ code: "custom", path: ["companyName"], message: "نام شرکت را وارد کنید." });
+  }
+  if (value.registrationKind === "organization" && !value.industry?.trim()) {
+    context.addIssue({ code: "custom", path: ["industry"], message: "نوع صنعت را وارد کنید." });
+  }
+  if ((value.firstName === undefined) !== (value.lastName === undefined)) {
+    const missingField = value.firstName === undefined ? "firstName" : "lastName";
+    context.addIssue({ code: "custom", path: [missingField], message: "نام و نام خانوادگی را کامل وارد کنید." });
+  }
+  if (value.registrationKind === "organization" && value.nationalId?.trim() && !isValidIranianNationalId(value.nationalId)) {
+    context.addIssue({ code: "custom", path: ["nationalId"], message: "شناسه ملی شرکت معتبر نیست." });
+  }
+});
 const profileInput = z.object({ email: z.string().trim().min(1).max(EMAIL_MAX_LENGTH).optional(), displayName: z.string().trim().min(1).max(DISPLAY_NAME_MAX_LENGTH).optional(), locale: z.enum(["fa", "en"]).optional(), phone: z.string().trim().max(32).nullable().optional(), jobTitle: z.string().trim().max(120).nullable().optional() });
 const registrationRateLimit = { max: process.env.NODE_ENV === "production" ? 5 : 30, timeWindow: "1 hour" } as const;
+// Keep the production login window, but do not lock local testers behind it.
+// The application-wide limiter remains active in development.
+const loginRouteOptions = process.env.NODE_ENV === "production"
+  ? { config: { rateLimit: getLoginRateLimit() } }
+  : {};
 
 function validationError(message: string, code: string) {
   return Object.assign(new Error(message), { statusCode: 400, code });
@@ -18,14 +57,14 @@ function validationError(message: string, code: string) {
 
 function checkedEmail(value: string): string {
   const email = normalizeEmail(value);
-  if (!isValidEmail(email)) throw validationError("ایمیل معتبر وارد کنید.", "INVALID_EMAIL");
+  if (detectContactInput(value) !== "email" || !isValidEmail(email)) throw validationError("ایمیل معتبر وارد کنید.", "INVALID_EMAIL");
   return email;
 }
 
 function checkedPhone(value: string | null | undefined): string | null {
   if (value == null || !value.trim()) return null;
   const phone = normalizePhone(value);
-  if (!isValidPhone(phone)) throw validationError("شماره تلفن معتبر وارد کنید.", "INVALID_PHONE");
+  if (detectContactInput(value) !== "phone" || !isValidPhone(phone)) throw validationError("شماره تلفن معتبر وارد کنید.", "INVALID_PHONE");
   return phone;
 }
 
@@ -35,9 +74,39 @@ function checkedDisplayName(value: string): string {
   return displayName;
 }
 
+function checkedNamePart(value: string): string {
+  const name = normalizeDisplayName(value);
+  if (!isValidDisplayName(name) || isForbiddenDisplayName(name)) throw validationError("نام معتبر وارد کنید.", "INVALID_NAME");
+  return name;
+}
+
+function checkedNationalId(value: string | null | undefined): string | null {
+  if (value == null || !value.trim()) return null;
+  const nationalId = normalizeNationalId(value);
+  if (!isValidIranianNationalId(nationalId)) throw validationError("شناسه ملی شرکت معتبر نیست.", "INVALID_NATIONAL_ID");
+  return nationalId;
+}
+
 function checkedPassword(value: string, context: { email?: string; displayName?: string } = {}): string {
   if (!isStrongPassword(value, context)) throw validationError(`رمز عبور باید حداقل ${PASSWORD_MIN_LENGTH} نویسه و شامل حرف، عدد و نشانه باشد و قابل حدس نباشد.`, "WEAK_PASSWORD");
   return value;
+}
+
+export function validateRegistrationIdentity(input: { email: string; displayName: string; phone?: string | null; firstName?: string; lastName?: string }) {
+  const firstName = input.firstName === undefined ? undefined : checkedNamePart(input.firstName);
+  const lastName = input.lastName === undefined ? undefined : checkedNamePart(input.lastName);
+  const displayName = firstName !== undefined && lastName !== undefined ? checkedDisplayName(`${firstName} ${lastName}`) : checkedDisplayName(input.displayName);
+  return {
+    email: checkedEmail(input.email),
+    displayName,
+    phone: checkedPhone(input.phone),
+    ...(firstName === undefined ? {} : { firstName }),
+    ...(lastName === undefined ? {} : { lastName }),
+  };
+}
+
+export function parseRegistrationInput(data: unknown) {
+  return parse(registrationInput, data);
 }
 
 export async function registerAuthRoutes(app: FastifyInstance) {
@@ -45,20 +114,41 @@ export async function registerAuthRoutes(app: FastifyInstance) {
   const signRefreshToken = (userId: string) => app.jwt.sign({ sub: userId, type: "refresh", jti: randomUUID() }, { key: refreshSecret, expiresIn: "7d" });
 
   app.post("/api/v1/auth/register", { config: { rateLimit: registrationRateLimit } }, async (request, reply) => {
-    const body = parse(registrationInput, request.body);
-    const email = checkedEmail(body.email);
-    const displayName = checkedDisplayName(body.displayName);
-    const phone = checkedPhone(body.phone);
+    const body = parseRegistrationInput(request.body);
+    const { email, displayName, phone } = validateRegistrationIdentity(body);
     if (body.registrationKind === "organization" && !phone) throw validationError("تلفن همراه را وارد کنید.", "INVALID_PHONE");
     const password = checkedPassword(body.password, { email, displayName });
     const duplicate = await prisma.user.findFirst({ where: { OR: [{ email }, ...(phone ? [{ phone }] : [])] }, select: { email: true, phone: true } });
     if (duplicate?.email === email) throw validationError("این ایمیل قبلاً ثبت شده است.", "EMAIL_IN_USE");
     if (phone && duplicate?.phone === phone) throw validationError("این شماره تلفن قبلاً ثبت شده است.", "PHONE_IN_USE");
-    const user = await prisma.user.create({ data: { email, displayName, locale: body.locale, phone, jobTitle: body.jobTitle || null, passwordHash: await bcrypt.hash(password, 12) } });
+    const workspace = workspaceForRegistration({
+      displayName,
+      registrationKind: body.registrationKind,
+      locale: body.locale,
+      companyName: body.companyName,
+      activityArea: body.activityArea,
+      industry: body.industry,
+      employeeCount: body.employeeCount,
+      nationalId: body.registrationKind === "organization" ? checkedNationalId(body.nationalId) : null,
+    });
+    const passwordHash = await bcrypt.hash(password, 12);
+    const user = await prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({ data: { email, displayName, locale: body.locale, phone, jobTitle: body.jobTitle || null, passwordHash } });
+      const organization = await tx.organization.create({
+        data: {
+          ...workspace,
+          ...createSubscriptionFields(body.subscriptionPlan, new Date(), process.env.NODE_ENV === "production"),
+          members: { create: { userId: createdUser.id, role: "ORG_ADMIN" } },
+          projects: { create: defaultProjectForLocale(body.locale) },
+        },
+      });
+      await tx.auditLog.create({ data: { userId: createdUser.id, organizationId: organization.id, action: "USER_REGISTER", entityType: "User", entityId: createdUser.id, metadata: { registrationKind: body.registrationKind }, requestId: request.id } });
+      return createdUser;
+    });
     return reply.code(201).send(envelope(safeUser(user)));
   });
 
-  app.post("/api/v1/auth/login", { config: { rateLimit: { max: 10, timeWindow: "15 minutes" } } }, async (request) => {
+  app.post("/api/v1/auth/login", loginRouteOptions, async (request) => {
     const body = parse(credentials, request.body);
     const email = checkedEmail(body.email);
     const user = await prisma.user.findUnique({ where: { email }, include: { memberships: { where: { active: true }, include: { organization: true } } } });

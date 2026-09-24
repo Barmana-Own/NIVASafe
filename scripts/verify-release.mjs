@@ -23,6 +23,10 @@ const authModule = read("backend/src/modules/auth.ts");
 const subscriptionModule = read("backend/src/modules/subscriptions.ts");
 const subscriptionSchema = read("backend/prisma/schema.prisma");
 const authGuard = read("backend/src/auth-guard.ts");
+const organizationModule = read("backend/src/modules/organizations.ts");
+const appRoutes = read("frontend/src/App.tsx");
+const appLayout = read("frontend/src/layout/AppLayout.tsx");
+const apiClient = read("frontend/src/api/client.ts");
 const webPackage = JSON.parse(read("frontend/package.json"));
 const apiPackage = JSON.parse(read("backend/package.json"));
 const migrationDir = join(root, "backend/prisma/migrations");
@@ -41,10 +45,10 @@ check("Docker DATABASE_URL uses mysql service hostname", /@mysql:3306\/nivasafe/
 check("Production requires SMTP for invitations and password reset", /SMTP_URL:\s*\$\{SMTP_URL:\?/.test(compose));
 check("Demo login credentials are not shipped", !/admin@nivasafe\.local|Demo123!/.test(accountPages));
 check("MySQL migration exists", migrationFiles.length > 0 && /CREATE TABLE `User`/.test(migrationSql));
-check("All 27 Prisma tables are in migration", (migrationSql.match(/CREATE TABLE/g) ?? []).length === 27, String((migrationSql.match(/CREATE TABLE/g) ?? []).length));
+check("All 29 Prisma tables are in migration", (migrationSql.match(/CREATE TABLE/g) ?? []).length === 29, String((migrationSql.match(/CREATE TABLE/g) ?? []).length));
 check("Production provisioning script exists", existsSync(join(root, "backend/prisma/provision.ts")));
-check("Manual MySQL schema export exists", existsSync(join(root, "database/nivasafe-mysql-schema.sql")) && /CREATE TABLE `User`/.test(manualSchema) && /`employeeCount`/.test(manualSchema) && /`visibleUserIds`/.test(manualSchema));
-check("External AI adapters are implemented", /api\.openai\.com\/v1\/responses/.test(aiProvider) && /generativelanguage\.googleapis\.com/.test(aiProvider) && /api\.anthropic\.com\/v1\/messages/.test(aiProvider));
+check("Manual MySQL schema export exists", existsSync(join(root, "database/nivasafe-mysql-schema.sql")) && /CREATE TABLE `User`/.test(manualSchema) && /CREATE TABLE `AIUsageRecord`/.test(manualSchema) && /`employeeCount`/.test(manualSchema) && /`visibleUserIds`/.test(manualSchema));
+check("External AI adapters are implemented", /api\.arvancloudai\.ir\/v1/.test(aiProvider) && /api\.openai\.com\/v1\/responses/.test(aiProvider) && /generativelanguage\.googleapis\.com/.test(aiProvider) && /api\.anthropic\.com\/v1\/messages/.test(aiProvider));
 check("Runtime smoke test exists", existsSync(join(root, "scripts/smoke-test.mjs")));
 check("Database backup and restore scripts exist", existsSync(join(root, "scripts/mysql-backup.mjs")) && existsSync(join(root, "scripts/mysql-restore.mjs")));
 check("PWA manifest is installable", manifest.display === "standalone" && manifest.scope === "/" && manifest.start_url === "/" && manifest.icons?.some((icon) => icon.sizes === "192x192") && manifest.icons?.some((icon) => icon.sizes === "512x512"));
@@ -53,6 +57,7 @@ check("PWA update flow is user-controlled", /SKIP_WAITING/.test(serviceWorker) &
 check("IIS serves PWA metadata with safe cache headers", /\.webmanifest/.test(iisPwaConfig) && /no-cache/.test(iisPwaConfig) && /no-store/.test(iisPwaConfig));
 check("Registration input security is enforced in API and shared domain", /isValidEmail/.test(validation) && /isValidPhone/.test(validation) && /isForbiddenDisplayName/.test(validation) && /isStrongPassword/.test(validation) && /timeWindow: "1 hour"/.test(authModule));
 check("Multi-organization subscriptions are independently modeled and gated", /subscriptionPlan/.test(subscriptionSchema) && /subscriptionStatus/.test(subscriptionSchema) && /SUBSCRIPTION_REQUIRED/.test(authGuard) && /subscription\/checkout/.test(subscriptionModule));
+check("Multi-organization account switching and creation are membership-scoped", /OrganizationMember/.test(subscriptionSchema) && /app\.post\("\/api\/v1\/organizations"[\s\S]*allowUnsubscribed: true/.test(organizationModule) && /selectOrganization/.test(apiClient) && /path: "\/organizations"[\s\S]*scope: "all"/.test(appLayout) && /<Route path="organizations" element={<OrganizationsPage \/>}/.test(appRoutes));
 
 const contract = spawnSync(process.execPath, [join(root, "scripts/check-api-contract.mjs")], { encoding: "utf8" });
 check("Frontend API paths match backend routes", contract.status === 0, `${contract.stdout}${contract.stderr}`.trim());

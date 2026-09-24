@@ -14,7 +14,7 @@ The Word attachment is the acceptance authority. Record actual evidence and Pass
 | [ ] | FMEA CRUD/history | Create rows; edit, duplicate, archive, inspect history | Server owns RPN/risk; versions persist |
 | [ ] | RULA CRUD/history | Submit posture; edit, duplicate, archive, inspect history | Score 1–7, action 1–4, explanation present |
 | [ ] | Corrective actions | Create and move through workflow | Status, progress, assignee, due date and audit persist |
-| [ ] | PDF/Excel | Download both formats for FMEA and RULA | Valid files; cross-tenant download denied |
+| [ ] | Excel/Word | Download report workbooks/documents for FMEA and RULA from the panel | Valid files; cross-tenant download denied; PDF report routes remain API-compatibility only |
 | [ ] | Images/video/files | Upload, download, delete; try executable/oversized | Allowed works; invalid type/size rejected |
 | [ ] | Knowledge/chat | CRUD knowledge; create and reopen conversation | Scoped documents, messages and citations persist |
 | [ ] | AI fallback | Submit fallback with no external key | Organization knowledge provides response |

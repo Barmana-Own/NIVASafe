@@ -68,9 +68,9 @@ CREATE TABLE `Organization` (
   `employeeCount` INT NULL,
   `timezone` VARCHAR(191) NOT NULL DEFAULT 'Asia/Tehran',
   `defaultLocale` VARCHAR(191) NOT NULL DEFAULT 'fa',
-  `riskMedium` INT NOT NULL DEFAULT 50,
-  `riskHigh` INT NOT NULL DEFAULT 100,
-  `riskCritical` INT NOT NULL DEFAULT 200,
+  `riskMedium` INT NOT NULL DEFAULT 101,
+  `riskHigh` INT NOT NULL DEFAULT 201,
+  `riskCritical` INT NOT NULL DEFAULT 401,
   `subscriptionPlan` VARCHAR(32) NOT NULL DEFAULT 'STARTER',
   `subscriptionStatus` VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
   `subscriptionProvider` VARCHAR(32) NOT NULL DEFAULT 'legacy',
@@ -157,23 +157,54 @@ CREATE TABLE `Activity` (
   KEY `Activity_organizationId_projectId_idx` (`organizationId`, `projectId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE `JobCatalog` (
+  `id` VARCHAR(36) NOT NULL,
+  `organizationId` VARCHAR(36) NULL,
+  `titleFa` VARCHAR(191) NOT NULL,
+  `titleEn` VARCHAR(191) NOT NULL,
+  `keywords` JSON NULL,
+  `departmentFa` VARCHAR(191) NULL,
+  `departmentEn` VARCHAR(191) NULL,
+  `descriptionFa` TEXT NULL,
+  `descriptionEn` TEXT NULL,
+  `equipment` JSON NOT NULL,
+  `materials` JSON NOT NULL,
+  `controls` JSON NOT NULL,
+  `active` BOOLEAN NOT NULL DEFAULT TRUE,
+  `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updatedAt` DATETIME(3) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `JobCatalog_organizationId_active_idx` (`organizationId`, `active`),
+  KEY `JobCatalog_titleFa_idx` (`titleFa`),
+  KEY `JobCatalog_titleEn_idx` (`titleEn`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE `FmeaAssessment` (
   `id` VARCHAR(36) NOT NULL,
   `organizationId` VARCHAR(36) NOT NULL,
   `projectId` VARCHAR(36) NOT NULL,
   `activityId` VARCHAR(36) NULL,
+  `jobCatalogId` VARCHAR(36) NULL,
   `title` VARCHAR(191) NOT NULL,
   `code` VARCHAR(191) NOT NULL,
   `status` ENUM('DRAFT', 'IN_PROGRESS', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'ARCHIVED') NOT NULL DEFAULT 'DRAFT',
   `scope` TEXT NULL,
+  `department` VARCHAR(191) NULL,
+  `activityDescription` TEXT NULL,
+  `equipment` JSON NULL,
+  `materials` JSON NULL,
+  `existingControls` JSON NULL,
+  `specialConditions` TEXT NULL,
   `version` INT NOT NULL DEFAULT 1,
   `approvedAt` DATETIME(3) NULL,
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updatedAt` DATETIME(3) NOT NULL,
   `deletedAt` DATETIME(3) NULL,
+  `fmeaDetailSeededAt` DATETIME(3) NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `FmeaAssessment_organizationId_code_version_key` (`organizationId`, `code`, `version`),
-  KEY `FmeaAssessment_organizationId_projectId_idx` (`organizationId`, `projectId`)
+  KEY `FmeaAssessment_organizationId_projectId_idx` (`organizationId`, `projectId`),
+  KEY `FmeaAssessment_jobCatalogId_idx` (`jobCatalogId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `FmeaVersion` (
@@ -202,7 +233,7 @@ CREATE TABLE `FmeaItem` (
   `occurrence` INT NOT NULL,
   `detection` INT NOT NULL,
   `rpn` INT NOT NULL,
-  `riskLevel` ENUM('LOW', 'MEDIUM', 'HIGH', 'CRITICAL') NOT NULL,
+  `riskLevel` ENUM('VERY_LOW', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL') NOT NULL,
   `recommendation` TEXT NULL,
   `residualSeverity` INT NULL,
   `residualOccurrence` INT NULL,
@@ -223,6 +254,8 @@ CREATE TABLE `RulaAssessment` (
   `subjectCode` VARCHAR(191) NULL,
   `bodySide` VARCHAR(191) NOT NULL DEFAULT 'RIGHT',
   `inputs` JSON NOT NULL,
+  `activityInfo` JSON NULL,
+  `postureAnalysis` JSON NULL,
   `score` INT NOT NULL,
   `actionLevel` INT NOT NULL,
   `explanation` TEXT NOT NULL,
@@ -251,7 +284,9 @@ CREATE TABLE `CorrectiveAction` (
   `organizationId` VARCHAR(36) NOT NULL,
   `projectId` VARCHAR(36) NOT NULL,
   `fmeaId` VARCHAR(36) NULL,
+  `fmeaItemId` VARCHAR(36) NULL,
   `rulaId` VARCHAR(36) NULL,
+  `bodySide` VARCHAR(10) NULL,
   `title` VARCHAR(191) NOT NULL,
   `description` TEXT NOT NULL,
   `priority` VARCHAR(191) NOT NULL DEFAULT 'MEDIUM',
@@ -261,10 +296,12 @@ CREATE TABLE `CorrectiveAction` (
   `dueDate` DATETIME(3) NULL,
   `beforeRisk` INT NULL,
   `afterRisk` INT NULL,
+  `rulaImpact` JSON NULL,
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updatedAt` DATETIME(3) NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `CorrectiveAction_organizationId_status_idx` (`organizationId`, `status`)
+  KEY `CorrectiveAction_organizationId_status_idx` (`organizationId`, `status`),
+  KEY `CorrectiveAction_fmeaItemId_idx` (`fmeaItemId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `KnowledgeDocument` (
@@ -383,6 +420,25 @@ CREATE TABLE `AIAnalysisRequest` (
   KEY `AIAnalysisRequest_organizationId_status_availableAt_idx` (`organizationId`, `status`, `availableAt`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE `AIUsageRecord` (
+  `id` VARCHAR(36) NOT NULL,
+  `organizationId` VARCHAR(36) NOT NULL,
+  `userId` VARCHAR(36) NOT NULL,
+  `useCase` VARCHAR(32) NOT NULL,
+  `provider` VARCHAR(64) NOT NULL,
+  `model` VARCHAR(128) NULL,
+  `inputTokens` INT NOT NULL DEFAULT 0,
+  `outputTokens` INT NOT NULL DEFAULT 0,
+  `totalTokens` INT NOT NULL DEFAULT 0,
+  `sourceType` VARCHAR(32) NOT NULL,
+  `sourceId` VARCHAR(36) NOT NULL,
+  `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `AIUsageRecord_sourceType_sourceId_key` (`sourceType`, `sourceId`),
+  KEY `AIUsageRecord_userId_createdAt_idx` (`userId`, `createdAt`),
+  KEY `AIUsageRecord_organizationId_userId_createdAt_idx` (`organizationId`, `userId`, `createdAt`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE `ChatConversation` (
   `id` VARCHAR(36) NOT NULL,
   `organizationId` VARCHAR(36) NOT NULL,
@@ -435,9 +491,11 @@ ALTER TABLE `Process` ADD CONSTRAINT `Process_projectId_fkey` FOREIGN KEY (`proj
 ALTER TABLE `Activity` ADD CONSTRAINT `Activity_organizationId_fkey` FOREIGN KEY (`organizationId`) REFERENCES `Organization` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `Activity` ADD CONSTRAINT `Activity_projectId_fkey` FOREIGN KEY (`projectId`) REFERENCES `Project` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `Activity` ADD CONSTRAINT `Activity_processId_fkey` FOREIGN KEY (`processId`) REFERENCES `Process` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `JobCatalog` ADD CONSTRAINT `JobCatalog_organizationId_fkey` FOREIGN KEY (`organizationId`) REFERENCES `Organization` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE `FmeaAssessment` ADD CONSTRAINT `FmeaAssessment_organizationId_fkey` FOREIGN KEY (`organizationId`) REFERENCES `Organization` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `FmeaAssessment` ADD CONSTRAINT `FmeaAssessment_projectId_fkey` FOREIGN KEY (`projectId`) REFERENCES `Project` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `FmeaAssessment` ADD CONSTRAINT `FmeaAssessment_activityId_fkey` FOREIGN KEY (`activityId`) REFERENCES `Activity` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `FmeaAssessment` ADD CONSTRAINT `FmeaAssessment_jobCatalogId_fkey` FOREIGN KEY (`jobCatalogId`) REFERENCES `JobCatalog` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE `FmeaVersion` ADD CONSTRAINT `FmeaVersion_assessmentId_fkey` FOREIGN KEY (`assessmentId`) REFERENCES `FmeaAssessment` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `FmeaItem` ADD CONSTRAINT `FmeaItem_assessmentId_fkey` FOREIGN KEY (`assessmentId`) REFERENCES `FmeaAssessment` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `RulaAssessment` ADD CONSTRAINT `RulaAssessment_organizationId_fkey` FOREIGN KEY (`organizationId`) REFERENCES `Organization` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -447,6 +505,7 @@ ALTER TABLE `RulaVersion` ADD CONSTRAINT `RulaVersion_assessmentId_fkey` FOREIGN
 ALTER TABLE `CorrectiveAction` ADD CONSTRAINT `CorrectiveAction_organizationId_fkey` FOREIGN KEY (`organizationId`) REFERENCES `Organization` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `CorrectiveAction` ADD CONSTRAINT `CorrectiveAction_projectId_fkey` FOREIGN KEY (`projectId`) REFERENCES `Project` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `CorrectiveAction` ADD CONSTRAINT `CorrectiveAction_fmeaId_fkey` FOREIGN KEY (`fmeaId`) REFERENCES `FmeaAssessment` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `CorrectiveAction` ADD CONSTRAINT `CorrectiveAction_fmeaItemId_fkey` FOREIGN KEY (`fmeaItemId`) REFERENCES `FmeaItem` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE `CorrectiveAction` ADD CONSTRAINT `CorrectiveAction_rulaId_fkey` FOREIGN KEY (`rulaId`) REFERENCES `RulaAssessment` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE `KnowledgeDocument` ADD CONSTRAINT `KnowledgeDocument_organizationId_fkey` FOREIGN KEY (`organizationId`) REFERENCES `Organization` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `KnowledgeDocument` ADD CONSTRAINT `KnowledgeDocument_categoryId_fkey` FOREIGN KEY (`categoryId`) REFERENCES `KnowledgeCategory` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
@@ -460,6 +519,8 @@ ALTER TABLE `NotificationPreference` ADD CONSTRAINT `NotificationPreference_user
 ALTER TABLE `EmailOutbox` ADD CONSTRAINT `EmailOutbox_organizationId_fkey` FOREIGN KEY (`organizationId`) REFERENCES `Organization` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE `AIAnalysisRequest` ADD CONSTRAINT `AIAnalysisRequest_organizationId_fkey` FOREIGN KEY (`organizationId`) REFERENCES `Organization` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `AIAnalysisRequest` ADD CONSTRAINT `AIAnalysisRequest_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `AIUsageRecord` ADD CONSTRAINT `AIUsageRecord_organizationId_fkey` FOREIGN KEY (`organizationId`) REFERENCES `Organization` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `AIUsageRecord` ADD CONSTRAINT `AIUsageRecord_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `ChatConversation` ADD CONSTRAINT `ChatConversation_organizationId_fkey` FOREIGN KEY (`organizationId`) REFERENCES `Organization` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `ChatConversation` ADD CONSTRAINT `ChatConversation_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `ChatMessage` ADD CONSTRAINT `ChatMessage_conversationId_fkey` FOREIGN KEY (`conversationId`) REFERENCES `ChatConversation` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;

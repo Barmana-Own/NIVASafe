@@ -20,8 +20,8 @@ const calls = [...frontendText.matchAll(/(?:api|download|useLoad)(?:<[^>]+>)?\(\
 
 const unique = [...new Set(calls)].sort();
 const matches = (front, back) => {
-  const a = front.split("/").filter(Boolean);
-  const b = back.split("/").filter(Boolean);
+  const a = front.split(/[?#]/, 1)[0].split("/").filter(Boolean);
+  const b = back.split(/[?#]/, 1)[0].split("/").filter(Boolean);
   if (a.length !== b.length) return false;
   return a.every((segment, index) => segment === ":param" || b[index]?.startsWith(":") || segment === b[index]);
 };

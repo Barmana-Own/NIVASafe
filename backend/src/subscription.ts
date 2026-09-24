@@ -2,6 +2,16 @@ import { SUBSCRIPTION_PERIOD_DAYS, SUBSCRIPTION_PLANS, SUBSCRIPTION_TRIAL_DAYS, 
 
 export { isSubscriptionActive, isSubscriptionPlan, SUBSCRIPTION_PLANS };
 
+/**
+ * Local checkout is a development-only simulation. Production must use a
+ * configured payment adapter so a configuration mistake cannot activate an
+ * organization without a real payment result.
+ */
+export function resolveSubscriptionPaymentMode(nodeEnv = process.env.NODE_ENV, configuredMode = process.env.SUBSCRIPTION_PAYMENT_MODE): string {
+  if (nodeEnv === "production") return "external";
+  return configuredMode?.trim() || "local";
+}
+
 export type OrganizationSubscriptionFields = {
   subscriptionPlan: string;
   subscriptionStatus: string;

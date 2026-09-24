@@ -88,6 +88,7 @@ export const safeUser = (user: {
 export const ROLE_PERMISSIONS: Record<Role, string[]> = {
   SUPER_ADMIN: ["*"],
   ORG_ADMIN: ["users.read", "users.manage", "organizations.manage", "projects.read", "projects.manage", "assessments.create", "assessments.update", "assessments.delete", "assessments.approve", "reports.generate", "knowledge.manage", "ai.configure", "audit.read"],
+  ASSISTANT: ["projects.read", "assessments.create", "assessments.update", "reports.generate"],
   HSE_MANAGER: ["users.read", "projects.read", "projects.manage", "assessments.create", "assessments.update", "assessments.approve", "reports.generate", "knowledge.manage", "audit.read"],
   ASSESSOR: ["projects.read", "assessments.create", "assessments.update", "reports.generate"],
   VIEWER: ["projects.read"],

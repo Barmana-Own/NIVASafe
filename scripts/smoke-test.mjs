@@ -43,8 +43,11 @@ async function main() {
   created.fmeaItem = (await post(`/fmea/${created.fmea}/items`, { rowNumber: 1, processStep: "Test", failureMode: "Failure", effect: "Effect", cause: "Cause", severity: 4, occurrence: 3, detection: 2 })).data.id;
   await request(`/reports/fmea/${created.fmea}.pdf`);
   await request(`/reports/fmea/${created.fmea}.xlsx`);
+  await request(`/reports/fmea/${created.fmea}.docx`);
   created.rula = (await post("/rula", { projectId: created.project, activityId: created.activity, title: `RULA ${suffix}`, bodySide: "RIGHT", inputs: { upperArm: 2, lowerArm: 2, wrist: 2, wristTwist: 1, neck: 2, trunk: 2, legs: 1, muscleUse: false, force: 0 } })).data.id;
   await request(`/reports/rula/${created.rula}.pdf`);
+  await request(`/reports/rula/${created.rula}.xlsx`);
+  await request(`/reports/rula/${created.rula}.docx`);
   created.action = (await post("/actions", { projectId: created.project, fmeaId: created.fmea, title: `Action ${suffix}`, description: "Automated test action", priority: "MEDIUM" })).data.id;
   await patch(`/actions/${created.action}`, { status: "COMPLETED" });
   created.category = (await post("/knowledge/categories", { name: `Category ${suffix}` })).data.id;

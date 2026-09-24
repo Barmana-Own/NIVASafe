@@ -15,11 +15,12 @@ const CONTROL_CHARACTERS = /[\u0000-\u001F\u007F]/u;
 const PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
 const ARABIC_DIGITS = "٠١٢٣٤٥٦٧٨٩";
 const ASCII_DIGITS = "0123456789";
+const PHONE_INPUT_SHAPE = /^[+0-9۰-۹٠-٩\s().-]+$/u;
 
 const RESERVED_DISPLAY_NAMES = new Set([
   "admin", "administrator", "root", "support", "security", "owner", "operator", "moderator", "helpdesk",
-  "api", "bot", "system", "user", "guest", "test", "demo", "super admin", "superadmin", "nivasafe",
-  "ادمین", "مدیر سیستم", "مدیر سامانه", "پشتیبانی", "پشتیبان", "سیستم", "ریشه", "کاربر", "مهمان", "آزمایشی", "تست", "دمو", "ربات", "نیواسیف",
+  "api", "bot", "system", "user", "guest", "test", "demo", "unknown", "anonymous", "null", "undefined", "new user", "newuser", "super admin", "superadmin", "nivasafe",
+  "ادمین", "مدیر سیستم", "مدیر سامانه", "پشتیبانی", "پشتیبان", "سیستم", "ریشه", "کاربر", "مهمان", "آزمایشی", "تست", "دمو", "ربات", "نیواسیف", "ناشناس", "نامشخص", "بدون نام", "نام کاربری",
 ]);
 
 const RESERVED_DISPLAY_TOKENS = new Set([
@@ -44,6 +45,18 @@ export function normalizeEmail(value: string): string {
   return value.normalize("NFKC").trim().toLowerCase();
 }
 
+export type ContactInputKind = "empty" | "email" | "phone" | "unknown";
+
+/** Classify a registration contact before applying the field-specific validator. */
+export function detectContactInput(value: unknown): ContactInputKind {
+  if (typeof value !== "string") return "unknown";
+  const input = value.normalize("NFKC").trim();
+  if (!input) return "empty";
+  if (input.includes("@")) return "email";
+  if (PHONE_INPUT_SHAPE.test(input)) return "phone";
+  return "unknown";
+}
+
 export function isValidEmail(value: unknown): value is string {
   if (typeof value !== "string") return false;
   const email = normalizeEmail(value);
@@ -63,11 +76,40 @@ export function normalizePhone(value: string): string {
   return normalizeDigits(value).normalize("NFKC").trim().replace(/[\s().-]/g, "");
 }
 
+/** Normalize a company legal national identifier to ASCII digits. */
+export function normalizeNationalId(value: string): string {
+  return normalizeDigits(value).normalize("NFKC").trim().replace(/[\s-]/g, "");
+}
+
+/**
+ * Validate the structure and check digit of Iranian legal-entity national IDs.
+ * This is a format/checksum check only; official registration still requires
+ * verification against the national company registry.
+ */
+export function isValidIranianNationalId(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const nationalId = normalizeNationalId(value);
+  if (!/^\d{11}$/.test(nationalId) || /^(.)(?:\1){10}$/.test(nationalId)) return false;
+  if (nationalId.slice(3, 9) === "000000") return false;
+  const checkDigit = Number(nationalId[10]);
+  const adjustment = Number(nationalId[9]) + 2;
+  const weights = [29, 27, 23, 19, 17];
+  let sum = 0;
+  for (let index = 0; index < 10; index += 1) sum += (Number(nationalId[index]) + adjustment) * weights[index % weights.length]!;
+  const remainder = sum % 11;
+  return checkDigit === (remainder === 10 ? 0 : remainder);
+}
+
 export function isValidPhone(value: unknown): value is string {
   if (typeof value !== "string") return false;
   const phone = normalizePhone(value);
   if (!/^09\d{9}$/.test(phone)) return false;
   return !/^(\d)\1+$/.test(phone);
+}
+
+export function isValidContactInput(value: unknown, expected: Exclude<ContactInputKind, "empty" | "unknown">): value is string {
+  if (detectContactInput(value) !== expected) return false;
+  return expected === "email" ? isValidEmail(value) : isValidPhone(value);
 }
 
 export function normalizeDisplayName(value: string): string {
@@ -79,8 +121,10 @@ export function isForbiddenDisplayName(value: unknown): boolean {
   const normalized = normalizeDisplayName(value).toLocaleLowerCase("fa-IR");
   if (!normalized || RESERVED_DISPLAY_NAMES.has(normalized)) return true;
   if (/https?:\/\/|www\.|@/i.test(normalized)) return true;
-  const tokens = normalized.split(" ");
-  return tokens.some((token) => RESERVED_DISPLAY_TOKENS.has(token));
+  const compact = normalized.replace(/[\s._'’‘-]+/gu, "");
+  if (RESERVED_DISPLAY_NAMES.has(compact)) return true;
+  const tokens = normalized.split(/[\s._'’‘-]+/u).filter(Boolean);
+  return tokens.some((token) => RESERVED_DISPLAY_TOKENS.has(token) || RESERVED_DISPLAY_TOKENS.has(token.replace(/[._'’‘-]+/gu, "")));
 }
 
 export function isValidDisplayName(value: unknown): value is string {

@@ -1,13 +1,22 @@
 import { useEffect, useState } from "react";
 
 export type Locale = "fa" | "en";
-export type Organization = { id: string; nameFa: string; nameEn: string; role: string; active?: boolean; subscriptionPlan?: string; subscriptionStatus?: string; subscriptionExpiresAt?: string | null };
+export type Organization = { id: string; nameFa: string; nameEn: string; role: string; active?: boolean; subscriptionPlan?: string; subscriptionStatus?: string; subscriptionExpiresAt?: string | null; subscriptionPaymentRequired?: boolean };
 export type Session = { accessToken: string; refreshToken: string; user: { id: string; email: string; displayName: string; locale?: string; globalRole?: string }; organizations: Organization[] };
 export type ApiEnvelope<T> = { data: T; meta?: { page: number; limit: number; total: number } };
-export type ApiError = Error & { code?: string; requestId?: string };
-const API = (import.meta.env.VITE_API_URL ?? "http://localhost:5044/api/v1").replace(/\/+$/, "");
+export type ApiError = Error & { code?: string; requestId?: string; status?: number };
+// Vite can load the repository's development `.env` while producing a
+// production bundle. Use the build mode rather than NODE_ENV so a local API
+// URL can never leak into a production deployment by accident.
+const productionBuild = import.meta.env.MODE === "production";
+const defaultApiUrl = productionBuild ? "/api/v1" : "http://localhost:5044/api/v1";
+const configuredApiUrl = import.meta.env.VITE_API_URL;
+const localDevelopmentApiUrl = /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?(?:\/|$)/;
+const apiUrl = productionBuild && configuredApiUrl && localDevelopmentApiUrl.test(configuredApiUrl) ? defaultApiUrl : configuredApiUrl ?? defaultApiUrl;
+const API = apiUrl.replace(/\/+$/, "");
 const SESSION_KEY = "nivasafe-session";
 const ORG_KEY = "nivasafe-org";
+export const ASSESSMENT_PATH_KEY = "nivasafe-path-selected";
 
 export function getCurrentLocale(): Locale {
   return localStorage.getItem("nivasafe-locale") === "en" ? "en" : "fa";
@@ -32,6 +41,7 @@ export function clearSession() {
   localStorage.removeItem(ORG_KEY);
   sessionStorage.removeItem(SESSION_KEY);
   sessionStorage.removeItem(ORG_KEY);
+  sessionStorage.removeItem(ASSESSMENT_PATH_KEY);
 }
 
 export function isSessionRemembered() {
@@ -67,16 +77,23 @@ export function hasAnyRole(roles: string[]) {
   return roles.includes(getCurrentRole());
 }
 
-export function saveSession(session: Session, remember = true) {
+export function saveSession(session: Session, remember = true, selectedOrganizationId?: string) {
   const target = remember ? localStorage : sessionStorage;
   const other = remember ? sessionStorage : localStorage;
   target.setItem(SESSION_KEY, JSON.stringify(session));
   other.removeItem(SESSION_KEY);
-  const current = localStorage.getItem(ORG_KEY) ?? sessionStorage.getItem(ORG_KEY) ?? "";
+  const current = selectedOrganizationId ?? localStorage.getItem(ORG_KEY) ?? sessionStorage.getItem(ORG_KEY) ?? "";
   const selected = session.organizations.some((org) => org.id === current) ? current : session.organizations[0]?.id ?? "";
   target.setItem(ORG_KEY, selected);
   other.removeItem(ORG_KEY);
   if (session.user.locale === "en" || session.user.locale === "fa") localStorage.setItem("nivasafe-locale", session.user.locale);
+}
+
+export function selectOrganization(organizationId: string): boolean {
+  const { session } = getSession();
+  if (!session?.organizations.some((organization) => organization.id === organizationId)) return false;
+  saveSession(session, isSessionRemembered(), organizationId);
+  return true;
 }
 
 async function parseResponse(response: Response) {
@@ -129,7 +146,7 @@ export async function api<T>(path: string, options: RequestInit = {}, retry = tr
       },
     });
   } catch {
-    throw new Error(localizedMessage("ارتباط با سرور برقرار نشد. مطمئن شوید Backend روی پورت 5044 اجرا شده است.", "Unable to connect to the server. Make sure the backend is running on port 5044."));
+    throw new Error(localizedMessage("ارتباط با سرور برقرار نشد. لطفاً دوباره تلاش کنید.", "Unable to connect to the server. Please try again."));
   }
   if (response.status === 401 && retry && session?.refreshToken && !path.includes("/auth/refresh")) {
     try { await refreshSession(session); return api<T>(path, options, false); }
@@ -141,6 +158,7 @@ export async function api<T>(path: string, options: RequestInit = {}, retry = tr
     const error = new Error(details?.message || localizedMessage(`خطای سرور (${response.status})`, `Server error (${response.status})`)) as ApiError;
     error.code = details?.code;
     error.requestId = details?.requestId;
+    error.status = response.status;
     throw error;
   }
   return value as ApiEnvelope<T>;
@@ -150,7 +168,7 @@ export async function download(path: string, retry = true): Promise<Blob> {
   const { session, orgId } = getSession();
   let response: Response;
   try { response = await fetch(`${API}${path}`, { headers: authHeaders(session, orgId) }); }
-  catch { throw new Error(localizedMessage("ارتباط با سرور برقرار نشد. مطمئن شوید Backend روی پورت 5044 اجرا شده است.", "Unable to connect to the server. Make sure the backend is running on port 5044.")); }
+  catch { throw new Error(localizedMessage("ارتباط با سرور برقرار نشد. لطفاً دوباره تلاش کنید.", "Unable to connect to the server. Please try again.")); }
   if (response.status === 401 && retry && session?.refreshToken) {
     try { await refreshSession(session); return download(path, false); }
     catch { expireSession(); throw new Error(localizedMessage("نشست شما منقضی شده است؛ دوباره وارد شوید.", "Your session expired. Please sign in again.")); }

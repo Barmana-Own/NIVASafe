@@ -1,11 +1,24 @@
 import { z } from "zod";
 
 const weakSecretMarkers = ["development", "change-before-production", "change-in-production", "secret"];
+const defaultLoginRateLimitMax = 60;
+const loginRateLimitWindow = "15 minutes";
 
 function strongSecret(name: string, value: string | undefined) {
   if (!value || value.length < 32 || weakSecretMarkers.some((marker) => value.toLowerCase().includes(marker))) {
     throw new Error(`${name} must be set to a random value of at least 32 characters in production`);
   }
+}
+
+export function getLoginRateLimit() {
+  const configuredMax = process.env.LOGIN_RATE_LIMIT_MAX?.trim();
+  if (!configuredMax) return { max: defaultLoginRateLimitMax, timeWindow: loginRateLimitWindow } as const;
+
+  const max = Number(configuredMax);
+  if (!Number.isSafeInteger(max) || max < 1 || max > defaultLoginRateLimitMax) {
+    throw new Error(`LOGIN_RATE_LIMIT_MAX must be an integer between 1 and ${defaultLoginRateLimitMax}`);
+  }
+  return { max, timeWindow: loginRateLimitWindow } as const;
 }
 
 export function validateEnvironment() {

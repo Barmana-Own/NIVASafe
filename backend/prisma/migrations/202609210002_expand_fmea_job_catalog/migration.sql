@@ -1,0 +1,47 @@
+-- Expand the global FMEA job bank so title search is useful without an AI request per keystroke.
+CREATE INDEX `JobCatalog_organizationId_active_titleFa_idx` ON `JobCatalog` (`organizationId`, `active`, `titleFa`);
+CREATE INDEX `JobCatalog_organizationId_active_titleEn_idx` ON `JobCatalog` (`organizationId`, `active`, `titleEn`);
+
+INSERT INTO `JobCatalog` (`id`, `organizationId`, `titleFa`, `titleEn`, `keywords`, `departmentFa`, `departmentEn`, `equipment`, `materials`, `controls`, `active`, `createdAt`, `updatedAt`) VALUES
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b201', NULL, 'کارشناس ایمنی و بهداشت حرفه‌ای', 'HSE officer', '["ایمنی","بهداشت حرفه‌ای","HSE","safety"]', 'ایمنی و بهداشت', 'HSE', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b202', NULL, 'مسئول ایمنی کارگاه', 'Site safety officer', '["ایمنی کارگاه","کارگاه","ناظر ایمنی","site safety"]', 'ایمنی کارگاه', 'Site safety', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b203', NULL, 'بازرس ایمنی', 'Safety inspector', '["بازرسی ایمنی","بازرس","inspection"]', 'ایمنی و بهداشت', 'HSE', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b204', NULL, 'کارشناس بهداشت حرفه‌ای', 'Occupational health specialist', '["بهداشت","پایش عوامل زیان‌آور","occupational health"]', 'بهداشت حرفه‌ای', 'Occupational health', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b205', NULL, 'کارشناس محیط زیست', 'Environmental specialist', '["محیط زیست","پسماند","environment"]', 'محیط زیست', 'Environment', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b206', NULL, 'کارشناس کنترل کیفیت', 'Quality control specialist', '["کنترل کیفیت","کیفیت","QC","quality"]', 'کنترل کیفیت', 'Quality control', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b207', NULL, 'اپراتور دستگاه CNC', 'CNC machine operator', '["CNC","ماشین‌کاری","تراشکاری","cnc"]', 'تولید و ماشین‌کاری', 'Production and machining', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b208', NULL, 'اپراتور دستگاه پرس', 'Press machine operator', '["پرس","پرسکاری","press"]', 'تولید', 'Production', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b209', NULL, 'اپراتور دستگاه برش', 'Cutting machine operator', '["برش","دستگاه برش","cutting"]', 'تولید', 'Production', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b210', NULL, 'اپراتور بسته‌بندی', 'Packaging operator', '["بسته‌بندی","بسته بندی","packaging"]', 'تولید و بسته‌بندی', 'Production and packaging', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b211', NULL, 'اپراتور دیگ بخار', 'Boiler operator', '["دیگ بخار","بویلر","boiler"]', 'تاسیسات', 'Utilities', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b212', NULL, 'اپراتور تصفیه‌خانه', 'Treatment plant operator', '["تصفیه‌خانه","تصفیه خانه","آب و فاضلاب","treatment plant"]', 'تاسیسات و محیط زیست', 'Utilities and environment', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b213', NULL, 'تعمیرکار مکانیک', 'Mechanical maintenance technician', '["تعمیرات مکانیک","مکانیک","maintenance","mechanical"]', 'تعمیرات و نگهداری', 'Maintenance', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b214', NULL, 'تکنسین برق صنعتی', 'Industrial electrician', '["برق صنعتی","تکنسین برق","electrical"]', 'تعمیرات برق', 'Electrical maintenance', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b215', NULL, 'تکنسین ابزار دقیق', 'Instrumentation technician', '["ابزار دقیق","کنترل","instrumentation"]', 'ابزار دقیق و کنترل', 'Instrumentation and control', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b216', NULL, 'تکنسین تاسیسات', 'Utilities technician', '["تاسیسات","موتورخانه","utilities"]', 'تاسیسات', 'Utilities', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b217', NULL, 'اپراتور جرثقیل سقفی', 'Overhead crane operator', '["جرثقیل","جرثقیل سقفی","crane"]', 'حمل و جابه‌جایی', 'Material handling', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b218', NULL, 'راننده لیفتراک', 'Forklift operator', '["لیفتراک","راننده لیفتراک","forklift"]', 'انبار و لجستیک', 'Warehouse and logistics', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b219', NULL, 'راننده کامیون', 'Truck driver', '["کامیون","راننده","حمل جاده‌ای","truck driver"]', 'حمل و نقل', 'Transportation', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b220', NULL, 'مسئول بارگیری و تخلیه', 'Loading and unloading operator', '["بارگیری","تخلیه","loading","unloading"]', 'انبار و لجستیک', 'Warehouse and logistics', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b221', NULL, 'کارگر انبار', 'Warehouse worker', '["انبار","چیدمان","warehouse"]', 'انبار', 'Warehouse', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b222', NULL, 'کارگر حمل دستی', 'Manual material handler', '["حمل دستی","بلند کردن بار","manual handling"]', 'انبار و لجستیک', 'Warehouse and logistics', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b223', NULL, 'نقاش صنعتی', 'Industrial painter', '["نقاشی صنعتی","رنگ‌کاری","رنگ کاری","painting"]', 'رنگ و پوشش', 'Painting and coating', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b224', NULL, 'کار با مواد شیمیایی', 'Chemical handling operator', '["مواد شیمیایی","مواد خطرناک","chemical"]', 'تولید و آزمایشگاه', 'Production and laboratory', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b225', NULL, 'کار در ارتفاع', 'Work at height', '["ارتفاع","داربست","سقف","work at height"]', 'پروژه و نصب', 'Projects and installation', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b226', NULL, 'نصب اسکلت فلزی', 'Steel structure installation', '["اسکلت فلزی","نصب سازه","steel structure"]', 'اجرای پروژه', 'Project execution', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b227', NULL, 'عملیات بتن‌ریزی', 'Concrete placement', '["بتن‌ریزی","بتن ریزی","قالب‌بندی","concrete"]', 'اجرای پروژه', 'Project execution', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b228', NULL, 'عملیات خاکبرداری و گودبرداری', 'Excavation and earthworks', '["خاکبرداری","گودبرداری","حفاری","excavation"]', 'عمرانی و راه‌سازی', 'Civil and road construction', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b229', NULL, 'تعمیرات و نگهداری', 'Maintenance operations', '["تعمیرات","نگهداری","تعمیر و نگهداری","maintenance"]', 'تعمیرات و نگهداری', 'Maintenance', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b230', NULL, 'کارشناس آزمایشگاه', 'Laboratory technician', '["آزمایشگاه","نمونه‌برداری","laboratory"]', 'آزمایشگاه', 'Laboratory', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b231', NULL, 'نظافت صنعتی', 'Industrial cleaning operator', '["نظافت صنعتی","شست‌وشو","industrial cleaning"]', 'خدمات', 'Services', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b232', NULL, 'نگهبان', 'Security guard', '["نگهبانی","حفاظت","security"]', 'حفاظت فیزیکی', 'Security', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b233', NULL, 'کارگر خدمات', 'Facility services worker', '["خدمات","نظافت","facility services"]', 'خدمات', 'Facilities', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+  ('9d8d5ed7-2f51-4dbb-9f8b-6d2d36b7b234', NULL, 'کارگر کشاورزی', 'Agricultural worker', '["کشاورزی","سم‌پاشی","agriculture"]', 'کشاورزی', 'Agriculture', '[]', '[]', '[]', TRUE, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))
+ON DUPLICATE KEY UPDATE
+  `titleFa` = VALUES(`titleFa`),
+  `titleEn` = VALUES(`titleEn`),
+  `keywords` = VALUES(`keywords`),
+  `departmentFa` = VALUES(`departmentFa`),
+  `departmentEn` = VALUES(`departmentEn`),
+  `active` = TRUE,
+  `updatedAt` = CURRENT_TIMESTAMP(3);

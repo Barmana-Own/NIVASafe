@@ -1,81 +1,120 @@
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useRef, useState, type ChangeEvent, type FormEvent, type MouseEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { isStrongPassword, isValidDisplayName, isValidEmail, isValidPhone, normalizePhone, PASSWORD_MIN_LENGTH } from "@nivasafe/domain";
+import { isStrongPassword, isValidDisplayName, isValidEmail, isValidPhone, normalizeEmail, normalizePhone, PASSWORD_MIN_LENGTH } from "@nivasafe/domain";
 import { api, clearSession, getCurrentRole, getSession, isSessionRemembered, saveSession, type ApiError, type Organization, type Session, useLoad } from "../../api/client";
-import { EmptyState, Icon, PageHeader, SectionCard, roleLabel, useDialog } from "../../components/UI";
+import { EmptyState, Icon, PageHeader, SectionCard, StyledSelect, roleLabel, useDialog } from "../../components/UI";
 import { AutoSaveForm, clearAutoSaveDraft } from "../../forms/AutoSaveForm";
 import { scopedDraftKey } from "../../forms/autoSave";
 import { LanguageSwitcher, brandAltForLocale, brandLogoForLocale, useI18n } from "../../i18n";
 
 type Profile = { id: string; email: string; displayName: string; locale: string; phone: string | null; jobTitle: string | null };
 type Member = { id: string; role: string; active: boolean; user: { id: string; email: string; displayName: string; phone?: string | null; jobTitle?: string | null; globalRole?: string } };
-const roles = ["ORG_ADMIN", "HSE_MANAGER", "ASSESSOR", "VIEWER"];
+const roles = ["ORG_ADMIN", "ASSISTANT", "HSE_MANAGER", "ASSESSOR", "VIEWER"];
 
 function normalizePhoneField(event: ChangeEvent<HTMLInputElement>): void {
   event.currentTarget.value = normalizePhone(event.currentTarget.value);
 }
 
+type LoginField = "email" | "password";
+type LoginFieldErrors = Partial<Record<LoginField, string>>;
+
+function safeLoginRedirect(value: string | null): string | null {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\") || /[\u0000-\u001f\u007f]/.test(value)) return null;
+  return value;
+}
+
 export function LoginPage() {
   const { locale, direction, t } = useI18n();
-  const nav = useNavigate(); const [params] = useSearchParams(); const [error, setError] = useState(""); const [loading, setLoading] = useState(false); const [showPassword, setShowPassword] = useState(false); const [rememberMe, setRememberMe] = useState(() => localStorage.getItem("nivasafe-remember-login") !== "false");
+  const nav = useNavigate(); const [params] = useSearchParams(); const submittingRef = useRef(false); const loginFormRef = useRef<HTMLFormElement>(null); const [error, setError] = useState(""); const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({}); const [loading, setLoading] = useState(false); const [showPassword, setShowPassword] = useState(false); const [rememberMe, setRememberMe] = useState(() => localStorage.getItem("nivasafe-remember-login") !== "false"); const [mobileLoginFormVisible, setMobileLoginFormVisible] = useState(() => window.location.hash === "#login-form");
+  function finishLogin(session: Session, organizationId?: string) {
+    saveSession(session, rememberMe, organizationId);
+    localStorage.setItem("nivasafe-locale", session.user.locale === "en" ? "en" : "fa");
+    localStorage.setItem("nivasafe-remember-login", String(rememberMe));
+    const next = params.get("next");
+    nav(safeLoginRedirect(next) ?? "/", { replace: true });
+  }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submittingRef.current) return;
     const form = new FormData(event.currentTarget);
-    const email = String(form.get("email") ?? "").trim();
+    const email = normalizeEmail(String(form.get("email") ?? ""));
     const password = String(form.get("password") ?? "");
-    if (!isValidEmail(email)) { setError(t("auth.invalidEmail")); return; }
-    if (!password) { setError(t("auth.enterPassword")); return; }
+    const nextFieldErrors: LoginFieldErrors = {};
+    if (!email) nextFieldErrors.email = t("auth.emailRequired");
+    else if (!isValidEmail(email)) nextFieldErrors.email = t("auth.invalidEmail");
+    if (!password) nextFieldErrors.password = t("auth.enterPassword");
+    else if (password.length < PASSWORD_MIN_LENGTH) nextFieldErrors.password = t("auth.passwordTooShort", { min: PASSWORD_MIN_LENGTH });
+    if (Object.keys(nextFieldErrors).length) { setFieldErrors(nextFieldErrors); setError(t("auth.validation")); return; }
+    submittingRef.current = true;
     setLoading(true); setError("");
+    setFieldErrors({});
     try {
       const result = await api<Session>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
-      saveSession(result.data, rememberMe);
-      localStorage.setItem("nivasafe-locale", result.data.user.locale === "en" ? "en" : "fa");
-      localStorage.setItem("nivasafe-remember-login", String(rememberMe));
-      const next = params.get("next");
-      const firstRun = !localStorage.getItem("nivasafe-path-selected");
-      nav(next?.startsWith("/") ? next : firstRun ? "/choose-path" : "/");
+      finishLogin(result.data, result.data.organizations[0]?.id);
     } catch (reason) {
       const apiError = reason as ApiError;
-      setError(apiError.code === "INVALID_CREDENTIALS" ? t("auth.invalidCredentials") : apiError.code === "INVALID_EMAIL" ? t("auth.invalidEmail") : reason instanceof Error ? reason.message : t("auth.loginFailed"));
-    } finally { setLoading(false); }
+      if (apiError.code === "INVALID_EMAIL") setFieldErrors({ email: t("auth.invalidEmail") });
+      setError(apiError.code === "INVALID_CREDENTIALS" ? t("auth.invalidCredentials") : apiError.code === "INVALID_EMAIL" ? t("auth.validation") : t("auth.loginFailed"));
+    } finally { submittingRef.current = false; setLoading(false); }
   }
-  return <main className="login" dir={direction} lang={locale}>
+  function openMobileLogin(event: MouseEvent<HTMLAnchorElement>) {
+    if (!window.matchMedia("(max-width: 900px)").matches) return;
+    event.preventDefault();
+    setMobileLoginFormVisible(true);
+    window.requestAnimationFrame(() => loginFormRef.current?.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true }));
+  }
+  return <main className={`login ${mobileLoginFormVisible ? "mobile-login-form-visible" : ""}`} dir={direction} lang={locale}>
     <section className="login-art">
       <nav className="login-toolbar" aria-label={t("auth.links")}>
-        <a className="login-toolbar-brand" href="https://app.nivasafe.com" target="_blank" rel="noreferrer"><img src="/brand/nivasafe-icon.png" alt=""/><span>{t("brand.name")}</span></a>
-        <div className="login-toolbar-links"><a href="https://app.nivasafe.com" target="_blank" rel="noreferrer">{t("auth.website")}</a><a href="#login-form">{t("auth.login")}</a><a href="/register">{t("auth.register")}</a><a href="mailto:support@nivasafe.com">{t("auth.contact")}</a></div>
-        <LanguageSwitcher className="login-language-switch" />
-        <a className="login-toolbar-menu" href="https://app.nivasafe.com" target="_blank" rel="noreferrer" aria-label={t("auth.goToWebsite")}><Icon name="arrow" size={16}/></a>
-      </nav>
-      <div className="login-hero-content">
-        <div className="login-brand-panel">
-          <img className="login-hero-icon" src="/brand/nivasafe-icon.png" alt=""/>
-          <div className="login-brand-copy"><img className="login-logo-wordmark" src={brandLogoForLocale(locale)} alt={brandAltForLocale(locale)}/></div>
+        <div className="login-toolbar-brand"><div className="login-brand-panel"><div className="login-brand-copy"><img className="login-logo-wordmark" src={brandLogoForLocale(locale)} alt={brandAltForLocale(locale)}/></div></div></div>
+        <div className="login-toolbar-links">
+          <a href="#login-features">{t("auth.features")}</a>
+          <a href="#login-support">{t("auth.licenses")}</a>
+          <a href="#login-about">{t("auth.about")}</a>
+          <a href="#login-form">{t("auth.contact")}</a>
         </div>
-        <h1>NIVASafe</h1>
-        <div className="login-cta-row"><a className="primary" href="#login-form"><Icon name="logout"/> {t("auth.login")}</a><a className="login-secondary-cta" href="/register"><Icon name="user"/> {t("auth.register")}</a></div>
+        <LanguageSwitcher className="login-language-switch" />
+      </nav>
+      <div className="login-hero-content" id="login-about">
+        <div className="login-mobile-brand" aria-label={brandAltForLocale(locale)}>
+          <img className="login-mobile-brand-icon" src="/brand/nivasafe-icon.png" alt="" />
+          <img className="login-mobile-brand-wordmark" src={brandLogoForLocale(locale)} alt={brandAltForLocale(locale)} />
+          <span>{t("auth.brandSubtitle")}</span>
+        </div>
         <div className="login-hero-visual" aria-hidden="true"><div className="visual-orb visual-orb-one"/><div className="visual-orb visual-orb-two"/><div className="visual-shield"><Icon name="shield" size={42}/><span>N</span></div><div className="visual-screen"><div className="visual-screen-head"><span/><span/><span/></div><div className="visual-chart"><i/><i/><i/><i/><b/></div><div className="visual-screen-foot"><span/><span/><span/></div></div><div className="visual-hardhat"><span/><b/></div><span className="visual-spark"><Icon name="sparkles" size={20}/></span></div>
-        <div className="login-features"><span><Icon name="shield"/> {t("auth.featurePersonal")}</span><span><Icon name="assistant"/> {t("auth.featureAi")}</span><span><Icon name="chart"/> {t("auth.featureReports")}</span><span><Icon name="knowledge"/> {t("auth.featureKnowledge")}</span></div>
+        <h1>{t("auth.heroTitle")}</h1>
+        <div className="login-cta-row"><a className="primary" href="#login-form" onClick={openMobileLogin}><Icon name="logout"/> {t("auth.login")}</a><a className="login-secondary-cta" href="/register"><Icon name="user"/> {t("auth.register")}</a></div>
+        <div className="login-features" id="login-features"><span><Icon name="shield"/> {t("auth.featurePersonal")}</span><span><Icon name="assistant"/> {t("auth.featureAi")}</span><span><Icon name="chart"/> {t("auth.featureReports")}</span><span><Icon name="knowledge"/> {t("auth.featureKnowledge")}</span></div>
       </div>
-      <div className="login-approvals"><span className="login-approvals-title">{t("auth.approvals")}</span><div className="approval-list"><span><Icon name="shield" size={16}/> {t("auth.orgSecurity")}</span><span><Icon name="check" size={16}/> {t("auth.hseStandards")}</span><span><Icon name="health" size={16}/> {t("auth.occupationalHealth")}</span></div></div>
+      <footer id="login-support" className="login-approvals login-support-bar" aria-label={t("auth.supportBar")}><span className="login-support-copy">{t("auth.supportBar")}</span><img className="login-support-logo" src="/brand/qazvin-science-technology-park.jpg" alt={t("auth.supportBarLogoAlt")}/></footer>
     </section>
-    <form id="login-form" className="login-card" onSubmit={submit}>
-      <img className="login-card-logo" src="/brand/nivasafe-icon.png" alt={brandAltForLocale(locale)}/><div className="eyebrow">{t("auth.loginEyebrow")}</div><h2>{t("auth.welcome")}</h2><p className="muted">{t("auth.welcomeMessage")}</p>
-      <label htmlFor="login-email">{t("auth.email")}<input id="login-email" name="email" type="email" inputMode="email" dir="ltr" placeholder={t("auth.emailPlaceholder")} autoComplete="username" required/></label><label htmlFor="login-password">{t("auth.password")}<div className="password-field"><input id="login-password" name="password" aria-label={t("auth.password")} type={showPassword ? "text" : "password"} dir="ltr" autoComplete="current-password" required/><button type="button" className="password-toggle" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")} title={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}><Icon name={showPassword ? "eyeOff" : "eye"} size={19}/></button></div></label>
-      <div className="login-options"><label className="remember-me"><input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)}/><span>{t("auth.rememberMe")}</span></label><Link className="login-link" to="/forgot-password">{t("auth.forgotPassword")}</Link></div>
-      {error && <div className="alert error" role="alert"><Icon name="warning"/>{error}</div>}
-      <button type="submit" className="primary login-button" disabled={loading}>{loading ? t("auth.signingIn") : <><Icon name="shield"/> {t("auth.secureLogin")}</>}</button>
+    <form ref={loginFormRef} id="login-form" className="login-card" noValidate aria-busy={loading} onSubmit={submit}>
+      <img className="login-card-logo" src="/brand/nivasafe-icon.png" alt={brandAltForLocale(locale)}/><h2>{t("auth.welcome")}</h2><p className="muted">{t("auth.welcomeMessage")}</p>
+      <label htmlFor="login-email"><span className="field-label-line">{t("auth.email")}</span><input id="login-email" name="email" type="email" inputMode="email" dir="ltr" placeholder={t("auth.emailPlaceholder")} autoComplete="username" autoCapitalize="none" spellCheck={false} maxLength={254} disabled={loading} aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? "login-email-error" : undefined} onChange={() => { setFieldErrors((current) => ({ ...current, email: undefined })); setError(""); }} required/>{fieldErrors.email && <small id="login-email-error" className="field-error" role="alert">{fieldErrors.email}</small>}</label><label htmlFor="login-password"><span className="field-label-line">{t("auth.password")}</span><div className="password-field"><input id="login-password" name="password" aria-label={t("auth.password")} type={showPassword ? "text" : "password"} dir="ltr" placeholder={t("auth.passwordPlaceholder")} autoComplete="current-password" maxLength={128} disabled={loading} aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? "login-password-error" : undefined} onChange={() => { setFieldErrors((current) => ({ ...current, password: undefined })); setError(""); }} required/><button type="button" className="password-toggle" disabled={loading} onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")} title={showPassword ? t("auth.hidePassword") : t("auth.showPassword")} aria-controls="login-password"><Icon name={showPassword ? "eyeOff" : "eye"} size={19}/></button></div>{fieldErrors.password && <small id="login-password-error" className="field-error" role="alert">{fieldErrors.password}</small>}</label>
+      <div className="login-options"><label className="remember-me"><input type="checkbox" checked={rememberMe} disabled={loading} onChange={(event) => setRememberMe(event.target.checked)}/><span>{t("auth.rememberMe")}</span></label><Link className="login-link" to="/forgot-password">{t("auth.forgotPassword")}</Link></div>
+      {error && <div className="alert error" role="alert" aria-live="assertive"><Icon name="warning"/>{error}</div>}
+      <button type="submit" className="primary login-button" disabled={loading} aria-busy={loading}>{loading ? <><span className="button-spinner" aria-hidden="true"/>{t("auth.signingIn")}</> : <><Icon name="shield"/> {t("auth.secureLogin")}</>}</button>
       <Link className="login-link register-link" to="/register">{t("auth.newUser")}</Link>
-      <div className="login-card-footer">{t("auth.secureFooter")}</div>
     </form>
   </main>;
 }
 
 export function ForgotPasswordPage() {
   const { locale, direction, t } = useI18n();
-  const [message, setMessage] = useState(""); const [error, setError] = useState("");
-  async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const form = new FormData(event.currentTarget); try { const result = await api<{ accepted: boolean; developmentToken?: string }>("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email: form.get("email") }) }); setMessage(result.data.developmentToken ? t("auth.developmentToken", { token: result.data.developmentToken }) : t("auth.forgotAccepted")); } catch (reason) { setError((reason as Error).message); } }
-  return <main className="login simple" dir={direction} lang={locale}><form className="login-card" onSubmit={submit}><span className="auth-icon"><Icon name="profile" size={28}/></span><div className="eyebrow">{t("auth.forgotEyebrow")}</div><h2>{t("auth.forgotTitle")}</h2><p className="muted">{t("auth.forgotMessage")}</p><label>{t("auth.email")}<input name="email" type="email" required/></label>{error && <div className="alert error">{error}</div>}{message && <div className="alert success">{message}</div>}<button className="primary">{t("auth.sendRequest")}</button><Link className="login-link" to="/login">{t("auth.backToLogin")}</Link></form></main>;
+  const submittingRef = useRef(false); const [message, setMessage] = useState(""); const [error, setError] = useState(""); const [fieldError, setFieldError] = useState(""); const [loading, setLoading] = useState(false);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (submittingRef.current) return;
+    const form = new FormData(event.currentTarget);
+    const email = normalizeEmail(String(form.get("email") ?? ""));
+    if (!email) { setFieldError(t("auth.emailRequired")); setError(t("auth.validation")); setMessage(""); return; }
+    if (!isValidEmail(email)) { setFieldError(t("auth.invalidEmail")); setError(t("auth.validation")); setMessage(""); return; }
+    submittingRef.current = true; setLoading(true); setError(""); setFieldError(""); setMessage("");
+    try { const result = await api<{ accepted: boolean; developmentToken?: string }>("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }); setMessage(result.data.developmentToken ? t("auth.developmentToken", { token: result.data.developmentToken }) : t("auth.forgotAccepted")); }
+    catch (reason) { const apiError = reason as ApiError; setError(apiError.code === "INVALID_EMAIL" ? t("auth.invalidEmail") : t("auth.forgotFailed")); }
+    finally { submittingRef.current = false; setLoading(false); }
+  }
+  return <main className="login simple" dir={direction} lang={locale}><form className="login-card" noValidate aria-busy={loading} onSubmit={submit}><span className="auth-icon"><Icon name="profile" size={28}/></span><div className="eyebrow">{t("auth.forgotEyebrow")}</div><h2>{t("auth.forgotTitle")}</h2><p className="muted">{t("auth.forgotMessage")}</p><label htmlFor="forgot-email"><span className="field-label-line">{t("auth.email")}</span><input id="forgot-email" name="email" type="email" inputMode="email" dir="ltr" placeholder={t("auth.emailPlaceholder")} autoComplete="username" autoCapitalize="none" spellCheck={false} maxLength={254} disabled={loading} aria-invalid={Boolean(fieldError)} aria-describedby={fieldError ? "forgot-email-error" : undefined} onChange={() => { setFieldError(""); setError(""); setMessage(""); }} required/>{fieldError && <small id="forgot-email-error" className="field-error" role="alert">{fieldError}</small>}</label>{error && <div className="alert error" role="alert" aria-live="assertive"><Icon name="warning"/>{error}</div>}{message && <div className="alert success" role="status" aria-live="polite"><Icon name="check"/>{message}</div>}<button type="submit" className="primary login-button" disabled={loading} aria-busy={loading}>{loading ? <><span className="button-spinner" aria-hidden="true"/>{t("auth.sendingRequest")}</> : t("auth.sendRequest")}</button><Link className="login-link" to="/login">{t("auth.backToLogin")}</Link></form></main>;
 }
 export function ResetPasswordPage() {
   const { locale, direction, t } = useI18n();
@@ -106,7 +145,7 @@ export function ProfilePage() {
   async function changePassword(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const formElement = event.currentTarget; const form = new FormData(formElement); const newPassword = String(form.get("newPassword") ?? ""); setError(""); if (!isStrongPassword(newPassword, { email: profile.email, displayName: profile.displayName })) { setError(t("profile.passwordRequirements", { min: PASSWORD_MIN_LENGTH })); return; } try { await api("/profile/change-password", { method: "POST", body: JSON.stringify({ currentPassword: form.get("currentPassword"), newPassword }) }); formElement.reset(); clearSession(); nav("/login", { replace: true }); } catch (reason) { setError((reason as Error).message); } }
   return <section className="page-shell"><PageHeader eyebrow={t("profile.account")} title={t("profile.title")} description={t("profile.description")}/>{error && <div className="alert error"><Icon name="warning"/>{error}</div>}{message && <div className="alert success"><Icon name="check"/>{message}</div>}
     <div className="profile-hero"><div className="profile-avatar">{state.data.displayName[0]}</div><div><h3>{state.data.displayName}</h3><p>{state.data.jobTitle || t("profile.jobTitleUnset")}</p><span>{state.data.email}</span></div></div>
-    <div className="form-panels"><SectionCard title={t("profile.personalInfo")} description={t("profile.displayInfo")} icon="profile"><AutoSaveForm storageKey={profileDraftKey} className="form-grid" onSubmit={save}><label>{t("profile.displayName")}<input name="displayName" defaultValue={state.data.displayName} required/></label><label>{t("auth.email")}<input name="email" type="email" inputMode="email" dir="ltr" defaultValue={state.data.email} required/></label><label>{t("profile.phone")}<input name="phone" defaultValue={state.data.phone ?? ""} onChange={normalizePhoneField} inputMode="numeric" autoComplete="tel" dir="ltr" maxLength={11} pattern="09[0-9]{9}" placeholder={t("registration.phonePlaceholder")}/></label><label>{t("profile.jobTitle")}<input name="jobTitle" defaultValue={state.data.jobTitle ?? ""} placeholder={t("profile.jobTitlePlaceholder")}/></label><label className="full">{t("profile.interfaceLanguage")}<select name="locale" defaultValue={state.data.locale}><option value="fa">{t("language.persian")}</option><option value="en">{t("language.english")}</option></select></label><button className="primary full"><Icon name="check"/> {t("profile.saveChanges")}</button></AutoSaveForm></SectionCard>
+    <div className="form-panels"><SectionCard title={t("profile.personalInfo")} description={t("profile.displayInfo")} icon="profile"><AutoSaveForm storageKey={profileDraftKey} className="form-grid" onSubmit={save}><label>{t("profile.displayName")}<input name="displayName" defaultValue={state.data.displayName} required/></label><label>{t("auth.email")}<input name="email" type="email" inputMode="email" dir="ltr" defaultValue={state.data.email} required/></label><label>{t("profile.phone")}<input name="phone" defaultValue={state.data.phone ?? ""} onChange={normalizePhoneField} inputMode="numeric" autoComplete="tel" dir="ltr" maxLength={11} pattern="09[0-9]{9}" placeholder={t("registration.phonePlaceholder")}/></label><label>{t("profile.jobTitle")}<input name="jobTitle" defaultValue={state.data.jobTitle ?? ""} placeholder={t("profile.jobTitlePlaceholder")}/></label><label className="full">{t("profile.interfaceLanguage")}<StyledSelect name="locale" defaultValue={state.data.locale}><option value="fa">{t("language.persian")}</option><option value="en">{t("language.english")}</option></StyledSelect></label><button className="primary full"><Icon name="check"/> {t("profile.saveChanges")}</button></AutoSaveForm></SectionCard>
     <SectionCard title={t("profile.changePassword")} description={t("profile.passwordDescription", { min: PASSWORD_MIN_LENGTH })} icon="shield"><form className="form-grid" onSubmit={changePassword}><label className="full">{t("profile.currentPassword")}<input name="currentPassword" type="password" autoComplete="current-password" required/></label><label className="full">{t("profile.newPassword")}<input name="newPassword" type="password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} autoComplete="new-password" required/></label><div className="password-note full"><Icon name="shield"/><span>{t("profile.passwordSecurityNote")}</span></div><button className="primary full">{t("profile.changePasswordButton")}</button></form></SectionCard></div>
   </section>;
 }
@@ -124,8 +163,8 @@ export function MembersPage() {
   async function removeMember(member: Member) { if (!(await dialog.confirm(t("members.deleteConfirm", { name: member.user.displayName })))) return; if (!(await dialog.confirm(t("members.deleteWarning")))) return; try { await api(`/members/${member.id}`, { method: "DELETE" }); state.reload(); setMessage(t("members.removed")); } catch (reason) { setError((reason as Error).message); } }
   async function invite(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const element = event.currentTarget; const form = new FormData(element); try { const result = await api<{ developmentToken?: string }>("/invitations", { method: "POST", body: JSON.stringify({ email: form.get("email"), role: form.get("role") }) }); await clearAutoSaveDraft(inviteDraftKey); setMessage(result.data.developmentToken ? t("members.invitationCreated", { token: result.data.developmentToken }) : t("members.invited")); element.reset(); } catch (reason) { setError((reason as Error).message); } }
   return <section className="page-shell"><PageHeader eyebrow={t("members.control")} title={t("members.title")} description={t("members.description")}/>{error && <div className="alert error"><Icon name="warning"/>{error}</div>}{message && <div className="alert success"><Icon name="check"/>{message}</div>}
-    <SectionCard title={t("members.invite")} description={t("members.inviteDescription")} icon="plus"><AutoSaveForm storageKey={inviteDraftKey} className="invite-form" onSubmit={invite}><label>{t("members.memberEmail")}<input name="email" type="email" placeholder="name@company.com" required/></label><label>{t("members.role")}<select name="role">{memberRoles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</select></label><button className="primary"><Icon name="plus"/> {t("members.sendInvite")}</button></AutoSaveForm></SectionCard>
-    <SectionCard title={t("members.organizationMembers")} description={`${(state.data?.length ?? 0).toLocaleString(numberLocale)} ${t("common.member")}`} icon="members">{state.loading ? <div className="state"><div className="spinner"/></div> : !state.data?.length ? <EmptyState title={t("members.noMembers")} icon="members"/> : <div className="member-list">{state.data.map((member) => { const availableRoles = memberRoles.includes(member.role) ? memberRoles : [member.role, ...memberRoles]; return <article className="member-card" key={member.id}><div className="member-avatar">{member.user.displayName[0]}</div><div className="member-copy"><strong>{member.user.displayName}</strong><small>{member.user.email}{member.user.jobTitle ? ` · ${member.user.jobTitle}` : ""}</small>{member.user.globalRole === "SUPER_ADMIN" && <span className="tag">{t("members.superAdmin")}</span>}</div><select value={member.role} onChange={(event) => update(member.id, event.target.value, member.active)}>{availableRoles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</select><button className={`status-toggle ${member.active ? "active" : "inactive"}`} onClick={() => update(member.id, member.role, !member.active)}><span/>{member.active ? t("members.active") : t("members.inactive")}</button><div className="member-actions"><button className="text-button" type="button" onClick={() => beginEdit(member)}>{t("members.edit")}</button><button className="text-button danger-link" type="button" onClick={() => void removeMember(member)}>{t("common.delete")}</button></div>{editing?.id === member.id && <AutoSaveForm storageKey={memberDraftKey(member.id)} className="member-edit-form form-grid" onSubmit={saveMember}><label>{t("profile.displayName")}<input name="displayName" defaultValue={editing.displayName} required/></label><label>{t("auth.email")}<input name="email" type="email" dir="ltr" defaultValue={editing.email} required/></label><label>{t("profile.phone")}<input name="phone" defaultValue={editing.phone} onChange={normalizePhoneField} inputMode="numeric" autoComplete="tel" dir="ltr" maxLength={11} pattern="09[0-9]{9}" placeholder={t("members.phonePlaceholder")}/></label><label>{t("profile.jobTitle")}<input name="jobTitle" defaultValue={editing.jobTitle}/></label>{getCurrentRole() === "SUPER_ADMIN" && <label>{t("members.accountLevel")}<select name="globalRole" defaultValue={editing.globalRole}><option value="USER">{t("members.normalUser")}</option><option value="SUPER_ADMIN">{t("members.superAdmin")}</option></select></label>}<div className="member-edit-actions"><button className="primary" type="submit">{t("members.save")}</button><button className="ghost" type="button" onClick={() => setEditing(null)}>{t("common.cancel")}</button></div></AutoSaveForm>}</article>; })}</div>}
+    <SectionCard title={t("members.invite")} description={t("members.inviteDescription")} icon="plus"><AutoSaveForm storageKey={inviteDraftKey} className="invite-form" onSubmit={invite}><label>{t("members.memberEmail")}<input name="email" type="email" placeholder="name@company.com" required/></label><label>{t("members.role")}<StyledSelect name="role">{memberRoles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</StyledSelect></label><button className="primary"><Icon name="plus"/> {t("members.sendInvite")}</button></AutoSaveForm></SectionCard>
+    <SectionCard title={t("members.organizationMembers")} description={`${(state.data?.length ?? 0).toLocaleString(numberLocale)} ${t("common.member")}`} icon="members">{state.loading ? <div className="state"><div className="spinner"/></div> : !state.data?.length ? <EmptyState title={t("members.noMembers")} icon="members"/> : <div className="member-list">{state.data.map((member) => { const availableRoles = memberRoles.includes(member.role) ? memberRoles : [member.role, ...memberRoles]; return <article className="member-card" key={member.id}><div className="member-avatar">{member.user.displayName[0]}</div><div className="member-copy"><strong>{member.user.displayName}</strong><small>{member.user.email}{member.user.jobTitle ? ` · ${member.user.jobTitle}` : ""}</small>{member.user.globalRole === "SUPER_ADMIN" && <span className="tag">{t("members.superAdmin")}</span>}</div><StyledSelect value={member.role} onChange={(event) => update(member.id, event.target.value, member.active)}>{availableRoles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</StyledSelect><button className={`status-toggle ${member.active ? "active" : "inactive"}`} onClick={() => update(member.id, member.role, !member.active)}><span/>{member.active ? t("members.active") : t("members.inactive")}</button><div className="member-actions"><button className="text-button" type="button" aria-expanded={editing?.id === member.id} aria-controls={`member-edit-${member.id}`} data-scroll-target={`#member-edit-${member.id}`} data-scroll-focus="input" onClick={() => beginEdit(member)}>{t("members.edit")}</button><button className="text-button danger-link" type="button" onClick={() => void removeMember(member)}>{t("common.delete")}</button></div>{editing?.id === member.id && <AutoSaveForm id={`member-edit-${member.id}`} storageKey={memberDraftKey(member.id)} className="member-edit-form form-grid" onSubmit={saveMember}><label>{t("profile.displayName")}<input name="displayName" defaultValue={editing.displayName} required/></label><label>{t("auth.email")}<input name="email" type="email" dir="ltr" defaultValue={editing.email} required/></label><label>{t("profile.phone")}<input name="phone" defaultValue={editing.phone} onChange={normalizePhoneField} inputMode="numeric" autoComplete="tel" dir="ltr" maxLength={11} pattern="09[0-9]{9}" placeholder={t("members.phonePlaceholder")}/></label><label>{t("profile.jobTitle")}<input name="jobTitle" defaultValue={editing.jobTitle}/></label>{getCurrentRole() === "SUPER_ADMIN" && <label>{t("members.accountLevel")}<StyledSelect name="globalRole" defaultValue={editing.globalRole}><option value="USER">{t("members.normalUser")}</option><option value="SUPER_ADMIN">{t("members.superAdmin")}</option></StyledSelect></label>}<div className="member-edit-actions"><button className="primary" type="submit">{t("members.save")}</button><button className="ghost" type="button" onClick={() => setEditing(null)}>{t("common.cancel")}</button></div></AutoSaveForm>}</article>; })}</div>}
     </SectionCard>
   </section>;
 }

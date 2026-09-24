@@ -6,6 +6,14 @@ import { authenticate } from "../auth-guard.js";
 import { audit, envelope, parse, prisma, requireOrg, requirePermission, ROLE_PERMISSIONS, tokenHash } from "../core.js";
 import { scheduleEmail } from "../mail.js";
 
+export function canChangeGlobalRole(actorRole: string | undefined, requestedGlobalRole: string | undefined): boolean {
+  return requestedGlobalRole === undefined || actorRole === "SUPER_ADMIN";
+}
+
+export const ORGANIZATION_MEMBER_ROLES = ["ORG_ADMIN", "ASSISTANT", "HSE_MANAGER", "ASSESSOR", "VIEWER"] as const;
+export const INVITATION_ROLES = ["SUPER_ADMIN", ...ORGANIZATION_MEMBER_ROLES] as const;
+const memberRoleSchema = z.enum(INVITATION_ROLES);
+
 export async function registerUserRoutes(app: FastifyInstance) {
   app.get("/api/v1/roles", { preHandler: authenticate }, async (request) => {
     requireOrg(request);
@@ -27,9 +35,9 @@ export async function registerUserRoutes(app: FastifyInstance) {
     const organizationId = requireOrg(request);
     requirePermission(request, "users.manage");
     const { id } = parse(z.object({ id: z.string().uuid() }), request.params);
-    const body = parse(z.object({ role: z.enum(["SUPER_ADMIN", "ORG_ADMIN", "HSE_MANAGER", "ASSESSOR", "VIEWER"]).optional(), active: z.boolean().optional(), displayName: z.string().trim().min(1).max(DISPLAY_NAME_MAX_LENGTH).optional(), email: z.string().trim().min(1).max(EMAIL_MAX_LENGTH).optional(), phone: z.string().trim().max(32).nullable().optional(), jobTitle: z.string().trim().max(120).nullable().optional(), globalRole: z.enum(["USER", "SUPER_ADMIN"]).optional() }), request.body);
+    const body = parse(z.object({ role: memberRoleSchema.optional(), active: z.boolean().optional(), displayName: z.string().trim().min(1).max(DISPLAY_NAME_MAX_LENGTH).optional(), email: z.string().trim().min(1).max(EMAIL_MAX_LENGTH).optional(), phone: z.string().trim().max(32).nullable().optional(), jobTitle: z.string().trim().max(120).nullable().optional(), globalRole: z.enum(["USER", "SUPER_ADMIN"]).optional() }), request.body);
     if (body.role === "SUPER_ADMIN" && request.actor!.role !== "SUPER_ADMIN") throw Object.assign(new Error("Only a super administrator can assign the super administrator role"), { statusCode: 403, code: "FORBIDDEN" });
-    if (body.globalRole === "SUPER_ADMIN" && request.actor!.role !== "SUPER_ADMIN") throw Object.assign(new Error("Only a super administrator can assign the super administrator role"), { statusCode: 403, code: "FORBIDDEN" });
+    if (!canChangeGlobalRole(request.actor!.role, body.globalRole)) throw Object.assign(new Error("Only a super administrator can change a global account level"), { statusCode: 403, code: "FORBIDDEN" });
     const member = await prisma.organizationMember.findFirst({ where: { id, organizationId } });
     if (!member) throw Object.assign(new Error("Member not found"), { statusCode: 404, code: "NOT_FOUND" });
     const removesAdmin = member.role === "ORG_ADMIN" && (body.active === false || (body.role !== undefined && body.role !== "ORG_ADMIN"));
@@ -80,7 +88,7 @@ export async function registerUserRoutes(app: FastifyInstance) {
   app.post("/api/v1/invitations", { preHandler: authenticate }, async (request, reply) => {
     const organizationId = requireOrg(request);
     requirePermission(request, "users.manage");
-    const body = parse(z.object({ email: z.string().trim().min(1).max(EMAIL_MAX_LENGTH), role: z.enum(["SUPER_ADMIN", "ORG_ADMIN", "HSE_MANAGER", "ASSESSOR", "VIEWER"]) }), request.body);
+    const body = parse(z.object({ email: z.string().trim().min(1).max(EMAIL_MAX_LENGTH), role: memberRoleSchema }), request.body);
     if (body.role === "SUPER_ADMIN" && request.actor!.role !== "SUPER_ADMIN") throw Object.assign(new Error("Only a super administrator can invite another super administrator"), { statusCode: 403, code: "FORBIDDEN" });
     const token = randomBytes(32).toString("hex");
     const normalizedEmail = normalizeEmail(body.email);

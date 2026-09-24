@@ -48,11 +48,11 @@ pnpm db:generate
 pnpm db:deploy
 pnpm build
 pnpm db:provision
-pm2 start deployment/ecosystem.config.cjs
+pm2 start deployment/ecosystem.config.cjs --only nivasafe-api --update-env
 pm2 save
 ```
 
-در روش PM2، `DATABASE_URL` معمولاً به MySQL محلی یا سرور دیتابیس اشاره می‌کند، مثلاً `127.0.0.1:3306`. پوشه `frontend/dist` را با Nginx سرو کنید و درخواست‌های `/api/` را به `127.0.0.1:5044` Proxy کنید. قانون SPA باید تمام مسیرهای ناشناخته را به `index.html` برگرداند.
+در روش PM2، دستور باید از ریشه پروژه اجرا شود تا `C:\NIVASafe\.env` توسط API بارگذاری شود؛ به همین دلیل `nivasafe-api` با `cwd` ریشه و اسکریپت `backend/dist/server.js` تعریف شده است. در ویندوز، `HOST=127.0.0.1` تنظیم می‌شود تا پورت `5044` مستقیماً عمومی نباشد و Nginx تنها ورودی `/api/` باشد. در استقرار فعال ویندوز، Scheduled Task `NIVASafe-API` اسکریپت `C:\ProgramData\NIVASafe\run-pm2.cmd` را اجرا می‌کند و `pm2-runtime` را به‌صورت foreground نگه می‌دارد تا با پایان task والد، supervisor و API خاتمه پیدا نکنند. پوشه `frontend/dist` را با Nginx سرو کنید و درخواست‌های `/api/` را به `127.0.0.1:5044` Proxy کنید. قانون SPA باید تمام مسیرهای ناشناخته را به `index.html` برگرداند. در production، TLS در Nginx terminate می‌شود و aliasهای قدیمی به `https://app.nivasafe.com` یا `https://api.nivasafe.com` redirect می‌شوند.
 
 ## واردکردن دستی ساختار دیتابیس
 

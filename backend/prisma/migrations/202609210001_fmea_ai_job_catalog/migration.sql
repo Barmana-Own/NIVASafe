@@ -1,0 +1,3 @@
+-- The searchable JobCatalog table and FmeaAssessment.jobCatalogId are created by
+-- 202609050001_fmea_process_information. This migration is retained as an
+-- explicit history marker for environments that already contain that schema.
