@@ -3108,9 +3108,10 @@ details.optional-fields > :not(summary),
 .fmea-risk-distribution-visual { width: 100%; display: flex; align-items: center; justify-content: space-around; gap: .65rem; }
 .fmea-risk-donut { position: relative; width: 112px; height: 112px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 50%; }
 .fmea-risk-donut::after { content: ""; position: absolute; inset: 17px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 1px #edf2f5; }
-.fmea-risk-donut > span, .fmea-risk-donut > small { position: relative; z-index: 1; display: block; text-align: center; }
-.fmea-risk-donut > span { margin-top: 1.1rem; color: #204f70; font-size: 1.28rem; font-weight: 900; line-height: 1; }
-.fmea-risk-donut > small { color: #7b92a2; font-size: .49rem; }
+.fmea-risk-donut-label { position: relative; z-index: 1; display: grid; justify-items: center; gap: .16rem; max-width: calc(100% - 36px); text-align: center; }
+.fmea-risk-donut-label span, .fmea-risk-donut-label small { display: block; }
+.fmea-risk-donut-label span { color: #204f70; font-size: 1.28rem; font-weight: 900; line-height: 1; }
+.fmea-risk-donut-label small { color: #7b92a2; font-size: .49rem; line-height: 1.35; white-space: nowrap; }
 .fmea-risk-legend { min-width: 0; display: grid; gap: .3rem; }
 .fmea-risk-legend > div { display: flex; align-items: center; gap: .25rem; min-width: 86px; }
 .fmea-risk-legend-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; }

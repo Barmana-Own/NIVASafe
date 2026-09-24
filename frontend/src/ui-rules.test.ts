@@ -390,7 +390,9 @@ describe("FMEA risk register", () => {
     expect(assessmentPagesSource).toContain("completedActionCount");
     expect(assessmentPagesSource).toContain("inProgressActionCount");
     expect(assessmentPagesSource).toContain("remainingActionCount");
+    expect(assessmentPagesSource).toContain('className="fmea-risk-donut-label"');
     expect(stylesSource).toContain(".fmea-risk-donut {");
+    expect(stylesSource).toContain(".fmea-risk-donut-label {");
     expect(stylesSource).toContain(".fmea-action-progress-ring {");
     expect(stylesSource).toContain(".fmea-report-dashboard-grid {");
     expect(fmeaReportHelpersSource).toContain("summariseFmea");
@@ -510,6 +512,8 @@ describe("FMEA creation stepper", () => {
     expect(assessmentPagesSource).toContain('editingAssessmentId');
     expect(assessmentPagesSource).toContain('<FmeaReportStepper onStepClick={canEditActions && id ? (step) => navigate(`/fmea?edit=${encodeURIComponent(id)}&step=${step}`) : undefined}/>');
     expect(assessmentPagesSource).toContain('function FmeaReportStepper({ onStepClick }');
+    expect(assessmentPagesSource).toContain('return <FmeaCreationStepper currentStep={3} onStepClick={onStepClick}/>;');
+    expect(assessmentPagesSource).not.toContain('className="fmea-report-stepper"');
     expect(assessmentPagesSource).toContain('type FmeaWizardStep = 1 | 2 | 3;');
     expect(assessmentPagesSource).toContain('storedStep === "3" ? 3');
     expect(i18nSource).toContain('"assessment.previousStep": "مرحله قبل"');
