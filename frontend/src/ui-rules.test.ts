@@ -562,11 +562,13 @@ describe("RULA process information", () => {
     expect(assessmentPagesSource).toContain('<option value="1">{t("assessment.lowForce")} — {t("assessment.lowForcePoints")} — {t("assessment.lowForceRange")}</option>');
     expect(assessmentPagesSource).toContain('<option value="2">{t("assessment.mediumForce")} — {t("assessment.mediumForcePoints")} — {t("assessment.mediumForceRange")}</option>');
     expect(assessmentPagesSource).toContain('<option value="3">{t("assessment.highForce")} — {t("assessment.highForcePoints")} — {t("assessment.highForceRange")}</option>');
-    expect(assessmentPagesSource).toContain('<RulaMuscleUseSelector value={rulaMuscleUse} expanded={rulaMuscleUseOpen}');
+    expect(assessmentPagesSource).toContain('<RulaMuscleUseSelector value={rulaMuscleUse} onChange={setRulaMuscleUse}/>');
     expect(assessmentPagesSource).toContain('name="muscleUse" value={rulaMuscleUse ? "1" : "0"}');
-    expect(assessmentPagesSource).toContain('name="muscleUseOption" value="1"');
-    expect(assessmentPagesSource).toContain('name="muscleUseOption" value="0"');
-    expect(assessmentPagesSource).not.toContain('<label className="checkbox-card"><input name="muscleUse" type="checkbox"');
+    expect(assessmentPagesSource).toContain('<StyledSelect name="muscleUseOption" value={value ? "1" : "0"}');
+    expect(assessmentPagesSource).toContain('<option value="1">{t("assessment.repetitiveMuscleCriterionOne")} — {t("assessment.repetitiveMuscleCriterionOneScore")}</option>');
+    expect(assessmentPagesSource).toContain('<option value="0">{t("assessment.repetitiveMuscleCriterionZero")} — {t("assessment.repetitiveMuscleCriterionZeroScore")}</option>');
+    expect(assessmentPagesSource).not.toContain('type="radio" name="muscleUseOption"');
+    expect(assessmentPagesSource).not.toContain('rula-muscle-use-trigger');
     expect(assessmentPagesSource).toContain('const required: Array<[string, string]> = [["projectId", t("assessment.projectRequired")], ["jobTitle"');
     expect(assessmentPagesSource).toContain('const shortText = [[jobTitle, t("assessment.rulaJobTitle")], [taskDescription, t("assessment.rulaTask")]] as const;');
     expect(i18nSource).toContain('"assessment.bothSides": "هر دو سمت"');
@@ -589,6 +591,14 @@ describe("RULA process information", () => {
     expect(i18nSource).toContain('"assessment.repetitiveMuscleCriterionZeroScore": "امتیاز صفر"');
     expect(i18nSource).toContain('"assessment.repetitiveMuscleCriterionOneScore": "1 point"');
     expect(i18nSource).toContain('"assessment.repetitiveMuscleCriterionZeroScore": "0 points"');
+  });
+
+  it("renders required and optional metadata in the shared inline label row", () => {
+    expect(assessmentPagesSource).toContain('<span className="field-label-line"><span>{t("assessment.projectRequired")}</span><span className="required-label">{t("common.required")}</span></span>');
+    expect(assessmentPagesSource).toContain('<span className="field-label-line"><span>{t("assessment.rulaJobTitle")}</span><span className="required-label">{t("common.required")}</span></span>');
+    expect(assessmentPagesSource).toContain('<span className="field-label-line"><span>{t("assessment.rulaLoadWeight")}</span><span className="optional-label">{t("common.optional")}</span></span>');
+    expect(assessmentPagesSource).toContain('<span className="field-label-line"><span>{t("assessment.force")}</span><span className="required-label">{t("common.required")}</span></span>');
+    expect(stylesSource).toContain('.field-label-line { display: flex; align-items: center;');
   });
 });
 
@@ -1039,6 +1049,7 @@ describe("mobile authenticated shell", () => {
     expect(stylesSource).toContain(".side-nav {\n    min-height: 0;");
     expect(stylesSource).toContain("-webkit-overflow-scrolling: touch;");
     expect(stylesSource).toContain(".table-wrap > table {\n    max-width: none;");
+    expect(stylesSource).toContain('.app[dir="rtl"] .app-sidebar.open {\n    transform: translateX(0);');
     expect(stylesSource).toContain("touch-action: manipulation;");
   });
 });
