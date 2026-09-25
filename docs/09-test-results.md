@@ -343,7 +343,7 @@ asset عمومی CSS rule مشترک و selectorهای header را ارائه م
 
 - targeted frontend tests: PASS — ۸۳ تست شامل helper کلید draft، قرارداد مسیر `/choose-path` و قرارداد autosave.
 - frontend typecheck: PASS — `pnpm --filter @nivasafe/web typecheck`.
-- `pnpm test`: PASS — مجموع ۲۰۸ تست (۸۹ frontend، ۱۰۷ backend و ۱۲ shared-domain).
+- `pnpm test`: PASS — مجموع ۲۰۹ تست (۹۰ frontend، ۱۰۷ backend و ۱۲ shared-domain).
 - `pnpm typecheck`: PASS — هر ۳ package.
 - `pnpm lint`: PASS — هر ۳ package.
 - `pnpm build`: PASS — build تولیدی هر ۳ package موفق شد؛ هشدار اندازه chunk اصلی غیرمسدودکننده است.
