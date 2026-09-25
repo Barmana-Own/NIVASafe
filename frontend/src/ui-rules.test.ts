@@ -1029,9 +1029,27 @@ describe("assistant AI connectivity UX", () => {
 
     expect(stylesSource).toContain("width: min(174px, calc(100vw - 1rem));");
     expect(stylesSource).toContain('[dir="rtl"] .language-picker .language-menu { inset-inline-start: 0; inset-inline-end: auto; }');
-    expect(stylesSource).toContain(".assistant-layout { grid-template-rows: minmax(8rem, 22dvh) minmax(0, 1fr); gap: .65rem; }");
+    expect(stylesSource).toContain(".assistant-layout { position: relative; display: block; flex: 1 1 auto; min-height: 0; gap: 0; overflow: hidden; }");
     expect(stylesSource).toContain(".composer input { min-height: 44px; }");
     expect(stylesSource).toContain(".composer .primary { min-width: 44px; min-height: 44px; }");
+  });
+
+  it("uses a ChatGPT-like mobile conversation drawer and hides the page title", () => {
+    expect(assistantPageSource).toContain("mobileConversationsOpen");
+    expect(assistantPageSource).toContain("assistant-history-toggle");
+    expect(assistantPageSource).toContain("assistant-history-backdrop");
+    expect(assistantPageSource).toContain("assistant-history-close");
+    expect(assistantPageSource).toContain("history-open");
+    expect(assistantPageSource).toContain("setMobileConversationsOpen(false)");
+    expect(stylesSource).toContain(".assistant-page > .page-header { display: none; }");
+    expect(stylesSource).toContain(".assistant-layout.history-open .conversation-panel");
+    expect(stylesSource).toContain(".assistant-history-backdrop");
+    expect(stylesSource).toContain(".assistant-history-toggle");
+    expect(stylesSource).toContain("left: 0;");
+    expect(i18nSource).toContain('"assistant.openConversations": "نمایش گفتگوها"');
+    expect(i18nSource).toContain('"assistant.closeConversations": "بستن گفتگوها"');
+    expect(i18nSource).toContain('"assistant.openConversations": "Open conversations"');
+    expect(i18nSource).toContain('"assistant.closeConversations": "Close conversations"');
   });
 });
 
@@ -1041,7 +1059,7 @@ describe("assistant queued-analysis visibility", () => {
     expect(assistantPageSource).not.toContain('className="analysis-form"');
     expect(assistantPageSource).not.toContain('useLoad<AIRequest[]>("/ai/requests")');
     expect(assistantPageSource).not.toContain('t("assistant.sendToQueue")');
-    expect(assistantPageSource).toContain('className="assistant-layout"');
+    expect(assistantPageSource).toContain('className={`assistant-layout${mobileConversationsOpen ? " history-open" : ""}`}');
   });
 });
 

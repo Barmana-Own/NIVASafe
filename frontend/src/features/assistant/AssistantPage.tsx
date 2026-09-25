@@ -19,6 +19,7 @@ export function AssistantPage() {
   const [sending, setSending] = useState(false);
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [pendingResponse, setPendingResponse] = useState<Message | null>(null);
+  const [mobileConversationsOpen, setMobileConversationsOpen] = useState(false);
   const sendingRef = useRef(false);
   const { session, orgId } = getSession();
   const composerDraftKey = scopedDraftKey(`chat-composer:${selected || "new"}`, session?.user.id, orgId);
@@ -40,9 +41,35 @@ export function AssistantPage() {
   useEffect(() => { if (!selected && conversations.data?.length) setSelected(conversations.data[0]!.id); }, [conversations.data, selected]);
   useEffect(() => { setPendingResponse(null); }, [selected]);
   useEffect(() => { if (pendingResponse && messages.data?.some((item) => item.id === pendingResponse.id)) setPendingResponse(null); }, [messages.data, pendingResponse]);
+  useEffect(() => {
+    if (!mobileConversationsOpen) return;
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setMobileConversationsOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [mobileConversationsOpen]);
   useEffect(() => { logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" }); }, [messages.data, pendingMessage, pendingResponse, sending]);
 
-  async function createConversation() { if (sendingRef.current) return; try { const result = await api<Conversation>("/chat/conversations", { method: "POST", body: JSON.stringify({ title: `${t("assistant.newConversation")} ${new Date().toLocaleDateString(numberLocale)}` }) }); setSelected(result.data.id); conversations.reload(); } catch (reason) { setError((reason as Error).message); } }
+  function selectConversation(id: string) {
+    setSelected(id);
+    setMobileConversationsOpen(false);
+  }
+
+  async function createConversation() {
+    if (sendingRef.current) return;
+    try {
+      const result = await api<Conversation>("/chat/conversations", {
+        method: "POST",
+        body: JSON.stringify({ title: `${t("assistant.newConversation")} ${new Date().toLocaleDateString(numberLocale)}` }),
+      });
+      setSelected(result.data.id);
+      setMobileConversationsOpen(false);
+      conversations.reload();
+    } catch (reason) {
+      setError((reason as Error).message);
+    }
+  }
   async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (sendingRef.current) return;
@@ -95,13 +122,23 @@ export function AssistantPage() {
   return <section className="page-shell assistant-page">
     <PageHeader eyebrow={t("assistant.eyebrow")} title={t("assistant.title")} description={t("assistant.description")}/>
     {error && <div className="alert error"><Icon name="warning"/>{error}</div>}
-    <div className="assistant-layout">
-      <section className="conversation-panel">
-        <div className="conversation-head"><div><h3>{t("assistant.conversations")}</h3><small>{(conversations.data?.length ?? 0).toLocaleString(numberLocale)} {t("assistant.conversationCount")}</small></div><button type="button" className="icon-button accent" onClick={createConversation} title={t("assistant.newConversation")} disabled={sending}><Icon name="plus"/></button></div>
-        <div className="conversation-list">{conversations.loading ? <div className="state compact"><div className="spinner"/></div> : !conversations.data?.length ? <EmptyState title={t("assistant.noConversation")} icon="assistant"/> : conversations.data.map((item) => <button type="button" className={selected === item.id ? "active" : ""} key={item.id} onClick={() => setSelected(item.id)} disabled={sending}><span className="conversation-icon"><Icon name="assistant" size={17}/></span><span><strong>{item.title}</strong><small>{formatDate(item.updatedAt)}</small></span></button>)}</div>
+    <div className={`assistant-layout${mobileConversationsOpen ? " history-open" : ""}`}>
+      <section id="assistant-conversations-panel" className="conversation-panel" aria-label={t("assistant.conversations")}>
+        <div className="conversation-head">
+          <div><h3>{t("assistant.conversations")}</h3><small>{(conversations.data?.length ?? 0).toLocaleString(numberLocale)} {t("assistant.conversationCount")}</small></div>
+          <div className="conversation-head-actions">
+            <button type="button" className="icon-button accent" onClick={createConversation} title={t("assistant.newConversation")} disabled={sending}><Icon name="plus"/></button>
+            <button type="button" className="icon-button assistant-history-close" onClick={() => setMobileConversationsOpen(false)} aria-label={t("assistant.closeConversations")} title={t("assistant.closeConversations")}><span aria-hidden="true">×</span></button>
+          </div>
+        </div>
+        <div className="conversation-list">{conversations.loading ? <div className="state compact"><div className="spinner"/></div> : !conversations.data?.length ? <EmptyState title={t("assistant.noConversation")} icon="assistant"/> : conversations.data.map((item) => <button type="button" className={selected === item.id ? "active" : ""} key={item.id} onClick={() => selectConversation(item.id)} disabled={sending}><span className="conversation-icon"><Icon name="assistant" size={17}/></span><span><strong>{item.title}</strong><small>{formatDate(item.updatedAt)}</small></span></button>)}</div>
       </section>
+      {mobileConversationsOpen && <button type="button" className="assistant-history-backdrop" aria-label={t("assistant.closeConversations")} onClick={() => setMobileConversationsOpen(false)} />}
       <section className="chat-panel">
-        <div className="chat-header"><span className="ai-orb"><Icon name="sparkles"/></span><div><h3>{t("assistant.chatTitle")}</h3><p>{chatDescription}</p></div><span className={`online ${providers.loading || providers.error || !chatUsesRemoteProvider ? "no" : "yes"}`}><span className="online-dot"/>{chatStatus}</span></div>
+        <div className="chat-header">
+          <button type="button" className="assistant-history-toggle" onClick={() => setMobileConversationsOpen(true)} aria-expanded={mobileConversationsOpen} aria-controls="assistant-conversations-panel" aria-label={t("assistant.openConversations")} title={t("assistant.openConversations")}><Icon name="menu"/></button>
+          <span className="ai-orb"><Icon name="sparkles"/></span><div><h3>{t("assistant.chatTitle")}</h3><p>{chatDescription}</p></div><span className={`online ${providers.loading || providers.error || !chatUsesRemoteProvider ? "no" : "yes"}`}><span className="online-dot"/>{chatStatus}</span>
+        </div>
         <div className="chat-log" ref={logRef} aria-busy={sending}>{!selected && !pendingMessage ? <EmptyState title={t("assistant.chooseConversation")} description={t("assistant.chooseConversationDescription")} icon="assistant"/> : selected && messages.loading && !pendingMessage ? <div className="state"><div className="spinner"/></div> : !messages.data?.length && !pendingMessage && !pendingResponse ? <div className="chat-welcome"><span className="ai-orb large"><Icon name="sparkles" size={28}/></span><h3>{t("assistant.welcome")}</h3><p>{t("assistant.welcomeDescription")}</p><div className="suggestions"><button type="button" onClick={() => fillSuggestion(t("assistant.suggestionOneText"))}>{t("assistant.suggestionOne")}</button><button type="button" onClick={() => fillSuggestion(t("assistant.suggestionTwoText"))}>{t("assistant.suggestionTwo")}</button></div></div> : <>{messages.data?.map(renderMessage)}{pendingResponse && renderMessage(pendingResponse)}{pendingMessage && <div className="message user pending-message"><div className="message-avatar">{locale === "en" ? "Y" : "ش"}</div><div className="message-bubble"><strong>{t("assistant.you")}</strong><p>{pendingMessage}</p><small>{t("assistant.sending")}</small></div></div>}{sending && <div className="message assistant pending-message"><div className="message-avatar"><Icon name="sparkles" size={16}/></div><div className="message-bubble"><strong>{t("assistant.assistant")}</strong><p>{t("assistant.waitingForResponse")}</p><span className="assistant-typing" aria-hidden="true"><i/><i/><i/></span></div></div>}</>}</div>
         <AutoSaveForm storageKey={composerDraftKey} className="composer" onSubmit={send}><input name="content" placeholder={t("assistant.questionPlaceholder")} autoComplete="off" minLength={2} maxLength={4000} required disabled={sending}/><button type="submit" className="primary" aria-label={t("assistant.send")} disabled={sending}><Icon name="arrow"/></button>{sending && <small className="composer-send-status" role="status"><span className="composer-spinner" aria-hidden="true"/>{t("assistant.waitingForResponse")}</small>}</AutoSaveForm>
         <small className="assistant-note">{t("assistant.disclaimer")}</small>
