@@ -380,3 +380,18 @@ asset عمومی CSS rule مشترک و selectorهای header را ارائه م
 - migration deployment: NOT_RUN — اجرای migration جدید روی MySQL محلی در این checkpoint انجام نشد.
 - authenticated browser visual smoke: NOT_RUN — نشست مرورگر احراز‌شده در دسترس نبود.
 - external deployment: NOT_PERFORMED — محدوده این تغییر فقط اجرای local است.
+
+## Checkpoint 2026-09-25 — تثبیت منوی انتخاب زبان در موبایل
+
+- `pnpm --filter @nivasafe/web exec vitest run src/ui-rules.test.ts`: PASS — ۸۰ تست؛ منوی زبان در موبایل به‌صورت absolute زیر `language-picker` و بدون `position: fixed` پوشش داده شد.
+- `pnpm test`: PASS — مجموع ۲۰۹ تست (۹۰ frontend، ۱۰۷ backend و ۱۲ shared-domain).
+- `pnpm typecheck`: PASS — هر ۳ package.
+- `pnpm lint`: PASS — هر ۳ package.
+- `pnpm build`: PASS — build تولیدی هر ۳ package موفق شد؛ هشدار اندازه chunk اصلی غیرمسدودکننده است.
+- `pnpm verify:contract`: PASS — ۶۵ مسیر frontend با ۱۱۶ route backend منطبق شدند.
+- `pnpm verify:release`: PASS — ۲۸ بررسی.
+- `pnpm audit --prod --audit-level high`: PASS — آسیب‌پذیری شناخته‌شده‌ای یافت نشد.
+- `git diff --check`: PASS.
+- browser visual smoke: NOT_RUN — نشست browser automation محلی در دسترس نبود؛ تست source-contract و build اجرا شدند.
+- migration/database changes: NOT_APPLICABLE — فقط جای‌گذاری responsive منوی client-side و تست regression تغییر کرد.
+- external deployment: NOT_PERFORMED — محدوده این تغییر فقط source/local است.

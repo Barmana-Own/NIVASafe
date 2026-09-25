@@ -2198,7 +2198,7 @@ details.optional-fields > :not(summary),
   .topbar { flex-wrap: nowrap; row-gap: 0; }
   .topbar-title { flex: 1 1 auto; }
   .header-actions { width: auto; flex: 0 0 auto; justify-content: flex-end; gap: .4rem; flex-wrap: nowrap; }
-  .topbar .language-menu { position: fixed; inset-block-start: calc(4.35rem + env(safe-area-inset-top)); inset-inline-start: .5rem; inset-inline-end: auto; width: min(174px, calc(100vw - 1rem)); min-width: 0; max-width: calc(100vw - 1rem); max-height: min(70dvh, 20rem); overflow-y: auto; }
+  .topbar .language-menu { position: absolute; inset-block-start: calc(100% + .5rem); inset-inline-start: auto; inset-inline-end: 0; width: min(174px, calc(100vw - 1rem)); min-width: 0; max-width: calc(100vw - 1rem); max-height: min(70dvh, 20rem); overflow-y: auto; }
 }
 
 @media (max-width: 520px) {

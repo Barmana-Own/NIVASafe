@@ -36,6 +36,12 @@
     "validation": "PASS — focused assistant UI coverage, workspace typecheck, lint, 204 tests (104 backend, 88 frontend, 12 shared-domain), production build, API contract verification, and source diff review. Browser visual smoke was NOT_RUN because the local authenticated browser automation session was unavailable.",
     "deployment": "NOT_PERFORMED — local-only scope"
   },
+  "latestMobileLanguageMenuAnchoringChange": {
+    "status": "PASS_LOCAL",
+    "scope": "On mobile, the authenticated topbar language menu is positioned absolutely relative to its language-picker and opens below the trigger; RTL logical inline alignment keeps it within the viewport instead of pinning it to the viewport edge.",
+    "validation": "PASS — focused UI rules (۸۰ تست)، workspace tests (۲۰۹ تست)، typecheck، lint، production build، API contract verification، release verification، production dependency audit و git diff check موفق شدند. Browser visual smoke اجرا نشد چون نشست browser automation محلی در دسترس نبود.",
+    "deployment": "NOT_PERFORMED — local-only scope"
+  },
   "latestPublicLoginMobilePolishChange": {
     "status": "PASS_LOCAL",
     "scope": "The public mobile login toolbar now has horizontal breathing room, the mobile brand subtitle uses the smart occupational safety and health wording in both locales, and the support/approval bar reaches the bottom edge while preserving the safe-area inset.",

@@ -1022,8 +1022,11 @@ describe("assistant AI connectivity UX", () => {
   it("keeps the mobile shell inline and keeps the chat composer reachable", () => {
     expect(stylesSource).toContain(".topbar { flex-wrap: nowrap; row-gap: 0; }");
     expect(stylesSource).toContain(".header-actions { width: auto; flex: 0 0 auto; justify-content: flex-end; gap: .4rem; flex-wrap: nowrap; }");
-    expect(stylesSource).toContain(".topbar .language-menu { position: fixed;");
-    expect(stylesSource).toContain("inset-inline-start: .5rem;");
+    expect(stylesSource).toContain(".topbar .language-menu { position: absolute;");
+    expect(stylesSource).toContain("inset-block-start: calc(100% + .5rem);");
+    expect(stylesSource).toContain("inset-inline-start: auto; inset-inline-end: 0;");
+    expect(stylesSource).not.toContain(".topbar .language-menu { position: fixed;");
+
     expect(stylesSource).toContain("width: min(174px, calc(100vw - 1rem));");
     expect(stylesSource).toContain('[dir="rtl"] .language-picker .language-menu { inset-inline-start: 0; inset-inline-end: auto; }');
     expect(stylesSource).toContain(".assistant-layout { grid-template-rows: minmax(8rem, 22dvh) minmax(0, 1fr); gap: .65rem; }");
