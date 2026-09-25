@@ -558,6 +558,12 @@ describe("RULA assessment results view", () => {
     expect(i18nSource).toContain('"assessment.backToNewRula": "بازگشت به ارزیابی جدید RULA"');
     expect(i18nSource).toContain('"assessment.backToNewRula": "Back to new RULA assessment"');
   });
+  it("removes the redundant RULA result stepper from stage three", () => {
+    expect(assessmentPagesSource).not.toContain('className="rula-result-stepper"');
+    expect(assessmentPagesSource).not.toContain('t("assessment.rulaResultSteps")');
+    expect(stylesSource).not.toContain(".rula-result-stepper");
+    expect(i18nSource).not.toContain('"assessment.rulaResultSteps"');
+  });
 });
 
 describe("RULA process information", () => {
