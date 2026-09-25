@@ -572,6 +572,22 @@ describe("RULA assessment results view", () => {
     expect(i18nSource).toContain('"assessment.backToNewRula": "بازگشت به ارزیابی جدید RULA"');
     expect(i18nSource).toContain('"assessment.backToNewRula": "Back to new RULA assessment"');
   });
+  it("renders RULA results as FMEA-style clickable cards and keeps report actions", () => {
+    expect(assessmentPagesSource).toContain('className="assessment-list rula-assessment-list"');
+    expect(assessmentPagesSource).toContain('className="assessment-card rula-assessment-card"');
+    expect(assessmentPagesSource).toContain('onClick={handleOpen}');
+    expect(assessmentPagesSource).toContain('onKeyDown={handleKeyDown}');
+    expect(assessmentPagesSource).toContain('event.stopPropagation()');
+    expect(assessmentPagesSource).toContain('onDownload(item, "xlsx")');
+    expect(assessmentPagesSource).toContain('onDownload(item, "docx")');
+    expect(assessmentPagesSource).toContain("onDelete(item)");
+    expect(assessmentPagesSource).toContain('rula-assessment-context');
+    expect(assessmentPagesSource).toContain('onOpenReport={(item) => navigate');
+    expect(assessmentPagesSource).not.toContain('className="assessment-report-table rula-assessment-register-table"');
+    expect(stylesSource).toContain(".rula-assessment-list");
+    expect(stylesSource).toContain(".rula-assessment-card");
+    expect(stylesSource).toContain(".rula-assessment-card:focus-visible");
+  });
   it("keeps the manual RULA action form below the two-column suggestions area", () => {
     const manualFormIndex = assessmentPagesSource.indexOf('className="rula-manual-action-form"');
     const impactPanelIndex = assessmentPagesSource.indexOf('<aside className="rula-report-impact-panel"');
@@ -1475,7 +1491,7 @@ describe("form auto-save contract", () => {
     expect(stylesSource).toContain(".rula-assessment-register-table");
     expect(stylesSource).toContain(".rula-report-data-table");
     expect(stylesSource).toContain(".rula-report-context");
-    expect(assessmentPagesSource).toContain("rula-register-updated-at");
+    expect(assessmentPagesSource).toContain("rula-assessment-context");
     expect(stylesSource).toContain(".surface-title > div");
     expect(stylesSource).toContain("@media (max-width: 1400px)");
     expect(stylesSource).toContain(".rula-assessment-register-table .report-table-actions");

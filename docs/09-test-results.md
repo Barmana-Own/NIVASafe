@@ -489,3 +489,20 @@ asset عمومی CSS rule مشترک و selectorهای header را ارائه م
 - git diff --check: PASS — فقط هشدار نرمال‌سازی line ending ویندوز گزارش شد.
 - authenticated browser visual smoke: NOT_RUN — نشست browser automation محلی در دسترس نبود.
 - external deployment: NOT_PERFORMED — محدوده این تغییر فقط source/local است.
+## Checkpoint 2026-09-26 — تبدیل نتایج RULA به کارت‌های قابل کلیک مشابه FMEA
+
+- صفحه نتایج ارزیابی‌های RULA از جدول عریض به grid کارت‌های همان الگوی ارزیابی‌های ثبت‌شده FMEA تبدیل شد؛ اطلاعات زمینه‌ای شغل، فعالیت، پروژه، سمت بدن، آخرین بروزرسانی، امتیاز، سطح ریسک، وضعیت و نسخه در کارت حفظ شده‌اند.
+- کلیک روی هر کارت و کلیدهای Enter/Space گزارش نتیجه همان ارزیابی را باز می‌کنند؛ عملیات ویرایش، تاریخچه، دانلود Excel/Word و حذف برای کاربران مجاز با جلوگیری از انتشار کلیک کارت حفظ شده‌اند.
+- چیدمان کارت‌ها در موبایل تک‌ستونه و بدون جدول افقی است و برای کارت و عملیات، focus و target لمسی قابل استفاده در نظر گرفته شده است.
+- pnpm --filter @nivasafe/web exec vitest run src/ui-rules.test.ts --reporter=dot: PASS — ۸۶ تست.
+- pnpm test: PASS — مجموع ۲۱۵ تست (۹۶ frontend، ۱۰۷ backend و ۱۲ shared-domain).
+- pnpm typecheck: PASS — هر ۳ package.
+- pnpm lint: PASS — هر ۳ package.
+- pnpm build: PASS — build تولیدی هر ۳ package موفق شد؛ هشدار اندازه chunk اصلی غیرمسدودکننده است.
+- pnpm verify:contract: PASS — ۶۶ مسیر frontend با ۱۱۶ route backend تطبیق داده شدند.
+- pnpm verify:release: PASS — ۲۸ بررسی.
+- pnpm audit --prod --audit-level high: PASS — آسیب‌پذیری شناخته‌شده‌ای یافت نشد.
+- git diff --check: PASS — فقط هشدار نرمال‌سازی line ending ویندوز گزارش شد.
+- authenticated browser visual smoke: NOT_RUN — نشست browser automation محلی در دسترس نبود.
+- migration/database changes: NOT_APPLICABLE — از endpoint و مدل داده موجود استفاده شد.
+- external deployment: NOT_PERFORMED — محدوده این تغییر فقط source/local است.

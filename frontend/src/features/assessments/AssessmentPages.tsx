@@ -2728,10 +2728,52 @@ function RulaAssessmentTable({ data, locale, editable, onOpenReport, onEdit, onH
   const { t } = useI18n();
   const numberLocale = locale === "en" ? "en-US" : "fa-IR";
   const bodySideLabel = (side?: Rula["bodySide"]) => side === "LEFT" ? t("assessment.left") : side === "BOTH" ? t("assessment.bothSides") : side === "RIGHT" ? t("assessment.right") : "—";
-  data = data.map((item) => item.postureReviewComplete === true ? item : { ...item, score: 0, actionLevel: 0 });
-  return <div className="table-wrap report-data-table-wrap"><table className="assessment-report-table rula-assessment-register-table"><thead><tr><th>{t("assessment.row")}</th><th>{t("assessment.rulaAssessmentTitleColumn")}</th><th>{t("assessment.rulaJobTitle")}</th><th>{t("assessment.rulaTask")}</th><th>{t("assessment.project")}</th><th>{t("assessment.bodySide")}</th><th>{t("assessment.rulaScoreLabel")}</th><th>{t("assessment.rulaRiskLevel")}</th><th>{t("assessment.rulaAssessmentStatus")}</th><th>{t("assessment.rulaUpdatedAt")}</th><th>{t("assessment.operations")}</th></tr></thead><tbody>{data.map((item, index) => <tr key={item.id}><td className="report-table-number">{(index + 1).toLocaleString(numberLocale)}</td><td className="report-table-text"><strong>{item.title}</strong>{item.subjectCode && <small>{item.subjectCode}</small>}</td><td className="report-table-text">{item.activityInfo?.jobTitle || "—"}</td><td className="report-table-text">{item.activityInfo?.taskDescription || "—"}</td><td className="report-table-text">{projectName(item.project, locale)}</td><td className="report-table-text">{bodySideLabel(item.bodySide)}</td><td className="report-table-number"><strong className={`rula-register-score level-${item.actionLevel}`}>{item.score.toLocaleString(numberLocale)}</strong></td><td className="report-table-number"><span className={`rula-report-risk-badge ${rulaActionLevelForScore(item.score).className}`}>{t(rulaActionLevelForScore(item.score).labelKey)}</span></td><td className="report-table-number"><StatusBadge value={item.status}/></td><td className="report-table-number rula-register-updated-at">{formatDate(item.updatedAt ?? item.createdAt, true)}</td><td><div className="report-table-actions">{editable && <><button type="button" className="icon-button" title={t("assessment.openRulaReport")} aria-label={`${t("assessment.openRulaReport")}: ${item.title}`} onClick={() => onOpenReport(item)}><Icon name="chart" size={15}/></button><button type="button" className="icon-button" title={t("assessment.edit")} aria-label={`${t("assessment.edit")}: ${item.title}`} onClick={() => onEdit(item)}><Icon name="activity" size={15}/></button><button type="button" className="icon-button" title={t("assessment.history")} aria-label={`${t("assessment.history")}: ${item.title}`} onClick={() => onHistory(item)}><Icon name="clock" size={15}/></button><button type="button" className="icon-button" title={t("assessment.downloadExcel")} aria-label={`${t("assessment.downloadExcel")}: ${item.title}`} onClick={() => onDownload(item, "xlsx")}><Icon name="download" size={15}/></button><button type="button" className="icon-button" title={t("assessment.downloadWord")} aria-label={`${t("assessment.downloadWord")}: ${item.title}`} onClick={() => onDownload(item, "docx")}><Icon name="download" size={15}/></button><button type="button" className="icon-button danger" title={t("common.delete")} aria-label={`${t("common.delete")}: ${item.title}`} onClick={() => onDelete(item)}><Icon name="trash" size={15}/></button></>}</div></td></tr>)}</tbody></table></div>;
-}
+  const normalizedData = data.map((item) => item.postureReviewComplete === true ? item : { ...item, score: 0, actionLevel: 0 });
 
+  return <div className="assessment-list rula-assessment-list">
+    {normalizedData.map((item) => {
+      const risk = rulaActionLevelForScore(item.score);
+      const jobTitle = item.activityInfo?.jobTitle?.trim() || "—";
+      const taskDescription = item.activityInfo?.taskDescription?.trim() || "—";
+      const updatedAt = formatDate(item.updatedAt ?? item.createdAt, true);
+      const displayCode = item.subjectCode?.trim() || item.id.slice(0, 8).toUpperCase();
+      const displayTitle = item.title || t("assessment.rulaTitle");
+      const handleOpen = () => onOpenReport(item);
+      const handleKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpenReport(item);
+        }
+      };
+      const stopCardClick = (event: ReactMouseEvent<HTMLButtonElement>) => event.stopPropagation();
+
+      return <article className="assessment-card rula-assessment-card" key={item.id} role="link" tabIndex={0} aria-label={t("assessment.openRulaReport") + ": " + displayTitle} onClick={handleOpen} onKeyDown={handleKeyDown}>
+        <div className="assessment-card-head"><span className="project-code">{displayCode}</span><StatusBadge value={item.status}/></div>
+        <h3>{displayTitle}</h3>
+        <p>{projectName(item.project, locale)} · {jobTitle}</p>
+        <div className="rula-assessment-context">
+          <span><small>{t("assessment.rulaTask")}</small><strong>{taskDescription}</strong></span>
+          <span><small>{t("assessment.bodySide")}</small><strong>{bodySideLabel(item.bodySide)}</strong></span>
+          <span><small>{t("assessment.rulaUpdatedAt")}</small><strong>{updatedAt}</strong></span>
+        </div>
+        <div className="assessment-metrics rula-assessment-metrics">
+          <span><b className={"rula-card-score level-" + item.actionLevel}>{item.score.toLocaleString(numberLocale)}</b>{t("assessment.rulaScoreLabel")}</span>
+          <span><b className={"rula-card-risk " + risk.className}>{t(risk.labelKey)}</b>{t("assessment.rulaRiskLevel")}</span>
+          <span><b>{item.version.toLocaleString(numberLocale)}</b>{t("common.version")}</span>
+        </div>
+        {editable && <div className="card-actions rula-card-actions" aria-label={t("assessment.operations")}>
+          <button type="button" title={t("assessment.openRulaReport")} aria-label={t("assessment.openRulaReport") + ": " + displayTitle} onClick={(event) => { stopCardClick(event); onOpenReport(item); }}><Icon name="chart" size={16}/>{t("assessment.openRulaReport")}</button>
+          <button type="button" title={t("assessment.edit")} aria-label={t("assessment.edit") + ": " + displayTitle} onClick={(event) => { stopCardClick(event); onEdit(item); }}><Icon name="activity" size={16}/>{t("assessment.edit")}</button>
+          <button type="button" title={t("assessment.history")} aria-label={t("assessment.history") + ": " + displayTitle} onClick={(event) => { stopCardClick(event); onHistory(item); }}><Icon name="clock" size={16}/>{t("assessment.history")}</button>
+          <button type="button" title={t("assessment.downloadExcel")} aria-label={t("assessment.downloadExcel") + ": " + displayTitle} onClick={(event) => { stopCardClick(event); onDownload(item, "xlsx"); }}><Icon name="download" size={16}/>Excel</button>
+          <button type="button" title={t("assessment.downloadWord")} aria-label={t("assessment.downloadWord") + ": " + displayTitle} onClick={(event) => { stopCardClick(event); onDownload(item, "docx"); }}><Icon name="download" size={16}/>Word</button>
+          <button type="button" className="danger-link" title={t("common.delete")} aria-label={t("common.delete") + ": " + displayTitle} onClick={(event) => { stopCardClick(event); onDelete(item); }}><Icon name="trash" size={16}/>{t("common.delete")}</button>
+        </div>}
+      </article>;
+    })}
+  </div>;
+}
 function rulaOverview(data: Rula[]) {
   const reviewed = data.filter((item) => item.postureReviewComplete === true);
   return {

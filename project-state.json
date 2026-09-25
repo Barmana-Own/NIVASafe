@@ -43,7 +43,13 @@
     "migration": "NOT_APPLICABLE — از endpoint و مدل داده موجود استفاده شد.",
     "deployment": "NOT_PERFORMED — محدوده این تغییر فقط source/local است"
   },
-  "latestFmeaStageTwoDetailsChange": {
+  "latestRulaResultsCardLayoutChange": {
+    "status": "PASS_LOCAL",
+    "scope": "صفحه نتایج ارزیابی‌های RULA اکنون با همان الگوی کارت‌های ارزیابی ثبت‌شده FMEA نمایش داده می‌شود؛ هر کارت با کلیک یا کلیدهای Enter/Space گزارش نتیجه /rula/:id/report را باز می‌کند، اطلاعات شغل، فعالیت، پروژه، سمت بدن، امتیاز، سطح ریسک، وضعیت، نسخه و آخرین بروزرسانی را حفظ می‌کند و عملیات ویرایش، تاریخچه، خروجی Excel/Word و حذف همچنان در دسترس کاربران مجاز هستند.",
+    "validation": "PASS — تست متمرکز UI (۸۶ تست)، pnpm test (۲۱۵ تست شامل ۹۶ frontend، ۱۰۷ backend و ۱۲ shared-domain)، typecheck، lint، production build، API contract verification (۶۶ مسیر frontend / ۱۱۶ route backend)، release verification (۲۸ checks)، production dependency audit و git diff check موفق شدند. مرور بصری authenticated browser اجرا نشد چون browser automation محلی در دسترس نبود.",
+    "migration": "NOT_APPLICABLE — فقط markup، CSS و تست frontend تغییر کردند و از endpoint و مدل داده موجود استفاده شد.",
+    "deployment": "NOT_PERFORMED — محدوده این تغییر فقط source/local است"
+  },  "latestFmeaStageTwoDetailsChange": {
     "status": "PASS_LOCAL",
     "scope": "در مرحله دوم FMEA برای ارزیابی ثبت‌شده، کارت جزئیات گزارش در انتهای فرم نمایش داده می‌شود و هنگام ورود، endpoint موجود detail-suggestions با autoCreate=true دقیقاً پنج ردیف اولیه را به‌صورت idempotent ایجاد می‌کند؛ پس از تکمیل، داده‌های ذخیره‌شده دوباره بارگذاری می‌شوند و خطای درخواست با امکان retry نمایش داده می‌شود.",
     "validation": "PASS — تست متمرکز UI (۸۵ تست)، pnpm test (۲۱۴ تست شامل ۹۵ frontend، ۱۰۷ backend و ۱۲ shared-domain)، typecheck، lint، production build، API contract verification (۶۶ frontend paths / ۱۱۶ backend routes)، release verification (۲۸ checks)، production dependency audit و git diff check موفق شدند. مرور بصری authenticated browser اجرا نشد چون browser automation محلی در دسترس نبود.",
