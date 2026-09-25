@@ -343,7 +343,14 @@ asset عمومی CSS rule مشترک و selectorهای header را ارائه م
 
 - targeted frontend tests: PASS — ۸۳ تست شامل helper کلید draft، قرارداد مسیر `/choose-path` و قرارداد autosave.
 - frontend typecheck: PASS — `pnpm --filter @nivasafe/web typecheck`.
-- full workspace tests, lint, production build and release verification: PENDING — در اعتبارسنجی نهایی این تغییر اجرا می‌شوند.
+- `pnpm test`: PASS — مجموع ۲۰۸ تست (۸۹ frontend، ۱۰۷ backend و ۱۲ shared-domain).
+- `pnpm typecheck`: PASS — هر ۳ package.
+- `pnpm lint`: PASS — هر ۳ package.
+- `pnpm build`: PASS — build تولیدی هر ۳ package موفق شد؛ هشدار اندازه chunk اصلی غیرمسدودکننده است.
+- `pnpm verify:contract`: PASS — ۶۵ مسیر frontend با ۱۱۶ route backend منطبق شدند.
+- `pnpm verify:release`: PASS — ۲۸ بررسی.
+- `pnpm audit --prod --audit-level high`: PASS — آسیب‌پذیری شناخته‌شده‌ای یافت نشد.
+- `git diff --check` و JSON project state: PASS.
 - migration/database changes: NOT_APPLICABLE — فقط منطق client-side draft و مسیر انتخاب ارزیابی تغییر کرده است.
 - external deployment: NOT_PERFORMED — محدوده این تغییر فقط source/local است.
 
