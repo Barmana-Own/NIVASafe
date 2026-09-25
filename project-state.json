@@ -36,6 +36,12 @@
     "validation": "PASS — focused assistant UI coverage, workspace typecheck, lint, 204 tests (104 backend, 88 frontend, 12 shared-domain), production build, API contract verification, and source diff review. Browser visual smoke was NOT_RUN because the local authenticated browser automation session was unavailable.",
     "deployment": "NOT_PERFORMED — local-only scope"
   },
+  "latestRulaManualActionLayoutChange": {
+    "status": "PASS_LOCAL",
+    "scope": "فرم اقدام دستی RULA از پنل پیشنهادهای اصلاحی خارج شد و به‌عنوان بخش تمام‌عرض زیر چیدمان دو ستونه پیشنهادها و پیش‌بینی اثر در بخش rula-corrections-section قرار گرفت؛ قواعد width/min-width/max-width نیز برای جلوگیری از برون‌زدگی اضافه شد.",
+    "validation": "PASS — تست متمرکز UI (۸۳ تست)، pnpm test (۲۱۲ تست شامل ۹۳ frontend، ۱۰۷ backend و ۱۲ shared-domain)، typecheck، lint، production build، API contract verification (۶۵ frontend paths / ۱۱۶ backend routes)، release verification (۲۸ checks)، production dependency audit و git diff check موفق شدند. مرور بصری authenticated browser اجرا نشد چون browser automation محلی در دسترس نبود.",
+    "deployment": "NOT_PERFORMED — محدوده این تغییر فقط source/local است"
+  },
   "latestRulaResultStepperRemovalChange": {
     "status": "PASS_LOCAL",
     "scope": "در گزارش نتیجه مرحله سوم RULA، نوار نمایش مراحل rula-result-stepper حذف شد تا نتیجه، عوامل اصلی و اقدامات اصلاحی بدون نوار اضافی نمایش داده شوند؛ CSS مربوط و کلیدهای ترجمه بلااستفاده نیز حذف شدند.",

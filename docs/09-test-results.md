@@ -425,3 +425,18 @@ asset عمومی CSS rule مشترک و selectorهای header را ارائه م
 - authenticated browser visual smoke: NOT_RUN — نشست browser automation محلی در دسترس نبود.
 - migration/database changes: NOT_APPLICABLE — فقط markup، CSS و ترجمه‌های بلااستفاده گزارش frontend تغییر کردند.
 - external deployment: NOT_PERFORMED — محدوده این تغییر فقط source/local است.
+
+## Checkpoint 2026-09-25 — انتقال فرم اقدام دستی RULA به بخش اقدامات اصلاحی
+
+- `pnpm --filter @nivasafe/web exec vitest run src/ui-rules.test.ts`: PASS — ۸۳ تست؛ فرم اقدام دستی خارج از پنل پیشنهادها و زیر چیدمان دو ستونه بخش اقدامات اصلاحی قرار گرفت و عرض bounded آن پوشش داده شد.
+- `pnpm test`: PASS — مجموع ۲۱۲ تست (۹۳ frontend، ۱۰۷ backend و ۱۲ shared-domain).
+- `pnpm typecheck`: PASS — هر ۳ package.
+- `pnpm lint`: PASS — هر ۳ package.
+- `pnpm build`: PASS — build تولیدی هر ۳ package موفق شد؛ هشدار اندازه chunk اصلی غیرمسدودکننده است.
+- `pnpm verify:contract`: PASS — ۶۵ مسیر frontend با ۱۱۶ route backend تطبیق داده شدند.
+- `pnpm verify:release`: PASS — ۲۸ بررسی.
+- `pnpm audit --prod --audit-level high`: PASS — آسیب‌پذیری شناخته‌شده‌ای یافت نشد.
+- `git diff --check` و parse فایل project state: PASS.
+- authenticated browser visual smoke: NOT_RUN — نشست browser automation محلی در دسترس نبود.
+- migration/database changes: NOT_APPLICABLE — فقط ساختار JSX، CSS و تست frontend تغییر کردند.
+- external deployment: NOT_PERFORMED — محدوده این تغییر فقط source/local است.
