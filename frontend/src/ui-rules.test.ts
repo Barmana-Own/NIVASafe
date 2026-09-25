@@ -526,6 +526,16 @@ describe("FMEA creation stepper", () => {
     expect(i18nSource).toContain('"assessment.returnToReview": "Return to review"');
     expect(i18nSource).toContain('"assessment.backToNewFmea": "بازگشت به ارزیابی جدید FMEA"');
     expect(i18nSource).toContain('"assessment.backToNewFmea": "Back to new FMEA assessment"');
+
+  });
+
+  it("seeds five persisted details and renders the report details card at the end of registered step two", () => {
+    expect(assessmentPagesSource).toContain('const [reviewDetailSeedLoading, setReviewDetailSeedLoading] = useState(false)');
+    expect(assessmentPagesSource).toContain('body: JSON.stringify({ locale, autoCreate: true })');
+    expect(assessmentPagesSource).toContain('detail-suggestions');
+    expect(assessmentPagesSource).toContain('function FmeaStageTwoDetailsCard');
+    expect(assessmentPagesSource).toContain('className="report-details-card"');
+    expect(assessmentPagesSource).toContain('{editingExistingAssessment && wizardStep === 2 && selectedAssessment && <FmeaStageTwoDetailsCard');
   });
 });
 

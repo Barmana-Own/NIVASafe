@@ -455,3 +455,18 @@ asset عمومی CSS rule مشترک و selectorهای header را ارائه م
 - authenticated browser visual smoke: NOT_RUN — browser automation محلی به‌دلیل خطای Windows sandbox در دسترس نبود.
 - migration/database changes: NOT_APPLICABLE — فقط markup، CSS و تست frontend تغییر کردند.
 - external deployment: NOT_PERFORMED — محدوده این تغییر فقط source/local است.
+
+## Checkpoint 2026-09-25 — افزودن جزئیات FMEA و پنج ردیف خودکار در مرحله دوم
+
+- `pnpm --filter @nivasafe/web exec vitest run src/ui-rules.test.ts`: PASS — ۸۵ تست؛ کارت `surface report-details-card` در انتهای مرحله دوم ارزیابی ثبت‌شده و درخواست ایجاد خودکار جزئیات پوشش داده شد.
+- `pnpm test`: PASS — مجموع ۲۱۴ تست (۹۵ frontend، ۱۰۷ backend و ۱۲ shared-domain).
+- `pnpm typecheck`: PASS — هر ۳ package.
+- `pnpm lint`: PASS — هر ۳ package.
+- `pnpm build`: PASS — build تولیدی هر ۳ package موفق شد؛ هشدار اندازه chunk اصلی غیرمسدودکننده است.
+- `pnpm verify:contract`: PASS — ۶۶ مسیر frontend با ۱۱۶ route backend تطبیق داده شدند.
+- `pnpm verify:release`: PASS — ۲۸ بررسی.
+- `pnpm audit --prod --audit-level high`: PASS — آسیب‌پذیری شناخته‌شده‌ای یافت نشد.
+- `git diff --check` و parse فایل project state: PASS.
+- authenticated browser visual smoke: NOT_RUN — نشست browser automation محلی در دسترس نبود.
+- migration/database changes: NOT_APPLICABLE — endpoint موجود استفاده شد و فقط JSX، CSS و تست frontend تغییر کردند.
+- external deployment: NOT_PERFORMED — محدوده این تغییر فقط source/local است.

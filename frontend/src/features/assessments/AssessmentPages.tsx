@@ -527,6 +527,22 @@ function FmeaReviewRiskRow({ draft, rows, context, autoEnabled, onChange, onScor
   </div>;
 }
 
+function FmeaStageTwoDetailsCard({ assessment, loading, error, onRetry }: { assessment: Fmea; loading: boolean; error: string; onRetry: () => void }) {
+  const { locale, t } = useI18n();
+  const numberLocale = locale === "en" ? "en-US" : "fa-IR";
+  const processName = assessment.jobCatalog ? localizedJobTitle(assessment.jobCatalog, locale) : assessment.title;
+  return <SectionCard className="report-details-card" title={t("report.fullDetails")} description={t("report.fullDetailsDescription")} icon="fmea">
+    <details open>
+      <summary>{t("report.expandDetails")}</summary>
+      {loading && <div className="fmea-report-ai-seed-status" role="status" aria-live="polite"><span className="spinner"/>{t("report.aiDetailsWorking")}</div>}
+      {error && <div className="fmea-report-ai-seed-status error" role="alert"><span>{error}</span><button type="button" className="text-button" onClick={onRetry}>{t("common.retry")}</button></div>}
+      {assessment.items.length ? <div className="table-wrap report-data-table-wrap fmea-report-table-wrap"><table className="assessment-report-table fmea-report-data-table report-detail-table"><thead><tr><th>{t("assessment.row")}</th><th>{t("assessment.processActivity")}</th><th>{t("assessment.failureMode")}</th><th>{t("assessment.effect")}</th><th>{t("assessment.cause")}</th><th>{t("assessment.existingControls")}</th><th title={t("assessment.severity")}>S</th><th title={t("assessment.occurrence")}>O</th><th title={t("assessment.detection")}>D</th><th>RPN</th><th>{t("assessment.riskLevel")}</th><th>{t("assessment.recommendation")}</th></tr></thead><tbody>{assessment.items.map((item) => {
+        const controls = [item.preventiveControls, item.detectionControls].filter((value): value is string => Boolean(value?.trim()));
+        return <tr key={item.id}><td className="report-table-number">{item.rowNumber.toLocaleString(numberLocale)}</td><td className="report-table-text">{processName}</td><td className="report-table-text"><strong>{item.failureMode}</strong></td><td className="report-table-text">{item.effect}</td><td className="report-table-text">{item.cause}</td><td className="report-table-text"><div className="report-table-stack">{controls.length ? controls.map((control, index) => <span key={item.id + "-control-" + index}>{control}</span>) : <span>—</span>}</div></td><td className="report-table-number">{item.severity.toLocaleString(numberLocale)}</td><td className="report-table-number">{item.occurrence.toLocaleString(numberLocale)}</td><td className="report-table-number">{item.detection.toLocaleString(numberLocale)}</td><td className="report-table-number"><strong className="rpn-number">{item.rpn.toLocaleString(numberLocale)}</strong></td><td className="report-table-number"><StatusBadge value={item.riskLevel}/></td><td className="report-table-text">{item.recommendation?.trim() || "—"}</td></tr>;
+      })}</tbody></table></div> : !loading && !error ? <EmptyState title={t("assessment.noRiskRows")} description={t("assessment.addFirstRisk")} icon="fmea"/> : null}
+    </details>
+  </SectionCard>;
+}
 function FmeaItemEditor({ item, saving, onCancel, onSave }: { item: FmeaItem; saving: boolean; onCancel: () => void; onSave: (draft: FmeaItemDraft) => Promise<void> }) {
   const { locale, t } = useI18n();
   const [draft, setDraft] = useState<FmeaItemDraft>(() => fmeaItemDraftFromRow(item));
@@ -665,6 +681,9 @@ function FmeaProcessPage() {
   const [scores, setScores] = useState({ severity: 1, occurrence: 1, detection: 1 });
   const [reviewRiskDraft, setReviewRiskDraft] = useState<FmeaRiskRowInput>(emptyFmeaRiskRowInput);
   const [reviewRiskRows, setReviewRiskRows] = useState<FmeaRiskRowInput[]>([]);
+  const [reviewDetailSeedLoading, setReviewDetailSeedLoading] = useState(false);
+  const [reviewDetailSeedError, setReviewDetailSeedError] = useState("");
+  const [reviewDetailSeedRetry, setReviewDetailSeedRetry] = useState(0);
   const [wizardStep, setWizardStep] = useState<FmeaWizardStep>(() => editingAssessmentId ? requestedWizardStep : readFmeaWizardStep(draftKey));
   const [creating, setCreating] = useState(false);
   const [draft, setDraftState] = useState<DraftRecord | null>(() => editingExistingAssessment ? null : readLocalDraft(draftKey));
@@ -739,6 +758,7 @@ function FmeaProcessPage() {
   const autofilledFields = useRef<Set<FmeaAutofillField>>(new Set());
   const scoreTouchedRef = useRef(false);
   const reviewScoreTouchedRef = useRef(false);
+  const reviewDetailSeedRequestKeyRef = useRef("");
   const creatingRef = useRef(false);
   const { session, orgId } = getSession();
   const itemDraftKey = scopedDraftKey(`fmea-item:${selected || "new"}`, session?.user.id, orgId);
@@ -1750,6 +1770,41 @@ function FmeaProcessPage() {
     void saveBlob(`/reports/fmea/${selectedAssessment.id}.${format}`, filename).catch((reason) => setError((reason as Error).message));
   }
 
+  function retryReviewDetailSeed() {
+    reviewDetailSeedRequestKeyRef.current = "";
+    setReviewDetailSeedError("");
+    setReviewDetailSeedRetry((attempt) => attempt + 1);
+  }
+
+  useEffect(() => {
+    if (!editingAssessmentId || wizardStep !== 2 || !selectedAssessment || !canEdit()) return;
+    const requestKey = editingAssessmentId + ":" + locale;
+    if (reviewDetailSeedRequestKeyRef.current === requestKey) return;
+    reviewDetailSeedRequestKeyRef.current = requestKey;
+    let active = true;
+    let completed = false;
+    setReviewDetailSeedLoading(true);
+    setReviewDetailSeedError("");
+    void api<FmeaReportDetailSuggestionsResponse>("/fmea/" + encodeURIComponent(editingAssessmentId) + "/report/detail-suggestions", {
+      method: "POST",
+      body: JSON.stringify({ locale, autoCreate: true }),
+    }).then(() => {
+      if (!active) return;
+      completed = true;
+      state.reload();
+    }).catch((reason) => {
+      if (!active) return;
+      completed = true;
+      reviewDetailSeedRequestKeyRef.current = "";
+      setReviewDetailSeedError((reason as Error).message);
+    }).finally(() => {
+      if (active) setReviewDetailSeedLoading(false);
+    });
+    return () => {
+      active = false;
+      if (!completed && reviewDetailSeedRequestKeyRef.current === requestKey) reviewDetailSeedRequestKeyRef.current = "";
+    };
+  }, [editingAssessmentId, locale, reviewDetailSeedRetry, selectedAssessment, wizardStep]);
   useEffect(() => {
     if (wizardStep !== 2) return;
     const frame = window.requestAnimationFrame(() => {
@@ -1814,6 +1869,7 @@ function FmeaProcessPage() {
         <fieldset ref={fmeaReviewStepRef} id="fmea-review-step" data-step="2" hidden={wizardStep !== 2}><legend>{t("assessment.review")}</legend><input type="hidden" data-fmea-auto-metadata="true" name="code" value={assessmentCode}/><input type="hidden" data-fmea-auto-metadata="true" name="scope" value={assessmentScope ?? ""}/><div className="fmea-process-review"><div className="wizard-review"><Icon name="check" size={25}/><div><strong>{t("assessment.reviewReadyFmea")}</strong><p>{t("assessment.reviewFmeaDescription")}</p></div></div><div className="fmea-review-grid"><div><small>{t("assessment.jobActivity")}</small><strong>{jobQuery || "—"}</strong></div><div><small>{t("assessment.department")}</small><strong>{department || "—"}</strong></div><div className="fmea-review-wide"><small>{t("assessment.activityDescription")}</small><p>{activityDescription || "—"}</p></div><div className="fmea-review-wide"><small>{t("assessment.selectedItems")}</small><div className="fmea-review-chips">{processSuggestionCategories.flatMap((category) => selectedItems[category].map((item) => <span key={`${category}-${item}`}>{item}</span>)).length ? processSuggestionCategories.flatMap((category) => selectedItems[category].map((item) => <span key={`${category}-${item}`}>{item}</span>)) : <span>—</span>}</div></div></div></div></fieldset>
         <fieldset ref={fmeaReportStepRef} id="fmea-report-step" data-step="3" hidden={wizardStep !== 3}><legend>{t("assessment.reportResults")}</legend><div className="fmea-process-review fmea-report-preview"><div className="wizard-review"><Icon name="chart" size={25}/><div><strong>{t("assessment.fmeaReportPreviewTitle")}</strong><p>{t(editingAssessmentId ? "assessment.fmeaReportPreviewSavedDescription" : "assessment.fmeaReportPreviewDraftDescription")}</p></div></div><div className="fmea-review-grid"><div><small>{t("assessment.projectRequired")}</small><strong>{selectedProject ? projectName(selectedProject, locale) : "—"}</strong></div><div><small>{t("assessment.jobActivity")}</small><strong>{jobQuery || "—"}</strong></div><div><small>{t("assessment.codeRequired")}</small><strong>{assessmentCode}</strong></div><div><small>{t("assessment.riskRowCount")}</small><strong>{reviewRiskRows.length.toLocaleString(numberLocale)}</strong></div><div className="fmea-review-wide"><small>{t("assessment.activityDescription")}</small><p>{activityDescription || "—"}</p></div></div>{editingAssessmentId && <div className="wizard-actions"><span/><button type="button" className="primary" onClick={() => navigate(`/fmea/${editingAssessmentId}/report`)}>{t("assessment.openReport")} <Icon name="arrow"/></button></div>}</div></fieldset>
         {wizardStep === 2 && <FmeaReviewRiskRow draft={reviewRiskDraft} rows={reviewRiskRows} context={{ projectName: projects.data?.find((project) => project.id === selectedProjectId)?.name ?? null, jobTitle: jobQuery, department, activityDescription, processStep: activityDescription }} autoEnabled={fmeaAssistantEnabled} onChange={updateReviewRiskDraft} onScoreChange={(kind, value) => updateReviewRiskDraft(kind, value)} onAdd={addReviewRiskRow} onRemove={removeReviewRiskRow} onAccept={(field, value) => applyReviewRiskSuggestion(field, value)} onAutoAccept={(field, value) => applyReviewRiskSuggestion(field, value, true)} onAcceptScore={(suggestion) => applyReviewRiskScoreSuggestion(suggestion)} onAutoAcceptScore={(suggestion) => applyReviewRiskScoreSuggestion(suggestion, true)} />}
+        {editingExistingAssessment && wizardStep === 2 && selectedAssessment && <FmeaStageTwoDetailsCard assessment={selectedAssessment} loading={reviewDetailSeedLoading} error={reviewDetailSeedError} onRetry={retryReviewDetailSeed}/>}
         <div className="wizard-actions"><button className="ghost" type="button" disabled={wizardStep === 1 || creating} onClick={goToPreviousWizardStep}>{t("assessment.previousStep")}</button>{wizardStep === 1 ? <button className="primary" type="button" onClick={continueToFmeaReview}>{t("common.next")} <Icon name="arrow"/></button> : wizardStep === 2 ? <button className="primary" type="submit" disabled={creating}><Icon name={creating ? "clock" : "plus"}/> {creating ? t("assessment.registeringFmea") : t(editingExistingAssessment ? "assessment.saveFmeaAndOpenReport" : "assessment.createFmeaAndOpenReport")}</button> : <button className="primary" type="button" onClick={() => editingAssessmentId ? navigate(`/fmea/${editingAssessmentId}/report`) : setWizardStep(2)}>{t(editingAssessmentId ? "assessment.openReport" : "assessment.returnToReview")} <Icon name="arrow"/></button>}</div>{!editingExistingAssessment && <AutoSaveStatus lastSaved={lastSaved} hasError={autosaveError}/>}
       </form>
     </SectionCard>}
