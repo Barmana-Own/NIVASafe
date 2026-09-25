@@ -27,7 +27,7 @@
   "latestAssessmentDraftResetChange": {
     "status": "PASS_LOCAL",
     "scope": "Starting a new FMEA or RULA assessment from /choose-path now clears only the selected method's user/organization-scoped localStorage and IndexedDB draft plus the FMEA wizard-step marker before navigation, while leaving autosave recovery available when the user exits an active form without starting a fresh assessment.",
-    "validation": "PASS — ۲۰۹ تست (۹۰ frontend، ۱۰۷ backend، ۱۲ shared-domain)، تست متمرکز draft/path (۸۳ تست)، workspace typecheck، lint، production build، API contract verification (۶۵ frontend paths / ۱۱۶ backend routes)، release verification (۲۸ checks)، production dependency audit، project-state JSON parse و git diff check موفق شدند. انتشار واقعی و smoke test مرورگر احراز‌شده اجرا نشد.",
+    "validation": "PASS — ۲۰۸ تست (۸۹ frontend، ۱۰۷ backend، ۱۲ shared-domain)، تست متمرکز draft/path (۸۳ تست)، workspace typecheck، lint، production build، API contract verification (۶۵ frontend paths / ۱۱۶ backend routes)، release verification (۲۸ checks)، production dependency audit، project-state JSON parse و git diff check موفق شدند. انتشار واقعی و smoke test مرورگر احراز‌شده اجرا نشد.",
     "deployment": "NOT_PERFORMED — local-only scope"
   },
   "latestAssistantMobileResponsiveChange": {
