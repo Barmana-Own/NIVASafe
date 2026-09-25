@@ -49,7 +49,15 @@
     "validation": "PASS — تست متمرکز UI (۸۶ تست)، pnpm test (۲۱۵ تست شامل ۹۶ frontend، ۱۰۷ backend و ۱۲ shared-domain)، typecheck، lint، production build، API contract verification (۶۶ مسیر frontend / ۱۱۶ route backend)، release verification (۲۸ checks)، production dependency audit و git diff check موفق شدند. مرور بصری authenticated browser اجرا نشد چون browser automation محلی در دسترس نبود.",
     "migration": "NOT_APPLICABLE — فقط markup، CSS و تست frontend تغییر کردند و از endpoint و مدل داده موجود استفاده شد.",
     "deployment": "NOT_PERFORMED — محدوده این تغییر فقط source/local است"
-  },  "latestFmeaStageTwoDetailsChange": {
+  },
+  "latestRulaManualActionFormResponsiveChange": {
+    "status": "PASS_LOCAL",
+    "scope": "فرم افزودن اقدام اصلاحی دستی RULA اکنون در سه ردیف هم‌تراز برای اطلاعات متنی، کنترل‌های اقدام و ثبت نهایی قرار دارد؛ در موبایل تک‌ستونه و دکمه ثبت تمام‌عرض است و در تبلت/دسکتاپ grid منعطف بدون overflow دارد، در حالی که state و مسیر ثبت اقدام موجود حفظ شده‌اند.",
+    "validation": "PASS — تست متمرکز UI (۹۷ تست frontend)، pnpm test (۲۱۶ تست شامل ۹۷ frontend، ۱۰۷ backend و ۱۲ shared-domain)، typecheck، lint، production build، API contract verification (۶۶ مسیر frontend / ۱۱۶ route backend)، release verification (۲۸ checks)، production dependency audit و git diff check موفق شدند. مرور بصری authenticated browser اجرا نشد چون browser automation احراز‌شده محلی در دسترس نبود.",
+    "migration": "NOT_APPLICABLE — فقط markup، CSS و تست frontend تغییر کردند و از API و مدل داده موجود استفاده شد.",
+    "deployment": "NOT_PERFORMED — محدوده این تغییر فقط source/local است"
+  },
+  "latestFmeaStageTwoDetailsChange": {
     "status": "PASS_LOCAL",
     "scope": "در مرحله دوم FMEA برای ارزیابی ثبت‌شده، کارت جزئیات گزارش در انتهای فرم نمایش داده می‌شود و هنگام ورود، endpoint موجود detail-suggestions با autoCreate=true دقیقاً پنج ردیف اولیه را به‌صورت idempotent ایجاد می‌کند؛ پس از تکمیل، داده‌های ذخیره‌شده دوباره بارگذاری می‌شوند و خطای درخواست با امکان retry نمایش داده می‌شود.",
     "validation": "PASS — تست متمرکز UI (۸۵ تست)، pnpm test (۲۱۴ تست شامل ۹۵ frontend، ۱۰۷ backend و ۱۲ shared-domain)، typecheck، lint، production build، API contract verification (۶۶ frontend paths / ۱۱۶ backend routes)، release verification (۲۸ checks)، production dependency audit و git diff check موفق شدند. مرور بصری authenticated browser اجرا نشد چون browser automation محلی در دسترس نبود.",

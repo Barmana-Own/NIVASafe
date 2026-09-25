@@ -506,3 +506,20 @@ asset عمومی CSS rule مشترک و selectorهای header را ارائه م
 - authenticated browser visual smoke: NOT_RUN — نشست browser automation محلی در دسترس نبود.
 - migration/database changes: NOT_APPLICABLE — از endpoint و مدل داده موجود استفاده شد.
 - external deployment: NOT_PERFORMED — محدوده این تغییر فقط source/local است.
+## Checkpoint 2026-09-26 — هم‌ترازی و ریسپانسیو کردن فرم «افزودن اقدام اصلاحی دستی» در RULA
+
+- فرم اقدام اصلاحی دستی RULA اکنون ساختار سه‌بخشی و هم‌تراز دارد: اطلاعات متنی، کنترل‌های اقدام و ردیف مستقل دکمه ثبت؛ مسیر state و ثبت اقدام موجود بدون تغییر حفظ شده است.
+- چیدمان فرم mobile-first است؛ در موبایل همه کنترل‌ها تک‌ستونه و دکمه تمام‌عرض می‌شوند، در تبلت/دسکتاپ فیلدهای متن و کنترل‌ها به gridهای منعطف تقسیم می‌شوند، و ورودی‌ها، selectها و دکمه ثبت از ارتفاع کنترل مشترک استفاده می‌کنند.
+- گروه عوامل مرتبط به grid واکنش‌گرا تبدیل شد و حداقل target لمسی کنترل‌ها حفظ شد؛ عرض فرم و اجزای داخلی نیز با `min-width: 0` از overflow افقی جلوگیری می‌کنند.
+- `pnpm --filter @nivasafe/web test -- src/ui-rules.test.ts`: PASS — ۹۷ تست frontend، شامل ۸۷ تست UI rules.
+- `pnpm test`: PASS — مجموع ۲۱۶ تست (۹۷ frontend، ۱۰۷ backend و ۱۲ shared-domain).
+- `pnpm typecheck`: PASS — هر ۳ package.
+- `pnpm lint`: PASS — هر ۳ package.
+- `pnpm build`: PASS — build تولیدی هر ۳ package موفق شد؛ هشدار اندازه chunk اصلی غیرمسدودکننده است.
+- `pnpm verify:contract`: PASS — ۶۶ مسیر frontend با ۱۱۶ route backend تطبیق داده شدند.
+- `pnpm verify:release`: PASS — ۲۸ بررسی.
+- `pnpm audit --prod --audit-level high`: PASS — آسیب‌پذیری شناخته‌شده‌ای یافت نشد.
+- `git diff --check` و parse فایل project state: PASS — فقط هشدار نرمال‌سازی line ending ویندوز گزارش شد.
+- authenticated browser visual smoke: NOT_RUN — نشست browser automation احراز‌شده محلی در دسترس نبود.
+- migration/database changes: NOT_APPLICABLE — فقط markup، CSS و تست frontend تغییر کردند.
+- external deployment: NOT_PERFORMED — محدوده این تغییر فقط source/local است.

@@ -593,7 +593,18 @@ describe("RULA assessment results view", () => {
     const impactPanelIndex = assessmentPagesSource.indexOf('<aside className="rula-report-impact-panel"');
     expect(manualFormIndex).toBeGreaterThan(impactPanelIndex);
     expect(assessmentPagesSource).toContain('</aside></div>{onAddAction && <div className="rula-manual-action-form"');
-    expect(stylesSource).toContain(".rula-corrections-section > .rula-manual-action-form { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }");
+    expect(stylesSource).toContain(".rula-corrections-section > .rula-manual-action-form {");
+    expect(stylesSource).toContain("max-width: 100%;");
+  });
+  it("keeps manual RULA action controls grouped into aligned responsive rows", () => {
+    expect(assessmentPagesSource).toContain('className="rula-manual-action-text-fields"');
+    expect(assessmentPagesSource).toContain('className="rula-manual-action-control-fields"');
+    expect(assessmentPagesSource).toContain('className="rula-manual-action-form-actions"');
+    expect(stylesSource).toContain(".rula-manual-action-text-fields {");
+    expect(stylesSource).toContain(".rula-manual-action-control-fields {");
+    expect(stylesSource).toContain(".rula-manual-action-form-actions {");
+    expect(stylesSource).toContain("grid-template-columns: 1fr;");
+    expect(stylesSource).toContain("min-height: var(--control-height);");
   });
 
   it("removes the redundant RULA result stepper from stage three", () => {
