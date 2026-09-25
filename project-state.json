@@ -4,11 +4,68 @@
   "task": "Bilingual interface with explicit language selection, locale-aware brand alignment, preserved form auto-save, reliable registration account-type selection, secure registration contact and username validation, direct login with a server-assigned workspace, multi-company workspace management with independent subscriptions and tenant isolation, dedicated administrator workspaces, role-specific ArvanCloud AI integration with per-user token accounting, complete FMEA reporting, structured RULA process-information capture, editable RULA posture analysis, RULA results/corrective-action prediction reporting, a three-stage FMEA creation stepper with explicit process-information to review/register transition and report/results labels, a production-ready installable PWA with controlled updates, selectable blue/dark and white/light authenticated shell themes, removal of PDF download controls from authenticated assessment panels, automatic FMEA risk-row numbering/process context, three-visible expandable FMEA risk-row AI suggestions, PDF-reference aligned FMEA score panels, automatic editable FMEA risk-row text and S/O/D autofill for empty/untouched fields, database-backed job/process title suggestions with explicit user selection and expanded organization/global catalog search, project-scoped editable FMEA process-information autofill with a local assistant toggle, FMEA report manual-action form scroll-to-entry behavior, separate FMEA report view/edit operations with AI-generated editable detail drafts, requested RULA creation-step labels, optional RULA assessment title and both-body-side selection, a blue-theme sidebar logo with a white surround preserving original logo colors, site-wide styled native select controls and option states, and a consolidated project creation form with atomic initial process/activity bootstrap, global Enter-to-next-field navigation and automatic inline add/edit panel scroll/focus behavior, and a database-backed fast FMEA job-title catalog with local filtering and expanded industrial roles",
   "classification": "focused-cross-cutting-change",
   "status": "complete",
+  "latestUserProvisioningChange": {
+    "status": "PASS_LOCAL",
+    "scope": "Add username-aware authentication and recovery, keep self-registration usernames optional, add a tenant-scoped organization member request workflow, and let Super Admins approve requests with a strong initial password while preserving legacy email invitations and existing account/password controls.",
+    "migration": "backend/prisma/migrations/202609250002_usernames_member_access_requests/migration.sql",
+    "validation": "PASS — 203 tests (104 backend, 87 frontend, 12 shared-domain), workspace typecheck/lint/build, Prisma generate/validate, API contract verification, release verification (27 checks), production dependency audit and git diff check. Local frontend returned HTTP 200 on port 5043; API started on port 5044 and returned HTTP 503 health because the existing local MySQL service is stopped, so database-backed smoke and migration deployment remain NOT_RUN.",
+    "deployment": "NOT_PERFORMED — local-only scope"
+  },
+  "latestActivityLogDetailChange": {
+    "status": "PASS_LOCAL",
+    "scope": "The user-facing audit surface now presents a bilingual Activity Log. Every authenticated user can see their own selected-organization and account-level sign-in/sign-out, assessment and AI activity; organization administrators and HSE managers can see the selected organization's activity and active covered members. FMEA/RULA title and code enrichment, provider-reported AI token totals, tenant-safe login/logout recording, chat activity recording and the legacy /audit compatibility path are preserved.",
+    "migration": "backend/prisma/migrations/202609250003_activity_log_scope/migration.sql",
+    "validation": "PASS — 208 tests (107 backend, 89 frontend, 12 shared-domain), workspace typecheck, lint, Prisma validate/generate, production build, API contract verification, production dependency audit and git diff check passed. Migration deployment and authenticated browser visual smoke were NOT_RUN; deployment was not performed.",
+    "deployment": "NOT_PERFORMED — local-only scope"
+  },
+  "latestPwaIdentityChange": {
+    "status": "PASS_LOCAL",
+    "scope": "The installable PWA now exposes the exact NIVASafe application name, an explicit application title, branded self-contained vector artwork alongside the 192px/512px PNG icons, maskable icon purposes and a v15 service-worker migration to refresh stale installed clients.",
+    "validation": "PASS — ۲۰۸ تست (۱۰۷ backend، ۸۹ frontend، ۱۲ shared-domain)، تست متمرکز PWA (۴ تست)، syntax service worker، typecheck، lint، production build، API contract verification، release verification (۲۸ بررسی)، production dependency audit و git diff check موفق شدند. انتشار واقعی و smoke test نصب روی دستگاه اجرا نشد.",
+    "deployment": "NOT_PERFORMED — local-only scope"
+  },
+  "latestAssessmentDraftResetChange": {
+    "status": "IN_PROGRESS",
+    "scope": "Starting a new FMEA or RULA assessment from /choose-path now clears only the selected method's user/organization-scoped localStorage and IndexedDB draft plus the FMEA wizard-step marker before navigation, while leaving autosave recovery available when the user exits an active form without starting a fresh assessment.",
+    "validation": "IN_PROGRESS — focused draft/path tests and frontend typecheck passed; full workspace tests, lint, production build, release verification and diff review remain required.",
+    "deployment": "NOT_PERFORMED — local-only scope"
+  },
+  "latestAssistantMobileResponsiveChange": {
+    "status": "PASS_LOCAL",
+    "scope": "The authenticated mobile topbar keeps the title and utility controls on one row, the RTL language menu stays inside the viewport, and the assistant page keeps its conversation list, chat log, and touch-sized composer usable within a bounded mobile layout.",
+    "validation": "PASS — focused assistant UI coverage, workspace typecheck, lint, 204 tests (104 backend, 88 frontend, 12 shared-domain), production build, API contract verification, and source diff review. Browser visual smoke was NOT_RUN because the local authenticated browser automation session was unavailable.",
+    "deployment": "NOT_PERFORMED — local-only scope"
+  },
+  "latestPublicLoginMobilePolishChange": {
+    "status": "PASS_LOCAL",
+    "scope": "The public mobile login toolbar now has horizontal breathing room, the mobile brand subtitle uses the smart occupational safety and health wording in both locales, and the support/approval bar reaches the bottom edge while preserving the safe-area inset.",
+    "validation": "PASS — focused public-login UI coverage, workspace typecheck, lint, 205 tests (104 backend, 89 frontend, 12 shared-domain), production build, API contract verification, and source diff review. Browser visual smoke was NOT_RUN because the local authenticated browser automation session was unavailable.",
+    "deployment": "NOT_PERFORMED — local-only scope"
+  },
   "latestFmeaReportDetailAutoSeedChange": {
     "status": "PASS_LOCAL",
     "scope": "FMEA report detail AI suggestions are now persisted automatically as five editable default risk rows using project/process context; the manual five-card suggestion panel is no longer rendered, duplicate/concurrent seeding is tenant-scoped and transactionally guarded, and server-side RPN/risk values are calculated before insertion.",
     "validation": "PASS — 99 backend tests, 84 frontend tests, 12 shared-domain tests, workspace lint, typechecks, production build, Prisma validation, API contract verification, release verification and git diff check.",
     "deployment": "NOT_PERFORMED — local-only scope; local frontend is running on port 5043 and local API health returned HTTP 200 on port 5044."
+  },
+  "latestAccountActivityRoleChange": {
+    "status": "PASS_VALIDATED",
+    "scope": "Replace the user-facing audit-events section with a detailed Activity Log, keep the legacy route as a compatibility redirect/alias, add Super Admin account activation and strong replacement-password controls with session revocation, and add the HSE/limited organization role model without removing legacy enum values.",
+    "migration": "backend/prisma/migrations/202609250001_account_roles_activity_log/migration.sql",
+    "validation": "PASS — 198 tests (100 backend, 86 frontend, 12 shared-domain), workspace typecheck, workspace lint, full production build, Prisma schema validation, API contract verification, production dependency audit, source security review and git diff check. Migration deployment NOT_RUN because the configured local MySQL service was unavailable on 127.0.0.1:3306.",
+    "deployment": "NOT_PERFORMED — local-only scope"
+  },
+  "latestAssessmentAiIdentityChange": {
+    "status": "PASS_VALIDATED",
+    "scope": "Assessment and risk-suggestion AI responses no longer include a generic assistant introduction; the introduction remains available for the assistant chat use case, including fallback responses, and known introductory text is removed defensively from risk-provider output.",
+    "validation": "PASS — 200 tests (102 backend, 86 frontend, 12 shared-domain), workspace typecheck, workspace lint, production build, API contract verification, production dependency audit and git diff check.",
+    "deployment": "NOT_PERFORMED — local-only scope; no schema or migration change was required"
+  },
+  "latestFmeaProcessSuggestionCounterChange": {
+    "status": "PASS_VALIDATED",
+    "scope": "The FMEA process-suggestion counter now renders localized selected and maximum values as actual numbers instead of exposing the placeholder names.",
+    "validation": "PASS — 200 tests (102 backend, 86 frontend, 12 shared-domain), workspace typecheck, workspace lint, production build, API contract verification and git diff check.",
+    "deployment": "NOT_PERFORMED — local-only scope; no schema or migration change was required"
   },
   "currentChange": "RULA repetitive-muscle use now opens two explicit criteria with scores 1 and 0; the selected criterion is preserved in the draft/FormData contract and the shared calculation adds its score to the final bounded result; the verified release is active in production.",
   "currentLocalChange": {
@@ -579,6 +636,7 @@
     "rulaMuscleUseValidation": "PASS locally (RULA stage-two repetitive-muscle use now opens two localized reference-based criteria with explicit score 1 or 0, preserves the selected boolean in draft/FormData, and adds the corresponding adjustment to the final bounded score; 192 tests, typecheck, production build, API contract, release verification and dependency audit passed)",
     "rulaMuscleUseDeployment": "PASS (release release-20260922-rula-muscle-score is active with matching local/staged/active frontend, backend and shared-domain hashes; no migration was required, rollback is retained, API/MySQL health is up, API/Nginx tasks are Running, one listener owns 127.0.0.1:5044 and public HTTPS/PWA/health smoke returned HTTP 200)"
   },
+  "rulaJobCatalogSearchValidation": "PASS locally (the RULA job field reuses the FMEA JobCatalogSearch control with organization/global suggestions, normalized Persian/English local filtering, custom-title fallback and draft persistence; 87 frontend tests, workspace lint/typecheck/tests and production build passed; authenticated browser click-through is NOT_RUN because local browser automation was unavailable; no deployment was performed)",
   "changedFiles": [
     "shared/domain/src/validation.ts",
     "shared/domain/src/index.ts",

@@ -8,7 +8,7 @@ import { PathSelectionPage, RegisterPage } from "./features/account/Registration
 import { FmeaPage, FmeaReportPage, RulaPage, RulaReportPage } from "./features/assessments/AssessmentPages";
 import { AssistantPage } from "./features/assistant/AssistantPage";
 import { FilesPage } from "./features/files/FilesPage";
-import { ActionsPage, AuditPage, ComingSoonPage, DashboardPage, HealthPage, KnowledgePage, NotificationsPage, OrganizationsPage, ProjectsPage } from "./features/general/GeneralPages";
+import { ActionsPage, ActivityLogPage, ComingSoonPage, DashboardPage, HealthPage, KnowledgePage, NotificationsPage, OrganizationsPage, ProjectsPage } from "./features/general/GeneralPages";
 import { DialogProvider, FormInteractionEnhancer, PageLoadingScreen } from "./components/UI";
 import { useI18n } from "./i18n";
 import { RequiredFieldValidation } from "./forms/requiredFieldValidation";
@@ -36,9 +36,10 @@ function ApplicationRoutes() {
     <Routes>
       <Route path="/login" element={<LoginPage />} /><Route path="/register" element={<RegisterPage />} /><Route path="/accept-invitation" element={<AcceptInvitationPage />} /><Route path="/forgot-password" element={<ForgotPasswordPage />} /><Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route element={<ProtectedLayout />}><Route index element={<DashboardPage />} /><Route path="choose-path" element={<PathSelectionPage />} /><Route path="projects" element={<ProjectsPage />} /><Route path="fmea" element={<FmeaPage />} /><Route path="fmea/:id/report" element={<FmeaReportPage />} /><Route path="rula" element={<RulaPage />} /><Route path="rula/:id/report" element={<RulaReportPage />} /><Route path="actions" element={<ActionsPage />} /><Route path="checklists" element={<ComingSoonPage titleKey="nav.checklists" descriptionKey="comingSoon.checklistsDescription" icon="audit" />} /><Route path="incidents" element={<ComingSoonPage titleKey="nav.incidents" descriptionKey="comingSoon.incidentsDescription" icon="warning" />} /><Route path="files" element={<FilesPage />} /><Route path="knowledge" element={<KnowledgePage />} /><Route path="assistant" element={<AssistantPage />} /><Route path="notifications" element={<NotificationsPage />} /><Route path="profile" element={<ProfilePage />} />
-        <Route path="members" element={<AccessGuard roles={["SUPER_ADMIN", "ORG_ADMIN"]}><MembersPage /></AccessGuard>} />
+        <Route path="members" element={<AccessGuard roles={["SUPER_ADMIN", "ORG_ADMIN", "HSE_MANAGER"]}><MembersPage /></AccessGuard>} />
         <Route path="admin" element={<AccessGuard roles={["SUPER_ADMIN", "ORG_ADMIN"]}><AdminRoute /></AccessGuard>} />
-        <Route path="audit" element={<AccessGuard roles={["SUPER_ADMIN", "ORG_ADMIN", "HSE_MANAGER"]}><AuditPage /></AccessGuard>} />
+        <Route path="activity-log" element={<ActivityLogPage />} />
+        <Route path="audit" element={<Navigate to="/activity-log" replace />} />
         <Route path="health" element={<AccessGuard roles={["SUPER_ADMIN", "ORG_ADMIN"]}><HealthPage /></AccessGuard>} />
         <Route path="organizations" element={<OrganizationsPage />} />
         <Route path="*" element={<NotFound />} />

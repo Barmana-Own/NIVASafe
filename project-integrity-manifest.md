@@ -19,11 +19,11 @@ This lightweight baseline protects the existing product surface while focused cr
 - FMEA results report with executive risk metrics, distribution/top-risk views, suggested and manual corrective actions, row-linked action tracking, collapsible full details and PDF/export summary.
 - RULA process information and posture analysis with editable Group A/Group B observations, score recalculation, posture-photo review and future-ready joint overlay.
 - RULA results report with score/risk, neck/upper-arm/trunk contributing factors, persisted corrective actions, manual action entry and explicitly non-definitive dynamic prediction.
-- Corrective actions, files, knowledge, AI, chat, notifications and audit.
+- Corrective actions, files, knowledge, AI, chat, notifications and activity logging.
 - Responsive navigation and PWA/offline shell.
 - Dashboard KPI/risk/action/recent/quick-action widgets with user-scoped layout customization, visibility, ordering and reversible removal/restore controls.
 - Global and organization administrator workspaces with separate navigation styling and centralized user-account controls.
-- Administrator-managed invitations for organization administrators and bounded assistants, with server-enforced role boundaries.
+- Administrator-managed member provisioning: organization managers submit username-based requests, Super Admins approve/reject and set an initial password, and the legacy invitation path remains available for existing accounts.
 - Multi-company workspace creation and switching with independent organization memberships, per-company subscriptions and tenant-scoped operational access.
 
 ## Baseline comparison for the current change
@@ -35,6 +35,9 @@ This lightweight baseline protects the existing product surface while focused cr
 - Provider-reported AI token usage is persisted in an additive accounting table and displayed with tenant-safe administrator aggregates; prompts, responses and credentials are not included in usage reports.
 - The new `/admin` route and `/admin/*` API surface are additive; global account controls are restricted to `SUPER_ADMIN`, while `ORG_ADMIN` receives a tenant-scoped administration view backed by the existing `/members` route.
 - The `ASSISTANT` role and its enum migration are additive; existing roles, memberships, routes and invitation acceptance behavior remain preserved.
+- Username authentication and the `MemberAccessRequest` entity/migration are additive; self-registration keeps username optional, organization provisioning requires it, existing email login/recovery contracts remain compatible, and no password plaintext is persisted.
+- The former user-facing audit-events section is replaced equivalently by the detailed `/activity-log` surface; ordinary users see their own activity while organization managers see active covered members, assessment titles/codes and available AI token totals. Existing audit records and the legacy `/audit` API path remain preserved. Request context fields and lookup indexes are additive.
+- Super Admin account activation, membership-role updates and replacement-password controls are additive; current passwords are never exposed and target sessions are revoked after a password reset.
 - Autosave was added through reusable form infrastructure and existing protected pages/routes remain intact; password/recovery forms stay intentionally excluded from drafts.
 - The FMEA report route, report/save audit endpoint and `CorrectiveAction.fmeaItemId` migration are additive; existing assessment, action, export and role boundaries remain available, and row deletion preserves linked action records by nulling the reference.
 - RULA posture analysis is additive: `postureAnalysis` is nullable, validated at the API boundary, preserved in version snapshots and does not remove or invalidate existing scoring inputs.

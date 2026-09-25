@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { SUBSCRIPTION_PLANS, detectContactInput, isForbiddenDisplayName, isStrongPassword, isValidContactInput, isValidDisplayName, normalizeDigits, normalizeDisplayName, normalizeEmail, normalizePhone, PASSWORD_MIN_LENGTH, type ContactInputKind } from "@nivasafe/domain";
-import { api, ASSESSMENT_PATH_KEY, getCurrentLocale, saveSession, type ApiError, type Session } from "../../api/client";
+import { SUBSCRIPTION_PLANS, USERNAME_MAX_LENGTH, detectContactInput, isForbiddenDisplayName, isStrongPassword, isValidContactInput, isValidDisplayName, isValidUsername, normalizeDigits, normalizeDisplayName, normalizeEmail, normalizePhone, normalizeUsername, PASSWORD_MIN_LENGTH, type ContactInputKind } from "@nivasafe/domain";
+import { api, ASSESSMENT_PATH_KEY, getCurrentLocale, getSession, type ApiError } from "../../api/client";
 import { Icon, PageHeader, StyledSelect } from "../../components/UI";
-import { AutoSaveStatus } from "../../forms/AutoSaveForm";
+import { AutoSaveStatus, clearAutoSaveDraft } from "../../forms/AutoSaveForm";
+import { assessmentDraftKey, clearAssessmentWizardStep } from "../../forms/autoSave";
 import { LanguageSwitcher, brandAltForLocale, brandLogoForLocale, translate, useI18n } from "../../i18n";
 
 type RegistrationKind = "personal" | "organization";
@@ -12,6 +13,7 @@ type RegistrationDraft = {
   firstName: string;
   lastName: string;
   displayName: string;
+  username: string;
   email: string;
   activityArea: string;
   companyName: string;
@@ -48,6 +50,7 @@ const emptyDraft: RegistrationDraft = {
   firstName: "",
   lastName: "",
   displayName: "",
+  username: "",
   email: "",
   activityArea: "",
   companyName: "",
@@ -60,7 +63,7 @@ const emptyDraft: RegistrationDraft = {
   confirmPassword: "",
 };
 
-type RegistrationField = "firstName" | "lastName" | "email" | "phone" | "password" | "confirmPassword" | "companyName" | "industry" | "employees";
+type RegistrationField = "firstName" | "lastName" | "username" | "email" | "phone" | "password" | "confirmPassword" | "companyName" | "industry" | "employees";
 type RegistrationFieldErrors = Partial<Record<RegistrationField, string>>;
 
 function registrationErrorMessage(reason: unknown): string {
@@ -73,6 +76,8 @@ function registrationErrorMessage(reason: unknown): string {
     WEAK_PASSWORD: translate("auth.passwordRequirements", locale, { min: PASSWORD_MIN_LENGTH }),
     EMAIL_IN_USE: translate("registration.emailInUse", locale),
     PHONE_IN_USE: translate("registration.phoneInUse", locale),
+    INVALID_USERNAME: translate("registration.invalidUsername", locale),
+    USERNAME_IN_USE: translate("registration.usernameInUse", locale),
     INVALID_NAME: translate("registration.invalidName", locale),
     DUPLICATE_VALUE: translate("registration.duplicate", locale),
     VALIDATION_ERROR: translate("registration.validation", locale),
@@ -85,6 +90,7 @@ function registrationErrorField(reason: unknown): RegistrationField | null {
   const code = error.code;
   if (code === "INVALID_EMAIL" || code === "EMAIL_IN_USE") return "email";
   if (code === "INVALID_PHONE" || code === "PHONE_IN_USE") return "phone";
+  if (code === "INVALID_USERNAME" || code === "USERNAME_IN_USE" || code === "USERNAME_REQUIRED") return "username";
   if (code === "INVALID_NAME" || code === "RESERVED_DISPLAY_NAME") return "firstName";
   if (code === "WEAK_PASSWORD") return "password";
   return null;
@@ -138,7 +144,6 @@ function readDraft(): RegistrationDraft {
 
 export function RegisterPage() {
   const { locale, direction, t } = useI18n();
-  const navigate = useNavigate();
   const [draft, setDraft] = useState<RegistrationDraft>(() => readDraft());
   // Keep the account-type selector visible on every fresh registration entry.
   // Saved fields remain available, but a stale draft must not skip the selector.
@@ -148,16 +153,16 @@ export function RegisterPage() {
   const [fieldErrors, setFieldErrors] = useState<RegistrationFieldErrors>({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [registrationDestination, setRegistrationDestination] = useState<string | null>(null);
+  const [registrationPending, setRegistrationPending] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const emailFeedback = contactFeedback(draft.email, "email", t);
   const phoneFeedback = contactFeedback(draft.phone, "phone", t);
 
   useEffect(() => {
     // Never persist credentials in a browser draft; all other registration fields remain recoverable.
-    if (registrationDestination) return;
+    if (registrationPending) return;
     try { localStorage.setItem(draftKey, JSON.stringify({ ...draft, password: "", confirmPassword: "" })); setLastSaved(new Date()); } catch { setLastSaved(null); }
-  }, [draft, registrationDestination]);
+  }, [draft, registrationPending]);
 
   const progress = useMemo(() => `${Math.round((step / 4) * 100)}%`, [step]);
   const stepLabels = draft.kind === "organization" ? [t("registration.accountType"), t("registration.managerDetails"), t("registration.companyDetails"), t("registration.review")] : [t("registration.accountType"), t("registration.personalDetails"), t("registration.review"), t("registration.complete")];
@@ -193,6 +198,7 @@ export function RegisterPage() {
 
   function validateContactDetails(requirePhone: boolean): RegistrationFieldErrors {
     const issues: RegistrationFieldErrors = { ...validateNameFields() };
+    if (draft.username.trim() && !isValidUsername(draft.username)) issues.username = t("registration.invalidUsername");
     if (!draft.email.trim()) issues.email = t("registration.emailRequired");
     else if (!isValidContactInput(draft.email, "email")) issues.email = t("registration.invalidEmail");
     if (requirePhone && !draft.phone.trim()) issues.phone = t("registration.phoneRequired");
@@ -237,6 +243,7 @@ export function RegisterPage() {
 
   function validateField(field: RegistrationField): string {
     if (field === "firstName" || field === "lastName") return validateNameFields()[field] ?? "";
+    if (field === "username") return draft.username.trim() && !isValidUsername(draft.username) ? t("registration.invalidUsername") : "";
     if (field === "email") return validateContactDetails(draft.kind === "organization").email ?? "";
     if (field === "phone") return validateContactDetails(draft.kind === "organization").phone ?? "";
     if (field === "password" || field === "confirmPassword") return validatePasswordDetails()[field] ?? "";
@@ -285,6 +292,7 @@ export function RegisterPage() {
           email: normalizeEmail(draft.email),
           password: draft.password,
           displayName: normalizeDisplayName(draft.displayName),
+          username: draft.username.trim() ? normalizeUsername(draft.username) : null,
           firstName: normalizeDisplayName(draft.firstName),
           lastName: normalizeDisplayName(draft.lastName),
           registrationKind: draft.kind,
@@ -298,17 +306,9 @@ export function RegisterPage() {
           locale,
         }),
       });
-      const loggedIn = await api<Session>("/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email: draft.email.trim(), password: draft.password }),
-      });
-      saveSession(loggedIn.data);
-      const organization = loggedIn.data.organizations[0];
-      if (!organization) throw new Error(t("registration.workspaceCreationFailed"));
-      localStorage.setItem("nivasafe-org", organization.id);
       localStorage.removeItem(draftKey);
       setDraft((current) => ({ ...current, password: "", confirmPassword: "" }));
-      setRegistrationDestination(organization.subscriptionStatus === "PENDING_PAYMENT" ? "/organizations" : "/choose-path");
+      setRegistrationPending(true);
     } catch (reason) {
       const message = registrationErrorMessage(reason);
       const field = registrationErrorField(reason);
@@ -321,19 +321,19 @@ export function RegisterPage() {
     }
   }
 
-  if (registrationDestination) return <main className="login simple register-page" dir={direction} lang={locale}>
+  if (registrationPending) return <main className="login simple register-page" dir={direction} lang={locale}>
     <section className="login-card register-card registration-success-card" role="status" aria-live="polite">
       <div className="registration-success-icon"><Icon name="check" size={30}/></div>
       <div className="eyebrow">{t("registration.secureStart")}</div>
-      <h2>{t("registration.successTitle")}</h2>
-      <p className="muted">{t("registration.successMessage")}</p>
-      <button className="primary" type="button" onClick={() => navigate(registrationDestination, { replace: true })}>{registrationDestination === "/organizations" ? t("registration.manageWorkspace") : t("registration.enterWorkspace")}</button>
+      <h2>{t("registration.pendingTitle")}</h2>
+      <p className="muted">{t("registration.pendingMessage")}</p>
       <Link className="login-link" to="/login">{t("registration.signIn")}</Link>
     </section>
   </main>;
 
   const errorFor = (field: RegistrationField) => fieldErrors[field] ? <small id={`registration-${field}-error`} className="field-error">{fieldErrors[field]}</small> : null;
   const renderEmailField = (label: string, id: string) => <label htmlFor={id}><span className="field-label-line">{label}</span><input id={id} value={draft.email} onChange={(event) => update("email", event.target.value)} onBlur={() => { update("email", normalizeEmail(draft.email)); onFieldBlur("email"); }} type="text" inputMode="email" autoComplete="email" dir="ltr" maxLength={254} data-contact-kind={emailFeedback?.kind ?? "empty"} data-validation-state={emailFeedback?.valid && !fieldErrors.email ? "success" : undefined} aria-invalid={Boolean(fieldErrors.email || (emailFeedback && !emailFeedback.valid))} aria-describedby={fieldErrors.email ? `registration-email-error` : emailFeedback ? `registration-email-hint-${id}` : undefined} required/>{errorFor("email")}{!fieldErrors.email && emailFeedback && <small id={`registration-email-hint-${id}`} className={emailFeedback.valid ? "field-hint contact-detection valid" : "field-error contact-detection"}>{emailFeedback.message}</small>}</label>;
+  const renderUsernameField = (id: string) => <label htmlFor={id}><span className="field-label-line">{t("registration.username")} <span className="muted">({t("registration.optional")})</span></span><input id={id} value={draft.username} onChange={(event) => update("username", event.target.value)} onBlur={() => { update("username", normalizeUsername(draft.username)); onFieldBlur("username"); }} type="text" inputMode="text" autoComplete="username" dir="ltr" maxLength={USERNAME_MAX_LENGTH} placeholder={t("registration.usernamePlaceholder")} aria-invalid={Boolean(fieldErrors.username)} aria-describedby={fieldErrors.username ? `registration-username-error` : "registration-username-hint"}/>{errorFor("username")} {!fieldErrors.username && <small id="registration-username-hint" className="field-hint">{t("registration.usernameHint")}</small>}</label>;
   const renderPhoneField = (label: string, id: string, required = false) => <label htmlFor={id}><span className="field-label-line">{label}{!required && <span className="muted">({t("registration.optional")})</span>}</span><input id={id} value={draft.phone} onChange={(event) => update("phone", normalizePhone(event.target.value))} onBlur={() => { update("phone", draft.phone.trim() ? normalizePhone(draft.phone) : ""); onFieldBlur("phone"); }} inputMode="numeric" autoComplete="tel" dir="ltr" maxLength={11} pattern="09[0-9]{9}" placeholder={t("registration.phonePlaceholder")} data-contact-kind={phoneFeedback?.kind ?? "empty"} data-validation-state={phoneFeedback?.valid && !fieldErrors.phone ? "success" : undefined} aria-invalid={Boolean(fieldErrors.phone || (phoneFeedback && !phoneFeedback.valid))} aria-describedby={fieldErrors.phone ? "registration-phone-error" : undefined} required={required}/>{errorFor("phone")}{!fieldErrors.phone && phoneFeedback && <small className={phoneFeedback.valid ? "field-hint contact-detection valid" : "field-error contact-detection"}>{phoneFeedback.message}</small>}</label>;
   const renderNameFields = () => <>
     <label htmlFor="registration-first-name"><span className="field-label-line">{t("registration.firstName")}</span><input id="registration-first-name" value={draft.firstName} onChange={(event) => updateNamePart("firstName", event.target.value)} onBlur={() => { updateNamePart("firstName", normalizeDisplayName(draft.firstName)); onFieldBlur("firstName"); }} autoComplete="given-name" maxLength={40} aria-invalid={Boolean(fieldErrors.firstName)} aria-describedby={fieldErrors.firstName ? "registration-firstName-error" : undefined} required/>{errorFor("firstName")}</label>
@@ -365,12 +365,14 @@ export function RegisterPage() {
       {step === 2 && <form className="register-form" noValidate onSubmit={(event) => { event.preventDefault(); if (showValidationErrors(validateCurrentStep())) setStep(3); }}>
         <div className="form-grid">
           {draft.kind === "organization" ? <>
-            {renderNameFields()}
+             {renderNameFields()}
+            {renderUsernameField("registration-manager-username")}
             {renderEmailField(t("registration.managerEmail"), "registration-manager-email")}
             {renderPhoneField(t("registration.phone"), "registration-manager-phone", true)}
             <label htmlFor="registration-job-title"><span className="field-label-line">{t("registration.jobTitle")} <span className="muted">({t("registration.optional")})</span></span><input id="registration-job-title" value={draft.jobTitle} onChange={(event) => update("jobTitle", event.target.value)} placeholder={t("registration.jobTitlePlaceholder")} maxLength={120}/></label>
           </> : <>
-            {renderNameFields()}
+             {renderNameFields()}
+            {renderUsernameField("registration-personal-username")}
             {renderEmailField(t("auth.email"), "registration-personal-email")}
             {renderPhoneField(t("registration.phone"), "registration-personal-phone")}
             <label className="full" htmlFor="registration-activity-area"><span className="field-label-line">{t("registration.activityArea")} <span className="muted">({t("registration.optional")})</span></span><input id="registration-activity-area" value={draft.activityArea} onChange={(event) => update("activityArea", event.target.value)} placeholder={t("registration.activityPlaceholder")} maxLength={120}/></label>
@@ -398,7 +400,7 @@ export function RegisterPage() {
       {step === 4 && <form className="register-review" noValidate onSubmit={submit}>
         <div className="review-card"><span className="choice-icon"><Icon name="check"/></span><div><strong>{t("registration.finalConfirmation")}</strong><p>{draft.kind === "organization" ? t("registration.companyAndManager", { company: draft.companyName }) : t("registration.personalAccount")}</p><small>{draft.email}</small></div></div>
         <div className="registration-review-summary" aria-label={t("registration.review")}>
-          <div><small>{t("registration.fullName")}</small><strong>{draft.displayName}</strong></div>
+          <div><small>{t("registration.fullName")}</small><strong>{draft.displayName}</strong></div><div><small>{t("registration.username")}</small><strong dir="ltr">{draft.username || t("registration.notProvided")}</strong></div>
           {draft.kind === "organization" ? <><div><small>{t("registration.accountEmail")}</small><strong dir="ltr">{draft.email}</strong></div><div><small>{t("registration.companyName")}</small><strong>{draft.companyName}</strong></div><div><small>{t("registration.industry")}</small><strong>{draft.industry}</strong></div><div><small>{t("registration.phone")}</small><strong dir="ltr">{draft.phone}</strong></div><div><small>{t("registration.jobTitle")}</small><strong>{draft.jobTitle || t("registration.notProvided")}</strong></div><div><small>{t("registration.employees")}</small><strong>{draft.employees || t("registration.notProvided")}</strong></div><div><small>{t("registration.subscription")}</small><strong>{draft.subscriptionPlan}</strong></div></> : <div><small>{t("registration.activityArea")}</small><strong>{draft.activityArea || t("registration.notProvided")}</strong></div>}
         </div>
         <div className="review-note"><Icon name="shield" size={18}/><span>{draft.kind === "organization" ? t("registration.companyConfirmation") : t("registration.personalWorkspace")}</span></div>
@@ -413,11 +415,22 @@ export function PathSelectionPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [selected, setSelected] = useState<AssessmentPath>(readAssessmentPath);
+  function selectedAssessmentDraftKey(type: AssessmentPath) {
+    const { session, orgId } = getSession();
+    return assessmentDraftKey(type, session?.user.id, orgId);
+  }
+  async function clearSelectedAssessmentDraft(type: AssessmentPath) {
+    const draftKey = selectedAssessmentDraftKey(type);
+    await clearAutoSaveDraft(draftKey);
+    clearAssessmentWizardStep(draftKey);
+  }
   function selectAssessment(type: AssessmentPath) {
     rememberAssessmentPath(type);
     setSelected(type);
+    void clearSelectedAssessmentDraft(type);
   }
-  function continueToAssessment(type: "fmea" | "rula" = selected) {
+  async function continueToAssessment(type: AssessmentPath = selected) {
+    await clearSelectedAssessmentDraft(type);
     navigate(rememberAssessmentPath(type));
   }
   return <section className="page-shell path-flow">

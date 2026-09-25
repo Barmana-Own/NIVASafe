@@ -6,6 +6,8 @@ The assessment routes validate request bodies with Zod, verify project/activity 
 
 Provider adapters normalize supported usage payload formats into bounded input/output/total counts. Successful risk and chat calls pass those counts to the idempotent `AIUsageRecord` writer; calls without provider-reported counts are not estimated.
 
+The Activity Log route applies server-side visibility rules: a normal authenticated user can read only their own records in the selected organization plus their own account-level records, while `audit.read` roles can read the selected organization and account-level events belonging to its active members. An unscoped Super Admin retains the global view. Login and logout records are written for every active membership, chat messages are audit-recorded with their assistant message ID, and the response enriches assessment events with FMEA/RULA metadata and matching provider-reported token usage without exposing prompts or responses.
+
 Expected validation failures use the existing API error envelope. The implementation does not trust client-selected organization identifiers or AI output.
 
 Project creation remains backward-compatible for existing callers that send only the project fields. The extended create schema accepts an initial process name and activity title as a validated pair plus an optional activity location; when supplied, the project, process and linked activity are committed in one Prisma transaction and each created entity receives an audit event. The existing standalone process/activity routes remain available to preserve API compatibility even though their cards are no longer shown on the projects page.

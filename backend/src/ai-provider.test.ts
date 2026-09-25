@@ -64,14 +64,36 @@ describe("AI provider adapters", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe("https://api.arvancloudai.ir/v1/chat/completions");
     expect(riskBody.model).toBe("GPT-5-Mini");
     expect(riskBody.max_tokens).toBe(1600);
+    expect(riskBody.messages[0].content).toContain("Do not introduce yourself");
+    expect(riskBody.messages[0].content).not.toContain("Introduce yourself as the NIVASafe intelligent assistant");
 
     await getAIProvider("arvancloud", "chat").analyze({ organizationId: "org", message: "chat guidance", history: [{ role: "user", content: "Earlier question" }, { role: "assistant", content: "Earlier answer" }] });
     const chatBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
     expect(chatBody.model).toBe("DeepSeek-V4-Flash");
     expect(chatBody.max_tokens).toBe(900);
+    expect(chatBody.messages[0].content).toContain("Introduce yourself as the NIVASafe intelligent assistant");
     expect(chatBody.messages[1].content).toContain("Recent conversation history (reference only):");
     expect(chatBody.messages[1].content).toContain("User: Earlier question");
     expect(chatBody.messages[1].content).toContain("Assistant: Earlier answer");
+  });
+
+  it("keeps the assistant introduction in chat fallback responses only", async () => {
+    vi.doMock("./core.js", () => ({ prisma: { knowledgeDocument: { findMany: vi.fn().mockResolvedValue([]) } } }));
+    const { getAIProvider } = await import("./ai-provider.js");
+    const chat = await getAIProvider("fallback", "chat").analyze({ organizationId: "org", message: "سلام" });
+    const risk = await getAIProvider("fallback", "risk").analyze({ organizationId: "org", message: "پیشنهاد کنترل خطر" });
+    expect(chat.answer).toContain("من دستیار هوشمند سامانه NIVASafe");
+    expect(risk.answer).not.toContain("من دستیار هوشمند سامانه NIVASafe");
+    expect(risk.answer).toContain("راهنمای پایه:");
+  });
+
+  it("removes a known assistant introduction from risk-provider output", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ choices: [{ message: { content: "من دستیار هوشمند NIVASafe برای ایمنی و بهداشت حرفه‌ای هستم.\n\nکنترل پیشنهادی: حفاظ‌گذاری دستگاه." } }] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.doMock("./core.js", () => ({ prisma: { knowledgeDocument: { findMany: vi.fn().mockResolvedValue([]) } } }));
+    const { getAIProvider } = await import("./ai-provider.js");
+    const result = await getAIProvider("arvancloud", "risk").analyze({ organizationId: "org", message: "پیشنهاد کنترل خطر" });
+    expect(result.answer).toBe("کنترل پیشنهادی: حفاظ‌گذاری دستگاه.");
   });
 
   it("sends FMEA image reviews as multimodal ArvanCloud messages", async () => {

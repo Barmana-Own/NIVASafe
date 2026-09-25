@@ -29,7 +29,7 @@ try {
 $headers = @{ Authorization = "Bearer $token"; "x-organization-id" = $orgId }
 $paths = @(
   "/dashboard", "/projects", "/processes", "/activities", "/fmea", "/rula",
-  "/actions", "/files", "/knowledge", "/notifications", "/members", "/audit",
+  "/actions", "/files", "/knowledge", "/notifications", "/members", "/activity-log", "/audit",
   "/profile", "/ai/requests", "/chat/conversations"
 )
 

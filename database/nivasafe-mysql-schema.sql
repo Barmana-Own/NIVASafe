@@ -5,6 +5,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 CREATE TABLE `User` (
   `id` VARCHAR(36) NOT NULL,
   `email` VARCHAR(191) NOT NULL,
+  `username` VARCHAR(64) NULL,
   `passwordHash` VARCHAR(191) NOT NULL,
   `displayName` VARCHAR(191) NOT NULL,
   `globalRole` ENUM('USER', 'SUPER_ADMIN') NOT NULL DEFAULT 'USER',
@@ -16,7 +17,8 @@ CREATE TABLE `User` (
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updatedAt` DATETIME(3) NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `User_email_key` (`email`)
+  UNIQUE KEY `User_email_key` (`email`),
+  UNIQUE KEY `User_username_key` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `Session` (
@@ -52,7 +54,7 @@ CREATE TABLE `Permission` (
 
 CREATE TABLE `RolePermission` (
   `id` VARCHAR(36) NOT NULL,
-  `role` ENUM('SUPER_ADMIN', 'ORG_ADMIN', 'HSE_MANAGER', 'ASSESSOR', 'VIEWER') NOT NULL,
+  `role` ENUM('SUPER_ADMIN', 'ORG_ADMIN', 'HSE_MANAGER', 'HSE_SPECIALIST', 'HSE_OFFICER', 'EXTERNAL_AUDITOR', 'PERSONNEL', 'ASSESSOR', 'ASSISTANT', 'VIEWER') NOT NULL,
   `permissionId` VARCHAR(36) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `RolePermission_role_permissionId_key` (`role`, `permissionId`),
@@ -88,7 +90,7 @@ CREATE TABLE `OrganizationMember` (
   `id` VARCHAR(36) NOT NULL,
   `organizationId` VARCHAR(36) NOT NULL,
   `userId` VARCHAR(36) NOT NULL,
-  `role` ENUM('SUPER_ADMIN', 'ORG_ADMIN', 'HSE_MANAGER', 'ASSESSOR', 'VIEWER') NOT NULL,
+  `role` ENUM('SUPER_ADMIN', 'ORG_ADMIN', 'HSE_MANAGER', 'HSE_SPECIALIST', 'HSE_OFFICER', 'EXTERNAL_AUDITOR', 'PERSONNEL', 'ASSESSOR', 'ASSISTANT', 'VIEWER') NOT NULL,
   `active` BOOLEAN NOT NULL DEFAULT TRUE,
   PRIMARY KEY (`id`),
   UNIQUE KEY `OrganizationMember_organizationId_userId_key` (`organizationId`, `userId`),
@@ -99,7 +101,7 @@ CREATE TABLE `Invitation` (
   `id` VARCHAR(36) NOT NULL,
   `organizationId` VARCHAR(36) NOT NULL,
   `email` VARCHAR(191) NOT NULL,
-  `role` ENUM('SUPER_ADMIN', 'ORG_ADMIN', 'HSE_MANAGER', 'ASSESSOR', 'VIEWER') NOT NULL,
+  `role` ENUM('SUPER_ADMIN', 'ORG_ADMIN', 'HSE_MANAGER', 'HSE_SPECIALIST', 'HSE_OFFICER', 'EXTERNAL_AUDITOR', 'PERSONNEL', 'ASSESSOR', 'ASSISTANT', 'VIEWER') NOT NULL,
   `tokenHash` VARCHAR(191) NOT NULL,
   `expiresAt` DATETIME(3) NOT NULL,
   `acceptedAt` DATETIME(3) NULL,
@@ -155,6 +157,31 @@ CREATE TABLE `Activity` (
   `deletedAt` DATETIME(3) NULL,
   PRIMARY KEY (`id`),
   KEY `Activity_organizationId_projectId_idx` (`organizationId`, `projectId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `MemberAccessRequest` (
+  `id` VARCHAR(36) NOT NULL,
+  `organizationId` VARCHAR(36) NOT NULL,
+  `requestedById` VARCHAR(36) NOT NULL,
+  `reviewedById` VARCHAR(36) NULL,
+  `provisionedUserId` VARCHAR(36) NULL,
+  `username` VARCHAR(64) NOT NULL,
+  `email` VARCHAR(191) NOT NULL,
+  `displayName` VARCHAR(191) NOT NULL,
+  `phone` VARCHAR(191) NULL,
+  `jobTitle` VARCHAR(191) NULL,
+  `role` ENUM('SUPER_ADMIN', 'ORG_ADMIN', 'HSE_MANAGER', 'HSE_SPECIALIST', 'HSE_OFFICER', 'EXTERNAL_AUDITOR', 'PERSONNEL', 'ASSESSOR', 'ASSISTANT', 'VIEWER') NOT NULL,
+  `status` ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
+  `rejectionReason` TEXT NULL,
+  `reviewedAt` DATETIME(3) NULL,
+  `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updatedAt` DATETIME(3) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `MemberAccessRequest_provisionedUserId_key` (`provisionedUserId`),
+  KEY `MemberAccessRequest_organizationId_status_createdAt_idx` (`organizationId`, `status`, `createdAt`),
+  KEY `MemberAccessRequest_status_createdAt_idx` (`status`, `createdAt`),
+  KEY `MemberAccessRequest_username_idx` (`username`),
+  KEY `MemberAccessRequest_email_idx` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `JobCatalog` (
@@ -474,9 +501,13 @@ CREATE TABLE `AuditLog` (
   `entityId` VARCHAR(191) NULL,
   `metadata` JSON NULL,
   `requestId` VARCHAR(191) NULL,
+  `ipAddress` VARCHAR(64) NULL,
+  `userAgent` TEXT NULL,
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   PRIMARY KEY (`id`),
-  KEY `AuditLog_organizationId_createdAt_idx` (`organizationId`, `createdAt`)
+  KEY `AuditLog_organizationId_createdAt_idx` (`organizationId`, `createdAt`),
+  KEY `AuditLog_entityType_entityId_createdAt_idx` (`entityType`, `entityId`, `createdAt`),
+  KEY `AuditLog_userId_organizationId_createdAt_idx` (`userId`, `organizationId`, `createdAt`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 ALTER TABLE `Session` ADD CONSTRAINT `Session_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
@@ -484,6 +515,10 @@ ALTER TABLE `PasswordResetToken` ADD CONSTRAINT `PasswordResetToken_userId_fkey`
 ALTER TABLE `RolePermission` ADD CONSTRAINT `RolePermission_permissionId_fkey` FOREIGN KEY (`permissionId`) REFERENCES `Permission` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE `OrganizationMember` ADD CONSTRAINT `OrganizationMember_organizationId_fkey` FOREIGN KEY (`organizationId`) REFERENCES `Organization` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE `OrganizationMember` ADD CONSTRAINT `OrganizationMember_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `MemberAccessRequest` ADD CONSTRAINT `MemberAccessRequest_organizationId_fkey` FOREIGN KEY (`organizationId`) REFERENCES `Organization` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `MemberAccessRequest` ADD CONSTRAINT `MemberAccessRequest_requestedById_fkey` FOREIGN KEY (`requestedById`) REFERENCES `User` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `MemberAccessRequest` ADD CONSTRAINT `MemberAccessRequest_reviewedById_fkey` FOREIGN KEY (`reviewedById`) REFERENCES `User` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `MemberAccessRequest` ADD CONSTRAINT `MemberAccessRequest_provisionedUserId_fkey` FOREIGN KEY (`provisionedUserId`) REFERENCES `User` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE `Invitation` ADD CONSTRAINT `Invitation_organizationId_fkey` FOREIGN KEY (`organizationId`) REFERENCES `Organization` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE `Project` ADD CONSTRAINT `Project_organizationId_fkey` FOREIGN KEY (`organizationId`) REFERENCES `Organization` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `Process` ADD CONSTRAINT `Process_organizationId_fkey` FOREIGN KEY (`organizationId`) REFERENCES `Organization` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

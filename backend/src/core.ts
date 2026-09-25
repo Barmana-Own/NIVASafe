@@ -24,7 +24,7 @@ export const pageParams = (query: unknown) =>
     z.object({
       page: z.coerce.number().int().min(1).default(1),
       limit: z.coerce.number().int().min(1).max(100).default(20),
-      search: z.string().trim().optional(),
+      search: z.string().trim().max(120).optional(),
     }),
     query,
   );
@@ -61,6 +61,8 @@ export async function audit(
       entityId,
       metadata,
       requestId: request.id,
+      ipAddress: request.ip?.slice(0, 64),
+      userAgent: request.headers["user-agent"]?.slice(0, 2000),
     },
   });
 }
@@ -68,6 +70,7 @@ export async function audit(
 export const safeUser = (user: {
   id: string;
   email: string;
+  username: string | null;
   displayName: string;
   locale: string;
   phone: string | null;
@@ -77,6 +80,7 @@ export const safeUser = (user: {
 }) => ({
   id: user.id,
   email: user.email,
+  username: user.username,
   displayName: user.displayName,
   locale: user.locale,
   phone: user.phone,
@@ -88,17 +92,29 @@ export const safeUser = (user: {
 export const ROLE_PERMISSIONS: Record<Role, string[]> = {
   SUPER_ADMIN: ["*"],
   ORG_ADMIN: ["users.read", "users.manage", "organizations.manage", "projects.read", "projects.manage", "assessments.create", "assessments.update", "assessments.delete", "assessments.approve", "reports.generate", "knowledge.manage", "ai.configure", "audit.read"],
-  ASSISTANT: ["projects.read", "assessments.create", "assessments.update", "reports.generate"],
-  HSE_MANAGER: ["users.read", "projects.read", "projects.manage", "assessments.create", "assessments.update", "assessments.approve", "reports.generate", "knowledge.manage", "audit.read"],
+  HSE_MANAGER: ["users.read", "users.request", "projects.read", "projects.manage", "assessments.create", "assessments.update", "assessments.approve", "reports.generate", "knowledge.manage", "audit.read"],
+  HSE_SPECIALIST: ["projects.read", "assessments.create", "assessments.update", "reports.generate"],
+  HSE_OFFICER: ["projects.read", "projects.manage", "assessments.create", "assessments.update", "reports.generate"],
+  EXTERNAL_AUDITOR: ["projects.read", "reports.generate"],
+  PERSONNEL: ["projects.read"],
   ASSESSOR: ["projects.read", "assessments.create", "assessments.update", "reports.generate"],
+  ASSISTANT: ["projects.read", "assessments.create", "assessments.update", "reports.generate"],
   VIEWER: ["projects.read"],
 };
 
-export function requirePermission(request: FastifyRequest, permission: string): void {
+export function hasPermission(request: FastifyRequest, permission: string): boolean {
   const role = request.actor?.role as Role | undefined;
-  if (!role) throw Object.assign(new Error("Permission denied"), { statusCode: 403, code: "FORBIDDEN" });
+  if (!role) return false;
   const allowed = ROLE_PERMISSIONS[role] ?? [];
-  if (!allowed.includes("*") && !allowed.includes(permission)) {
+  return allowed.includes("*") || allowed.includes(permission);
+}
+
+export function requireAnyPermission(request: FastifyRequest, permissions: string[]): void {
+  if (!permissions.some((permission) => hasPermission(request, permission))) {
     throw Object.assign(new Error("Permission denied"), { statusCode: 403, code: "FORBIDDEN" });
   }
+}
+
+export function requirePermission(request: FastifyRequest, permission: string): void {
+  requireAnyPermission(request, [permission]);
 }

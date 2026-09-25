@@ -20,16 +20,16 @@ const nav = [
   { path: "/knowledge", labelKey: "nav.knowledge", icon: "knowledge", scope: "all", group: "guidance" },
   { path: "/assistant", labelKey: "nav.assistant", icon: "assistant", scope: "all", group: "guidance" },
   { path: "/notifications", labelKey: "nav.notifications", icon: "notifications", scope: "all", group: "guidance" },
-  { path: "/members", labelKey: "nav.members", icon: "members", scope: "admin", group: "organization" },
+  { path: "/members", labelKey: "nav.members", icon: "members", scope: "members", group: "organization" },
   { path: "/admin", labelKey: "nav.adminPanel", icon: "shield", scope: "superadmin", group: "organization" },
   { path: "/organizations", labelKey: "nav.organizations", icon: "dashboard", scope: "all", group: "organization" },
-  { path: "/audit", labelKey: "nav.audit", icon: "audit", scope: "manager", group: "organization" },
+  { path: "/activity-log", labelKey: "nav.activityLog", icon: "audit", scope: "all", group: "organization" },
   { path: "/profile", labelKey: "nav.profile", icon: "profile", scope: "all", group: "settings" },
   { path: "/health", labelKey: "nav.health", icon: "health", scope: "admin", group: "settings" },
 ] as const;
 
 const groupLabels: Record<string, string> = { main: "group.management", assessment: "group.assessment", actions: "group.actions", safety: "group.safety", reports: "group.reports", guidance: "group.guidance", organization: "group.organization", settings: "group.settings", tools: "group.tools", admin: "group.admin", account: "group.account" };
-const allowed = (role: string, scope: string) => scope === "all" || (scope === "admin" && ["SUPER_ADMIN", "ORG_ADMIN"].includes(role)) || (scope === "manager" && ["SUPER_ADMIN", "ORG_ADMIN", "HSE_MANAGER"].includes(role)) || (scope === "superadmin" && ["SUPER_ADMIN", "ORG_ADMIN"].includes(role));
+const allowed = (role: string, scope: string) => scope === "all" || (scope === "admin" && ["SUPER_ADMIN", "ORG_ADMIN"].includes(role)) || (scope === "members" && ["SUPER_ADMIN", "ORG_ADMIN", "HSE_MANAGER"].includes(role)) || (scope === "manager" && ["SUPER_ADMIN", "ORG_ADMIN", "HSE_MANAGER"].includes(role)) || (scope === "superadmin" && ["SUPER_ADMIN", "ORG_ADMIN"].includes(role));
 type HeaderNotification = { readAt?: string | null };
 
 function NotificationBell() {

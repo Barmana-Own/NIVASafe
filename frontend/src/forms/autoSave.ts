@@ -1,6 +1,19 @@
 export type AutoSaveValue = string | boolean | string[];
 export type AutoSaveDraft = Record<string, AutoSaveValue>;
 export type AutoSaveStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+export type AssessmentDraftKind = "fmea" | "rula";
+
+export function assessmentDraftKey(kind: AssessmentDraftKind, userId?: string | null, organizationId?: string | null): string {
+  return `nivasafe-draft:v1:${kind}:${userId ?? "guest"}:${organizationId || "none"}`;
+}
+
+export function assessmentWizardStepKey(draftKey: string): string {
+  return `${draftKey}:wizard-step`;
+}
+
+export function clearAssessmentWizardStep(draftKey: string): void {
+  try { sessionStorage.removeItem(assessmentWizardStepKey(draftKey)); } catch { /* storage may be unavailable */ }
+}
 
 function isExcluded(name: string, excludedFields: readonly string[]) {
   return excludedFields.includes(name);

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import bcrypt from "bcryptjs";
 import { randomBytes, randomUUID } from "node:crypto";
-import { DISPLAY_NAME_MAX_LENGTH, EMAIL_MAX_LENGTH, detectContactInput, isForbiddenDisplayName, isStrongPassword, isValidDisplayName, isValidEmail, isValidIranianNationalId, isValidPhone, normalizeDisplayName, normalizeEmail, normalizeNationalId, normalizePhone, PASSWORD_MIN_LENGTH, SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@nivasafe/domain";
+import { DISPLAY_NAME_MAX_LENGTH, EMAIL_MAX_LENGTH, USERNAME_MAX_LENGTH, detectContactInput, isForbiddenDisplayName, isStrongPassword, isValidDisplayName, isValidEmail, isValidIranianNationalId, isValidPhone, isValidUsername, normalizeDisplayName, normalizeEmail, normalizeNationalId, normalizePhone, normalizeUsername, PASSWORD_MIN_LENGTH, SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@nivasafe/domain";
 import { z } from "zod";
 import { authenticate } from "../auth-guard.js";
 import { getLoginRateLimit } from "../config.js";
@@ -10,10 +10,11 @@ import { scheduleEmail } from "../mail.js";
 import { defaultProjectForLocale, workspaceForRegistration } from "../onboarding.js";
 import { createSubscriptionFields } from "../subscription.js";
 
-const credentials = z.object({ email: z.string().trim().min(1).max(EMAIL_MAX_LENGTH), password: z.string().min(8).max(128) });
+const credentials = z.object({ identifier: z.string().trim().min(1).max(EMAIL_MAX_LENGTH).optional(), email: z.string().trim().min(1).max(EMAIL_MAX_LENGTH).optional(), password: z.string().min(8).max(128) }).refine((value) => Boolean(value.identifier || value.email), { message: "ایمیل یا نام کاربری را وارد کنید.", path: ["identifier"] });
 const subscriptionPlanInput = z.enum(SUBSCRIPTION_PLANS.map((plan) => plan.id) as [SubscriptionPlan, ...SubscriptionPlan[]]);
 const registrationInput = z.object({
   email: z.string().trim().min(1).max(EMAIL_MAX_LENGTH),
+  username: z.string().trim().max(USERNAME_MAX_LENGTH).nullable().optional(),
   password: z.string().min(1).max(128),
   displayName: z.string().trim().min(1).max(DISPLAY_NAME_MAX_LENGTH),
   firstName: z.string().trim().min(1).max(40).optional(),
@@ -61,6 +62,23 @@ function checkedEmail(value: string): string {
   return email;
 }
 
+export function checkedUsername(value: string | null | undefined, required = false): string | null {
+  if (value == null || !value.trim()) {
+    if (required) throw validationError("نام کاربری را وارد کنید.", "USERNAME_REQUIRED");
+    return null;
+  }
+  const username = normalizeUsername(value);
+  if (!isValidUsername(username)) throw validationError("نام کاربری باید انگلیسی، بدون فاصله و بین ۳ تا ۶۴ نویسه باشد.", "INVALID_USERNAME");
+  return username;
+}
+
+function checkedLoginIdentifier(value: string): { kind: "email" | "username"; value: string } {
+  const identifier = value.normalize("NFKC").trim();
+  if (detectContactInput(identifier) === "email") return { kind: "email", value: checkedEmail(identifier) };
+  const username = checkedUsername(identifier, true);
+  return { kind: "username", value: username! };
+}
+
 function checkedPhone(value: string | null | undefined): string | null {
   if (value == null || !value.trim()) return null;
   const phone = normalizePhone(value);
@@ -87,17 +105,18 @@ function checkedNationalId(value: string | null | undefined): string | null {
   return nationalId;
 }
 
-function checkedPassword(value: string, context: { email?: string; displayName?: string } = {}): string {
+export function checkedPassword(value: string, context: { email?: string; displayName?: string } = {}): string {
   if (!isStrongPassword(value, context)) throw validationError(`رمز عبور باید حداقل ${PASSWORD_MIN_LENGTH} نویسه و شامل حرف، عدد و نشانه باشد و قابل حدس نباشد.`, "WEAK_PASSWORD");
   return value;
 }
 
-export function validateRegistrationIdentity(input: { email: string; displayName: string; phone?: string | null; firstName?: string; lastName?: string }) {
+export function validateRegistrationIdentity(input: { email: string; username?: string | null; displayName: string; phone?: string | null; firstName?: string; lastName?: string }) {
   const firstName = input.firstName === undefined ? undefined : checkedNamePart(input.firstName);
   const lastName = input.lastName === undefined ? undefined : checkedNamePart(input.lastName);
   const displayName = firstName !== undefined && lastName !== undefined ? checkedDisplayName(`${firstName} ${lastName}`) : checkedDisplayName(input.displayName);
   return {
     email: checkedEmail(input.email),
+    ...(input.username === undefined ? {} : { username: checkedUsername(input.username) }),
     displayName,
     phone: checkedPhone(input.phone),
     ...(firstName === undefined ? {} : { firstName }),
@@ -115,11 +134,12 @@ export async function registerAuthRoutes(app: FastifyInstance) {
 
   app.post("/api/v1/auth/register", { config: { rateLimit: registrationRateLimit } }, async (request, reply) => {
     const body = parseRegistrationInput(request.body);
-    const { email, displayName, phone } = validateRegistrationIdentity(body);
+    const { email, username, displayName, phone } = validateRegistrationIdentity(body);
     if (body.registrationKind === "organization" && !phone) throw validationError("تلفن همراه را وارد کنید.", "INVALID_PHONE");
     const password = checkedPassword(body.password, { email, displayName });
-    const duplicate = await prisma.user.findFirst({ where: { OR: [{ email }, ...(phone ? [{ phone }] : [])] }, select: { email: true, phone: true } });
+    const duplicate = await prisma.user.findFirst({ where: { OR: [{ email }, ...(username ? [{ username }] : []), ...(phone ? [{ phone }] : [])] }, select: { email: true, username: true, phone: true } });
     if (duplicate?.email === email) throw validationError("این ایمیل قبلاً ثبت شده است.", "EMAIL_IN_USE");
+    if (username && duplicate?.username === username) throw validationError("این نام کاربری قبلاً ثبت شده است.", "USERNAME_IN_USE");
     if (phone && duplicate?.phone === phone) throw validationError("این شماره تلفن قبلاً ثبت شده است.", "PHONE_IN_USE");
     const workspace = workspaceForRegistration({
       displayName,
@@ -133,7 +153,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     });
     const passwordHash = await bcrypt.hash(password, 12);
     const user = await prisma.$transaction(async (tx) => {
-      const createdUser = await tx.user.create({ data: { email, displayName, locale: body.locale, phone, jobTitle: body.jobTitle || null, passwordHash } });
+      const createdUser = await tx.user.create({ data: { email, username, displayName, locale: body.locale, phone, jobTitle: body.jobTitle || null, passwordHash, active: false } });
       const organization = await tx.organization.create({
         data: {
           ...workspace,
@@ -142,26 +162,29 @@ export async function registerAuthRoutes(app: FastifyInstance) {
           projects: { create: defaultProjectForLocale(body.locale) },
         },
       });
-      await tx.auditLog.create({ data: { userId: createdUser.id, organizationId: organization.id, action: "USER_REGISTER", entityType: "User", entityId: createdUser.id, metadata: { registrationKind: body.registrationKind }, requestId: request.id } });
+      await tx.auditLog.create({ data: { userId: createdUser.id, organizationId: organization.id, action: "USER_REGISTER", entityType: "User", entityId: createdUser.id, metadata: { registrationKind: body.registrationKind, active: false }, requestId: request.id, ipAddress: request.ip?.slice(0, 64), userAgent: request.headers["user-agent"]?.slice(0, 2000) } });
       return createdUser;
     });
-    return reply.code(201).send(envelope(safeUser(user)));
+    return reply.code(201).send(envelope({ ...safeUser(user), pendingActivation: true }));
   });
 
   app.post("/api/v1/auth/login", loginRouteOptions, async (request) => {
     const body = parse(credentials, request.body);
-    const email = checkedEmail(body.email);
-    const user = await prisma.user.findUnique({ where: { email }, include: { memberships: { where: { active: true }, include: { organization: true } } } });
+    const loginIdentifier = checkedLoginIdentifier(body.identifier ?? body.email ?? "");
+    const user = await prisma.user.findUnique({ where: loginIdentifier.kind === "email" ? { email: loginIdentifier.value } : { username: loginIdentifier.value }, include: { memberships: { where: { active: true }, include: { organization: true } } } });
     if (!user?.active || !(await bcrypt.compare(body.password, user.passwordHash))) {
-      await prisma.auditLog.create({ data: { action: "FAILED_LOGIN", metadata: { email }, requestId: request.id } });
-      throw Object.assign(new Error("Email or password is incorrect"), { statusCode: 401, code: "INVALID_CREDENTIALS" });
+      await prisma.auditLog.create({ data: { action: "FAILED_LOGIN", metadata: { identifier: loginIdentifier.value, kind: loginIdentifier.kind }, requestId: request.id, ipAddress: request.ip?.slice(0, 64), userAgent: request.headers["user-agent"]?.slice(0, 2000) } });
+      throw Object.assign(new Error("ایمیل یا نام کاربری و رمز عبور صحیح نیست."), { statusCode: 401, code: "INVALID_CREDENTIALS" });
     }
     const accessToken = app.jwt.sign({ sub: user.id }, { expiresIn: "15m" });
     const refreshToken = signRefreshToken(user.id);
+    const loginAuditData = user.memberships.length
+      ? user.memberships.map((membership) => ({ userId: user.id, organizationId: membership.organization.id, action: "LOGIN", entityType: "User", entityId: user.id, metadata: { identifierKind: loginIdentifier.kind }, requestId: request.id, ipAddress: request.ip?.slice(0, 64), userAgent: request.headers["user-agent"]?.slice(0, 2000) }))
+      : [{ userId: user.id, organizationId: null, action: "LOGIN", entityType: "User", entityId: user.id, metadata: { identifierKind: loginIdentifier.kind }, requestId: request.id, ipAddress: request.ip?.slice(0, 64), userAgent: request.headers["user-agent"]?.slice(0, 2000) }];
     await prisma.$transaction([
       prisma.session.create({ data: { userId: user.id, tokenHash: tokenHash(refreshToken), expiresAt: new Date(Date.now() + 7 * 86400000) } }),
       prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }),
-      prisma.auditLog.create({ data: { userId: user.id, action: "LOGIN", requestId: request.id } }),
+      prisma.auditLog.createMany({ data: loginAuditData }),
     ]);
     return envelope({ accessToken, refreshToken, user: safeUser(user), organizations: user.memberships.map((membership: { organization: { id: string; nameFa: string; nameEn: string; active: boolean; subscriptionPlan: string; subscriptionStatus: string; subscriptionExpiresAt: Date | null }; role: string }) => ({ id: membership.organization.id, nameFa: membership.organization.nameFa, nameEn: membership.organization.nameEn, role: membership.role, active: membership.organization.active, subscriptionPlan: membership.organization.subscriptionPlan, subscriptionStatus: membership.organization.subscriptionStatus, subscriptionExpiresAt: membership.organization.subscriptionExpiresAt })) });
   });
@@ -181,15 +204,21 @@ export async function registerAuthRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/v1/auth/logout", { preHandler: authenticate }, async (request) => {
-    await prisma.session.updateMany({ where: { userId: request.actor!.userId, revokedAt: null }, data: { revokedAt: new Date() } });
-    await audit(request, "LOGOUT");
+    const memberships = await prisma.organizationMember.findMany({ where: { userId: request.actor!.userId, active: true }, select: { organizationId: true } });
+    const logoutAuditData = memberships.length
+      ? memberships.map((membership) => ({ userId: request.actor!.userId, organizationId: membership.organizationId, action: "LOGOUT", entityType: "User", entityId: request.actor!.userId, requestId: request.id, ipAddress: request.ip?.slice(0, 64), userAgent: request.headers["user-agent"]?.slice(0, 2000) }))
+      : [{ userId: request.actor!.userId, organizationId: request.actor?.organizationId ?? null, action: "LOGOUT", entityType: "User", entityId: request.actor!.userId, requestId: request.id, ipAddress: request.ip?.slice(0, 64), userAgent: request.headers["user-agent"]?.slice(0, 2000) }];
+    await prisma.$transaction([
+      prisma.session.updateMany({ where: { userId: request.actor!.userId, revokedAt: null }, data: { revokedAt: new Date() } }),
+      prisma.auditLog.createMany({ data: logoutAuditData }),
+    ]);
     return envelope({ success: true });
   });
 
   app.post("/api/v1/auth/forgot-password", async (request) => {
-    const { email: rawEmail } = parse(z.object({ email: z.string().trim().min(1).max(EMAIL_MAX_LENGTH) }), request.body);
-    const email = checkedEmail(rawEmail);
-    const user = await prisma.user.findUnique({ where: { email } });
+    const { identifier: rawIdentifier, email: legacyEmail } = parse(z.object({ identifier: z.string().trim().min(1).max(EMAIL_MAX_LENGTH).optional(), email: z.string().trim().min(1).max(EMAIL_MAX_LENGTH).optional() }).refine((value) => Boolean(value.identifier || value.email), { message: "ایمیل یا نام کاربری را وارد کنید.", path: ["identifier"] }), request.body);
+    const loginIdentifier = checkedLoginIdentifier(rawIdentifier ?? legacyEmail ?? "");
+    const user = await prisma.user.findUnique({ where: loginIdentifier.kind === "email" ? { email: loginIdentifier.value } : { username: loginIdentifier.value } });
     let developmentToken: string | undefined;
     if (user) {
       const token = randomBytes(32).toString("hex");
@@ -212,7 +241,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       prisma.user.update({ where: { id: reset.userId }, data: { passwordHash: await bcrypt.hash(body.password, 12) } }),
       prisma.passwordResetToken.update({ where: { id: reset.id }, data: { usedAt: new Date() } }),
       prisma.session.updateMany({ where: { userId: reset.userId, revokedAt: null }, data: { revokedAt: new Date() } }),
-      prisma.auditLog.create({ data: { userId: reset.userId, action: "PASSWORD_RESET", requestId: request.id } }),
+      prisma.auditLog.create({ data: { userId: reset.userId, action: "PASSWORD_RESET", requestId: request.id, ipAddress: request.ip?.slice(0, 64), userAgent: request.headers["user-agent"]?.slice(0, 2000) } }),
     ]);
     return envelope({ success: true });
   });

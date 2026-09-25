@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readStoredDraft, sanitizeDraft, writeStoredDraft, type AutoSaveStorage } from "./autoSave";
+import { assessmentDraftKey, readStoredDraft, sanitizeDraft, writeStoredDraft, type AutoSaveStorage } from "./autoSave";
 
 function storage(): AutoSaveStorage {
   const values = new Map<string, string>();
@@ -21,5 +21,10 @@ describe("form auto-save persistence", () => {
 
   it("sanitizes a one-character draft while excluding credentials and files", () => {
     expect(sanitizeDraft({ title: "ح", content: "یک عبارت", password: "secret", file: "ignored", published: true }, ["password", "file"])).toEqual({ title: "ح", content: "یک عبارت", published: true });
+  });
+
+  it("keeps FMEA and RULA drafts isolated by user and organization", () => {
+    expect(assessmentDraftKey("fmea", "user-1", "org-1")).toBe("nivasafe-draft:v1:fmea:user-1:org-1");
+    expect(assessmentDraftKey("rula", null, "")).toBe("nivasafe-draft:v1:rula:guest:none");
   });
 });

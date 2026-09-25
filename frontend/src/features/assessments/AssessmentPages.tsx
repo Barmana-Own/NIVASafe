@@ -5,7 +5,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { api, download, getCurrentRole, getSession, useLoad } from "../../api/client";
 import { EmptyState, Icon, LocalizedDateInput, PageHeader, SectionCard, StatusBadge, StyledSelect, formatDate, useDialog } from "../../components/UI";
 import { AutoSaveForm, clearAutoSaveDraft } from "../../forms/AutoSaveForm";
-import { readStoredDraft, scopedDraftKey, snapshotForm as snapshotStoredForm, writeStoredDraft, type AutoSaveDraft } from "../../forms/autoSave";
+import { assessmentDraftKey, assessmentWizardStepKey, clearAssessmentWizardStep, readStoredDraft, scopedDraftKey, snapshotForm as snapshotStoredForm, writeStoredDraft, type AutoSaveDraft } from "../../forms/autoSave";
 import { useI18n } from "../../i18n";
 import { LoadState } from "../general/GeneralPages";
 
@@ -226,8 +226,6 @@ function automaticFmeaScope(projectLabel: string, jobTitle: string) {
   return [projectLabel, jobTitle].map((value) => value.trim()).filter(Boolean).join(" / ");
 }
 
-function fmeaWizardStepKey(draftKey: string) { return `${draftKey}:wizard-step`; }
-
 function readFmeaAssistantPreference() {
   try { return localStorage.getItem(FMEA_ASSISTANT_STORAGE_KEY) === "true"; } catch { return false; }
 }
@@ -236,7 +234,7 @@ type FmeaWizardStep = 1 | 2 | 3;
 
 function readFmeaWizardStep(draftKey: string): FmeaWizardStep {
   try {
-    const storedStep = sessionStorage.getItem(fmeaWizardStepKey(draftKey));
+    const storedStep = sessionStorage.getItem(assessmentWizardStepKey(draftKey));
     return storedStep === "3" ? 3 : storedStep === "2" ? 2 : 1;
   } catch {
     return 1;
@@ -244,7 +242,7 @@ function readFmeaWizardStep(draftKey: string): FmeaWizardStep {
 }
 
 function clearFmeaWizardStep(draftKey: string) {
-  try { sessionStorage.removeItem(fmeaWizardStepKey(draftKey)); } catch { /* storage may be unavailable */ }
+  clearAssessmentWizardStep(draftKey);
 }
 
 function countShortDescriptionSentences(value: string) {
@@ -262,10 +260,10 @@ function formTextList(form: FormData, name: string) {
 
 function draftKeyFor(kind: "fmea" | "rula") {
   const { session, orgId } = getSession();
-  return `nivasafe-draft:v1:${kind}:${session?.user.id ?? "guest"}:${orgId || "none"}`;
+  return assessmentDraftKey(kind, session?.user.id, orgId);
 }
 
-const canEdit = () => { const { session, orgId } = getSession(); return ["SUPER_ADMIN", "ORG_ADMIN", "ASSISTANT", "HSE_MANAGER", "ASSESSOR"].includes(session?.organizations.find((org) => org.id === orgId)?.role ?? "VIEWER") || session?.user.globalRole === "SUPER_ADMIN"; };
+const canEdit = () => { const { session, orgId } = getSession(); return ["SUPER_ADMIN", "ORG_ADMIN", "HSE_MANAGER", "HSE_SPECIALIST", "HSE_OFFICER", "ASSISTANT", "ASSESSOR"].includes(session?.organizations.find((org) => org.id === orgId)?.role ?? "VIEWER") || session?.user.globalRole === "SUPER_ADMIN"; };
 async function saveBlob(path: string, filename: string) {
   const blob = await download(path);
   const url = URL.createObjectURL(blob);
@@ -589,10 +587,12 @@ function fmeaRiskRowsFromDraft(draft: DraftRecord): FmeaRiskRowInput[] | null {
   return rows.length < 20 ? [...rows, current] : rows;
 }
 
-function JobCatalogSearch({ value, selectedJob, customSelected, jobs, loading, error, open, onOpenChange, onChange, onSelect, onUseCustom, onClear }: { value: string; selectedJob: JobCatalogEntry | null; customSelected: boolean; jobs: JobCatalogEntry[]; loading: boolean; error: string; open: boolean; onOpenChange: (open: boolean) => void; onChange: (value: string) => void; onSelect: (job: JobCatalogEntry) => void; onUseCustom: () => void; onClear: () => void }) {
+function JobCatalogSearch({ value, selectedJob, customSelected, jobs, loading, error, open, onOpenChange, onChange, onSelect, onUseCustom, onClear, inputName = "title", inputId = "fmea-job-search", listId = "fmea-job-catalog-options", label, placeholder, hint, className = "" }: { value: string; selectedJob: JobCatalogEntry | null; customSelected: boolean; jobs: JobCatalogEntry[]; loading: boolean; error: string; open: boolean; onOpenChange: (open: boolean) => void; onChange: (value: string) => void; onSelect: (job: JobCatalogEntry) => void; onUseCustom: () => void; onClear: () => void; inputName?: string; inputId?: string; listId?: string; label?: string; placeholder?: string; hint?: string; className?: string }) {
   const { locale, t } = useI18n();
   const [highlighted, setHighlighted] = useState(0);
-  const listId = "fmea-job-catalog-options";
+  const fieldLabel = label ?? t("assessment.jobActivity");
+  const fieldPlaceholder = placeholder ?? t("assessment.jobActivityPlaceholder");
+  const fieldHint = hint ?? t("assessment.jobCatalogHint");
   const catalogOptions = filterJobCatalog(jobs, value, locale);
   const customOption = value.trim().length >= 2 && !hasExactJobCatalogTitle(jobs, value, locale);
   const optionCount = catalogOptions.length + (customOption ? 1 : 0);
@@ -608,15 +608,15 @@ function JobCatalogSearch({ value, selectedJob, customSelected, jobs, loading, e
     if (event.key === "Enter" && open && customOption && highlighted === catalogOptions.length) { event.preventDefault(); onUseCustom(); }
     if (event.key === "Escape") onOpenChange(false);
   }
-  return <div className="fmea-job-search">
-    <div className="fmea-field-label"><span>{t("assessment.jobActivity")}</span><span className="required-label">{t("common.required")}</span></div>
+  return <div className={`fmea-job-search ${className}`.trim()}>
+    <div className="fmea-field-label"><span>{fieldLabel}</span><span className="required-label">{t("common.required")}</span></div>
     <div className="fmea-job-input-area">
       <div className={`fmea-search-control ${selectedJob || customSelected ? "has-selection" : ""}`}>
         <Icon name="search" size={18}/>
-        <input id="fmea-job-search" name="title" required value={value} autoComplete="off" role="combobox" aria-autocomplete="list" aria-expanded={open} aria-busy={loading} aria-controls={listId} aria-activedescendant={open && catalogOptions[highlighted] ? `${listId}-${catalogOptions[highlighted].id}` : open && customOption && highlighted === catalogOptions.length ? `${listId}-custom` : undefined} placeholder={t("assessment.jobActivityPlaceholder")} onFocus={() => onOpenChange(true)} onChange={(event) => onChange(event.target.value)} onKeyDown={handleKeyDown}/>
+        <input id={inputId} name={inputName} required value={value} autoComplete="off" role="combobox" aria-autocomplete="list" aria-expanded={open} aria-busy={loading} aria-controls={listId} aria-activedescendant={open && catalogOptions[highlighted] ? `${listId}-${catalogOptions[highlighted].id}` : open && customOption && highlighted === catalogOptions.length ? `${listId}-custom` : undefined} placeholder={fieldPlaceholder} onFocus={() => onOpenChange(true)} onChange={(event) => onChange(event.target.value)} onKeyDown={handleKeyDown}/>
         {value && <button type="button" className="fmea-search-clear" onClick={onClear} aria-label={t("assessment.clearJob")}>×</button>}
       </div>
-      {open && <div id={listId} className="fmea-job-options" role="listbox" aria-label={t("assessment.jobActivity")}>
+      {open && <div id={listId} className="fmea-job-options" role="listbox" aria-label={fieldLabel}>
         {loading && <div className="fmea-job-option loading"><span className="spinner"/>{t("assessment.loadingJobs")}</div>}
         {catalogOptions.map((job, index) => <button id={`${listId}-${job.id}`} type="button" role="option" aria-selected={selectedJob?.id === job.id} className={`fmea-job-option ${highlighted === index ? "highlighted" : ""}`} key={job.id} onMouseDown={(event) => event.preventDefault()} onClick={() => onSelect(job)}><span><strong>{localizedJobTitle(job, locale)}</strong><small>{localizedJobDepartment(job, locale) || t("assessment.catalogJob")}</small></span><Icon name="arrow" size={16}/></button>)}
         {customOption && <button id={`${listId}-custom`} type="button" role="option" aria-selected={customSelected} className={`fmea-job-option custom ${highlighted === catalogOptions.length ? "highlighted" : ""}`} onMouseDown={(event) => event.preventDefault()} onClick={onUseCustom}><span><strong>{t("assessment.addNewJob")}</strong><small>{t("assessment.addNewJobHint")}</small></span><Icon name="plus" size={16}/></button>}
@@ -626,7 +626,7 @@ function JobCatalogSearch({ value, selectedJob, customSelected, jobs, loading, e
     {selectedJob && <small className="fmea-selected-job"><Icon name="check" size={14}/>{t("assessment.selectedFromCatalog")}: {localizedJobTitle(selectedJob, locale)}</small>}
     {customSelected && !selectedJob && <small className="fmea-selected-job custom"><Icon name="check" size={14}/>{t("assessment.customJobSelected")}: {value.trim()}</small>}
     {error && <small className="field-error" role="status">{error}</small>}
-    <small className="field-hint">{t("assessment.jobCatalogHint")}</small>
+    <small className="field-hint">{fieldHint}</small>
   </div>;
 }
 
@@ -774,7 +774,7 @@ function FmeaProcessPage() {
 
   useEffect(() => {
     try {
-      sessionStorage.setItem(fmeaWizardStepKey(draftKey), String(wizardStep));
+      sessionStorage.setItem(assessmentWizardStepKey(draftKey), String(wizardStep));
     } catch { /* storage may be unavailable */ }
   }, [draftKey, wizardStep]);
 
@@ -1988,7 +1988,7 @@ export function FmeaReportPage() {
   const actionFormRef = useRef<HTMLDivElement>(null);
   const [actionDraft, setActionDraft] = useState<{ title: string; description: string; fmeaItemId: string; priority: string }>({ title: "", description: "", fmeaItemId: "", priority: "MEDIUM" });
   const dialog = useDialog();
-  const canEditActions = ["SUPER_ADMIN", "ORG_ADMIN", "ASSISTANT", "HSE_MANAGER", "ASSESSOR"].includes(getCurrentRole());
+  const canEditActions = ["SUPER_ADMIN", "ORG_ADMIN", "HSE_MANAGER", "HSE_SPECIALIST", "HSE_OFFICER", "ASSISTANT", "ASSESSOR"].includes(getCurrentRole());
   const report = state.data;
   const processName = report ? (locale === "en" ? report.assessment.processName.en : report.assessment.processName.fa) : "";
   const companyName = report ? (locale === "en" ? report.assessment.companyName.en : report.assessment.companyName.fa) : "";
@@ -2623,7 +2623,19 @@ export function RulaPage() {
   const requestedProjectId = searchParams.get("project")?.trim() ?? "";
   const numberLocale = locale === "en" ? "en-US" : "fa-IR";
   const assessmentLabel = "RULA"; const draftKey = draftKeyFor("rula"); const state = useLoad<Rula[]>("/rula"); const projects = useLoad<Project[]>("/projects"); const [error, setError] = useState(""); const [draftNotice, setDraftNotice] = useState(""); const [draftSyncAvailable, setDraftSyncAvailable] = useState(false); const [history, setHistory] = useState<VersionRow[]>([]); const [historyAssessment, setHistoryAssessment] = useState(""); const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1); const [draft, setDraftState] = useState<DraftRecord | null>(() => readLocalDraft(draftKey)); const [selectedProjectId, setSelectedProjectId] = useState(() => draftValue(readLocalDraft(draftKey), "projectId")); const [lastSaved, setLastSaved] = useState<Date | null>(null); const [autosaveError, setAutosaveError] = useState(false); const [postureImage, setPostureImage] = useState<File | null>(null); const [postureImagePreview, setPostureImagePreview] = useState(""); const [postureImageError, setPostureImageError] = useState(""); const [postureDescription, setPostureDescription] = useState(() => String(draft?.postureDescription ?? "")); const [rulaBodySide, setRulaBodySide] = useState<"LEFT" | "RIGHT" | "BOTH">(() => draft?.bodySide === "LEFT" ? "LEFT" : draft?.bodySide === "BOTH" ? "BOTH" : "RIGHT"); const [submitting, setSubmitting] = useState(false); const [postureAnalysis, setPostureAnalysis] = useState<RulaPostureAnalysis>(() => parsePostureAnalysis(draft?.postureAnalysis)); const [rulaForce, setRulaForce] = useState(() => { const value = Number(draft?.force ?? 0); return Number.isInteger(value) && value >= 0 && value <= 3 ? value : 0; }); const [rulaMuscleUse, setRulaMuscleUse] = useState(() => rulaMuscleUseFromValue(draft?.muscleUse)); const [selectedRulaActions, setSelectedRulaActions] = useState<RulaCorrectionAction[]>([]); const dialog = useDialog(); const formRef = useRef<HTMLFormElement>(null); const postureImageInputRef = useRef<HTMLInputElement>(null); const saveTimer = useRef<number | null>(null); const draftWriteQueue = useRef<Promise<void>>(Promise.resolve());
-  const overview = useMemo(() => rulaOverview(state.data ?? []), [state.data]);
+   const [jobQuery, setJobQuery] = useState(() => draftValue(readLocalDraft(draftKey), "jobTitle"));
+   const [selectedJobId, setSelectedJobId] = useState(() => draftValue(readLocalDraft(draftKey), "jobCatalogId"));
+   const [selectedJob, setSelectedJob] = useState<JobCatalogEntry | null>(null);
+   const [customJobSelected, setCustomJobSelected] = useState(() => draftBoolean(readLocalDraft(draftKey), "customJobSelected"));
+   const [jobCatalog, setJobCatalog] = useState<JobCatalogEntry[]>([]);
+   const [jobCatalogLoaded, setJobCatalogLoaded] = useState(false);
+   const [jobCatalogOrganizationId, setJobCatalogOrganizationId] = useState("");
+   const [jobLoading, setJobLoading] = useState(false);
+   const [jobSearchError, setJobSearchError] = useState("");
+   const [jobSearchOpen, setJobSearchOpen] = useState(false);
+   const { orgId } = getSession();
+   const rulaJobRequestId = useRef(0);
+   const overview = useMemo(() => rulaOverview(state.data ?? []), [state.data]);
   const currentRulaInputs = useMemo(() => rulaInputsFromAnalysis(postureAnalysis, rulaForce, rulaMuscleUse), [postureAnalysis, rulaForce, rulaMuscleUse]);
   const currentRulaSideResults = useMemo(() => {
     if (rulaBodySide !== "BOTH" || !postureAnalysis.sideAnalyses?.LEFT || !postureAnalysis.sideAnalyses.RIGHT) return {} as Partial<Record<RulaBodySide, ReturnType<typeof calculateRula>>>;
@@ -2641,6 +2653,12 @@ export function RulaPage() {
   }, [currentRulaInputs, currentRulaSideResults]);
   useEffect(() => { let active = true; const localDraft = readLocalDraft(draftKey); if (localDraft) { setDraftState(localDraft); setDraftNotice(t("assessment.draftAvailable", { type: assessmentLabel })); setDraftSyncAvailable(true); } void getDraft<DraftRecord>(draftKey).then((value) => { if (active && !localDraft && value && typeof value === "object" && !Array.isArray(value)) { setDraftState(value); setDraftNotice(t("assessment.draftAvailable", { type: assessmentLabel })); setDraftSyncAvailable(true); } }).catch(() => { if (active && !localDraft) setAutosaveError(true); }); return () => { active = false; cancelDraftTimer(saveTimer); }; }, [assessmentLabel, draftKey, locale]);
    useEffect(() => { if (!draft) return; const nestedInputs = draft.inputs && typeof draft.inputs === "object" && !Array.isArray(draft.inputs) ? draft.inputs as Record<string, unknown> : {}; setSelectedProjectId(String(draft.projectId ?? nestedInputs.projectId ?? "")); setPostureAnalysis(parsePostureAnalysis(draft.postureAnalysis)); setRulaBodySide(draft.bodySide === "LEFT" ? "LEFT" : draft.bodySide === "BOTH" ? "BOTH" : "RIGHT"); const force = Number(draft.force ?? nestedInputs.force ?? 0); setRulaForce(Number.isInteger(force) && force >= 0 && force <= 3 ? force : 0); const muscleUse = draft.muscleUse ?? nestedInputs.muscleUse; setRulaMuscleUse(rulaMuscleUseFromValue(muscleUse)); setPostureDescription(String(draft.postureDescription ?? "")); }, [draft]);
+    useEffect(() => {
+      if (!draft) return;
+      setJobQuery(draftValue(draft, "jobTitle"));
+      setSelectedJobId(draftValue(draft, "jobCatalogId"));
+      setCustomJobSelected(draftBoolean(draft, "customJobSelected"));
+    }, [draft]);
    useEffect(() => {
      if (resultsView || !requestedProjectId || !projects.data) return;
      const project = projects.data.find((candidate) => candidate.id === requestedProjectId);
@@ -2652,7 +2670,51 @@ export function RulaPage() {
      navigate("/rula", { replace: true });
    }, [draftKey, navigate, projects.data, requestedProjectId, resultsView]);
   useEffect(() => { if (!formRef.current) return; queueDraft(formRef.current, draftKey, saveTimer, draftWriteQueue, (time) => { setAutosaveError(false); setLastSaved(time); }, () => setAutosaveError(true)); }, [draftKey, postureAnalysis, postureDescription, rulaForce, rulaMuscleUse]);
-  useEffect(() => { if (!postureImage) { setPostureImagePreview(""); return undefined; } const objectUrl = URL.createObjectURL(postureImage); setPostureImagePreview(objectUrl); return () => URL.revokeObjectURL(objectUrl); }, [postureImage]);
+   useEffect(() => {
+     if (jobCatalogOrganizationId === orgId) return;
+     rulaJobRequestId.current += 1;
+     setJobCatalogOrganizationId(orgId);
+     setJobCatalog([]);
+     setJobCatalogLoaded(false);
+     setJobSearchError("");
+   }, [jobCatalogOrganizationId, orgId]);
+   useEffect(() => {
+     if (!jobSearchOpen || !orgId || jobCatalogOrganizationId !== orgId || jobCatalogLoaded) return;
+     const requestId = ++rulaJobRequestId.current;
+     setJobLoading(true);
+     setJobSearchError("");
+     void api<JobCatalogEntry[]>("/fmea/job-catalog?limit=" + FMEA_JOB_CATALOG_LIMIT).then((result) => {
+       if (requestId !== rulaJobRequestId.current) return;
+       setJobCatalog(result.data);
+       setJobCatalogLoaded(true);
+     }).catch(() => {
+       if (requestId === rulaJobRequestId.current) setJobSearchError(t("assessment.jobSearchUnavailable"));
+     }).finally(() => {
+       if (requestId === rulaJobRequestId.current) setJobLoading(false);
+     });
+   }, [jobCatalogLoaded, jobCatalogOrganizationId, jobSearchOpen, orgId]);
+   useEffect(() => {
+     if (!selectedJobId || selectedJob || !jobCatalog.length) return;
+     const restoredJob = jobCatalog.find((job) => job.id === selectedJobId);
+     if (restoredJob) {
+       setSelectedJob(restoredJob);
+       setCustomJobSelected(false);
+     }
+   }, [jobCatalog, selectedJob, selectedJobId]);
+   useEffect(() => {
+     if (!selectedJob) return;
+     setJobQuery(localizedJobTitle(selectedJob, locale));
+   }, [locale, selectedJob]);
+   useEffect(() => {
+     if (!jobSearchOpen) return;
+     const close = (event: PointerEvent) => {
+       const target = event.target as Node;
+       if (!formRef.current?.querySelector(".rula-job-search")?.contains(target)) setJobSearchOpen(false);
+     };
+     document.addEventListener("pointerdown", close);
+     return () => document.removeEventListener("pointerdown", close);
+   }, [jobSearchOpen]);
+   useEffect(() => { if (!postureImage) { setPostureImagePreview(""); return undefined; } const objectUrl = URL.createObjectURL(postureImage); setPostureImagePreview(objectUrl); return () => URL.revokeObjectURL(objectUrl); }, [postureImage]);
   function handlePostureImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
     setPostureImageError("");
@@ -2670,14 +2732,81 @@ export function RulaPage() {
       return selected ? { ...selected, sideAnalyses: current.sideAnalyses } : current;
     });
   }
-  function openRulaProjectCreator() {
+   function openRulaProjectCreator() {
     const form = formRef.current;
     const nextDraft = form ? snapshotStoredForm(form) : (readStoredDraft(browserStorage(), draftKey) ?? {});
     nextDraft.projectId = "";
     writeStoredDraft(browserStorage(), draftKey, nextDraft);
-    navigate("/projects?from=rula");
-  }
-  function validateRulaProcessInfo() {
+     navigate("/projects?from=rula");
+   }
+   function queueRulaJobDraft() {
+     window.setTimeout(() => {
+       if (formRef.current) queueDraft(formRef.current, draftKey, saveTimer, draftWriteQueue, (time) => { setAutosaveError(false); setLastSaved(time); }, () => setAutosaveError(true));
+     }, 0);
+   }
+   function selectRulaJob(job: JobCatalogEntry) {
+     const title = localizedJobTitle(job, locale);
+     setSelectedJob(job);
+     setSelectedJobId(job.id);
+     setCustomJobSelected(false);
+     setJobQuery(title);
+     setJobSearchOpen(false);
+     setJobSearchError("");
+     setError("");
+     queueRulaJobDraft();
+   }
+   async function useCustomRulaJobTitle(titleOverride?: string) {
+     const title = (titleOverride ?? jobQuery).trim();
+     if (title.length < 2) {
+       setError(t("assessment.jobActivityRequired"));
+       return;
+     }
+     setSelectedJob(null);
+     setSelectedJobId("");
+     setCustomJobSelected(true);
+     setJobQuery(title);
+     setJobSearchOpen(false);
+     setJobSearchError("");
+     setError("");
+     setJobLoading(true);
+     try {
+       const result = await api<JobCatalogEntry>("/fmea/job-catalog", {
+         method: "POST",
+         body: JSON.stringify({ title, locale, department: null }),
+       });
+       setJobCatalog((current) => [result.data, ...current.filter((job) => job.id !== result.data.id)]);
+       setJobCatalogLoaded(true);
+       setSelectedJob(result.data);
+       setSelectedJobId(result.data.id);
+       setCustomJobSelected(false);
+       setJobQuery(localizedJobTitle(result.data, locale));
+       queueRulaJobDraft();
+     } catch {
+       setJobSearchError(t("assessment.jobCatalogSaveFailed"));
+       queueRulaJobDraft();
+     } finally {
+       setJobLoading(false);
+     }
+   }
+   function changeRulaJobQuery(value: string) {
+     setJobQuery(value);
+     setJobSearchError("");
+     if (selectedJob && value.trim() !== localizedJobTitle(selectedJob, locale)) {
+       setSelectedJob(null);
+       setSelectedJobId("");
+       setCustomJobSelected(false);
+     }
+     if (customJobSelected && value.trim() !== jobQuery.trim()) setCustomJobSelected(false);
+   }
+   function clearRulaJob() {
+     setJobQuery("");
+     setSelectedJob(null);
+     setSelectedJobId("");
+     setCustomJobSelected(false);
+     setJobSearchError("");
+     queueRulaJobDraft();
+   }
+   function validateRulaProcessInfo() {
     const values = formRef.current ? new FormData(formRef.current) : null;
     if (!values) { setError(t("assessment.validationEnter", { field: t("assessment.rulaJobTitle") })); return false; }
     const required: Array<[string, string]> = [["projectId", t("assessment.projectRequired")], ["jobTitle", t("assessment.rulaJobTitle")], ["taskDescription", t("assessment.rulaTask")]];
@@ -2704,9 +2833,8 @@ export function RulaPage() {
     setError("");
     return true;
   }
-   function validateWizardStep() {
+  function validateWizardStep() {
     if (wizardStep === 1) return validateRulaProcessInfo();
-    if (wizardStep === 2 && hasUnconfirmedRulaResults(postureAnalysis, rulaBodySide)) { setError(t("assessment.confirmPostureResultsHint")); return false; }
     setError("");
     return true;
   }
@@ -2736,7 +2864,8 @@ export function RulaPage() {
                  <label className="span-two"><span className="field-label-line"><span>{t("assessment.projectRequired")}</span><span className="required-label">{t("common.required")}</span></span><StyledSelect name="projectId" value={selectedProjectId} onChange={(event) => { const value = event.target.value; if (value === RULA_CREATE_PROJECT_OPTION) { openRulaProjectCreator(); return; } setSelectedProjectId(value); }} required><option value="">{t("assessment.projectSelect")}</option>{projects.data?.map((project) => <option key={project.id} value={project.id}>{projectName(project, locale)}</option>)}<option value={RULA_CREATE_PROJECT_OPTION}>＋ {t("projects.newProject")}</option></StyledSelect></label>
                   <label><span className="field-label-line"><span>{t("assessment.titleRequired")}</span><span className="optional-label">{t("common.optional")}</span></span><input name="title" maxLength={180} defaultValue={draftValue(draft, "title")} placeholder={t("assessment.titleRulaPlaceholder")}/></label>
                   <label><span className="field-label-line">{t("assessment.bodySide")}</span><StyledSelect name="bodySide" value={rulaBodySide} onChange={(event) => changeBodySide(event.target.value as "LEFT" | "RIGHT" | "BOTH")}><option value="RIGHT">{t("assessment.right")}</option><option value="LEFT">{t("assessment.left")}</option><option value="BOTH">{t("assessment.bothSides")}</option></StyledSelect></label>
-                  <label className="span-two"><span className="field-label-line"><span>{t("assessment.rulaJobTitle")}</span><span className="required-label">{t("common.required")}</span></span><input name="jobTitle" maxLength={180} defaultValue={draftValue(draft, "jobTitle")} placeholder={t("assessment.rulaJobTitlePlaceholder")} required/></label>
+                  <JobCatalogSearch value={jobQuery} selectedJob={selectedJob} customSelected={customJobSelected} jobs={jobCatalog} loading={jobLoading} error={jobSearchError} open={jobSearchOpen} onOpenChange={setJobSearchOpen} onChange={changeRulaJobQuery} onSelect={selectRulaJob} onUseCustom={() => void useCustomRulaJobTitle()} onClear={clearRulaJob} inputName="jobTitle" inputId="rula-job-search" listId="rula-job-catalog-options" label={t("assessment.rulaJobTitle")} placeholder={t("assessment.jobActivityPlaceholder")} hint={t("assessment.jobCatalogHint")} className="rula-job-search"/>
+                  <input type="hidden" name="jobCatalogId" value={selectedJobId} readOnly/><input type="hidden" name="customJobSelected" value={customJobSelected ? "true" : "false"} readOnly/>
                   <label className="span-two"><span className="field-label-line"><span>{t("assessment.rulaTask")}</span><span className="required-label">{t("common.required")}</span></span><textarea name="taskDescription" maxLength={500} rows={2} defaultValue={draftValue(draft, "taskDescription")} placeholder={t("assessment.rulaTaskPlaceholder")} required/></label>
                  <label><span className="field-label-line"><span>{t("assessment.rulaDuration")}</span><span className="optional-label">{t("common.optional")}</span></span><span className="measure-control"><input name="durationPerOccurrence" type="number" min="0.1" max="1440" step="0.1" defaultValue={draftValue(draft, "durationPerOccurrence")} placeholder="15"/><StyledSelect name="durationUnit" defaultValue={draftValue(draft, "durationUnit", "MINUTE")}><option value="SECOND">{t("assessment.seconds")}</option><option value="MINUTE">{t("assessment.minutes")}</option><option value="HOUR">{t("assessment.hours")}</option></StyledSelect></span></label>
                  <label><span className="field-label-line"><span>{t("assessment.rulaRepetitions")}</span><span className="optional-label">{t("common.optional")}</span></span><input name="repetitionsPerShift" type="number" min="1" max="10000" step="1" defaultValue={draftValue(draft, "repetitionsPerShift")} placeholder="120"/></label>

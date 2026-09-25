@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
@@ -12,17 +15,177 @@ import { buildRulaFactors, buildRulaSuggestions, parseRulaInputs, parseRulaPostu
 import { isRulaPostureAnalysisReviewed, type RulaPostureAnalysis } from "../rula-posture.js";
 
 const paramsSchema = z.object({ type: z.enum(["fmea", "rula"]), id: z.string().uuid(), format: z.enum(["pdf", "xlsx", "doc", "docx"]) });
+
+const pdfRtlCharacter = /[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]/u;
+const pdfLtrCharacter = /[A-Za-z\u00c0-\u024f\u1e00-\u1eff0-9]/u;
+const pdfSectionHeadings = new Set([
+  "REPORT HEADER",
+  "PROCESS INFORMATION",
+  "EXECUTIVE RISK SUMMARY",
+  "RISK-LEVEL DISTRIBUTION",
+  "TOP FAILURE MODES",
+  "CORRECTIVE ACTIONS / CONTROLS",
+  "FULL FMEA DETAILS",
+]);
+
+type PdfFontPaths = { regular: string; bold: string };
+
+let cachedPdfFontPaths: PdfFontPaths | null | undefined;
+
+function resolvePdfFontPaths(): PdfFontPaths | null {
+  if (cachedPdfFontPaths !== undefined) return cachedPdfFontPaths;
+
+  const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
+  const regularCandidates = [
+    process.env.NIVASAFE_PDF_FONT_PATH,
+    path.resolve(moduleDirectory, "../../assets/fonts/DejaVuSans.ttf"),
+    "C:\\Windows\\Fonts\\tahoma.ttf",
+    "C:\\Windows\\Fonts\\arial.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf",
+  ].filter((candidate): candidate is string => Boolean(candidate?.trim()));
+  const regular = regularCandidates.find((candidate) => fs.existsSync(candidate));
+  if (!regular) {
+    cachedPdfFontPaths = null;
+    return cachedPdfFontPaths;
+  }
+
+  const boldCandidates = [
+    process.env.NIVASAFE_PDF_FONT_BOLD_PATH,
+    path.resolve(moduleDirectory, "../../assets/fonts/DejaVuSans-Bold.ttf"),
+    "C:\\Windows\\Fonts\\tahomabd.ttf",
+    "C:\\Windows\\Fonts\\arialbd.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    regular,
+  ].filter((candidate): candidate is string => Boolean(candidate?.trim()));
+  const bold = boldCandidates.find((candidate) => fs.existsSync(candidate)) ?? regular;
+  cachedPdfFontPaths = { regular, bold };
+  return cachedPdfFontPaths;
+}
+
+function hasPdfRtlText(value: string) {
+  return pdfRtlCharacter.test(value);
+}
+
+function normalizePdfText(value: string) {
+  return value.replace(/[\u00a0\u200b]/gu, " ").replace(/[·•]/gu, "-").replace(/\s+/gu, " ").trim();
+}
+
+function pdfDirectionOfCharacter(character: string, fallback: "rtl" | "ltr") {
+  if (pdfRtlCharacter.test(character)) return "rtl" as const;
+  if (pdfLtrCharacter.test(character)) return "ltr" as const;
+  return fallback;
+}
+
+function pdfTextRuns(value: string) {
+  const firstStrong = [...value].find((character) => pdfRtlCharacter.test(character) || pdfLtrCharacter.test(character));
+  const baseDirection = firstStrong && pdfRtlCharacter.test(firstStrong) ? "rtl" : "ltr";
+  const runs: Array<{ direction: "rtl" | "ltr"; text: string }> = [];
+  let current: { direction: "rtl" | "ltr"; text: string } | null = null;
+  for (const character of value) {
+    const direction = pdfDirectionOfCharacter(character, current?.direction ?? baseDirection);
+    if (!current || current.direction !== direction) {
+      current = { direction, text: character };
+      runs.push(current);
+    } else {
+      current.text += character;
+    }
+  }
+  return { baseDirection, runs };
+}
+
+function drawPdfText(doc: PDFKit.PDFDocument, value: string, fonts: PdfFontPaths, width: number, fontSize: number, bold = false) {
+  const text = normalizePdfText(value);
+  if (!text) return;
+  const font = bold ? fonts.bold : fonts.regular;
+  doc.font(font).fontSize(fontSize);
+  if (!hasPdfRtlText(text)) {
+    doc.text(text, { width, lineGap: 2 });
+    return;
+  }
+
+  const { baseDirection, runs } = pdfTextRuns(text);
+  const visualRuns = baseDirection === "rtl" ? [...runs].reverse() : runs;
+  if (visualRuns.length === 1) {
+    doc.text(visualRuns[0]!.text, { width, align: baseDirection === "rtl" ? "right" : "left", lineGap: 2 });
+    return;
+  }
+  visualRuns.forEach((run, index) => {
+    doc.font(font).fontSize(fontSize).text(run.text, { width, continued: index < visualRuns.length - 1, lineGap: 2 });
+  });
+}
+
+function drawPdfSectionHeading(doc: PDFKit.PDFDocument, heading: string, fonts: PdfFontPaths, margin: number, width: number) {
+  const y = doc.y;
+  if (y > doc.page.height - margin - 70) {
+    doc.addPage();
+  }
+  const top = doc.y;
+  doc.save();
+  doc.roundedRect(margin, top, width, 25, 5).fillAndStroke("#eaf3fb", "#c9dfef");
+  doc.restore();
+  doc.fillColor("#164b76");
+  drawPdfText(doc, heading, fonts, width - 20, 10, true);
+  doc.y = top + 31;
+  doc.fillColor("#253746");
+}
+
+function drawPdfFooter(doc: PDFKit.PDFDocument, fonts: PdfFontPaths, margin: number, pageNumber: number, pageCount: number) {
+  const lineY = doc.page.height - margin - 20;
+  const textY = doc.page.height - margin - 12;
+  doc.save();
+  doc.strokeColor("#d9e5ee").lineWidth(0.6).moveTo(margin, lineY).lineTo(doc.page.width - margin, lineY).stroke();
+  doc.fillColor("#6d7e8b").font(fonts.regular).fontSize(8).text(`NIVASafe - FMEA report | ${pageNumber} / ${pageCount}`, margin, textY, { width: doc.page.width - margin * 2, align: "center", lineBreak: false });
+  doc.restore();
+}
+
 export async function buildPdfDocument(title: string, lines: string[]) {
-  const doc = new PDFDocument({ margin: 48 });
+  const fonts = resolvePdfFontPaths();
+  const rtlPresent = hasPdfRtlText(title) || lines.some((line) => hasPdfRtlText(line));
+  if (rtlPresent && !fonts) throw new Error("A Unicode PDF font is required for Persian or Arabic report content");
+  const resolvedFonts = fonts ?? { regular: "Helvetica", bold: "Helvetica-Bold" };
+  const doc = new PDFDocument({ size: "A4", margin: 42, bufferPages: true, info: { Title: title, Author: "NIVASafe" } });
   const chunks: Buffer[] = [];
   const complete = new Promise<Buffer>((resolve, reject) => {
     doc.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
   });
-  doc.fontSize(20).text(title);
-  doc.moveDown();
-  for (const line of lines) doc.fontSize(10).text(line);
+
+  const margin = 42;
+  const width = doc.page.width - margin * 2;
+  doc.save();
+  doc.rect(0, 0, doc.page.width, 68).fill("#123f66");
+  doc.restore();
+  doc.fillColor("#ffffff");
+  doc.y = 18;
+  drawPdfText(doc, "NIVASafe", resolvedFonts, width / 2, 15, true);
+  doc.y = 44;
+  drawPdfText(doc, title, resolvedFonts, width, 10, false);
+  doc.y = 91;
+  doc.fillColor("#253746");
+
+  for (const rawLine of lines) {
+    const line = normalizePdfText(rawLine);
+    if (!line) {
+      doc.moveDown(0.55);
+      continue;
+    }
+    if (pdfSectionHeadings.has(line)) {
+      drawPdfSectionHeading(doc, line, resolvedFonts, margin, width);
+      continue;
+    }
+    if (doc.y > doc.page.height - margin - 46) doc.addPage();
+    doc.fillColor("#253746");
+    drawPdfText(doc, line, resolvedFonts, width, 9.5);
+    doc.moveDown(0.28);
+  }
+
+  const pageRange = doc.bufferedPageRange();
+  for (let index = pageRange.start; index < pageRange.start + pageRange.count; index += 1) {
+    doc.switchToPage(index);
+    drawPdfFooter(doc, resolvedFonts, margin, index - pageRange.start + 1, pageRange.count);
+  }
   doc.end();
   return complete;
 }

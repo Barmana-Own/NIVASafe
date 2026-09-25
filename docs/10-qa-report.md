@@ -20,7 +20,7 @@ The main FMEA register now covers process/activity, failure mode/effect/cause, c
 
 The FMEA results page now renders the required header metadata, executive risk summary, risk-level distribution, top failure modes, NIVASafe suggestions, manual corrective-action registration, tracked action register and a collapsible full-detail table. Each registered corrective action can retain a tenant-validated link to its originating FMEA row. Action status labels cover new, waiting for action, in progress and completed states; already registered NIVASafe suggestions are removed from the pending-suggestion list, and action controls prevent duplicate submissions while exposing loading states. Excel and real Word DOCX exports retain the report summary and action priority; RULA list and report surfaces expose the same Excel and Word actions. PDF generation remains available only through the backward-compatible API route and is not rendered in the panel.
 
-The RULA process-information step now captures the job, task, occurrence duration, repetitions per shift, posture-hold duration, optional load/force, bounded posture notes and posture photo. The image can be previewed, replaced or removed before registration, and the form validates supported types and the 10 MB limit before upload. The second step presents Group A/B posture-analysis tables with editable angle/status/score rows, explicit AI/user provenance and confirmation state, live Group A/B and final-score summaries, action-level badges, a data-derived leading-factor explanation, the uploaded image, saved posture notes and a prepared joint-overlay extension point. Registration controls are disabled while the request is in flight, and unconfirmed AI rows are blocked from advancing or server finalization. The results report now presents the RULA score/risk, neck/upper-arm/trunk factors, prioritized corrective-action suggestions, manual actions and a clearly labeled dynamic prediction. The current implementation uploads only user-selected images and does not claim unsupported vision-model output.
+The RULA process-information step now captures the job, task, occurrence duration, repetitions per shift, posture-hold duration, optional load/force, bounded posture notes and posture photo. The image can be previewed, replaced or removed before registration, and the form validates supported types and the 10 MB limit before upload. The second step presents Group A/B posture-analysis tables with editable angle/status/score rows, explicit AI/user provenance and confirmation state, live Group A/B and final-score summaries, action-level badges, a data-derived leading-factor explanation, the uploaded image, saved posture notes and a prepared joint-overlay extension point. The wizard can open the reporting preview without treating an incomplete posture review as a final result; unreviewed rows remain blocked at final registration and by the API. Registration controls are disabled while the request is in flight. The results report now presents the RULA score/risk, neck/upper-arm/trunk factors, prioritized corrective-action suggestions, manual actions and a clearly labeled dynamic prediction. The current implementation uploads only user-selected images and does not claim unsupported vision-model output.
 
 No P0/P1 defect was found in the available verification environment. Local MySQL was available for the additive `AIUsageRecord` schema change and authenticated `SUPER_ADMIN`/`ORG_ADMIN` endpoint smoke checks. A clean migration against a newly initialized database remains NOT_RUN because the local database is pre-existing.
 
@@ -147,6 +147,34 @@ The frontend contract suite, full 157-test suite, typecheck, lint, production bu
 | click-through tenant | NOT_RUN — session احراز‌شده در این checkpoint استفاده نشد |
 
 هیچ defect با شدت P0 یا P1 باقی نمانده است.
+
+## Checkpoint 2026-09-25 — گردش ساخت و تأیید عضو سازمان
+
+| سناریو | نتیجه |
+|---|---|
+| username در ثبت‌نام شخصی و ورود/بازیابی رمز | PASS — username اختیاری در ثبت‌نام و جایگزین معتبر email در authentication/recovery است. |
+| ثبت درخواست عضو با username اجباری | PASS — برای `ORG_ADMIN` و `HSE_MANAGER` با organization scope و validation سمت سرور پیاده‌سازی شد. |
+| تأیید/رد توسط Super Admin | PASS — endpointهای محافظت‌شده، password قوی، ساخت اتمی user و membership و ثبت audit وجود دارد. |
+| محدودسازی سطح دسترسی | PASS — HSE_MANAGER فقط `users.request` دارد؛ دعوت legacy و ویرایش/حذف اعضا برای `ORG_ADMIN` و `SUPER_ADMIN` باقی مانده است. |
+| regression suite | PASS — ۲۰۳ تست، typecheck، lint، build، قرارداد API، release verification، Prisma validation و audit وابستگی. |
+| smoke local | PASS جزئی — frontend روی `127.0.0.1:5043` با HTTP 200؛ API روی `127.0.0.1:5044` اجرا شد اما health به‌دلیل توقف سرویس MySQL محلی HTTP 503 است. |
+| migration/database click-through | NOT_RUN — MySQL محلی در دسترس نبود. |
+
+هیچ defect جدید P0 یا P1 در این checkpoint مشاهده نشد؛ تأیید کامل مسیرهای داده‌محور پس از اجرای MySQL محلی باقی است.
+
+## QA — لاگ فعالیت و مشاهده فعالیت کاربران تحت پوشش — 2026-09-25
+
+| سناریو | وضعیت |
+|---|---|
+| فعالیت کاربر جاری | PASS — کاربران احراز‌شده فقط ورود، خروج، ارزیابی‌ها و فعالیت‌های هوش مصنوعی خود را در دامنه سازمان انتخاب‌شده می‌بینند. |
+| فعالیت کاربران تحت پوشش | PASS — `ORG_ADMIN` و `HSE_MANAGER` فعالیت سازمان انتخاب‌شده و رویدادهای حساب اعضای فعال آن را از مسیر server-side مشاهده می‌کنند. |
+| جزئیات ارزیابی | PASS — عنوان و کد FMEA/RULA، نوع فعالیت و زمان دقیق در جدول و جزئیات رویداد نمایش داده می‌شود. |
+| مصرف توکن | PASS — مجموع و تفکیک توکن‌های provider-reported برای رویدادهای AI مرتبط نمایش داده می‌شود؛ prompt و پاسخ AI در لاگ خواندنی بازگردانده نمی‌شود. |
+| سازگاری مسیرها | PASS — `/activity-log` مسیر اصلی UI/API است و `/audit` به‌عنوان مسیر سازگاری باقی مانده و همان محدودیت‌های دسترسی را اعمال می‌کند. |
+| regression/type/build/security | PASS — ۲۰۸ تست، typecheck، lint، build، API contract، Prisma validation/generation، dependency audit و diff check موفق شدند. |
+| migration و مرور بصری احراز‌شده | NOT_RUN — اجرای migration روی MySQL محلی و browser smoke با نشست احراز‌شده انجام نشد. |
+
+هیچ defect جدید P0 یا P1 یا مشکل Critical/High مرتبط با این تغییر باقی نمانده است.
 
 ## بررسی QA نهایی — پیمایش خودکار پنل‌ها و حرکت Enter بین فیلدها — 2026-09-21
 

@@ -8,6 +8,7 @@
 export const PASSWORD_MIN_LENGTH = 8;
 export const DISPLAY_NAME_MAX_LENGTH = 80;
 export const EMAIL_MAX_LENGTH = 254;
+export const USERNAME_MAX_LENGTH = 64;
 
 const EMAIL_LOCAL_PART = /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+$/;
 const DOMAIN_LABEL = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/;
@@ -16,6 +17,7 @@ const PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
 const ARABIC_DIGITS = "٠١٢٣٤٥٦٧٨٩";
 const ASCII_DIGITS = "0123456789";
 const PHONE_INPUT_SHAPE = /^[+0-9۰-۹٠-٩\s().-]+$/u;
+const USERNAME_SHAPE = /^[a-z][a-z0-9._-]{2,63}$/u;
 
 const RESERVED_DISPLAY_NAMES = new Set([
   "admin", "administrator", "root", "support", "security", "owner", "operator", "moderator", "helpdesk",
@@ -43,6 +45,25 @@ export function normalizeDigits(value: string): string {
 
 export function normalizeEmail(value: string): string {
   return value.normalize("NFKC").trim().toLowerCase();
+}
+
+export function normalizeUsername(value: string): string {
+  return value.normalize("NFKC").trim().toLowerCase();
+}
+
+export function isValidUsername(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const username = normalizeUsername(value);
+  return username.length >= 3 && username.length <= USERNAME_MAX_LENGTH && !CONTROL_CHARACTERS.test(username) && USERNAME_SHAPE.test(username) && !isForbiddenUsername(username);
+}
+
+const RESERVED_USERNAMES = new Set([
+  "admin", "administrator", "root", "support", "security", "owner", "operator", "moderator", "helpdesk", "api", "bot", "system", "user", "guest", "test", "demo", "null", "undefined", "nivasafe",
+]);
+
+export function isForbiddenUsername(value: unknown): boolean {
+  if (typeof value !== "string") return true;
+  return RESERVED_USERNAMES.has(normalizeUsername(value));
 }
 
 export type ContactInputKind = "empty" | "email" | "phone" | "unknown";

@@ -1,7 +1,7 @@
-const VERSION = "v14";
+const VERSION = "v15";
 // One-time production migration: move already-open windows from the previous
-// v13 shell so the updated site favicon cannot remain active in a stale client.
-const FORCE_MIGRATION = VERSION === "v14";
+// v14 shell so the updated PWA identity and branded icon cannot remain active in a stale client.
+const FORCE_MIGRATION = VERSION === "v15";
 const CACHE_PREFIX = "nivasafe-";
 const STATIC_CACHE = `nivasafe-static-${VERSION}`;
 const RUNTIME_CACHE = `nivasafe-runtime-${VERSION}`;

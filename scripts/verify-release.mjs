@@ -15,6 +15,7 @@ const accountPages = read("frontend/src/features/account/AccountPages.tsx");
 const aiProvider = read("backend/src/ai-provider.ts");
 const manualSchema = read("database/nivasafe-mysql-schema.sql");
 const manifest = JSON.parse(read("frontend/public/manifest.webmanifest"));
+const pwaIcon = read("frontend/public/icon.svg");
 const serviceWorker = read("frontend/public/sw.js");
 const pwaManager = read("frontend/src/pwa/PwaManager.tsx");
 const iisPwaConfig = read("frontend/public/web.config");
@@ -45,17 +46,19 @@ check("Docker DATABASE_URL uses mysql service hostname", /@mysql:3306\/nivasafe/
 check("Production requires SMTP for invitations and password reset", /SMTP_URL:\s*\$\{SMTP_URL:\?/.test(compose));
 check("Demo login credentials are not shipped", !/admin@nivasafe\.local|Demo123!/.test(accountPages));
 check("MySQL migration exists", migrationFiles.length > 0 && /CREATE TABLE `User`/.test(migrationSql));
-check("All 29 Prisma tables are in migration", (migrationSql.match(/CREATE TABLE/g) ?? []).length === 29, String((migrationSql.match(/CREATE TABLE/g) ?? []).length));
+check("All 30 Prisma tables are in migration", (migrationSql.match(/CREATE TABLE/g) ?? []).length === 30, String((migrationSql.match(/CREATE TABLE/g) ?? []).length));
 check("Production provisioning script exists", existsSync(join(root, "backend/prisma/provision.ts")));
 check("Manual MySQL schema export exists", existsSync(join(root, "database/nivasafe-mysql-schema.sql")) && /CREATE TABLE `User`/.test(manualSchema) && /CREATE TABLE `AIUsageRecord`/.test(manualSchema) && /`employeeCount`/.test(manualSchema) && /`visibleUserIds`/.test(manualSchema));
 check("External AI adapters are implemented", /api\.arvancloudai\.ir\/v1/.test(aiProvider) && /api\.openai\.com\/v1\/responses/.test(aiProvider) && /generativelanguage\.googleapis\.com/.test(aiProvider) && /api\.anthropic\.com\/v1\/messages/.test(aiProvider));
 check("Runtime smoke test exists", existsSync(join(root, "scripts/smoke-test.mjs")));
 check("Database backup and restore scripts exist", existsSync(join(root, "scripts/mysql-backup.mjs")) && existsSync(join(root, "scripts/mysql-restore.mjs")));
 check("PWA manifest is installable", manifest.display === "standalone" && manifest.scope === "/" && manifest.start_url === "/" && manifest.icons?.some((icon) => icon.sizes === "192x192") && manifest.icons?.some((icon) => icon.sizes === "512x512"));
+check("PWA identity and branded icons are explicit", manifest.name === "NIVASafe" && manifest.short_name === "NIVASafe" && manifest.icons?.some((icon) => icon.src === "/icon-192.png" && icon.purpose?.includes("maskable")) && manifest.icons?.some((icon) => icon.src === "/icon-512.png" && icon.purpose?.includes("maskable")) && /data:image\/png;base64,/.test(pwaIcon) && !pwaIcon.includes('fill="#0b6b61"'));
 check("PWA shell and offline fallback exist", existsSync(join(root, "frontend/public/sw.js")) && existsSync(join(root, "frontend/public/offline.html")) && /caches\.open\(STATIC_CACHE\)/.test(serviceWorker));
 check("PWA update flow is user-controlled", /SKIP_WAITING/.test(serviceWorker) && /updateViaCache:\s*"none"/.test(pwaManager) && /controllerchange/.test(pwaManager));
 check("IIS serves PWA metadata with safe cache headers", /\.webmanifest/.test(iisPwaConfig) && /no-cache/.test(iisPwaConfig) && /no-store/.test(iisPwaConfig));
 check("Registration input security is enforced in API and shared domain", /isValidEmail/.test(validation) && /isValidPhone/.test(validation) && /isForbiddenDisplayName/.test(validation) && /isStrongPassword/.test(validation) && /timeWindow: "1 hour"/.test(authModule));
+check("Username authentication and member provisioning are present", /username\s+String\?/.test(schema) && /MemberAccessRequest/.test(schema) && /checkedLoginIdentifier/.test(authModule) && /member-requests/.test(read("backend/src/modules/users.ts")) && /admin\/member-requests/.test(read("backend/src/modules/admin.ts")));
 check("Multi-organization subscriptions are independently modeled and gated", /subscriptionPlan/.test(subscriptionSchema) && /subscriptionStatus/.test(subscriptionSchema) && /SUBSCRIPTION_REQUIRED/.test(authGuard) && /subscription\/checkout/.test(subscriptionModule));
 check("Multi-organization account switching and creation are membership-scoped", /OrganizationMember/.test(subscriptionSchema) && /app\.post\("\/api\/v1\/organizations"[\s\S]*allowUnsubscribed: true/.test(organizationModule) && /selectOrganization/.test(apiClient) && /path: "\/organizations"[\s\S]*scope: "all"/.test(appLayout) && /<Route path="organizations" element={<OrganizationsPage \/>}/.test(appRoutes));
 

@@ -121,8 +121,15 @@ describe("assessment report exports", () => {
     expect(pdfLines.join("\n")).toContain("CORRECTIVE ACTIONS / CONTROLS");
     expect(pdfLines.join("\n")).toContain("FULL FMEA DETAILS");
     expect(pdfLines.join("\n")).toContain("Safety lead (HSE_MANAGER)");
-    const pdfBuffer = await buildPdfDocument("NIVASafe — FMEA", pdfLines);
+    const pdfBuffer = await buildPdfDocument("NIVASafe — FMEA", [
+      ...pdfLines,
+      "شرح فعالیت: بسته‌بندی محصولات و کنترل ایمنی در سالن تولید",
+      "علت خطر: عدم استفاده از تجهیزات حفاظت فردی",
+    ]);
     expect(pdfBuffer.subarray(0, 5).toString("ascii")).toBe("%PDF-");
     expect(pdfBuffer.byteLength).toBeGreaterThan(1_000);
+    const pdfSource = pdfBuffer.toString("latin1");
+    expect(pdfSource).toContain("/FontFile");
+    expect(pdfSource).toContain("/Type0");
   });
 });

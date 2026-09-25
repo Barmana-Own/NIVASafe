@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildDescriptionPrompt,
   buildFmeaRiskSuggestionsPrompt,
+  buildFmeaRiskRowsPrompt,
   buildJobTitleSuggestionsPrompt,
   buildProcessSuggestionsPrompt,
   cleanDescription,
@@ -14,6 +15,7 @@ import {
   parseProcessSuggestions,
   parseFmeaRiskSuggestions,
   parseFmeaRiskScoreSuggestion,
+  parseFmeaRiskRows,
   buildFmeaImageAnalysisPrompt,
   parseFmeaImageAnalysis,
   parseJobTitleSuggestions,
@@ -87,6 +89,17 @@ describe("FMEA process-information helpers", () => {
     expect(parseFmeaRiskScoreSuggestion('{"scoreSuggestion":{"severity":2,"occurrence":2,"detection":2}}')).toMatchObject({ severity: 2, occurrence: 2, detection: 2 });
   });
 
+  it("normalizes exactly five complete default FMEA risk rows", () => {
+    const rows = parseFmeaRiskRows(JSON.stringify({ riskRows: [
+      { processStep: "شرح فعالیت", failureMode: "  نشت روغن ", effect: "آسیب به محصول", cause: "شل بودن اتصال", preventiveControls: "بازرسی دوره‌ای", detectionControls: "چک‌لیست", recommendation: "ایمن‌سازی", severity: "۸", occurrence: 3, detection: 4 },
+      { processStep: "شرح فعالیت", failureMode: "نشت روغن", effect: "آسیب به محصول", cause: "شل بودن اتصال", severity: 8, occurrence: 3, detection: 4 },
+      ...Array.from({ length: 6 }, (_, index) => ({ processStep: "شرح فعالیت", failureMode: `خطر ${index + 1}`, effect: `پیامد ${index + 1}`, cause: `علت ${index + 1}`, severity: 5, occurrence: 4, detection: 3 })),
+    ] }));
+    expect(rows).toHaveLength(5);
+    expect(rows[0]).toMatchObject({ processStep: "شرح فعالیت", failureMode: "نشت روغن", severity: 8, occurrence: 3, detection: 4 });
+    expect(parseFmeaRiskRows(JSON.stringify({ riskRows: [{ processStep: "شرح", failureMode: "خرابی", effect: "پیامد", cause: "علت", severity: 11, occurrence: 2, detection: 2 }] }))).toEqual([]);
+  });
+
   it("normalizes image-review risk rows and rejects unsafe scores", () => {
     const result = parseFmeaImageAnalysis(JSON.stringify({ summary: "یک خطر قابل بررسی دیده شد.", riskRows: [
       { failureMode: "ریزش بار", effect: "آسیب به تجهیزات", cause: "چیدمان نامناسب", preventiveControls: "بازرسی", detectionControls: "نظارت", recommendation: "ایمن‌سازی", severity: 8, occurrence: "3", detection: 4 },
@@ -141,6 +154,13 @@ describe("FMEA process-information helpers", () => {
     expect(riskRow).toContain("Project: Assembly line upgrade");
     expect(riskRow).toContain("preventive controls");
     expect(riskRow).toContain("advisory values, not final assessment results");
+
+    const riskRows = buildFmeaRiskRowsPrompt({ projectName: "Assembly line upgrade", jobTitle: "Welder", department: "Fabrication", activityDescription: "Welding", specialConditions: "Night shift", processStep: "Welding", locale: "en" });
+    expect(riskRows).toContain("NIVASAFE_FMEA_RISK_ROWS");
+    expect(riskRows).toContain('"riskRows"');
+    expect(riskRows).toContain("Return exactly 5 distinct");
+    expect(riskRows).toContain("defaults for the review table");
+    expect(riskRows).toContain("Project: Assembly line upgrade");
 
     const imagePrompt = buildFmeaImageAnalysisPrompt({ jobTitle: "اپراتور خط", department: "تولید", activityDescription: "جابجایی قطعات.", locale: "fa" });
     expect(imagePrompt).toContain("NIVASAFE_FMEA_IMAGE_REVIEW");

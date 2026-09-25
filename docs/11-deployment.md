@@ -776,3 +776,7 @@ artifact frontend در `C:\ProgramData\NIVASafe\staging\release-20260921-fmea-pr
 | `shared/domain/dist/index.js` | `82A127FD94B67ACDF5923C4F3F6677C0195067007F960C41E21B0468C1A10C05` |
 
 تست‌های frontend/backend/shared-domain در مجموع ۱۹۲ مورد PASS شدند (۸۲، ۹۸ و ۱۲)؛ build، typecheck مستقیم، بررسی قرارداد API با ۵۸ مسیر frontend و ۱۰۸ route backend، `verify:release` با ۲۶ بررسی، audit وابستگی و `git diff --check` موفق بودند. artifactها در `C:\ProgramData\NIVASafe\staging\release-20260922-rula-muscle-score` staged و روی static root و مسیرهای backend/shared-domain فعال شدند؛ taskهای API/Nginx Running، MySQL health=`up` و تنها listener مورد انتظار روی `127.0.0.1:5044` تأیید شد. smoke عمومی HTTPS برای `/`، `/login`، `/fmea`، `/rula`، `/actions`، `/assistant`، manifest، service worker، bundleهای hash‌شده و `/api/v1/health` با HTTP 200 پاسخ داد و markerهای معیار استفاده تکراری از عضله در bundle عمومی حاضر است.
+
+## آماده‌سازی PWA با نام و آیکون NIVASafe — 2026-09-25
+
+هویت نصب PWA به‌صورت صریح روی `NIVASafe` تنظیم شد: عنوان HTML و `application-name` همین مقدار را دارند، manifest از آیکون‌های PNG برندشده با `purpose: "any maskable"` و SVG self-contained استفاده می‌کند، و shortcutها نیز به همان آیکون برندشده اشاره دارند. service worker به v15 ارتقا یافت تا پنجره‌ها و نصب‌های stale پس از دریافت release جدید به shell و metadata تازه مهاجرت کنند. این تغییر فقط آماده‌سازی source/build است و انتشار واقعی انجام نشده است.

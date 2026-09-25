@@ -7,6 +7,8 @@ export const FMEA_PROCESS_ITEM_LENGTH_MAX = 160;
 export const FMEA_JOB_TITLE_MAX = 180;
 export const FMEA_JOB_TITLE_SUGGESTION_MAX = 8;
 export const FMEA_SPECIAL_CONDITIONS_MAX = 1_200;
+export const FMEA_PROCESS_RISK_ROW_SUGGESTION_MIN = 5;
+export const FMEA_PROCESS_RISK_ROW_SUGGESTION_MAX = 5;
 
 export type ProcessSuggestionCategory = "equipment" | "materials" | "controls";
 
@@ -28,6 +30,19 @@ export type FmeaRiskScoreSuggestion = {
   occurrence: number;
   detection: number;
   rationale: string;
+};
+
+export type FmeaRiskRowSuggestion = {
+  processStep: string;
+  failureMode: string;
+  effect: string;
+  cause: string;
+  preventiveControls: string;
+  detectionControls: string;
+  recommendation: string;
+  severity: number;
+  occurrence: number;
+  detection: number;
 };
 
 export type FmeaImageRiskRow = {
@@ -177,6 +192,28 @@ export function parseFmeaRiskScoreSuggestion(answer: string): FmeaRiskScoreSugge
   const detection = score("detection");
   if (severity === null || occurrence === null || detection === null) return null;
   return { severity, occurrence, detection, rationale: cleanText(suggestion.rationale, 320) || "Review the suggested scores against the actual work conditions before confirming them." };
+}
+
+export function parseFmeaRiskRows(answer: string): FmeaRiskRowSuggestion[] {
+  const parsed = parseJsonObject(answer);
+  const rawRows = parsed?.riskRows ?? parsed?.rows;
+  if (!Array.isArray(rawRows)) return [];
+  const seen = new Set<string>();
+  return rawRows.flatMap((value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+    const row = value as Record<string, unknown>;
+    const processStep = cleanRiskField(row.processStep);
+    const failureMode = cleanRiskField(row.failureMode);
+    const effect = cleanRiskField(row.effect);
+    const cause = cleanRiskField(row.cause);
+    const severity = parseImageRiskScore(row.severity);
+    const occurrence = parseImageRiskScore(row.occurrence);
+    const detection = parseImageRiskScore(row.detection);
+    const key = [processStep, failureMode, effect, cause].join("\u0000");
+    if (!processStep || !failureMode || !effect || !cause || severity === null || occurrence === null || detection === null || seen.has(key)) return [];
+    seen.add(key);
+    return [{ processStep, failureMode, effect, cause, preventiveControls: cleanRiskField(row.preventiveControls), detectionControls: cleanRiskField(row.detectionControls), recommendation: cleanRiskField(row.recommendation), severity, occurrence, detection }];
+  }).slice(0, FMEA_PROCESS_RISK_ROW_SUGGESTION_MAX);
 }
 
 function cleanRiskField(value: unknown) {
@@ -352,6 +389,31 @@ export function buildFmeaRiskSuggestionsPrompt(input: {
     `Existing detection controls: ${cleanText(input.detectionControls, 500) || "-"}`,
     `Existing recommendation: ${cleanText(input.recommendation, 500) || "-"}`,
     "Suggest plausible failure modes, effects, preventive controls, detection controls, causes, and HSE corrective actions for the stated process. Suggestions are advisory drafts and require explicit user confirmation before final registration; the user may review and edit every field.",
+  ].join("\n");
+}
+
+export function buildFmeaRiskRowsPrompt(input: {
+  projectName?: string | null;
+  jobTitle: string;
+  department?: string | null;
+  activityDescription?: string | null;
+  specialConditions?: string | null;
+  processStep?: string | null;
+  locale: "fa" | "en";
+}) {
+  const language = input.locale === "en" ? "English" : "Persian";
+  return [
+    "NIVASAFE_FMEA_RISK_ROWS",
+    'Return only valid JSON: {"riskRows":[{"processStep":"","failureMode":"","effect":"","cause":"","preventiveControls":"","detectionControls":"","recommendation":"","severity":1,"occurrence":1,"detection":1}]}.' ,
+    `Use ${language}. Return exactly ${FMEA_PROCESS_RISK_ROW_SUGGESTION_MIN} distinct, concise editable FMEA risk-row drafts. Every text field must be no more than 1,200 characters. Do not add markdown, introductions, or explanations outside JSON.`,
+    "Use the stage-one project, job, department, activity description, special conditions, and process step as the primary context. Do not invent exact measurements, equipment specifications, organization-specific facts, or unprovided incidents.",
+    "Scores are advisory integers from 1 to 10 and must be reviewed by a qualified HSE assessor before final registration. These rows are defaults for the review table, not approved results.",
+    `Project: ${cleanText(input.projectName, 180) || "-"}`,
+    `Job/process: ${cleanText(input.jobTitle, 180) || "-"}`,
+    `Department/unit: ${cleanText(input.department, 160) || "-"}`,
+    `Activity description: ${cleanText(input.activityDescription, FMEA_PROCESS_DESCRIPTION_MAX) || "-"}`,
+    `Special work conditions: ${cleanText(input.specialConditions, FMEA_SPECIAL_CONDITIONS_MAX) || "-"}`,
+    `Process step: ${cleanText(input.processStep, FMEA_PROCESS_DESCRIPTION_MAX) || "-"}`,
   ].join("\n");
 }
 

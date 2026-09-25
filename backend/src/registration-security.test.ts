@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseRegistrationInput, validateRegistrationIdentity } from "./modules/auth.js";
+import { checkedUsername, parseRegistrationInput, validateRegistrationIdentity } from "./modules/auth.js";
 
 const validPersonalPayload = {
   email: "person@example.com",
@@ -32,6 +32,9 @@ describe("registration security boundary", () => {
   it("rejects reserved or invalid usernames at the server boundary", () => {
     expect(() => validateRegistrationIdentity({ email: "person@example.com", displayName: "admin-operator" })).toThrow("نام کاربری");
     expect(() => validateRegistrationIdentity({ email: "person@example.com", displayName: "<script>" })).toThrow("نام کاربری");
+    expect(validateRegistrationIdentity({ email: "person@example.com", username: " Ali.HSE ", displayName: "علی رضایی" })).toMatchObject({ username: "ali.hse" });
+    expect(checkedUsername(null)).toBeNull();
+    expect(() => checkedUsername("ali hse", true)).toThrow("نام کاربری");
   });
 
   it("rejects unknown registration fields and incomplete organization details", () => {

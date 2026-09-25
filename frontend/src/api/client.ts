@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 export type Locale = "fa" | "en";
 export type Organization = { id: string; nameFa: string; nameEn: string; role: string; active?: boolean; subscriptionPlan?: string; subscriptionStatus?: string; subscriptionExpiresAt?: string | null; subscriptionPaymentRequired?: boolean };
-export type Session = { accessToken: string; refreshToken: string; user: { id: string; email: string; displayName: string; locale?: string; globalRole?: string }; organizations: Organization[] };
+export type Session = { accessToken: string; refreshToken: string; user: { id: string; email: string; username?: string | null; displayName: string; locale?: string; globalRole?: string }; organizations: Organization[] };
 export type ApiEnvelope<T> = { data: T; meta?: { page: number; limit: number; total: number } };
 export type ApiError = Error & { code?: string; requestId?: string; status?: number };
 // Vite can load the repository's development `.env` while producing a

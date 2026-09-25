@@ -453,3 +453,13 @@ release `release-20260922-rula-muscle-score` مستقل بررسی شد. کنت�
 | production deployment | PASS — API/MySQL سالم، taskهای API/Nginx Running، یک listener مورد انتظار و public HTTPS/PWA/health smoke موفق است |
 
 نتیجه release: PASS؛ استفاده تکراری از عضله دیگر یک تیک مبهم نیست، معیار امتیازدهی برای کاربر قابل مشاهده و انتخاب است و امتیاز ۱ یا صفر در امتیاز نهایی RULA محاسبه می‌شود.
+
+## بازبینی هویت نصب PWA و آیکون NIVASafe — 2026-09-25
+
+| بررسی نهایی | وضعیت |
+|---|---|
+| application identity | PASS — manifest، عنوان HTML، `application-name` و offline shell مقدار دقیق `NIVASafe` را ارائه می‌کنند. |
+| branded icons | PASS — آیکون‌های PNG در اندازه‌های ۱۹۲ و ۵۱۲ با purpose maskable و SVG self-contained برند NIVASafe در manifest ثبت شده‌اند. |
+| stale-client migration | PASS — service worker به v15 ارتقا یافته و پنجره‌های باز را برای دریافت shell جدید migrate می‌کند. |
+| contract/syntax/release | PASS — تست اختصاصی PWA، syntax service worker و `verify:release` با ۲۸ بررسی موفق شدند. |
+| production deployment | NOT_PERFORMED — انتشار واقعی و به‌روزرسانی نصب موجود روی دستگاه کاربر در این checkpoint انجام نشده است. |

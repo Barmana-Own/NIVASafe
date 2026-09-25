@@ -147,14 +147,18 @@ export function describeAIProviderError(error: unknown) {
   return "AI provider is unavailable";
 }
 
-const systemInstruction = [
-  "You are the NIVASafe intelligent assistant for workplace safety and occupational health management (HSE).",
-  "Introduce yourself as the NIVASafe intelligent assistant when the user greets you or asks who you are.",
-  "Answer in the same language as the user.",
-  "Prioritize elimination, substitution, engineering controls, administrative controls, and PPE in that order.",
-  "Clearly distinguish general guidance from decisions that require a qualified HSE professional.",
-  "Use the supplied organization knowledge when relevant and do not invent organization-specific facts.",
-].join(" ");
+function systemInstruction(useCase: AIUseCase) {
+  return [
+    "You are the NIVASafe intelligent assistant for workplace safety and occupational health management (HSE).",
+    useCase === "chat"
+      ? "Introduce yourself as the NIVASafe intelligent assistant only when the user greets you or asks who you are."
+      : "This is an assessment or risk-suggestion request. Do not introduce yourself, describe your identity as an assistant, or add a generic introductory preamble; start directly with the requested result.",
+    "Answer in the same language as the user.",
+    "Prioritize elimination, substitution, engineering controls, administrative controls, and PPE in that order.",
+    "Clearly distinguish general guidance from decisions that require a qualified HSE professional.",
+    "Use the supplied organization knowledge when relevant and do not invent organization-specific facts.",
+  ].join(" ");
+}
 
 const knowledgeLimits = {
   chat: { maxDocuments: 3, maxCharsPerDocument: 900 },
@@ -247,9 +251,10 @@ class KnowledgeFallbackProvider implements AIProvider {
   async analyze(input: AIProviderInput): Promise<AIProviderResult> {
     const knowledge = await loadKnowledge(input.organizationId, input.message, input.userId, this.useCase);
     const documents = knowledge.context.split("\n\n").filter(Boolean);
+    const introduction = this.useCase === "chat" ? "من دستیار هوشمند سامانه NIVASafe برای مدیریت ایمنی و بهداشت حرفه‌ای هستم.\n\n" : "";
     const answer = documents.length
-      ? `من دستیار هوشمند سامانه NIVASafe برای مدیریت ایمنی و بهداشت حرفه‌ای هستم.\n\nبر اساس پایگاه دانش سازمان:\n${documents.map((document) => document.split("\n").slice(1).join("\n").slice(0, 320)).join("\n")}`
-      : "من دستیار هوشمند سامانه NIVASafe برای مدیریت ایمنی و بهداشت حرفه‌ای هستم.\n\nراهنمای پایه: خطر را شناسایی کنید، شدت و احتمال را بسنجید، کنترل‌های موجود را ثبت کنید، اقدام اصلاحی دارای مسئول و مهلت بسازید و نتیجه را به تأیید متخصص HSE برسانید.";
+      ? `${introduction}بر اساس پایگاه دانش سازمان:\n${documents.map((document) => document.split("\n").slice(1).join("\n").slice(0, 320)).join("\n")}`
+      : `${introduction}راهنمای پایه: خطر را شناسایی کنید، شدت و احتمال را بسنجید، کنترل‌های موجود را ثبت کنید، اقدام اصلاحی دارای مسئول و مهلت بسازید و نتیجه را به تأیید متخصص HSE برسانید.`;
     return { provider: this.name, answer, confidence: documents.length ? 0.72 : 0.45, citations: knowledge.citations };
   }
 }
@@ -299,6 +304,16 @@ function extractChatCompletionText(payload: ChatCompletionPayload) {
   return "";
 }
 
+const assessmentIntroductionPatterns = [
+  /^\s*من دستیار هوشمند(?: سامانه)? NIVASafe[^.\n]*(?:[.!؟]\s*)+/iu,
+  /^\s*I am(?: the)? NIVASafe(?: intelligent)? assistant[^.\n]*(?:[.!?]\s*)+/i,
+];
+
+function normaliseAIAnswer(answer: string, useCase: AIUseCase) {
+  if (useCase !== "risk") return answer.trim();
+  return assessmentIntroductionPatterns.reduce((result, pattern) => result.replace(pattern, ""), answer).trim();
+}
+
 function normaliseBaseUrl(value: string | undefined) {
   if (!value?.trim()) return null;
   try {
@@ -341,11 +356,11 @@ class ArvanCloudProvider extends HttpProvider {
       headers: { Authorization: `Bearer ${this.key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: this.model,
-        messages: [{ role: "system", content: systemInstruction }, { role: "user", content: messageContent }],
+        messages: [{ role: "system", content: systemInstruction(this.useCase) }, { role: "user", content: messageContent }],
         max_tokens: outputTokenLimit(this.useCase),
       }),
     });
-    const answer = extractChatCompletionText(payload);
+    const answer = normaliseAIAnswer(extractChatCompletionText(payload), this.useCase);
     if (!answer) throw Object.assign(new Error("ArvanCloud AI returned no text output"), { code: "EMPTY_PROVIDER_RESPONSE" });
     const model = normaliseModel(payload.model, this.model);
     const usage = normaliseAIUsage(payload.usage);
@@ -368,9 +383,9 @@ class OpenAIProvider extends HttpProvider {
     }>("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: { Authorization: `Bearer ${this.key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: this.model, store: false, instructions: systemInstruction, input: userText, max_output_tokens: outputTokenLimit(this.useCase) }),
+      body: JSON.stringify({ model: this.model, store: false, instructions: systemInstruction(this.useCase), input: userText, max_output_tokens: outputTokenLimit(this.useCase) }),
     });
-    const answer = payload.output_text?.trim() || payload.output?.flatMap((item) => item.content ?? []).filter((item) => item.type === "output_text").map((item) => item.text ?? "").join("\n").trim();
+    const answer = normaliseAIAnswer(payload.output_text?.trim() || payload.output?.flatMap((item) => item.content ?? []).filter((item) => item.type === "output_text").map((item) => item.text ?? "").join("\n").trim() || "", this.useCase);
     if (!answer) throw Object.assign(new Error("OpenAI returned no text output"), { code: "EMPTY_PROVIDER_RESPONSE" });
     const model = normaliseModel(payload.model, this.model);
     const usage = normaliseAIUsage(payload.usage);
@@ -390,9 +405,9 @@ class GeminiProvider extends HttpProvider {
     }>(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model!)}:generateContent`, {
       method: "POST",
       headers: { "x-goog-api-key": this.key!, "Content-Type": "application/json" },
-      body: JSON.stringify({ system_instruction: { parts: [{ text: systemInstruction }] }, contents: [{ role: "user", parts: [{ text: userText }] }], generationConfig: { maxOutputTokens: outputTokenLimit(this.useCase) } }),
+      body: JSON.stringify({ system_instruction: { parts: [{ text: systemInstruction(this.useCase) }] }, contents: [{ role: "user", parts: [{ text: userText }] }], generationConfig: { maxOutputTokens: outputTokenLimit(this.useCase) } }),
     });
-    const answer = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("\n").trim();
+    const answer = normaliseAIAnswer(payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("\n").trim() || "", this.useCase);
     if (!answer) throw Object.assign(new Error("Gemini returned no text output"), { code: "EMPTY_PROVIDER_RESPONSE" });
     const model = normaliseModel(payload.model, this.model);
     const usage = normaliseAIUsage(payload.usageMetadata);
@@ -408,9 +423,9 @@ class AnthropicProvider extends HttpProvider {
     const payload = await fetchJson<{ content?: Array<{ type?: string; text?: string }>; model?: unknown; usage?: unknown }>("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": this.key!, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-      body: JSON.stringify({ model: this.model, max_tokens: outputTokenLimit(this.useCase), system: systemInstruction, messages: [{ role: "user", content: userText }] }),
+      body: JSON.stringify({ model: this.model, max_tokens: outputTokenLimit(this.useCase), system: systemInstruction(this.useCase), messages: [{ role: "user", content: userText }] }),
     });
-    const answer = payload.content?.filter((item) => item.type === "text").map((item) => item.text ?? "").join("\n").trim();
+    const answer = normaliseAIAnswer(payload.content?.filter((item) => item.type === "text").map((item) => item.text ?? "").join("\n").trim() || "", this.useCase);
     if (!answer) throw Object.assign(new Error("Anthropic returned no text output"), { code: "EMPTY_PROVIDER_RESPONSE" });
     const model = normaliseModel(payload.model, this.model);
     const usage = normaliseAIUsage(payload.usage);

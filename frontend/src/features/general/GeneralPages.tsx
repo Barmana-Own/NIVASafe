@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { SUBSCRIPTION_PLANS, isSubscriptionActive } from "@nivasafe/domain";
 import { api, clearSession, download, getCurrentRole, getSession, isSessionRemembered, saveSession, selectOrganization, useLoad } from "../../api/client";
@@ -180,7 +180,7 @@ export function ProjectsPage() {
   const [projectEditDraft, setProjectEditDraft] = useState<ProjectEditDraft>({ name: "", code: "", description: "", status: "ACTIVE" });
   const [savingProjectId, setSavingProjectId] = useState<string | null>(null);
   const dialog = useDialog();
-  const canManage = ["SUPER_ADMIN", "ORG_ADMIN", "HSE_MANAGER"].includes(getCurrentRole());
+  const canManage = ["SUPER_ADMIN", "ORG_ADMIN", "HSE_MANAGER", "HSE_OFFICER"].includes(getCurrentRole());
   const { session, orgId } = getSession();
   const projectDraftKey = scopedDraftKey("project-create", session?.user.id, orgId);
   async function createProject(event: FormEvent<HTMLFormElement>) {
@@ -300,7 +300,7 @@ export function ActionsPage() {
   const numberLocale = locale === "en" ? "en-US" : "fa-IR";
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const canEditActions = ["SUPER_ADMIN", "ORG_ADMIN", "ASSISTANT", "HSE_MANAGER", "ASSESSOR"].includes(getCurrentRole());
+  const canEditActions = ["SUPER_ADMIN", "ORG_ADMIN", "HSE_MANAGER", "HSE_SPECIALIST", "HSE_OFFICER", "ASSISTANT", "ASSESSOR"].includes(getCurrentRole());
   const { session, orgId } = getSession();
   const actionDraftKey = scopedDraftKey("action-create", session?.user.id, orgId);
   async function create(event: FormEvent<HTMLFormElement>) {
@@ -385,14 +385,100 @@ export function NotificationsPage() {
   </section>;
 }
 
-type Audit = { id: string; action: string; entityType?: string; entityId?: string; createdAt: string; user?: { displayName: string; email?: string } };
-export function AuditPage() {
-  const state = useLoad<Audit[]>("/audit");
-  const { t } = useI18n();
-  return <section className="page-shell"><PageHeader eyebrow={t("audit.eyebrow")} title={t("audit.title")} description={t("audit.description")}/>
-    <SectionCard title={t("audit.report")} icon="audit"><LoadState state={state} empty={t("audit.none")}>{(data) => <div className="table-wrap"><table><thead><tr><th>{t("audit.time")}</th><th>{t("audit.user")}</th><th>{t("audit.event")}</th><th>{t("audit.entity")}</th></tr></thead><tbody>{data.map((item) => <tr key={item.id}><td>{formatDate(item.createdAt, true)}</td><td><strong>{item.user?.displayName ?? t("common.system")}</strong><small>{item.user?.email}</small></td><td><code className="event-code">{item.action}</code></td><td>{item.entityType ? `${item.entityType} · ${item.entityId ?? t("common.none")}` : t("common.none")}</td></tr>)}</tbody></table></div>}</LoadState></SectionCard>
+type ActivityLogEntry = {
+  id: string;
+  action: string;
+  category: "AUTH" | "ASSESSMENT" | "AI" | "OTHER";
+  entityType?: string | null;
+  entityId?: string | null;
+  metadata?: unknown;
+  requestId?: string | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  createdAt: string;
+  assessment?: { type: "FMEA" | "RULA"; id: string; title: string; code: string | null } | null;
+  tokenUsage?: { useCase: string; provider: string; model: string | null; inputTokens: number; outputTokens: number; totalTokens: number; sourceType: string; createdAt: string } | null;
+  user?: { id: string; displayName: string; email?: string | null } | null;
+};
+
+const activityActionKeys: Record<string, string> = {
+  LOGIN: "activityLog.actions.login",
+  LOGOUT: "activityLog.actions.logout",
+  FAILED_LOGIN: "activityLog.actions.failedLogin",
+  FMEA_CREATE: "activityLog.actions.assessmentCreated",
+  RULA_CREATE: "activityLog.actions.assessmentCreated",
+  FMEA_UPDATE: "activityLog.actions.assessmentUpdated",
+  RULA_UPDATE: "activityLog.actions.assessmentUpdated",
+  FMEA_DELETE: "activityLog.actions.assessmentArchived",
+  RULA_DELETE: "activityLog.actions.assessmentArchived",
+  FMEA_DUPLICATE: "activityLog.actions.assessmentDuplicated",
+  RULA_DUPLICATE: "activityLog.actions.assessmentDuplicated",
+  FMEA_REPORT_SAVED: "activityLog.actions.reportSaved",
+  AI_REQUEST_CREATE: "activityLog.actions.aiRequest",
+  AI_REQUEST_RETRY: "activityLog.actions.aiRetry",
+  CHAT_MESSAGE: "activityLog.actions.chatMessage",
+};
+
+function activityActionLabel(action: string, t: (key: string) => string): string {
+  const key = activityActionKeys[action];
+  if (key) return t(key);
+  if (action.startsWith("FMEA_") || action.startsWith("RULA_")) return t("activityLog.actions.assessmentActivity");
+  if (action.startsWith("AI_") || action.startsWith("CHAT_") || action.includes("IMAGE_ANALYSIS") || action.includes("SUGGESTION")) return t("activityLog.actions.aiActivity");
+  return t("activityLog.actions.systemActivity");
+}
+
+function activityCategoryLabel(category: ActivityLogEntry["category"], t: (key: string) => string): string {
+  return t({ AUTH: "activityLog.categories.auth", ASSESSMENT: "activityLog.categories.assessment", AI: "activityLog.categories.ai", OTHER: "activityLog.categories.other" }[category]);
+}
+
+export function ActivityLogPage() {
+  const { locale, t } = useI18n();
+  const numberLocale = locale === "en" ? "en-US" : "fa-IR";
+  const role = getCurrentRole();
+  const canViewTeam = ["SUPER_ADMIN", "ORG_ADMIN", "HSE_MANAGER"].includes(role);
+  const [search, setSearch] = useState("");
+  const [action, setAction] = useState("");
+  const [entityType, setEntityType] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const activityLogPath = useMemo(() => {
+    const params = new URLSearchParams({ limit: "100" });
+    if (search.trim()) params.set("search", search.trim());
+    if (action.trim()) params.set("action", action.trim());
+    if (entityType.trim()) params.set("entityType", entityType.trim());
+    return `/activity-log?${params.toString()}`;
+  }, [search, action, entityType]);
+  const state = useLoad<ActivityLogEntry[]>(activityLogPath);
+  const [searchInput, setSearchInput] = useState("");
+  const [actionInput, setActionInput] = useState("");
+  const [entityInput, setEntityInput] = useState("");
+
+  function submitFilters(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSearch(searchInput);
+    setAction(actionInput);
+    setEntityType(entityInput);
+    setExpandedId(null);
+  }
+
+  function clearFilters() {
+    setSearchInput(""); setActionInput(""); setEntityInput(""); setSearch(""); setAction(""); setEntityType(""); setExpandedId(null);
+  }
+
+  return <section className="page-shell"><PageHeader eyebrow={t("activityLog.eyebrow")} title={t("activityLog.title")} description={t(canViewTeam ? "activityLog.teamDescription" : "activityLog.selfDescription")} actions={<button className="ghost" type="button" onClick={state.reload}><Icon name="activity"/> {t("common.retry")}</button>}/>
+    <SectionCard title={t("activityLog.report")} icon="audit">
+      <form className="activity-log-filters" onSubmit={submitFilters}>
+        <label><span>{t("activityLog.search")}</span><input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder={t("activityLog.searchPlaceholder")} /></label>
+        <label><span>{t("activityLog.actionFilter")}</span><input value={actionInput} onChange={(event) => setActionInput(event.target.value)} placeholder="LOGIN" dir="ltr" /></label>
+        <label><span>{t("activityLog.entityFilter")}</span><input value={entityInput} onChange={(event) => setEntityInput(event.target.value)} placeholder="User" dir="ltr" /></label>
+        <div className="activity-log-filter-actions"><button className="primary" type="submit"><Icon name="search"/> {t("activityLog.search")}</button>{(search || action || entityType) && <button className="ghost" type="button" onClick={clearFilters}>{t("admin.reset")}</button>}</div>
+      </form>
+      <LoadState state={state} empty={t("activityLog.none")}>{(data) => <div className="table-wrap activity-log-table"><table><thead><tr><th>{t("activityLog.time")}</th><th>{t("activityLog.user")}</th><th>{t("activityLog.activity")}</th><th>{t("activityLog.assessment")}</th><th>{t("activityLog.tokenUsage")}</th><th>{t("activityLog.details")}</th></tr></thead><tbody>{data.map((item) => <Fragment key={item.id}><tr><td>{formatDate(item.createdAt, true)}</td><td><strong>{item.user?.displayName ?? t("common.system")}</strong><small dir="ltr">{item.user?.email ?? ""}</small></td><td><span className={`activity-category ${item.category.toLowerCase()}`}>{activityCategoryLabel(item.category, t)}</span><strong>{activityActionLabel(item.action, t)}</strong><small><code className="event-code" dir="ltr">{item.action}</code></small></td><td>{item.assessment ? <div className="activity-log-assessment"><strong>{item.assessment.type === "FMEA" ? t("activityLog.fmea") : t("activityLog.rula")}</strong><small>{item.assessment.title}{item.assessment.code ? ` · ${item.assessment.code}` : ""}</small></div> : item.entityType ? <span dir="ltr">{item.entityType}{item.entityId ? ` · ${item.entityId}` : ""}</span> : t("common.none")}</td><td>{item.tokenUsage ? <div className="activity-log-token"><strong>{item.tokenUsage.totalTokens.toLocaleString(numberLocale)}</strong><small>{t("activityLog.tokens")}</small></div> : t("common.none")}</td><td><button type="button" className="text-button" onClick={() => setExpandedId((current) => current === item.id ? null : item.id)}>{expandedId === item.id ? t("activityLog.hideDetails") : t("activityLog.details")}</button></td></tr>{expandedId === item.id && <tr className="activity-log-detail-row"><td colSpan={6}><div className="activity-log-detail"><div className="activity-log-detail-summary"><div><strong>{t("activityLog.event")}</strong><code dir="ltr">{item.action}</code></div><div><strong>{t("activityLog.entity")}</strong><span dir="ltr">{item.entityType ? `${item.entityType}${item.entityId ? ` · ${item.entityId}` : ""}` : t("common.none")}</span></div><div><strong>{t("activityLog.request")}</strong><code dir="ltr">{item.requestId ?? t("common.none")}</code></div><div><strong>{t("activityLog.ip")}</strong><code dir="ltr">{item.ipAddress ?? t("common.none")}</code></div>{item.tokenUsage && <div><strong>{t("activityLog.tokenUsage")}</strong><span dir="ltr">{t("activityLog.tokenBreakdown", { input: item.tokenUsage.inputTokens, output: item.tokenUsage.outputTokens, total: item.tokenUsage.totalTokens })}</span><small dir="ltr">{item.tokenUsage.provider}{item.tokenUsage.model ? ` · ${item.tokenUsage.model}` : ""}</small></div>}</div><div><strong>{t("activityLog.metadata")}</strong><pre dir="ltr">{item.metadata ? JSON.stringify(item.metadata, null, 2) : t("common.none")}</pre></div><div><strong>{t("activityLog.userAgent")}</strong><pre dir="ltr">{item.userAgent ?? t("common.none")}</pre></div></div></td></tr>}</Fragment>)}</tbody></table></div>}</LoadState>
+    </SectionCard>
   </section>;
 }
+
+// Compatibility export for older imports; the user-facing route is Activity Log.
+export const AuditPage = ActivityLogPage;
 
 export function HealthPage() {
   const state = useLoad<Record<string, string>>("/health");

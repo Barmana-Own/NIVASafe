@@ -371,7 +371,7 @@ const statusMap: Record<string, { key: string; tone: string }> = {
 };
 
 export function StatusBadge({ value }: { value: string }) { const { t } = useI18n(); const item = statusMap[value]; return <span className={`status-badge ${item?.tone ?? "neutral"}`}>{item ? t(item.key) : value}</span>; }
-export function roleLabel(role: string) { const key = ({ SUPER_ADMIN: "role.superAdmin", ORG_ADMIN: "role.orgAdmin", ASSISTANT: "role.assistant", HSE_MANAGER: "role.hseManager", ASSESSOR: "role.assessor", VIEWER: "role.viewer" } as Record<string, string>)[role]; return key ? translate(key) : role; }
+export function roleLabel(role: string) { const key = ({ SUPER_ADMIN: "role.superAdmin", ORG_ADMIN: "role.orgAdmin", HSE_MANAGER: "role.hseManager", HSE_SPECIALIST: "role.hseSpecialist", HSE_OFFICER: "role.hseOfficer", EXTERNAL_AUDITOR: "role.externalAuditor", PERSONNEL: "role.personnel", ASSISTANT: "role.assistant", ASSESSOR: "role.assessor", VIEWER: "role.viewer" } as Record<string, string>)[role]; return key ? translate(key) : role; }
 export function priorityLabel(value: string) { const item = statusMap[value]; return item ? translate(item.key) : value; }
 export function formatDate(value?: string, withTime = false) { if (!value) return "—"; const date = new Date(value); const locale = getCurrentLocale() === "en" ? "en-US" : "fa-IR-u-ca-persian"; return Number.isNaN(date.getTime()) ? "—" : withTime ? date.toLocaleString(locale) : date.toLocaleDateString(locale); }
 

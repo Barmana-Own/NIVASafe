@@ -324,3 +324,52 @@ asset عمومی CSS rule مشترک و selectorهای header را ارائه م
 - `git diff --check`: PASS.
 - regression contract: PASS — کنترل تکرار عضله به‌صورت selector بازشونده دوگزینه‌ای، متن معیارهای ۱/۰، hidden FormData، بازیابی draft و سهم امتیاز در محاسبه نهایی پوشش داده شدند.
 - deployment: PASS — release `release-20260922-rula-muscle-score` با hashهای local/staging/active، rollback backup، API/MySQL health، taskهای API/Nginx در وضعیت Running و smoke عمومی HTTPS برای مسیرهای برنامه، PWA، bundleها و `/api/v1/health` تأیید شد.
+
+## Checkpoint 2026-09-25 — نام کاربری و گردش درخواست عضویت سازمان
+
+- `pnpm test`: PASS — مجموع ۲۰۱ تست (۸۶ frontend، ۱۰۳ backend و ۱۲ shared-domain).
+- `pnpm typecheck`: PASS — هر ۳ package.
+- `pnpm lint`: PASS — هر ۳ package.
+- `pnpm build`: PASS — build تولیدی هر ۳ package موفق شد؛ هشدار اندازه chunk اصلی غیرمسدودکننده است.
+- `pnpm verify:contract`: PASS — مسیرهای API frontend و backend تطبیق داده شدند.
+- `pnpm verify:release`: PASS — ۲۷ بررسی، شامل migration جدید و username/member-request wiring.
+- `pnpm --filter @nivasafe/api prisma:generate`: PASS؛ `prisma validate`: PASS.
+- `pnpm audit --prod --audit-level high`: PASS — آسیب‌پذیری شناخته‌شده‌ای گزارش نشد.
+- `git diff --check`: PASS.
+- database migration deployment: NOT_RUN — اجرای migration روی MySQL محلی برای این checkpoint انجام نشد.
+- external deployment: NOT_PERFORMED — محدوده این تغییر فقط اجرای local است.
+
+## Checkpoint 2026-09-25 — پاک‌سازی draft هنگام شروع ارزیابی جدید
+
+- targeted frontend tests: PASS — ۸۳ تست شامل helper کلید draft، قرارداد مسیر `/choose-path` و قرارداد autosave.
+- frontend typecheck: PASS — `pnpm --filter @nivasafe/web typecheck`.
+- full workspace tests, lint, production build and release verification: PENDING — در اعتبارسنجی نهایی این تغییر اجرا می‌شوند.
+- migration/database changes: NOT_APPLICABLE — فقط منطق client-side draft و مسیر انتخاب ارزیابی تغییر کرده است.
+- external deployment: NOT_PERFORMED — محدوده این تغییر فقط source/local است.
+
+## Checkpoint 2026-09-25 — هویت نصب PWA و آیکون NIVASafe
+
+- `pnpm --filter @nivasafe/web exec vitest run src/pwa/pwa-contract.test.ts`: PASS — ۴ تست؛ نام دقیق `NIVASafe`، متادیتای نصب، آیکون‌های PNG maskable، SVG برندشده و service-worker v15 پوشش داده شدند.
+- `node --check frontend/public/sw.js`: PASS.
+- `pnpm verify:release`: PASS — ۲۸ بررسی، شامل هویت نصب و آیکون برندشده.
+- `pnpm build`: PASS — build تولیدی هر ۳ package موفق شد؛ هشدار اندازه chunk اصلی غیرمسدودکننده است.
+- `pnpm test`: PASS — ۲۰۸ تست در domain، backend و frontend.
+- `pnpm typecheck`: PASS — هر ۳ package.
+- `pnpm lint`: PASS — هر ۳ package.
+- `pnpm verify:contract`: PASS — ۶۵ مسیر frontend با ۱۱۶ route backend منطبق شدند.
+- `pnpm audit --prod --audit-level high`: PASS — آسیب‌پذیری شناخته‌شده‌ای یافت نشد.
+- deployment: NOT_PERFORMED — انتشار واقعی یا به‌روزرسانی نصب موجود روی دستگاه کاربر در این checkpoint انجام نشد.
+
+## Checkpoint 2026-09-25 — لاگ فعالیت و دامنه فعالیت کاربران
+
+- `pnpm test`: PASS — مجموع ۲۰۸ تست (۸۹ frontend، ۱۰۷ backend و ۱۲ shared-domain)؛ تست‌های self/organization/global Activity Log نیز موفق شدند.
+- `pnpm typecheck`: PASS — هر ۳ package.
+- `pnpm lint`: PASS — هر ۳ package.
+- `pnpm build`: PASS — build تولیدی هر ۳ package موفق شد؛ هشدار اندازه chunk اصلی غیرمسدودکننده است.
+- `pnpm verify:contract`: PASS — تمام مسیرهای frontend با routeهای backend تطبیق داده شدند.
+- `pnpm --filter @nivasafe/api prisma:validate`: PASS؛ `pnpm --filter @nivasafe/api prisma:generate`: PASS.
+- `pnpm audit --prod --audit-level high`: PASS — آسیب‌پذیری شناخته‌شده‌ای گزارش نشد.
+- `git diff --check`: PASS.
+- migration deployment: NOT_RUN — اجرای migration جدید روی MySQL محلی در این checkpoint انجام نشد.
+- authenticated browser visual smoke: NOT_RUN — نشست مرورگر احراز‌شده در دسترس نبود.
+- external deployment: NOT_PERFORMED — محدوده این تغییر فقط اجرای local است.

@@ -14,6 +14,7 @@ const manifest = JSON.parse(readFileSync(`${publicDirectory}/manifest.webmanifes
 };
 const serviceWorker = readFileSync(`${publicDirectory}/sw.js`, "utf8");
 const favicon = readFileSync(`${publicDirectory}/favicon-white.svg`, "utf8");
+const appIcon = readFileSync(`${publicDirectory}/icon.svg`, "utf8");
 const indexHtml = readFileSync(fileURLToPath(new URL("../../index.html", import.meta.url)), "utf8");
 const manager = readFileSync(fileURLToPath(new URL("./PwaManager.tsx", import.meta.url)), "utf8");
 
@@ -26,14 +27,15 @@ describe("PWA release contract", () => {
     expect(manifest.scope).toBe("/");
     expect(manifest.display).toBe("standalone");
     expect(manifest.icons).toEqual(expect.arrayContaining([
-      expect.objectContaining({ src: "/icon-192.png", sizes: "192x192", type: "image/png" }),
+      expect.objectContaining({ src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any maskable" }),
       expect.objectContaining({ src: "/icon-512.png", sizes: "512x512", purpose: "any maskable" }),
+      expect.objectContaining({ src: "/icon.svg", type: "image/svg+xml", purpose: "any" }),
     ]));
   });
 
   it("keeps service-worker updates bounded and isolated from private API data", () => {
-    expect(serviceWorker).toContain("const VERSION = \"v14\";");
-    expect(serviceWorker).toContain("const FORCE_MIGRATION = VERSION === \"v14\";");
+    expect(serviceWorker).toContain("const VERSION = \"v15\";");
+    expect(serviceWorker).toContain("const FORCE_MIGRATION = VERSION === \"v15\";");
     expect(serviceWorker).toContain("if (FORCE_MIGRATION) self.skipWaiting();");
     expect(serviceWorker).toContain('self.clients.matchAll({ type: "window", includeUncontrolled: true })');
     expect(serviceWorker).toContain("client.navigate(client.url)");
@@ -52,8 +54,13 @@ describe("PWA release contract", () => {
 
   it("uses a self-contained white-backed NIVASafe favicon for the browser title", () => {
     expect(indexHtml).toContain('<link rel="icon" type="image/svg+xml" href="/favicon-white.svg"/>');
+    expect(indexHtml).toContain('<meta name="application-name" content="NIVASafe"/>');
+    expect(indexHtml).toContain("<title>NIVASafe</title>");
+    expect(indexHtml).not.toContain("NIVASafe | مدیریت ایمنی");
     expect(favicon).toContain('<rect width="64" height="64" rx="9" fill="#ffffff"/>');
     expect(favicon).toContain('href="data:image/png;base64,');
+    expect(appIcon).toContain('href="data:image/png;base64,');
+    expect(appIcon).not.toContain('fill="#0b6b61"');
   });
 
   it("registers the worker without browser cache pinning and checks for releases", () => {

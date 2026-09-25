@@ -10,15 +10,25 @@ datasource db {
 enum Role {
   SUPER_ADMIN
   ORG_ADMIN
-  ASSISTANT
   HSE_MANAGER
+  HSE_SPECIALIST
+  HSE_OFFICER
+  EXTERNAL_AUDITOR
+  PERSONNEL
   ASSESSOR
+  ASSISTANT
   VIEWER
 }
 
 enum GlobalRole {
   USER
   SUPER_ADMIN
+}
+
+enum MemberRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum Status {
@@ -74,6 +84,7 @@ enum AttachmentKind {
 model User {
   id           String               @id @default(uuid()) @db.VarChar(36)
   email        String               @unique
+  username     String?              @unique @db.VarChar(64)
   passwordHash String
   displayName  String
   globalRole   GlobalRole          @default(USER)
@@ -94,6 +105,9 @@ model User {
   notificationPreferences NotificationPreference[]
   aiRequests AIAnalysisRequest[]
   aiUsageRecords AIUsageRecord[]
+  requestedMemberRequests MemberAccessRequest[] @relation("MemberRequestRequester")
+  reviewedMemberRequests MemberAccessRequest[] @relation("MemberRequestReviewer")
+  provisionedMemberRequests MemberAccessRequest[] @relation("MemberRequestProvisionedUser")
 }
 
 model Session {
@@ -174,6 +188,7 @@ model Organization {
   emailOutbox    EmailOutbox[]
   jobCatalogs    JobCatalog[]
   aiUsageRecords AIUsageRecord[]
+  memberAccessRequests MemberAccessRequest[]
 }
 
 model OrganizationMember {
@@ -187,6 +202,34 @@ model OrganizationMember {
 
   @@unique([organizationId, userId])
   @@index([userId])
+}
+
+model MemberAccessRequest {
+  id                    String              @id @default(uuid()) @db.VarChar(36)
+  organizationId        String              @db.VarChar(36)
+  requestedById         String              @db.VarChar(36)
+  reviewedById          String?             @db.VarChar(36)
+  provisionedUserId     String?             @unique @db.VarChar(36)
+  username              String              @db.VarChar(64)
+  email                 String              @db.VarChar(254)
+  displayName           String
+  phone                 String?
+  jobTitle              String?
+  role                  Role
+  status                MemberRequestStatus @default(PENDING)
+  rejectionReason       String?             @db.Text
+  reviewedAt            DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  organization          Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestedBy           User                @relation("MemberRequestRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  reviewedBy            User?               @relation("MemberRequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  provisionedUser       User?               @relation("MemberRequestProvisionedUser", fields: [provisionedUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status, createdAt])
+  @@index([status, createdAt])
+  @@index([username])
+  @@index([email])
 }
 
 model Invitation {
@@ -624,8 +667,12 @@ model AuditLog {
   entityId       String?
   metadata       Json?
   requestId      String?
+  ipAddress      String?  @db.VarChar(64)
+  userAgent      String?  @db.Text
   createdAt      DateTime @default(now())
   user           User?    @relation(fields: [userId], references: [id])
 
   @@index([organizationId, createdAt])
+  @@index([entityType, entityId, createdAt])
+  @@index([userId, organizationId, createdAt])
 }

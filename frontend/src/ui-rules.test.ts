@@ -199,6 +199,8 @@ describe("FMEA process information", () => {
     expect(assessmentPagesSource).toContain("const FMEA_PROCESS_SELECTION_MAX = 5");
     expect(assessmentPagesSource).toContain("const selectionLocked = !isSelected && selected.length >= FMEA_PROCESS_SELECTION_MAX");
     expect(assessmentPagesSource).toContain('t("assessment.suggestionSelectionLimit"');
+    expect(i18nSource).toContain('"assessment.suggestionSelectionLimit": "{{selected}} از {{max}} انتخاب شده"');
+    expect(i18nSource).toContain('"assessment.suggestionSelectionLimit": "{{selected}} of {{max}} selected"');
     expect(assessmentPagesSource).toContain('t("assessment.suggestionSelectionReached")');
     expect(assessmentPagesSource).toContain("disabled={selectionLocked}");
     expect(assessmentPagesSource).toContain("updated[category] = incoming.slice(0, FMEA_PROCESS_SELECTION_MAX)");
@@ -264,7 +266,7 @@ describe("FMEA process information", () => {
     expect(filesApiSource).toContain('entityType === "FmeaAssessment"');
     expect(filesApiSource).toContain("FMEA_PROCESS_IMAGE_MAX_COUNT = 3");
     expect(filesApiSource).toContain('FMEA_ATTACHMENT_IMAGE_COUNT_LIMIT');
-    expect(fmeaApiSource).toContain('mode: z.enum(["suggestions", "description", "risk-row", "job-titles", "autofill"])');
+    expect(fmeaApiSource).toContain('mode: z.enum(["suggestions", "description", "risk-row", "risk-rows", "job-titles", "autofill"])');
     expect(fmeaApiSource).toContain('FMEA_AUTOFILL_PROJECT_REQUIRED');
     expect(fmeaApiSource).toContain('buildFmeaProcessAutofillPrompt');
     expect(fmeaApiSource).toContain('parseFmeaProcessAutofill');
@@ -533,6 +535,8 @@ describe("RULA creation stepper", () => {
     expect(assessmentPagesSource).toContain('onClick={() => { setError(""); setWizardStep(step); }} disabled={submitting}');
     expect(assessmentPagesSource).toContain('disabled={wizardStep === 1 || submitting} onClick={() => { setError(""); setWizardStep((step) => step === 3 ? 2 : 1); }}>{t("assessment.previousStep")}</button>');
     expect(assessmentPagesSource).toContain('if (wizardStep === 3) { if (!validateRulaProcessInfo()) { setWizardStep(1); return; }');
+    expect(assessmentPagesSource).toContain('function validateWizardStep() {\n    if (wizardStep === 1) return validateRulaProcessInfo();\n    setError("");\n    return true;\n  }');
+    expect(assessmentPagesSource).toContain('if (hasUnconfirmedRulaResults(postureAnalysis, rulaBodySide)) { setError(t("assessment.confirmPostureResultsHint")); setWizardStep(2); return; }');
     expect(stylesSource).toContain('.wizard-stepper > button:focus-visible');
     expect(assessmentPagesSource).toContain('<fieldset hidden={wizardStep !== 3}><legend>{t("assessment.rulaAssessmentReporting")}</legend>');
     expect(i18nSource).toContain('"assessment.rulaReviewScoring": "مرور و ثبت و امتیاز دهی"');
@@ -599,10 +603,23 @@ describe("RULA process information", () => {
 
   it("renders required and optional metadata in the shared inline label row", () => {
     expect(assessmentPagesSource).toContain('<span className="field-label-line"><span>{t("assessment.projectRequired")}</span><span className="required-label">{t("common.required")}</span></span>');
-    expect(assessmentPagesSource).toContain('<span className="field-label-line"><span>{t("assessment.rulaJobTitle")}</span><span className="required-label">{t("common.required")}</span></span>');
+    expect(assessmentPagesSource).toContain('label={t("assessment.rulaJobTitle")}');
+    expect(assessmentPagesSource).toContain('inputName="jobTitle"');
+    expect(assessmentPagesSource).toContain('listId="rula-job-catalog-options"');
     expect(assessmentPagesSource).toContain('<span className="field-label-line"><span>{t("assessment.rulaLoadWeight")}</span><span className="optional-label">{t("common.optional")}</span></span>');
     expect(assessmentPagesSource).toContain('<span className="field-label-line"><span>{t("assessment.force")}</span><span className="required-label">{t("common.required")}</span></span>');
     expect(stylesSource).toContain('.field-label-line { display: flex; align-items: center;');
+  });
+
+  it("reuses the FMEA searchable job catalog control for RULA", () => {
+    expect(assessmentPagesSource).toContain("function JobCatalogSearch");
+    expect(assessmentPagesSource).toContain('className="rula-job-search"');
+    expect(assessmentPagesSource).toContain('inputId="rula-job-search"');
+    expect(assessmentPagesSource).toContain('placeholder={t("assessment.jobActivityPlaceholder")}');
+    expect(assessmentPagesSource).toContain('function filterJobCatalog');
+    expect(assessmentPagesSource).toContain('api<JobCatalogEntry[]>("/fmea/job-catalog?limit=" + FMEA_JOB_CATALOG_LIMIT)');
+    expect(assessmentPagesSource).toContain('function selectRulaJob(job: JobCatalogEntry)');
+    expect(assessmentPagesSource).toContain('function changeRulaJobQuery(value: string)');
   });
 });
 
@@ -879,11 +896,26 @@ describe("production login safety", () => {
     expect(i18nSource).toContain('"auth.welcomeMessage": "Enter your account details to sign in."');
   });
 
+  it("keeps the public login toolbar spaced and the support bar flush on mobile", () => {
+    expect(accountPagesSource).toContain('<span>{t("auth.brandSubtitle")}</span>');
+    expect(i18nSource).toContain('"auth.brandSubtitle": "پلتفرم هوشمند و ایمنی و بهداشت حرفه ای"');
+    expect(i18nSource).toContain('"auth.brandSubtitle": "Smart occupational safety and health platform"');
+    expect(stylesSource).toContain(".login-toolbar { padding: .65rem .75rem; gap: .75rem; }");
+    expect(stylesSource).toContain(".login-art { padding-bottom: 0; }");
+    expect(stylesSource).toContain(".login-support-bar { padding: .35rem .5rem calc(.45rem + env(safe-area-inset-bottom));");
+    expect(stylesSource).toContain(".login:not(.mobile-login-form-visible) .login-art { padding-top: 3.65rem; padding-bottom: 0; }");
+  });
+
   it("validates sign-in locally and prevents duplicate submissions", () => {
     expect(accountPagesSource).toContain("const submittingRef = useRef(false);");
     expect(accountPagesSource).toContain("if (submittingRef.current) return;");
     expect(accountPagesSource).toContain('noValidate aria-busy={loading}');
-    expect(accountPagesSource).toContain('aria-invalid={Boolean(fieldErrors.email)}');
+    expect(accountPagesSource).toContain('autoComplete="on" noValidate aria-busy={loading}');
+    expect(accountPagesSource).toContain('autoComplete="username" defaultValue={rememberedLoginEmail}');
+    expect(accountPagesSource).toContain('autoComplete="current-password"');
+    expect(accountPagesSource).toContain('const REMEMBERED_LOGIN_EMAIL_KEY = "nivasafe-login-email";');
+    expect(accountPagesSource).toContain('localStorage.removeItem(REMEMBERED_LOGIN_EMAIL_KEY)');
+    expect(accountPagesSource).toContain('aria-invalid={Boolean(fieldErrors.identifier)}');
     expect(accountPagesSource).toContain('aria-invalid={Boolean(fieldErrors.password)}');
     expect(accountPagesSource).toContain('maxLength={128}');
     expect(accountPagesSource).toContain('t("auth.passwordTooShort", { min: PASSWORD_MIN_LENGTH })');
@@ -894,19 +926,19 @@ describe("production login safety", () => {
     expect(accountPagesSource).toContain('nav(safeLoginRedirect(next) ?? "/", { replace: true });');
     expect(accountPagesSource).toContain('Link className="login-link" to="/forgot-password"');
     expect(accountPagesSource).toContain('Link className="login-link register-link" to="/register"');
-    expect(i18nSource).toContain('"auth.emailRequired": "ایمیل را وارد کنید."');
+    expect(i18nSource).toContain('"auth.loginIdentifierRequired": "ایمیل یا نام کاربری را وارد کنید."');
     expect(i18nSource).toContain('"auth.passwordTooShort": "رمز عبور باید حداقل {{min}} نویسه باشد."');
     expect(i18nSource).toContain('"auth.validation": "اطلاعات ورود را بررسی کنید."');
   });
 
   it("keeps password recovery validated, cancellable, and safe for users", () => {
     expect(accountPagesSource).toContain('"/auth/forgot-password"');
-    expect(accountPagesSource).toContain('const email = normalizeEmail(String(form.get("email") ?? ""));');
-    expect(accountPagesSource).toContain('setError(apiError.code === "INVALID_EMAIL" ? t("auth.invalidEmail") : t("auth.forgotFailed"));');
+    expect(accountPagesSource).toContain('const rawIdentifier = String(form.get("identifier") ?? "").trim();');
+    expect(accountPagesSource).toContain('setError(apiError.code === "INVALID_EMAIL" || apiError.code === "INVALID_USERNAME" || apiError.code === "INVALID_IDENTIFIER" ? t("auth.invalidLoginIdentifier") : t("auth.forgotFailed"));');
     expect(accountPagesSource).toContain('aria-invalid={Boolean(fieldError)}');
     expect(accountPagesSource).toContain('disabled={loading}');
     expect(accountPagesSource).toContain('t("auth.sendingRequest")');
-    expect(accountPagesSource).toContain('catch (reason) { const apiError = reason as ApiError; setError(apiError.code === "INVALID_EMAIL" ? t("auth.invalidEmail") : t("auth.forgotFailed")); }');
+    expect(accountPagesSource).toContain('catch (reason) { const apiError = reason as ApiError; setError(apiError.code === "INVALID_EMAIL" || apiError.code === "INVALID_USERNAME" || apiError.code === "INVALID_IDENTIFIER" ? t("auth.invalidLoginIdentifier") : t("auth.forgotFailed")); }');
     expect(i18nSource).toContain('"auth.forgotFailed": "شروع بازیابی رمز عبور ناموفق بود. دوباره تلاش کنید."');
     expect(i18nSource).toContain('"auth.forgotFailed": "Password recovery could not be started. Please try again."');
   });
@@ -935,7 +967,7 @@ describe("authentication account and role selection", () => {
     expect(accountPagesSource).not.toContain("selectedOrganizationId");
     expect(accountPagesSource).not.toContain('role="radiogroup"');
     expect(accountPagesSource).not.toContain('role="radio" aria-checked=');
-    expect(accountPagesSource).toContain("finishLogin(result.data, result.data.organizations[0]?.id)");
+    expect(accountPagesSource).toContain("finishLogin(result.data, result.data.organizations[0]?.id, identifier)");
     expect(accountPagesSource).toContain('id="login-form" className="login-card"');
     expect(apiClientSource).toContain("selectedOrganizationId?: string");
     expect(stylesSource).not.toContain(".login-role-option.selected");
@@ -957,7 +989,8 @@ describe("new user onboarding", () => {
   it("passes registration details to the server-owned workspace bootstrap", () => {
     expect(registrationPagesSource).toContain('companyName: draft.kind === "organization" ? draft.companyName.trim() : null');
     expect(registrationPagesSource).toContain('subscriptionPlan: draft.subscriptionPlan');
-    expect(registrationPagesSource).toContain("const organization = loggedIn.data.organizations[0]");
+    expect(registrationPagesSource).toContain('setRegistrationPending(true)');
+    expect(registrationPagesSource).not.toContain('api("/auth/login"');
     expect(registrationPagesSource).not.toContain('api("/projects"');
     expect(registrationPagesSource).not.toContain('api<{ id: string; nameFa: string; nameEn: string; subscriptionPlan?: string; subscriptionStatus?: string; subscriptionExpiresAt?: string | null }>("/organizations"');
   });
@@ -984,6 +1017,18 @@ describe("assistant AI connectivity UX", () => {
     expect(stylesSource).toContain("@keyframes assistant-typing-bounce");
     expect(i18nSource).toContain('"assistant.waitingForResponse": "در حال دریافت پاسخ..."');
     expect(i18nSource).toContain('"assistant.waitingForResponse": "Waiting for the assistant response..."');
+  });
+
+  it("keeps the mobile shell inline and keeps the chat composer reachable", () => {
+    expect(stylesSource).toContain(".topbar { flex-wrap: nowrap; row-gap: 0; }");
+    expect(stylesSource).toContain(".header-actions { width: auto; flex: 0 0 auto; justify-content: flex-end; gap: .4rem; flex-wrap: nowrap; }");
+    expect(stylesSource).toContain(".topbar .language-menu { position: fixed;");
+    expect(stylesSource).toContain("inset-inline-start: .5rem;");
+    expect(stylesSource).toContain("width: min(174px, calc(100vw - 1rem));");
+    expect(stylesSource).toContain('[dir="rtl"] .language-picker .language-menu { inset-inline-start: 0; inset-inline-end: auto; }');
+    expect(stylesSource).toContain(".assistant-layout { grid-template-rows: minmax(8rem, 22dvh) minmax(0, 1fr); gap: .65rem; }");
+    expect(stylesSource).toContain(".composer input { min-height: 44px; }");
+    expect(stylesSource).toContain(".composer .primary { min-width: 44px; min-height: 44px; }");
   });
 });
 
@@ -1248,7 +1293,9 @@ describe("registration personal and organization flows", () => {
     expect(stylesSource).not.toContain('label:has(input[required],select[required],textarea[required]):not(:has(.required-label)){ padding-inline-start: .9rem;');
     expect(registrationPagesSource).toContain('noValidate');
     expect(registrationPagesSource).toContain('if (loading) return;');
-    expect(registrationPagesSource).toContain('registrationDestination');
+    expect(registrationPagesSource).toContain('registrationPending');
+    expect(registrationPagesSource).toContain('t("registration.pendingTitle")');
+    expect(registrationPagesSource).not.toContain('api("/auth/login"');
     expect(stylesSource).toContain('.registration-success-card');
     expect(i18nSource).toContain('"registration.successTitle": "ثبت‌نام با موفقیت انجام شد"');
     expect(i18nSource).toContain('"registration.successTitle": "Registration completed successfully"');
@@ -1268,16 +1315,23 @@ describe("form auto-save contract", () => {
 
   it("protects FMEA and RULA assessment drafts through immediate local persistence and IndexedDB backup", () => {
     expect(assessmentPagesSource).toContain("readLocalDraft(draftKey)");
+    expect(assessmentPagesSource).toContain("return assessmentDraftKey(kind, session?.user.id, orgId);");
+    expect(assessmentPagesSource).toContain("assessmentWizardStepKey(draftKey)");
     expect(assessmentPagesSource).toContain("writeStoredDraft(browserStorage(), key, draft)");
     expect(assessmentPagesSource).toContain("onInput={(event) => queueDraft");
     expect(assessmentPagesSource).toContain("onChange={(event) => queueDraft");
     expect(assessmentPagesSource).toContain("const draftWriteQueue = useRef<Promise<void>>(Promise.resolve())");
     expect(assessmentPagesSource).toContain("await clearAutoSaveDraft(draftKey)");
     expect(assessmentPagesSource).toContain("draft.inputs && typeof draft.inputs === \"object\"");
+    expect(registrationPagesSource).toContain("await clearAutoSaveDraft(draftKey);");
+    expect(registrationPagesSource).toContain("clearAssessmentWizardStep(draftKey);");
+    expect(registrationPagesSource).toContain("void clearSelectedAssessmentDraft(type);");
+    expect(registrationPagesSource).toContain("await clearSelectedAssessmentDraft(type);");
   });
 
   it("captures RULA activity measurements and posture-photo guidance", () => {
-    expect(assessmentPagesSource).toContain('name="jobTitle"');
+    expect(assessmentPagesSource).toContain('name={inputName}');
+    expect(assessmentPagesSource).toContain('inputName="jobTitle"');
     expect(assessmentPagesSource).toContain('name="taskDescription"');
     expect(assessmentPagesSource).toContain('name="postureDescription"');
     expect(assessmentPagesSource).toContain('name="durationPerOccurrence"');
@@ -1400,18 +1454,40 @@ describe("global admin panel", () => {
     expect(stylesSource).toContain(".global-admin-shell");
     expect(stylesSource).toContain(".organization-admin-shell");
     expect(stylesSource).toContain(".admin-panel-page");
-    expect(adminPageSource).toContain('const organizationRoles = ["ORG_ADMIN", "ASSISTANT", "HSE_MANAGER", "ASSESSOR", "VIEWER"];');
+    expect(adminPageSource).toContain('const organizationRoles = ["ORG_ADMIN", "HSE_MANAGER", "HSE_SPECIALIST", "HSE_OFFICER", "EXTERNAL_AUDITOR", "PERSONNEL", "VIEWER"];');
+    expect(adminPageSource).toContain("`/admin/users/${target.id}/password`");
+    expect(adminPageSource).toContain("`/admin/memberships/${membership.id}`");
+    expect(adminModuleSource).toContain('"/api/v1/admin/users/:id/password"');
+    expect(adminModuleSource).toContain('"/api/v1/admin/memberships/:id"');
   });
 });
 
 describe("administrator invitations", () => {
   it("offers assistants and organization administrators through the member invite flow", () => {
     const accountSource = readFileSync(new URL("./features/account/AccountPages.tsx", import.meta.url), "utf8");
-    expect(accountSource).toContain('const roles = ["ORG_ADMIN", "ASSISTANT", "HSE_MANAGER", "ASSESSOR", "VIEWER"];');
+    expect(accountSource).toContain('const roles = ["ORG_ADMIN", "HSE_MANAGER", "HSE_SPECIALIST", "HSE_OFFICER", "EXTERNAL_AUDITOR", "PERSONNEL", "VIEWER"];');
+    expect(accountSource).toContain('api("/member-requests"');
+    expect(adminPageSource).toContain('`/admin/member-requests/${request.id}/approve`');
     expect(accountSource).toContain('api<{ developmentToken?: string }>("/invitations"');
-    expect(i18nSource).toContain('"members.invite": "افزودن مدیر، دستیار یا عضو"');
-    expect(i18nSource).toContain('"members.invite": "Add an admin, assistant, or member"');
+    expect(i18nSource).toContain('"members.legacyInviteTitle": "دعوت ایمیلی سازگاری"');
+    expect(i18nSource).toContain('"members.legacyInviteTitle": "Legacy email invitation"');
     expect(i18nSource).toContain('"role.assistant": "دستیار"');
     expect(i18nSource).toContain('"role.assistant": "Assistant"');
+  });
+});
+
+describe("activity log migration", () => {
+  it("moves the user-facing audit surface to a detailed activity log while preserving the old route", () => {
+    expect(appSource).toContain('path="activity-log"');
+    expect(appSource).toContain('path="audit" element={<Navigate to="/activity-log" replace />}');
+    expect(appLayoutSource).toContain('path: "/activity-log", labelKey: "nav.activityLog"');
+    expect(generalPagesSource).toContain('export function ActivityLogPage()');
+    expect(generalPagesSource).toContain('useLoad<ActivityLogEntry[]>(activityLogPath)');
+    expect(generalPagesSource).toContain('activityLog.assessment');
+    expect(generalPagesSource).toContain('item.tokenUsage.totalTokens');
+    expect(generalPagesSource).toContain('activityLog.teamDescription');
+    expect(generalPagesSource).toContain('item.metadata ? JSON.stringify(item.metadata, null, 2)');
+    expect(i18nSource).toContain('"nav.activityLog": "لاگ فعالیت"');
+    expect(appLayoutSource).toContain('path: "/activity-log", labelKey: "nav.activityLog", icon: "audit", scope: "all"');
   });
 });

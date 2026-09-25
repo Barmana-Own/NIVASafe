@@ -33,7 +33,7 @@ async function main() {
   orgId = login.data.organizations?.[0]?.id;
   if (!orgId) throw new Error("Smoke user has no active organization");
 
-  for (const path of ["/profile", "/organizations/current", "/dashboard", "/projects", "/processes", "/activities", "/fmea", "/rula", "/actions", "/files", "/knowledge", "/knowledge/categories", "/ai/providers", "/ai/requests", "/chat/conversations", "/notifications", "/notifications/preferences", "/members", "/roles", "/audit"]) await request(path);
+  for (const path of ["/profile", "/organizations/current", "/dashboard", "/projects", "/processes", "/activities", "/fmea", "/rula", "/actions", "/files", "/knowledge", "/knowledge/categories", "/ai/providers", "/ai/requests", "/chat/conversations", "/notifications", "/notifications/preferences", "/members", "/roles", "/activity-log", "/audit"]) await request(path);
 
   const suffix = Date.now().toString(36);
   created.project = (await post("/projects", { name: `Smoke ${suffix}`, code: `SMK-${suffix}`, description: "Automated delivery smoke test" })).data.id;

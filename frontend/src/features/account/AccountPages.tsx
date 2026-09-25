@@ -1,22 +1,26 @@
 import { useRef, useState, type ChangeEvent, type FormEvent, type MouseEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { isStrongPassword, isValidDisplayName, isValidEmail, isValidPhone, normalizeEmail, normalizePhone, PASSWORD_MIN_LENGTH } from "@nivasafe/domain";
+import { isStrongPassword, isValidDisplayName, isValidEmail, isValidPhone, isValidUsername, normalizeEmail, normalizePhone, normalizeUsername, PASSWORD_MIN_LENGTH } from "@nivasafe/domain";
 import { api, clearSession, getCurrentRole, getSession, isSessionRemembered, saveSession, type ApiError, type Organization, type Session, useLoad } from "../../api/client";
-import { EmptyState, Icon, PageHeader, SectionCard, StyledSelect, roleLabel, useDialog } from "../../components/UI";
+import { EmptyState, Icon, PageHeader, SectionCard, StyledSelect, formatDate, roleLabel, useDialog } from "../../components/UI";
 import { AutoSaveForm, clearAutoSaveDraft } from "../../forms/AutoSaveForm";
 import { scopedDraftKey } from "../../forms/autoSave";
 import { LanguageSwitcher, brandAltForLocale, brandLogoForLocale, useI18n } from "../../i18n";
 
-type Profile = { id: string; email: string; displayName: string; locale: string; phone: string | null; jobTitle: string | null };
-type Member = { id: string; role: string; active: boolean; user: { id: string; email: string; displayName: string; phone?: string | null; jobTitle?: string | null; globalRole?: string } };
-const roles = ["ORG_ADMIN", "ASSISTANT", "HSE_MANAGER", "ASSESSOR", "VIEWER"];
+type Profile = { id: string; email: string; username: string | null; displayName: string; locale: string; phone: string | null; jobTitle: string | null };
+type Member = { id: string; role: string; active: boolean; user: { id: string; email: string; username?: string | null; displayName: string; phone?: string | null; jobTitle?: string | null; globalRole?: string } };
+type MemberAccessRequest = { id: string; username: string; email: string; displayName: string; phone: string | null; jobTitle: string | null; role: string; status: string; rejectionReason: string | null; createdAt: string; reviewedAt: string | null; requestedBy?: { id: string; displayName: string; email: string; username: string | null } };
+const roles = ["ORG_ADMIN", "HSE_MANAGER", "HSE_SPECIALIST", "HSE_OFFICER", "EXTERNAL_AUDITOR", "PERSONNEL", "VIEWER"];
+const invitationRoles = ["ORG_ADMIN", "ASSISTANT", "HSE_MANAGER", "HSE_SPECIALIST", "HSE_OFFICER", "EXTERNAL_AUDITOR", "PERSONNEL", "ASSESSOR", "VIEWER"];
+const organizationMemberRoles = [...roles, "ASSISTANT", "ASSESSOR"];
 
 function normalizePhoneField(event: ChangeEvent<HTMLInputElement>): void {
   event.currentTarget.value = normalizePhone(event.currentTarget.value);
 }
 
-type LoginField = "email" | "password";
+type LoginField = "identifier" | "password";
 type LoginFieldErrors = Partial<Record<LoginField, string>>;
+const REMEMBERED_LOGIN_EMAIL_KEY = "nivasafe-login-email";
 
 function safeLoginRedirect(value: string | null): string | null {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\") || /[\u0000-\u001f\u007f]/.test(value)) return null;
@@ -25,11 +29,13 @@ function safeLoginRedirect(value: string | null): string | null {
 
 export function LoginPage() {
   const { locale, direction, t } = useI18n();
-  const nav = useNavigate(); const [params] = useSearchParams(); const submittingRef = useRef(false); const loginFormRef = useRef<HTMLFormElement>(null); const [error, setError] = useState(""); const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({}); const [loading, setLoading] = useState(false); const [showPassword, setShowPassword] = useState(false); const [rememberMe, setRememberMe] = useState(() => localStorage.getItem("nivasafe-remember-login") !== "false"); const [mobileLoginFormVisible, setMobileLoginFormVisible] = useState(() => window.location.hash === "#login-form");
-  function finishLogin(session: Session, organizationId?: string) {
+  const nav = useNavigate(); const [params] = useSearchParams(); const submittingRef = useRef(false); const loginFormRef = useRef<HTMLFormElement>(null); const [error, setError] = useState(""); const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({}); const [loading, setLoading] = useState(false); const [showPassword, setShowPassword] = useState(false); const [rememberMe, setRememberMe] = useState(() => localStorage.getItem("nivasafe-remember-login") !== "false"); const [rememberedLoginEmail] = useState(() => localStorage.getItem(REMEMBERED_LOGIN_EMAIL_KEY) ?? ""); const [mobileLoginFormVisible, setMobileLoginFormVisible] = useState(() => window.location.hash === "#login-form");
+  function finishLogin(session: Session, organizationId?: string, identifier?: string) {
     saveSession(session, rememberMe, organizationId);
     localStorage.setItem("nivasafe-locale", session.user.locale === "en" ? "en" : "fa");
     localStorage.setItem("nivasafe-remember-login", String(rememberMe));
+    if (rememberMe && identifier) localStorage.setItem(REMEMBERED_LOGIN_EMAIL_KEY, identifier);
+    else if (!rememberMe) localStorage.removeItem(REMEMBERED_LOGIN_EMAIL_KEY);
     const next = params.get("next");
     nav(safeLoginRedirect(next) ?? "/", { replace: true });
   }
@@ -37,11 +43,12 @@ export function LoginPage() {
     event.preventDefault();
     if (submittingRef.current) return;
     const form = new FormData(event.currentTarget);
-    const email = normalizeEmail(String(form.get("email") ?? ""));
+    const rawIdentifier = String(form.get("identifier") ?? "").trim();
+    const identifier = isValidEmail(rawIdentifier) ? normalizeEmail(rawIdentifier) : normalizeUsername(rawIdentifier);
     const password = String(form.get("password") ?? "");
     const nextFieldErrors: LoginFieldErrors = {};
-    if (!email) nextFieldErrors.email = t("auth.emailRequired");
-    else if (!isValidEmail(email)) nextFieldErrors.email = t("auth.invalidEmail");
+    if (!rawIdentifier) nextFieldErrors.identifier = t("auth.loginIdentifierRequired");
+    else if (!isValidEmail(rawIdentifier) && !isValidUsername(rawIdentifier)) nextFieldErrors.identifier = t("auth.invalidLoginIdentifier");
     if (!password) nextFieldErrors.password = t("auth.enterPassword");
     else if (password.length < PASSWORD_MIN_LENGTH) nextFieldErrors.password = t("auth.passwordTooShort", { min: PASSWORD_MIN_LENGTH });
     if (Object.keys(nextFieldErrors).length) { setFieldErrors(nextFieldErrors); setError(t("auth.validation")); return; }
@@ -49,12 +56,12 @@ export function LoginPage() {
     setLoading(true); setError("");
     setFieldErrors({});
     try {
-      const result = await api<Session>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
-      finishLogin(result.data, result.data.organizations[0]?.id);
+      const result = await api<Session>("/auth/login", { method: "POST", body: JSON.stringify({ identifier, password }) });
+      finishLogin(result.data, result.data.organizations[0]?.id, identifier);
     } catch (reason) {
       const apiError = reason as ApiError;
-      if (apiError.code === "INVALID_EMAIL") setFieldErrors({ email: t("auth.invalidEmail") });
-      setError(apiError.code === "INVALID_CREDENTIALS" ? t("auth.invalidCredentials") : apiError.code === "INVALID_EMAIL" ? t("auth.validation") : t("auth.loginFailed"));
+      if (apiError.code === "INVALID_EMAIL" || apiError.code === "INVALID_USERNAME" || apiError.code === "INVALID_IDENTIFIER") setFieldErrors({ identifier: t("auth.invalidLoginIdentifier") });
+      setError(apiError.code === "INVALID_CREDENTIALS" ? t("auth.invalidCredentials") : apiError.code === "INVALID_EMAIL" || apiError.code === "INVALID_USERNAME" || apiError.code === "INVALID_IDENTIFIER" ? t("auth.validation") : t("auth.loginFailed"));
     } finally { submittingRef.current = false; setLoading(false); }
   }
   function openMobileLogin(event: MouseEvent<HTMLAnchorElement>) {
@@ -88,9 +95,9 @@ export function LoginPage() {
       </div>
       <footer id="login-support" className="login-approvals login-support-bar" aria-label={t("auth.supportBar")}><span className="login-support-copy">{t("auth.supportBar")}</span><img className="login-support-logo" src="/brand/qazvin-science-technology-park.jpg" alt={t("auth.supportBarLogoAlt")}/></footer>
     </section>
-    <form ref={loginFormRef} id="login-form" className="login-card" noValidate aria-busy={loading} onSubmit={submit}>
+    <form ref={loginFormRef} id="login-form" className="login-card" autoComplete="on" noValidate aria-busy={loading} onSubmit={submit}>
       <img className="login-card-logo" src="/brand/nivasafe-icon.png" alt={brandAltForLocale(locale)}/><h2>{t("auth.welcome")}</h2><p className="muted">{t("auth.welcomeMessage")}</p>
-      <label htmlFor="login-email"><span className="field-label-line">{t("auth.email")}</span><input id="login-email" name="email" type="email" inputMode="email" dir="ltr" placeholder={t("auth.emailPlaceholder")} autoComplete="username" autoCapitalize="none" spellCheck={false} maxLength={254} disabled={loading} aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? "login-email-error" : undefined} onChange={() => { setFieldErrors((current) => ({ ...current, email: undefined })); setError(""); }} required/>{fieldErrors.email && <small id="login-email-error" className="field-error" role="alert">{fieldErrors.email}</small>}</label><label htmlFor="login-password"><span className="field-label-line">{t("auth.password")}</span><div className="password-field"><input id="login-password" name="password" aria-label={t("auth.password")} type={showPassword ? "text" : "password"} dir="ltr" placeholder={t("auth.passwordPlaceholder")} autoComplete="current-password" maxLength={128} disabled={loading} aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? "login-password-error" : undefined} onChange={() => { setFieldErrors((current) => ({ ...current, password: undefined })); setError(""); }} required/><button type="button" className="password-toggle" disabled={loading} onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")} title={showPassword ? t("auth.hidePassword") : t("auth.showPassword")} aria-controls="login-password"><Icon name={showPassword ? "eyeOff" : "eye"} size={19}/></button></div>{fieldErrors.password && <small id="login-password-error" className="field-error" role="alert">{fieldErrors.password}</small>}</label>
+      <label htmlFor="login-identifier"><span className="field-label-line">{t("auth.loginIdentifier")}</span><input id="login-identifier" name="identifier" type="text" inputMode="email" dir="ltr" placeholder={t("auth.loginIdentifierPlaceholder")} autoComplete="username" defaultValue={rememberedLoginEmail} autoCapitalize="none" spellCheck={false} maxLength={254} disabled={loading} aria-invalid={Boolean(fieldErrors.identifier)} aria-describedby={fieldErrors.identifier ? "login-identifier-error" : undefined} onChange={() => { setFieldErrors((current) => ({ ...current, identifier: undefined })); setError(""); }} required/>{fieldErrors.identifier && <small id="login-identifier-error" className="field-error" role="alert">{fieldErrors.identifier}</small>}</label><label htmlFor="login-password"><span className="field-label-line">{t("auth.password")}</span><div className="password-field"><input id="login-password" name="password" aria-label={t("auth.password")} type={showPassword ? "text" : "password"} dir="ltr" placeholder={t("auth.passwordPlaceholder")} autoComplete="current-password" maxLength={128} disabled={loading} aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? "login-password-error" : undefined} onChange={() => { setFieldErrors((current) => ({ ...current, password: undefined })); setError(""); }} required/><button type="button" className="password-toggle" disabled={loading} onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")} title={showPassword ? t("auth.hidePassword") : t("auth.showPassword")} aria-controls="login-password"><Icon name={showPassword ? "eyeOff" : "eye"} size={19}/></button></div>{fieldErrors.password && <small id="login-password-error" className="field-error" role="alert">{fieldErrors.password}</small>}</label>
       <div className="login-options"><label className="remember-me"><input type="checkbox" checked={rememberMe} disabled={loading} onChange={(event) => setRememberMe(event.target.checked)}/><span>{t("auth.rememberMe")}</span></label><Link className="login-link" to="/forgot-password">{t("auth.forgotPassword")}</Link></div>
       {error && <div className="alert error" role="alert" aria-live="assertive"><Icon name="warning"/>{error}</div>}
       <button type="submit" className="primary login-button" disabled={loading} aria-busy={loading}>{loading ? <><span className="button-spinner" aria-hidden="true"/>{t("auth.signingIn")}</> : <><Icon name="shield"/> {t("auth.secureLogin")}</>}</button>
@@ -106,15 +113,16 @@ export function ForgotPasswordPage() {
     event.preventDefault();
     if (submittingRef.current) return;
     const form = new FormData(event.currentTarget);
-    const email = normalizeEmail(String(form.get("email") ?? ""));
-    if (!email) { setFieldError(t("auth.emailRequired")); setError(t("auth.validation")); setMessage(""); return; }
-    if (!isValidEmail(email)) { setFieldError(t("auth.invalidEmail")); setError(t("auth.validation")); setMessage(""); return; }
+    const rawIdentifier = String(form.get("identifier") ?? "").trim();
+    const identifier = isValidEmail(rawIdentifier) ? normalizeEmail(rawIdentifier) : normalizeUsername(rawIdentifier);
+    if (!rawIdentifier) { setFieldError(t("auth.loginIdentifierRequired")); setError(t("auth.validation")); setMessage(""); return; }
+    if (!isValidEmail(rawIdentifier) && !isValidUsername(rawIdentifier)) { setFieldError(t("auth.invalidLoginIdentifier")); setError(t("auth.validation")); setMessage(""); return; }
     submittingRef.current = true; setLoading(true); setError(""); setFieldError(""); setMessage("");
-    try { const result = await api<{ accepted: boolean; developmentToken?: string }>("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }); setMessage(result.data.developmentToken ? t("auth.developmentToken", { token: result.data.developmentToken }) : t("auth.forgotAccepted")); }
-    catch (reason) { const apiError = reason as ApiError; setError(apiError.code === "INVALID_EMAIL" ? t("auth.invalidEmail") : t("auth.forgotFailed")); }
+    try { const result = await api<{ accepted: boolean; developmentToken?: string }>("/auth/forgot-password", { method: "POST", body: JSON.stringify({ identifier }) }); setMessage(result.data.developmentToken ? t("auth.developmentToken", { token: result.data.developmentToken }) : t("auth.forgotAccepted")); }
+    catch (reason) { const apiError = reason as ApiError; setError(apiError.code === "INVALID_EMAIL" || apiError.code === "INVALID_USERNAME" || apiError.code === "INVALID_IDENTIFIER" ? t("auth.invalidLoginIdentifier") : t("auth.forgotFailed")); }
     finally { submittingRef.current = false; setLoading(false); }
   }
-  return <main className="login simple" dir={direction} lang={locale}><form className="login-card" noValidate aria-busy={loading} onSubmit={submit}><span className="auth-icon"><Icon name="profile" size={28}/></span><div className="eyebrow">{t("auth.forgotEyebrow")}</div><h2>{t("auth.forgotTitle")}</h2><p className="muted">{t("auth.forgotMessage")}</p><label htmlFor="forgot-email"><span className="field-label-line">{t("auth.email")}</span><input id="forgot-email" name="email" type="email" inputMode="email" dir="ltr" placeholder={t("auth.emailPlaceholder")} autoComplete="username" autoCapitalize="none" spellCheck={false} maxLength={254} disabled={loading} aria-invalid={Boolean(fieldError)} aria-describedby={fieldError ? "forgot-email-error" : undefined} onChange={() => { setFieldError(""); setError(""); setMessage(""); }} required/>{fieldError && <small id="forgot-email-error" className="field-error" role="alert">{fieldError}</small>}</label>{error && <div className="alert error" role="alert" aria-live="assertive"><Icon name="warning"/>{error}</div>}{message && <div className="alert success" role="status" aria-live="polite"><Icon name="check"/>{message}</div>}<button type="submit" className="primary login-button" disabled={loading} aria-busy={loading}>{loading ? <><span className="button-spinner" aria-hidden="true"/>{t("auth.sendingRequest")}</> : t("auth.sendRequest")}</button><Link className="login-link" to="/login">{t("auth.backToLogin")}</Link></form></main>;
+  return <main className="login simple" dir={direction} lang={locale}><form className="login-card" noValidate aria-busy={loading} onSubmit={submit}><span className="auth-icon"><Icon name="profile" size={28}/></span><div className="eyebrow">{t("auth.forgotEyebrow")}</div><h2>{t("auth.forgotTitle")}</h2><p className="muted">{t("auth.forgotMessage")}</p><label htmlFor="forgot-identifier"><span className="field-label-line">{t("auth.loginIdentifier")}</span><input id="forgot-identifier" name="identifier" type="text" inputMode="email" dir="ltr" placeholder={t("auth.loginIdentifierPlaceholder")} autoComplete="username" autoCapitalize="none" spellCheck={false} maxLength={254} disabled={loading} aria-invalid={Boolean(fieldError)} aria-describedby={fieldError ? "forgot-identifier-error" : undefined} onChange={() => { setFieldError(""); setError(""); setMessage(""); }} required/>{fieldError && <small id="forgot-identifier-error" className="field-error" role="alert">{fieldError}</small>}</label>{error && <div className="alert error" role="alert" aria-live="assertive"><Icon name="warning"/>{error}</div>}{message && <div className="alert success" role="status" aria-live="polite"><Icon name="check"/>{message}</div>}<button type="submit" className="primary login-button" disabled={loading} aria-busy={loading}>{loading ? <><span className="button-spinner" aria-hidden="true"/>{t("auth.sendingRequest")}</> : t("auth.sendRequest")}</button><Link className="login-link" to="/login">{t("auth.backToLogin")}</Link></form></main>;
 }
 export function ResetPasswordPage() {
   const { locale, direction, t } = useI18n();
@@ -144,8 +152,8 @@ export function ProfilePage() {
   async function save(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const form = new FormData(event.currentTarget); const email = String(form.get("email") ?? "").trim(); const displayName = String(form.get("displayName") ?? "").trim(); const rawPhone = String(form.get("phone") ?? "").trim(); setError(""); if (!isValidEmail(email)) { setError(t("profile.invalidEmail")); return; } if (!isValidDisplayName(displayName)) { setError(t("profile.invalidDisplayName")); return; } if (rawPhone && !isValidPhone(rawPhone)) { setError(t("profile.invalidPhone")); return; } try { const result = await api<Profile>("/profile", { method: "PATCH", body: JSON.stringify({ email, displayName, phone: rawPhone ? normalizePhone(rawPhone) : null, jobTitle: form.get("jobTitle") || null, locale: form.get("locale") }) }); const nextLocale = result.data.locale === "en" ? "en" : "fa"; localStorage.setItem("nivasafe-locale", nextLocale); await clearAutoSaveDraft(profileDraftKey); const current = getSession().session; if (current) saveSession({ ...current, user: { ...current.user, ...result.data } }, isSessionRemembered()); setMessage(t("profile.saved")); state.reload(); if (nextLocale !== initialLocale) window.location.reload(); } catch (reason) { setError((reason as Error).message); } }
   async function changePassword(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const formElement = event.currentTarget; const form = new FormData(formElement); const newPassword = String(form.get("newPassword") ?? ""); setError(""); if (!isStrongPassword(newPassword, { email: profile.email, displayName: profile.displayName })) { setError(t("profile.passwordRequirements", { min: PASSWORD_MIN_LENGTH })); return; } try { await api("/profile/change-password", { method: "POST", body: JSON.stringify({ currentPassword: form.get("currentPassword"), newPassword }) }); formElement.reset(); clearSession(); nav("/login", { replace: true }); } catch (reason) { setError((reason as Error).message); } }
   return <section className="page-shell"><PageHeader eyebrow={t("profile.account")} title={t("profile.title")} description={t("profile.description")}/>{error && <div className="alert error"><Icon name="warning"/>{error}</div>}{message && <div className="alert success"><Icon name="check"/>{message}</div>}
-    <div className="profile-hero"><div className="profile-avatar">{state.data.displayName[0]}</div><div><h3>{state.data.displayName}</h3><p>{state.data.jobTitle || t("profile.jobTitleUnset")}</p><span>{state.data.email}</span></div></div>
-    <div className="form-panels"><SectionCard title={t("profile.personalInfo")} description={t("profile.displayInfo")} icon="profile"><AutoSaveForm storageKey={profileDraftKey} className="form-grid" onSubmit={save}><label>{t("profile.displayName")}<input name="displayName" defaultValue={state.data.displayName} required/></label><label>{t("auth.email")}<input name="email" type="email" inputMode="email" dir="ltr" defaultValue={state.data.email} required/></label><label>{t("profile.phone")}<input name="phone" defaultValue={state.data.phone ?? ""} onChange={normalizePhoneField} inputMode="numeric" autoComplete="tel" dir="ltr" maxLength={11} pattern="09[0-9]{9}" placeholder={t("registration.phonePlaceholder")}/></label><label>{t("profile.jobTitle")}<input name="jobTitle" defaultValue={state.data.jobTitle ?? ""} placeholder={t("profile.jobTitlePlaceholder")}/></label><label className="full">{t("profile.interfaceLanguage")}<StyledSelect name="locale" defaultValue={state.data.locale}><option value="fa">{t("language.persian")}</option><option value="en">{t("language.english")}</option></StyledSelect></label><button className="primary full"><Icon name="check"/> {t("profile.saveChanges")}</button></AutoSaveForm></SectionCard>
+    <div className="profile-hero"><div className="profile-avatar">{state.data.displayName[0]}</div><div><h3>{state.data.displayName}</h3><p>{state.data.jobTitle || t("profile.jobTitleUnset")}</p><span>{state.data.username ? `@${state.data.username} · ` : ""}{state.data.email}</span></div></div>
+    <div className="form-panels"><SectionCard title={t("profile.personalInfo")} description={t("profile.displayInfo")} icon="profile"><AutoSaveForm storageKey={profileDraftKey} className="form-grid" onSubmit={save}><label>{t("profile.displayName")}<input name="displayName" defaultValue={state.data.displayName} required/></label><label>{t("profile.username")}<input value={state.data.username ?? ""} dir="ltr" readOnly autoComplete="username" placeholder={t("registration.notProvided")}/></label><label>{t("auth.email")}<input name="email" type="email" inputMode="email" dir="ltr" defaultValue={state.data.email} required/></label><label>{t("profile.phone")}<input name="phone" defaultValue={state.data.phone ?? ""} onChange={normalizePhoneField} inputMode="numeric" autoComplete="tel" dir="ltr" maxLength={11} pattern="09[0-9]{9}" placeholder={t("registration.phonePlaceholder")}/></label><label>{t("profile.jobTitle")}<input name="jobTitle" defaultValue={state.data.jobTitle ?? ""} placeholder={t("profile.jobTitlePlaceholder")}/></label><label className="full">{t("profile.interfaceLanguage")}<StyledSelect name="locale" defaultValue={state.data.locale}><option value="fa">{t("language.persian")}</option><option value="en">{t("language.english")}</option></StyledSelect></label><button className="primary full"><Icon name="check"/> {t("profile.saveChanges")}</button></AutoSaveForm></SectionCard>
     <SectionCard title={t("profile.changePassword")} description={t("profile.passwordDescription", { min: PASSWORD_MIN_LENGTH })} icon="shield"><form className="form-grid" onSubmit={changePassword}><label className="full">{t("profile.currentPassword")}<input name="currentPassword" type="password" autoComplete="current-password" required/></label><label className="full">{t("profile.newPassword")}<input name="newPassword" type="password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} autoComplete="new-password" required/></label><div className="password-note full"><Icon name="shield"/><span>{t("profile.passwordSecurityNote")}</span></div><button className="primary full">{t("profile.changePasswordButton")}</button></form></SectionCard></div>
   </section>;
 }
@@ -153,18 +161,82 @@ export function ProfilePage() {
 export function MembersPage() {
   const { locale, t } = useI18n();
   const numberLocale = locale === "en" ? "en-US" : "fa-IR";
-  const state = useLoad<Member[]>("/members"); const [error, setError] = useState(""); const [message, setMessage] = useState(""); const [editing, setEditing] = useState<{ id: string; displayName: string; email: string; phone: string; jobTitle: string; globalRole: string } | null>(null); const dialog = useDialog(); const memberRoles = getCurrentRole() === "SUPER_ADMIN" ? ["SUPER_ADMIN", ...roles] : roles;
+  const state = useLoad<Member[]>("/members");
+  const requests = useLoad<MemberAccessRequest[]>("/member-requests?status=PENDING");
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [editing, setEditing] = useState<{ id: string; displayName: string; username: string; email: string; phone: string; jobTitle: string; globalRole: string } | null>(null);
+  const dialog = useDialog();
+  const currentRole = getCurrentRole();
+  const canManageMembers = currentRole === "SUPER_ADMIN" || currentRole === "ORG_ADMIN";
+  const canRequestMembers = canManageMembers || currentRole === "HSE_MANAGER";
+  const memberRoles = currentRole === "SUPER_ADMIN" ? ["SUPER_ADMIN", ...organizationMemberRoles] : organizationMemberRoles;
   const { session, orgId } = getSession();
+  const requestDraftKey = scopedDraftKey("member-access-request", session?.user.id, orgId);
   const inviteDraftKey = scopedDraftKey("member-invite", session?.user.id, orgId);
   const memberDraftKey = (memberId: string) => scopedDraftKey(`member-edit:${memberId}`, session?.user.id, orgId);
   async function update(id: string, role: string, active: boolean) { try { await api(`/members/${id}`, { method: "PATCH", body: JSON.stringify({ role, active }) }); state.reload(); setMessage(t("members.accessUpdated")); } catch (reason) { setError((reason as Error).message); } }
-  function beginEdit(member: Member) { setEditing({ id: member.id, displayName: member.user.displayName, email: member.user.email, phone: member.user.phone ?? "", jobTitle: member.user.jobTitle ?? "", globalRole: member.user.globalRole ?? "USER" }); setError(""); }
-  async function saveMember(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if (!editing) return; const form = new FormData(event.currentTarget); const member = state.data?.find((item) => item.id === editing.id); if (!member) return; const rawPhone = String(form.get("phone") ?? "").trim(); setError(""); if (rawPhone && !isValidPhone(rawPhone)) { setError(t("profile.invalidPhone")); return; } try { await api(`/members/${editing.id}`, { method: "PATCH", body: JSON.stringify({ displayName: form.get("displayName"), email: form.get("email"), phone: rawPhone ? normalizePhone(rawPhone) : null, jobTitle: form.get("jobTitle") || null, globalRole: getCurrentRole() === "SUPER_ADMIN" ? form.get("globalRole") : undefined, role: member.role, active: member.active }) }); await clearAutoSaveDraft(memberDraftKey(editing.id)); setEditing(null); state.reload(); setMessage(t("members.edited")); } catch (reason) { setError((reason as Error).message); } }
+  function beginEdit(member: Member) { setEditing({ id: member.id, displayName: member.user.displayName, username: member.user.username ?? "", email: member.user.email, phone: member.user.phone ?? "", jobTitle: member.user.jobTitle ?? "", globalRole: member.user.globalRole ?? "USER" }); setError(""); }
+  async function saveMember(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editing) return;
+    const form = new FormData(event.currentTarget);
+    const member = state.data?.find((item) => item.id === editing.id);
+    if (!member) return;
+    const username = String(form.get("username") ?? "").trim();
+    const email = String(form.get("email") ?? "").trim();
+    const rawPhone = String(form.get("phone") ?? "").trim();
+    setError("");
+    if (username && !isValidUsername(username)) { setError(t("admin.invalidUsername")); return; }
+    if (!isValidEmail(email)) { setError(t("profile.invalidEmail")); return; }
+    if (rawPhone && !isValidPhone(rawPhone)) { setError(t("profile.invalidPhone")); return; }
+    try {
+      await api(`/members/${editing.id}`, { method: "PATCH", body: JSON.stringify({ displayName: form.get("displayName"), username: username ? normalizeUsername(username) : null, email: normalizeEmail(email), phone: rawPhone ? normalizePhone(rawPhone) : null, jobTitle: form.get("jobTitle") || null, globalRole: getCurrentRole() === "SUPER_ADMIN" ? form.get("globalRole") : undefined, role: member.role, active: member.active }) });
+      await clearAutoSaveDraft(memberDraftKey(editing.id));
+      setEditing(null);
+      state.reload();
+      setMessage(t("members.edited"));
+    } catch (reason) { setError((reason as Error).message); }
+  }
   async function removeMember(member: Member) { if (!(await dialog.confirm(t("members.deleteConfirm", { name: member.user.displayName })))) return; if (!(await dialog.confirm(t("members.deleteWarning")))) return; try { await api(`/members/${member.id}`, { method: "DELETE" }); state.reload(); setMessage(t("members.removed")); } catch (reason) { setError((reason as Error).message); } }
-  async function invite(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const element = event.currentTarget; const form = new FormData(element); try { const result = await api<{ developmentToken?: string }>("/invitations", { method: "POST", body: JSON.stringify({ email: form.get("email"), role: form.get("role") }) }); await clearAutoSaveDraft(inviteDraftKey); setMessage(result.data.developmentToken ? t("members.invitationCreated", { token: result.data.developmentToken }) : t("members.invited")); element.reset(); } catch (reason) { setError((reason as Error).message); } }
+  async function submitRequest(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const element = event.currentTarget;
+    const form = new FormData(element);
+    const username = normalizeUsername(String(form.get("username") ?? ""));
+    const email = normalizeEmail(String(form.get("email") ?? ""));
+    const displayName = String(form.get("displayName") ?? "").trim();
+    const rawPhone = String(form.get("phone") ?? "").trim();
+    setError("");
+    if (!isValidUsername(username)) { setError(t("registration.invalidUsername")); return; }
+    if (!isValidEmail(email)) { setError(t("profile.invalidEmail")); return; }
+    if (!isValidDisplayName(displayName)) { setError(t("profile.invalidDisplayName")); return; }
+    if (rawPhone && !isValidPhone(rawPhone)) { setError(t("profile.invalidPhone")); return; }
+    try {
+      await api("/member-requests", { method: "POST", body: JSON.stringify({ username, email, displayName, phone: rawPhone ? normalizePhone(rawPhone) : null, jobTitle: String(form.get("jobTitle") ?? "").trim() || null, role: form.get("role") }) });
+      await clearAutoSaveDraft(requestDraftKey);
+      element.reset();
+      requests.reload();
+      setMessage(t("members.requestCreated"));
+    } catch (reason) { setError((reason as Error).message); }
+  }
+  async function invite(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const element = event.currentTarget;
+    const form = new FormData(element);
+    setError("");
+    try {
+      const result = await api<{ developmentToken?: string }>("/invitations", { method: "POST", body: JSON.stringify({ email: normalizeEmail(String(form.get("email") ?? "")), role: form.get("role") }) });
+      await clearAutoSaveDraft(inviteDraftKey);
+      setMessage(result.data.developmentToken ? t("members.invitationCreated", { token: result.data.developmentToken }) : t("members.invited"));
+      element.reset();
+    } catch (reason) { setError((reason as Error).message); }
+  }
   return <section className="page-shell"><PageHeader eyebrow={t("members.control")} title={t("members.title")} description={t("members.description")}/>{error && <div className="alert error"><Icon name="warning"/>{error}</div>}{message && <div className="alert success"><Icon name="check"/>{message}</div>}
-    <SectionCard title={t("members.invite")} description={t("members.inviteDescription")} icon="plus"><AutoSaveForm storageKey={inviteDraftKey} className="invite-form" onSubmit={invite}><label>{t("members.memberEmail")}<input name="email" type="email" placeholder="name@company.com" required/></label><label>{t("members.role")}<StyledSelect name="role">{memberRoles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</StyledSelect></label><button className="primary"><Icon name="plus"/> {t("members.sendInvite")}</button></AutoSaveForm></SectionCard>
-    <SectionCard title={t("members.organizationMembers")} description={`${(state.data?.length ?? 0).toLocaleString(numberLocale)} ${t("common.member")}`} icon="members">{state.loading ? <div className="state"><div className="spinner"/></div> : !state.data?.length ? <EmptyState title={t("members.noMembers")} icon="members"/> : <div className="member-list">{state.data.map((member) => { const availableRoles = memberRoles.includes(member.role) ? memberRoles : [member.role, ...memberRoles]; return <article className="member-card" key={member.id}><div className="member-avatar">{member.user.displayName[0]}</div><div className="member-copy"><strong>{member.user.displayName}</strong><small>{member.user.email}{member.user.jobTitle ? ` · ${member.user.jobTitle}` : ""}</small>{member.user.globalRole === "SUPER_ADMIN" && <span className="tag">{t("members.superAdmin")}</span>}</div><StyledSelect value={member.role} onChange={(event) => update(member.id, event.target.value, member.active)}>{availableRoles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</StyledSelect><button className={`status-toggle ${member.active ? "active" : "inactive"}`} onClick={() => update(member.id, member.role, !member.active)}><span/>{member.active ? t("members.active") : t("members.inactive")}</button><div className="member-actions"><button className="text-button" type="button" aria-expanded={editing?.id === member.id} aria-controls={`member-edit-${member.id}`} data-scroll-target={`#member-edit-${member.id}`} data-scroll-focus="input" onClick={() => beginEdit(member)}>{t("members.edit")}</button><button className="text-button danger-link" type="button" onClick={() => void removeMember(member)}>{t("common.delete")}</button></div>{editing?.id === member.id && <AutoSaveForm id={`member-edit-${member.id}`} storageKey={memberDraftKey(member.id)} className="member-edit-form form-grid" onSubmit={saveMember}><label>{t("profile.displayName")}<input name="displayName" defaultValue={editing.displayName} required/></label><label>{t("auth.email")}<input name="email" type="email" dir="ltr" defaultValue={editing.email} required/></label><label>{t("profile.phone")}<input name="phone" defaultValue={editing.phone} onChange={normalizePhoneField} inputMode="numeric" autoComplete="tel" dir="ltr" maxLength={11} pattern="09[0-9]{9}" placeholder={t("members.phonePlaceholder")}/></label><label>{t("profile.jobTitle")}<input name="jobTitle" defaultValue={editing.jobTitle}/></label>{getCurrentRole() === "SUPER_ADMIN" && <label>{t("members.accountLevel")}<StyledSelect name="globalRole" defaultValue={editing.globalRole}><option value="USER">{t("members.normalUser")}</option><option value="SUPER_ADMIN">{t("members.superAdmin")}</option></StyledSelect></label>}<div className="member-edit-actions"><button className="primary" type="submit">{t("members.save")}</button><button className="ghost" type="button" onClick={() => setEditing(null)}>{t("common.cancel")}</button></div></AutoSaveForm>}</article>; })}</div>}
+    {canRequestMembers && <SectionCard title={t("members.requestTitle")} description={t("members.requestDescription")} icon="plus"><AutoSaveForm storageKey={requestDraftKey} className="form-grid" onSubmit={submitRequest}><label>{t("members.requestUsername")}<input name="username" type="text" dir="ltr" autoComplete="username" maxLength={64} placeholder={t("members.requestUsernamePlaceholder")} required/></label><label>{t("members.requestDisplayName")}<input name="displayName" required/></label><label>{t("members.requestEmail")}<input name="email" type="email" dir="ltr" autoComplete="email" placeholder={t("members.requestEmailPlaceholder")} required/></label><label>{t("members.role")}<StyledSelect name="role">{memberRoles.filter((role) => role !== "SUPER_ADMIN").map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</StyledSelect></label><label>{t("members.requestPhone")}<input name="phone" inputMode="numeric" dir="ltr" autoComplete="tel" maxLength={11} placeholder={t("members.phonePlaceholder")}/></label><label>{t("members.requestJobTitle")}<input name="jobTitle"/></label><button className="primary full"><Icon name="plus"/> {t("members.requestSubmit")}</button></AutoSaveForm></SectionCard>}
+    {canRequestMembers && <SectionCard title={t("members.pendingRequests")} description={t("members.pendingRequestsDescription")} icon="clock">{requests.loading && !requests.data ? <div className="state"><div className="spinner"/></div> : requests.error ? <div className="alert error"><Icon name="warning"/>{requests.error}</div> : requests.data?.length ? <div className="member-request-list">{requests.data.map((request) => <article className="member-request-card" key={request.id}><div><strong>{request.displayName}</strong><small dir="ltr">@{request.username} · {request.email}</small><small>{roleLabel(request.role)} · {formatDate(request.createdAt, true)}</small></div><span className="status-badge warning">{t("members.requestPending")}</span></article>)}</div> : <EmptyState icon="clock" title={t("members.noRequests")}/>}</SectionCard>}
+    {canManageMembers && <SectionCard title={t("members.legacyInviteTitle")} description={t("members.legacyInviteDescription")} icon="members"><AutoSaveForm storageKey={inviteDraftKey} className="invite-form" onSubmit={invite}><label>{t("members.memberEmail")}<input name="email" type="email" dir="ltr" autoComplete="email" placeholder="name@company.com" required/></label><label>{t("members.role")}<StyledSelect name="role">{invitationRoles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</StyledSelect></label><button className="ghost"><Icon name="members"/> {t("members.sendInvite")}</button></AutoSaveForm></SectionCard>}
+        <SectionCard title={t("members.organizationMembers")} description={`${(state.data?.length ?? 0).toLocaleString(numberLocale)} ${t("common.member")}`} icon="members">{state.loading ? <div className="state"><div className="spinner"/></div> : !state.data?.length ? <EmptyState title={t("members.noMembers")} icon="members"/> : <div className="member-list">{state.data.map((member) => { const availableRoles = memberRoles.includes(member.role) ? memberRoles : [member.role, ...memberRoles]; return <article className="member-card" key={member.id}><div className="member-avatar">{member.user.displayName[0]}</div><div className="member-copy"><strong>{member.user.displayName}</strong>{member.user.username && <small dir="ltr">@{member.user.username}</small>}<small>{member.user.email}{member.user.jobTitle ? ` · ${member.user.jobTitle}` : ""}</small>{member.user.globalRole === "SUPER_ADMIN" && <span className="tag">{t("members.superAdmin")}</span>}</div>{canManageMembers && <><StyledSelect value={member.role} onChange={(event) => update(member.id, event.target.value, member.active)}>{availableRoles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</StyledSelect><button className={`status-toggle ${member.active ? "active" : "inactive"}`} onClick={() => update(member.id, member.role, !member.active)}><span/>{member.active ? t("members.active") : t("members.inactive")}</button><div className="member-actions"><button className="text-button" type="button" aria-expanded={editing?.id === member.id} aria-controls={`member-edit-${member.id}`} data-scroll-target={`#member-edit-${member.id}`} data-scroll-focus="input" onClick={() => beginEdit(member)}>{t("members.edit")}</button><button className="text-button danger-link" type="button" onClick={() => void removeMember(member)}>{t("common.delete")}</button></div>{editing?.id === member.id && <AutoSaveForm id={`member-edit-${member.id}`} storageKey={memberDraftKey(member.id)} className="member-edit-form form-grid" onSubmit={saveMember}><label>{t("profile.displayName")}<input name="displayName" defaultValue={editing.displayName} required/></label><label>{t("profile.username")}<input name="username" defaultValue={editing.username} onChange={(event) => { event.currentTarget.value = normalizeUsername(event.currentTarget.value); }} dir="ltr" autoComplete="username" maxLength={64}/></label><label>{t("auth.email")}<input name="email" type="email" dir="ltr" defaultValue={editing.email} required/></label><label>{t("profile.phone")}<input name="phone" defaultValue={editing.phone} onChange={normalizePhoneField} inputMode="numeric" autoComplete="tel" dir="ltr" maxLength={11} pattern="09[0-9]{9}" placeholder={t("members.phonePlaceholder")}/></label><label>{t("profile.jobTitle")}<input name="jobTitle" defaultValue={editing.jobTitle}/></label>{currentRole === "SUPER_ADMIN" && <label>{t("members.accountLevel")}<StyledSelect name="globalRole" defaultValue={editing.globalRole}><option value="USER">{t("members.normalUser")}</option><option value="SUPER_ADMIN">{t("members.superAdmin")}</option></StyledSelect></label>}<div className="member-edit-actions"><button className="primary" type="submit">{t("members.save")}</button><button className="ghost" type="button" onClick={() => setEditing(null)}>{t("common.cancel")}</button></div></AutoSaveForm>}</>}</article>; })}</div>}
     </SectionCard>
   </section>;
 }

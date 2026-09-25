@@ -27,7 +27,7 @@ export function FilesPage() {
   const role = getCurrentRole();
   const { session, orgId } = getSession();
   const uploadDraftKey = scopedDraftKey("file-upload", session?.user.id, orgId);
-  const canUpload = ["SUPER_ADMIN", "ORG_ADMIN", "ASSISTANT", "HSE_MANAGER", "ASSESSOR"].includes(role);
+  const canUpload = ["SUPER_ADMIN", "ORG_ADMIN", "HSE_MANAGER", "HSE_SPECIALIST", "HSE_OFFICER", "ASSISTANT", "ASSESSOR"].includes(role);
   const canDelete = ["SUPER_ADMIN", "ORG_ADMIN"].includes(role);
   async function upload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const element = event.currentTarget; const form = new FormData(element); setError(""); setMessage("");

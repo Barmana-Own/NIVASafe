@@ -4,7 +4,9 @@ RULA inputs are validated and calculated by the shared data-driven domain engine
 
 ## Activity information
 
-The three-stage RULA stepper is directly navigable. Selecting process information, review/scoring, or assessment reporting changes the visible stage without triggering required-field validation; validation remains enforced when advancing with Next and before final registration.
+The three-stage RULA stepper is directly navigable. Selecting process information, review/scoring, or assessment reporting changes the visible stage without triggering required-field validation. Process information is validated when leaving the first stage; posture-review completeness remains enforced before final registration so an incomplete preview cannot be saved as a final assessment.
+
+The RULA job field uses the same database-backed searchable job catalog control as FMEA. Opening the field loads the organization and global catalog entries; typing filters Persian and English titles, departments, and catalog keywords locally. Selecting an entry keeps the localized catalog title in the RULA activity information, while a new title can be added to the organization catalog or retained as a custom title if catalog persistence is unavailable. The selected catalog identifier and custom-selection state are included in the local draft so refreshing or returning from project creation does not discard the job choice.
 
 The first RULA wizard step records the context needed to interpret a posture assessment:
 
