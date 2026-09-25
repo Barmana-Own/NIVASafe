@@ -24,12 +24,13 @@ type FmeaRiskSuggestions = Record<FmeaRiskSuggestionField, string[]>;
 type FmeaRiskSuggestionContext = { projectName?: string | null; jobTitle: string; department?: string | null; activityDescription?: string | null; processStep?: string | null; failureMode?: string | null; effect?: string | null; cause?: string | null; preventiveControls?: string | null; detectionControls?: string | null; recommendation?: string | null };
 type FmeaRiskScoreSuggestion = { severity: number; occurrence: number; detection: number; rationale: string };
 type FmeaImageRiskRow = { failureMode: string; effect: string; cause: string; preventiveControls: string; detectionControls: string; recommendation: string; severity: number; occurrence: number; detection: number };
+type FmeaProcessRiskRowSuggestion = FmeaImageRiskRow & { processStep: string };
 type FmeaProcessImageAnalysis = { summary: string; riskRows: FmeaImageRiskRow[]; provider: string; aiStatus: "connected" | "fallback" };
 type FmeaRiskSuggestionInputName = "failureMode" | "effect" | "cause" | "preventiveControls" | "detectionControls" | "recommendation";
 type FmeaScoreKind = "severity" | "occurrence" | "detection";
 type ScoreCriterion = { score: number; label: string; description: string };
 type JobCatalogEntry = { id: string; organizationId: string | null; titleFa: string; titleEn: string; source?: string; sourceLocale?: string | null; keywords: string[]; departmentFa: string | null; departmentEn: string | null; descriptionFa: string | null; descriptionEn: string | null; equipment: string[]; materials: string[]; controls: string[] };
-type ProcessSuggestionResponse = { job: JobCatalogEntry | null; databaseSuggestions: ProcessSuggestions; aiSuggestions: ProcessSuggestions; provider: string; aiStatus: "connected" | "fallback" | "unavailable"; descriptionSuggestion?: string | null; riskSuggestions?: FmeaRiskSuggestions; scoreSuggestion?: FmeaRiskScoreSuggestion | null; jobTitleSuggestions?: string[]; aiJobCatalogSuggestions?: JobCatalogEntry[]; autofill?: FmeaProcessAutofill | null };
+type ProcessSuggestionResponse = { job: JobCatalogEntry | null; databaseSuggestions: ProcessSuggestions; aiSuggestions: ProcessSuggestions; provider: string; aiStatus: "connected" | "fallback" | "unavailable"; descriptionSuggestion?: string | null; riskSuggestions?: FmeaRiskSuggestions; riskRows?: FmeaProcessRiskRowSuggestion[]; scoreSuggestion?: FmeaRiskScoreSuggestion | null; jobTitleSuggestions?: string[]; aiJobCatalogSuggestions?: JobCatalogEntry[]; autofill?: FmeaProcessAutofill | null };
 type Fmea = { id: string; title: string; code: string; scope?: string; activityId?: string | null; department?: string; activityDescription?: string; equipment?: string[]; materials?: string[]; existingControls?: string[]; specialConditions?: string; status: string; version: number; project: Project; items: FmeaItem[]; jobCatalog?: JobCatalogEntry | null };
 type RulaActivityInfo = { jobTitle: string; taskDescription: string; postureDescription?: string | null; durationPerOccurrence?: number; durationUnit?: "SECOND" | "MINUTE" | "HOUR"; repetitionsPerShift?: number; postureHoldDuration?: number; postureHoldUnit?: "SECOND" | "MINUTE" | "HOUR"; loadWeight?: number | null; loadUnit?: "KG" | "LB"; postureImageAttachmentId?: string | null };
 type RulaPosturePart = "upperArm" | "lowerArm" | "wrist" | "wristTwist" | "neck" | "trunk" | "legs";
@@ -527,22 +528,20 @@ function FmeaReviewRiskRow({ draft, rows, context, autoEnabled, onChange, onScor
   </div>;
 }
 
-function FmeaStageTwoDetailsCard({ assessment, loading, error, onRetry }: { assessment: Fmea; loading: boolean; error: string; onRetry: () => void }) {
+function FmeaStageTwoDetailsCard({ items, processName, loading, error, onRetry }: { items: FmeaReportItem[]; processName: string; loading: boolean; error: string; onRetry: () => void }) {
   const { locale, t } = useI18n();
-  const numberLocale = locale === "en" ? "en-US" : "fa-IR";
-  const processName = assessment.jobCatalog ? localizedJobTitle(assessment.jobCatalog, locale) : assessment.title;
+  const [viewingItem, setViewingItem] = useState<FmeaReportItem | null>(null);
   return <SectionCard className="report-details-card" title={t("report.fullDetails")} description={t("report.fullDetailsDescription")} icon="fmea">
     <details open>
       <summary>{t("report.expandDetails")}</summary>
       {loading && <div className="fmea-report-ai-seed-status" role="status" aria-live="polite"><span className="spinner"/>{t("report.aiDetailsWorking")}</div>}
       {error && <div className="fmea-report-ai-seed-status error" role="alert"><span>{error}</span><button type="button" className="text-button" onClick={onRetry}>{t("common.retry")}</button></div>}
-      {assessment.items.length ? <div className="table-wrap report-data-table-wrap fmea-report-table-wrap"><table className="assessment-report-table fmea-report-data-table report-detail-table"><thead><tr><th>{t("assessment.row")}</th><th>{t("assessment.processActivity")}</th><th>{t("assessment.failureMode")}</th><th>{t("assessment.effect")}</th><th>{t("assessment.cause")}</th><th>{t("assessment.existingControls")}</th><th title={t("assessment.severity")}>S</th><th title={t("assessment.occurrence")}>O</th><th title={t("assessment.detection")}>D</th><th>RPN</th><th>{t("assessment.riskLevel")}</th><th>{t("assessment.recommendation")}</th></tr></thead><tbody>{assessment.items.map((item) => {
-        const controls = [item.preventiveControls, item.detectionControls].filter((value): value is string => Boolean(value?.trim()));
-        return <tr key={item.id}><td className="report-table-number">{item.rowNumber.toLocaleString(numberLocale)}</td><td className="report-table-text">{processName}</td><td className="report-table-text"><strong>{item.failureMode}</strong></td><td className="report-table-text">{item.effect}</td><td className="report-table-text">{item.cause}</td><td className="report-table-text"><div className="report-table-stack">{controls.length ? controls.map((control, index) => <span key={item.id + "-control-" + index}>{control}</span>) : <span>—</span>}</div></td><td className="report-table-number">{item.severity.toLocaleString(numberLocale)}</td><td className="report-table-number">{item.occurrence.toLocaleString(numberLocale)}</td><td className="report-table-number">{item.detection.toLocaleString(numberLocale)}</td><td className="report-table-number"><strong className="rpn-number">{item.rpn.toLocaleString(numberLocale)}</strong></td><td className="report-table-number"><StatusBadge value={item.riskLevel}/></td><td className="report-table-text">{item.recommendation?.trim() || "—"}</td></tr>;
-      })}</tbody></table></div> : !loading && !error ? <EmptyState title={t("assessment.noRiskRows")} description={t("assessment.addFirstRisk")} icon="fmea"/> : null}
+      {items.length ? <FmeaInteractiveReportRiskTable items={items} processName={processName} locale={locale} canEdit={false} onView={setViewingItem} onEdit={() => undefined} onDelete={() => undefined}/> : !loading && !error ? <EmptyState title={t("assessment.noRiskRows")} description={t("assessment.addFirstRisk")} icon="fmea"/> : null}
+      {viewingItem && <FmeaReportItemDetailsDialog item={viewingItem} locale={locale} canEdit={false} onClose={() => setViewingItem(null)} onEdit={() => undefined}/>}
     </details>
   </SectionCard>;
 }
+
 function FmeaItemEditor({ item, saving, onCancel, onSave }: { item: FmeaItem; saving: boolean; onCancel: () => void; onSave: (draft: FmeaItemDraft) => Promise<void> }) {
   const { locale, t } = useI18n();
   const [draft, setDraft] = useState<FmeaItemDraft>(() => fmeaItemDraftFromRow(item));
@@ -765,6 +764,36 @@ function FmeaProcessPage() {
   const selectedAssessment = state.data?.find((item) => item.id === (editingAssessmentId ?? selected));
   const editingAssessment = editingAssessmentId ? selectedAssessment : undefined;
   const selectedProject = projects.data?.find((project) => project.id === selectedProjectId);
+  const stageTwoProcessName = editingExistingAssessment && selectedAssessment
+    ? (selectedAssessment.jobCatalog ? localizedJobTitle(selectedAssessment.jobCatalog, locale) : selectedAssessment.title)
+    : jobQuery.trim() || activityDescription.trim() || "—";
+  const stageTwoDetailsItems = useMemo<FmeaReportItem[]>(() => {
+    if (editingExistingAssessment && selectedAssessment) {
+      return selectedAssessment.items.map((item) => ({ ...item, actionPriority: item.riskLevel, correctiveActions: [] }));
+    }
+    return reviewRiskRows.map((row, index) => {
+      const rpn = calculateRpn(row.severity, row.occurrence, row.detection);
+      const riskLevelValue = riskLevel(rpn);
+      return {
+        id: "stage-two-" + (index + 1),
+        rowNumber: index + 1,
+        processStep: stageTwoProcessName,
+        failureMode: row.failureMode,
+        effect: row.effect,
+        cause: row.cause,
+        preventiveControls: row.preventiveControls.trim() || null,
+        detectionControls: row.detectionControls.trim() || null,
+        severity: row.severity,
+        occurrence: row.occurrence,
+        detection: row.detection,
+        rpn,
+        riskLevel: riskLevelValue,
+        recommendation: row.recommendation.trim() || null,
+        actionPriority: riskLevelValue,
+        correctiveActions: [],
+      };
+    });
+  }, [editingExistingAssessment, reviewRiskRows, selectedAssessment, stageTwoProcessName]);
   const storedFmeaScope = (editingAssessment?.scope ?? draftValue(draft, "scope")).trim();
   const assessmentScope = storedFmeaScope || automaticFmeaScope(selectedProject ? projectName(selectedProject, locale) : "", jobQuery) || jobQuery.trim() || null;
   const previewRpn = calculateRpn(scores.severity, scores.occurrence, scores.detection);
@@ -1777,34 +1806,77 @@ function FmeaProcessPage() {
   }
 
   useEffect(() => {
-    if (!editingAssessmentId || wizardStep !== 2 || !selectedAssessment || !canEdit()) return;
-    const requestKey = editingAssessmentId + ":" + locale;
+    if (wizardStep !== 2 || !canEdit()) return;
+    if (editingAssessmentId && !selectedAssessment) return;
+    if (!editingAssessmentId && reviewRiskRows.length > 0) return;
+    if (!editingAssessmentId && jobQuery.trim().length < 2) return;
+    const requestKey = editingAssessmentId
+      ? "existing:" + editingAssessmentId + ":" + locale
+      : "new:" + [locale, selectedProjectId, selectedJobId, jobQuery.trim(), department.trim(), activityDescription.trim(), specialConditions.trim()].join(":");
     if (reviewDetailSeedRequestKeyRef.current === requestKey) return;
     reviewDetailSeedRequestKeyRef.current = requestKey;
     let active = true;
     let completed = false;
     setReviewDetailSeedLoading(true);
     setReviewDetailSeedError("");
-    void api<FmeaReportDetailSuggestionsResponse>("/fmea/" + encodeURIComponent(editingAssessmentId) + "/report/detail-suggestions", {
-      method: "POST",
-      body: JSON.stringify({ locale, autoCreate: true }),
-    }).then(() => {
-      if (!active) return;
-      completed = true;
-      state.reload();
-    }).catch((reason) => {
-      if (!active) return;
-      completed = true;
-      reviewDetailSeedRequestKeyRef.current = "";
-      setReviewDetailSeedError((reason as Error).message);
-    }).finally(() => {
-      if (active) setReviewDetailSeedLoading(false);
-    });
+    const requestTimer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          if (editingAssessmentId) {
+            await api<FmeaReportDetailSuggestionsResponse>("/fmea/" + encodeURIComponent(editingAssessmentId) + "/report/detail-suggestions", {
+              method: "POST",
+              body: JSON.stringify({ locale, autoCreate: true }),
+            });
+            if (!active) return;
+            completed = true;
+            state.reload();
+          } else {
+            const result = await api<ProcessSuggestionResponse>("/fmea/process-suggestions", {
+              method: "POST",
+              body: JSON.stringify({
+                projectId: selectedProjectId || null,
+                jobCatalogId: selectedJobId || null,
+                jobTitle: jobQuery.trim(),
+                department: department.trim() || null,
+                activityDescription: activityDescription.trim() || null,
+                specialConditions: specialConditions.trim() || null,
+                locale,
+                mode: "risk-rows",
+              }),
+            });
+            const generatedRows = (result.data.riskRows?.slice(0, 5) ?? []).map((row) => ({
+              failureMode: row.failureMode.trim(),
+              effect: row.effect.trim(),
+              cause: row.cause.trim(),
+              preventiveControls: row.preventiveControls.trim(),
+              detectionControls: row.detectionControls.trim(),
+              severity: row.severity,
+              occurrence: row.occurrence,
+              detection: row.detection,
+              recommendation: row.recommendation.trim(),
+            })).filter((row) => row.failureMode && row.effect && row.cause);
+            if (!generatedRows.length) throw new Error(t("assessment.suggestionLoadFailed"));
+            if (!active) return;
+            setReviewRiskRows((current) => current.length ? current : generatedRows);
+            window.setTimeout(queueCurrentDraft, 0);
+            completed = true;
+          }
+        } catch (reason) {
+          if (!active) return;
+          completed = true;
+          reviewDetailSeedRequestKeyRef.current = "";
+          setReviewDetailSeedError(reason instanceof Error ? reason.message : t("assessment.suggestionLoadFailed"));
+        } finally {
+          if (active) setReviewDetailSeedLoading(false);
+        }
+      })();
+    }, 350);
     return () => {
       active = false;
+      window.clearTimeout(requestTimer);
       if (!completed && reviewDetailSeedRequestKeyRef.current === requestKey) reviewDetailSeedRequestKeyRef.current = "";
     };
-  }, [editingAssessmentId, locale, reviewDetailSeedRetry, selectedAssessment, wizardStep]);
+  }, [activityDescription, department, editingAssessmentId, jobQuery, locale, reviewDetailSeedRetry, reviewRiskRows.length, selectedAssessment, selectedJobId, selectedProjectId, specialConditions, wizardStep]);
   useEffect(() => {
     if (wizardStep !== 2) return;
     const frame = window.requestAnimationFrame(() => {
@@ -1869,7 +1941,7 @@ function FmeaProcessPage() {
         <fieldset ref={fmeaReviewStepRef} id="fmea-review-step" data-step="2" hidden={wizardStep !== 2}><legend>{t("assessment.review")}</legend><input type="hidden" data-fmea-auto-metadata="true" name="code" value={assessmentCode}/><input type="hidden" data-fmea-auto-metadata="true" name="scope" value={assessmentScope ?? ""}/><div className="fmea-process-review"><div className="wizard-review"><Icon name="check" size={25}/><div><strong>{t("assessment.reviewReadyFmea")}</strong><p>{t("assessment.reviewFmeaDescription")}</p></div></div><div className="fmea-review-grid"><div><small>{t("assessment.jobActivity")}</small><strong>{jobQuery || "—"}</strong></div><div><small>{t("assessment.department")}</small><strong>{department || "—"}</strong></div><div className="fmea-review-wide"><small>{t("assessment.activityDescription")}</small><p>{activityDescription || "—"}</p></div><div className="fmea-review-wide"><small>{t("assessment.selectedItems")}</small><div className="fmea-review-chips">{processSuggestionCategories.flatMap((category) => selectedItems[category].map((item) => <span key={`${category}-${item}`}>{item}</span>)).length ? processSuggestionCategories.flatMap((category) => selectedItems[category].map((item) => <span key={`${category}-${item}`}>{item}</span>)) : <span>—</span>}</div></div></div></div></fieldset>
         <fieldset ref={fmeaReportStepRef} id="fmea-report-step" data-step="3" hidden={wizardStep !== 3}><legend>{t("assessment.reportResults")}</legend><div className="fmea-process-review fmea-report-preview"><div className="wizard-review"><Icon name="chart" size={25}/><div><strong>{t("assessment.fmeaReportPreviewTitle")}</strong><p>{t(editingAssessmentId ? "assessment.fmeaReportPreviewSavedDescription" : "assessment.fmeaReportPreviewDraftDescription")}</p></div></div><div className="fmea-review-grid"><div><small>{t("assessment.projectRequired")}</small><strong>{selectedProject ? projectName(selectedProject, locale) : "—"}</strong></div><div><small>{t("assessment.jobActivity")}</small><strong>{jobQuery || "—"}</strong></div><div><small>{t("assessment.codeRequired")}</small><strong>{assessmentCode}</strong></div><div><small>{t("assessment.riskRowCount")}</small><strong>{reviewRiskRows.length.toLocaleString(numberLocale)}</strong></div><div className="fmea-review-wide"><small>{t("assessment.activityDescription")}</small><p>{activityDescription || "—"}</p></div></div>{editingAssessmentId && <div className="wizard-actions"><span/><button type="button" className="primary" onClick={() => navigate(`/fmea/${editingAssessmentId}/report`)}>{t("assessment.openReport")} <Icon name="arrow"/></button></div>}</div></fieldset>
         {wizardStep === 2 && <FmeaReviewRiskRow draft={reviewRiskDraft} rows={reviewRiskRows} context={{ projectName: projects.data?.find((project) => project.id === selectedProjectId)?.name ?? null, jobTitle: jobQuery, department, activityDescription, processStep: activityDescription }} autoEnabled={fmeaAssistantEnabled} onChange={updateReviewRiskDraft} onScoreChange={(kind, value) => updateReviewRiskDraft(kind, value)} onAdd={addReviewRiskRow} onRemove={removeReviewRiskRow} onAccept={(field, value) => applyReviewRiskSuggestion(field, value)} onAutoAccept={(field, value) => applyReviewRiskSuggestion(field, value, true)} onAcceptScore={(suggestion) => applyReviewRiskScoreSuggestion(suggestion)} onAutoAcceptScore={(suggestion) => applyReviewRiskScoreSuggestion(suggestion, true)} />}
-        {editingExistingAssessment && wizardStep === 2 && selectedAssessment && <FmeaStageTwoDetailsCard assessment={selectedAssessment} loading={reviewDetailSeedLoading} error={reviewDetailSeedError} onRetry={retryReviewDetailSeed}/>}
+        {wizardStep === 2 && <FmeaStageTwoDetailsCard items={stageTwoDetailsItems} processName={stageTwoProcessName} loading={reviewDetailSeedLoading} error={reviewDetailSeedError} onRetry={retryReviewDetailSeed}/>}
         <div className="wizard-actions"><button className="ghost" type="button" disabled={wizardStep === 1 || creating} onClick={goToPreviousWizardStep}>{t("assessment.previousStep")}</button>{wizardStep === 1 ? <button className="primary" type="button" onClick={continueToFmeaReview}>{t("common.next")} <Icon name="arrow"/></button> : wizardStep === 2 ? <button className="primary" type="submit" disabled={creating}><Icon name={creating ? "clock" : "plus"}/> {creating ? t("assessment.registeringFmea") : t(editingExistingAssessment ? "assessment.saveFmeaAndOpenReport" : "assessment.createFmeaAndOpenReport")}</button> : <button className="primary" type="button" onClick={() => editingAssessmentId ? navigate(`/fmea/${editingAssessmentId}/report`) : setWizardStep(2)}>{t(editingAssessmentId ? "assessment.openReport" : "assessment.returnToReview")} <Icon name="arrow"/></button>}</div>{!editingExistingAssessment && <AutoSaveStatus lastSaved={lastSaved} hasError={autosaveError}/>}
       </form>
     </SectionCard>}
@@ -1943,10 +2015,9 @@ function FmeaScoreGuide({ locale }: { locale: "fa" | "en" }) {
   return <details className="risk-score-guide"><summary><Icon name="chart" size={16}/>{t("assessment.scoreGuide")}</summary><p>{t("assessment.scoreGuideDescription")}</p><div className="table-wrap"><table className="score-guide-table"><thead><tr><th>{t("assessment.scoreRange")}</th><th>{t("assessment.severity")}</th><th>{t("assessment.occurrence")}</th><th>{t("assessment.detection")}</th></tr></thead><tbody>{fmeaScoreCriteria[locale].severity.map((criterion, index) => <tr key={criterion.score}><td><strong>{criterion.score.toLocaleString(numberLocale)}</strong></td><td><strong>{criterion.label}</strong><small>{criterion.description}</small></td><td><strong>{fmeaScoreCriteria[locale].occurrence[index].label}</strong><small>{fmeaScoreCriteria[locale].occurrence[index].description}</small></td><td><strong>{fmeaScoreCriteria[locale].detection[index].label}</strong><small>{fmeaScoreCriteria[locale].detection[index].description}</small></td></tr>)}</tbody></table></div></details>;
 }
 
-function FmeaInteractiveReportRiskTable({ report, locale, canEdit, onView, onEdit, onDelete }: { report: FmeaReport; locale: "fa" | "en"; canEdit: boolean; onView: (item: FmeaReportItem) => void; onEdit: (item: FmeaReportItem) => void; onDelete: (item: FmeaReportItem) => void }) {
+function FmeaInteractiveReportRiskTable({ items, processName, locale, canEdit, showOperations = true, onView, onEdit, onDelete }: { items: FmeaReportItem[]; processName: string; locale: "fa" | "en"; canEdit: boolean; showOperations?: boolean; onView: (item: FmeaReportItem) => void; onEdit: (item: FmeaReportItem) => void; onDelete: (item: FmeaReportItem) => void }) {
   const { t } = useI18n();
   const numberLocale = locale === "en" ? "en-US" : "fa-IR";
-  const processName = locale === "en" ? report.assessment.processName.en : report.assessment.processName.fa;
   const [riskSearch, setRiskSearch] = useState("");
   const [riskFilter, setRiskFilter] = useState("ALL");
   const [riskSort, setRiskSort] = useState<RiskSortField>("rowNumber");
@@ -1954,7 +2025,7 @@ function FmeaInteractiveReportRiskTable({ report, locale, canEdit, onView, onEdi
   const [riskPage, setRiskPage] = useState(1);
   const filteredItems = useMemo(() => {
     const query = riskSearch.trim().toLocaleLowerCase(locale === "fa" ? "fa-IR" : "en-US");
-    const rows = report.items.filter((item) => {
+    const rows = items.filter((item) => {
       if (riskFilter !== "ALL" && item.riskLevel !== riskFilter) return false;
       if (!query) return true;
       const actions = item.correctiveActions.flatMap((action) => [action.title, action.status, action.priority]);
@@ -1966,20 +2037,20 @@ function FmeaInteractiveReportRiskTable({ report, locale, canEdit, onView, onEdi
       const comparison = Number(left[riskSort]) - Number(right[riskSort]);
       return (comparison || left.rowNumber - right.rowNumber) * (riskSortDirection === "asc" ? 1 : -1);
     });
-  }, [locale, processName, report.items, riskFilter, riskSearch, riskSort, riskSortDirection]);
+  }, [locale, processName, items, riskFilter, riskSearch, riskSort, riskSortDirection]);
   const pageCount = Math.max(1, Math.ceil(filteredItems.length / FMEA_RISK_PAGE_SIZE));
   const pageItems = useMemo(() => filteredItems.slice((riskPage - 1) * FMEA_RISK_PAGE_SIZE, riskPage * FMEA_RISK_PAGE_SIZE), [filteredItems, riskPage]);
 
-  useEffect(() => setRiskPage(1), [report.items, riskFilter, riskSearch, riskSort, riskSortDirection]);
+  useEffect(() => setRiskPage(1), [items, riskFilter, riskSearch, riskSort, riskSortDirection]);
   useEffect(() => setRiskPage((page) => Math.min(page, pageCount)), [pageCount]);
 
   return <>
     <div className="risk-table-toolbar fmea-report-table-toolbar"><label className="search-box risk-table-search"><Icon name="search" size={17}/><span className="sr-only">{t("assessment.riskSearch")}</span><input value={riskSearch} onChange={(event) => setRiskSearch(event.target.value)} placeholder={t("assessment.riskSearchPlaceholder")} aria-label={t("assessment.riskSearch")}/></label><div className="risk-table-controls"><label><span>{t("assessment.riskFilter")}</span><StyledSelect value={riskFilter} onChange={(event) => setRiskFilter(event.target.value)}><option value="ALL">{t("assessment.allRiskLevels")}</option><option value="VERY_LOW">{t("status.veryLow")}</option><option value="LOW">{t("status.low")}</option><option value="MEDIUM">{t("status.medium")}</option><option value="HIGH">{t("status.high")}</option><option value="CRITICAL">{t("status.critical")}</option></StyledSelect></label><label><span>{t("assessment.riskSort")}</span><StyledSelect value={riskSort} onChange={(event) => setRiskSort(event.target.value as RiskSortField)}><option value="rowNumber">{t("assessment.sortRow")}</option><option value="rpn">{t("assessment.sortRpn")}</option><option value="severity">{t("assessment.sortSeverity")}</option><option value="occurrence">{t("assessment.sortOccurrence")}</option><option value="detection">{t("assessment.sortDetection")}</option></StyledSelect></label><button type="button" className="ghost risk-sort-direction" onClick={() => setRiskSortDirection((direction) => direction === "asc" ? "desc" : "asc")} aria-label={t("assessment.toggleSortDirection")}>{riskSortDirection === "asc" ? "↑" : "↓"}</button></div></div>
     <FmeaScoreGuide locale={locale}/>
-    {pageItems.length ? <div className="table-wrap report-data-table-wrap fmea-report-table-wrap"><table className="assessment-report-table fmea-report-data-table"><thead><tr><th>{t("assessment.row")}</th><th>{t("assessment.processActivity")}</th><th>{t("assessment.failureMode")}</th><th>{t("assessment.effect")}</th><th>{t("assessment.cause")}</th><th>{t("assessment.existingControls")}</th><th title={t("assessment.severity")}>S</th><th title={t("assessment.occurrence")}>O</th><th title={t("assessment.detection")}>D</th><th>RPN</th><th>{t("assessment.riskLevel")}</th><th>{t("assessment.recommendation")}</th><th>{t("assessment.operations")}</th></tr></thead><tbody>{pageItems.map((item) => {
+    {pageItems.length ? <div className="table-wrap report-data-table-wrap fmea-report-table-wrap"><table className="assessment-report-table fmea-report-data-table"><thead><tr><th>{t("assessment.row")}</th><th>{t("assessment.processActivity")}</th><th>{t("assessment.failureMode")}</th><th>{t("assessment.effect")}</th><th>{t("assessment.cause")}</th><th>{t("assessment.existingControls")}</th><th title={t("assessment.severity")}>S</th><th title={t("assessment.occurrence")}>O</th><th title={t("assessment.detection")}>D</th><th>RPN</th><th>{t("assessment.riskLevel")}</th><th>{t("assessment.recommendation")}</th>{showOperations && <th>{t("assessment.operations")}</th>}</tr></thead><tbody>{pageItems.map((item) => {
       const controls = [item.preventiveControls, item.detectionControls].filter((value): value is string => Boolean(value?.trim()));
       const linkedActions = item.correctiveActions;
-      return <tr key={item.id}><td className="report-table-number">{item.rowNumber.toLocaleString(numberLocale)}</td><td className="report-table-text">{processName}</td><td className="report-table-text"><strong>{item.failureMode}</strong></td><td className="report-table-text">{item.effect}</td><td className="report-table-text">{item.cause}</td><td className="report-table-text"><div className="report-table-stack">{controls.length ? controls.map((control, index) => <span key={`${item.id}-control-${index}`}>{control}</span>) : <span>—</span>}</div></td><td className="report-table-number">{item.severity.toLocaleString(numberLocale)}</td><td className="report-table-number">{item.occurrence.toLocaleString(numberLocale)}</td><td className="report-table-number">{item.detection.toLocaleString(numberLocale)}</td><td className="report-table-number"><strong className="rpn-number">{item.rpn.toLocaleString(numberLocale)}</strong></td><td className="report-table-number"><StatusBadge value={item.riskLevel}/></td><td className="report-table-text"><div className="report-table-stack">{item.recommendation?.trim() && <span><strong>{item.recommendation.trim()}</strong><small><StatusBadge value="SUGGESTED"/></small></span>}{linkedActions.map((action) => <span key={action.id}><strong>{action.title}</strong><small><StatusBadge value={action.status}/> <StatusBadge value={action.priority}/></small></span>)}{!item.recommendation?.trim() && !linkedActions.length && <span>—</span>}</div></td><td className="report-table-number"><div className="report-table-actions" aria-label={t("assessment.operations")}><button type="button" className="icon-button" title={t("assessment.viewDetails")} aria-label={`${t("assessment.viewDetails")}: ${item.failureMode}`} onClick={() => onView(item)}><Icon name="eye" size={15}/></button>{canEdit && <><button type="button" className="icon-button" title={t("assessment.editRiskRow")} aria-label={`${t("assessment.editRiskRow")}: ${item.failureMode}`} onClick={() => onEdit(item)}><Icon name="edit" size={15}/></button><button type="button" className="icon-button danger" title={t("assessment.deleteRow")} aria-label={`${t("assessment.deleteRow")}: ${item.failureMode}`} onClick={() => onDelete(item)}><Icon name="trash" size={15}/></button></>}</div></td></tr>;
+      return <tr key={item.id}><td className="report-table-number">{item.rowNumber.toLocaleString(numberLocale)}</td><td className="report-table-text">{processName}</td><td className="report-table-text"><strong>{item.failureMode}</strong></td><td className="report-table-text">{item.effect}</td><td className="report-table-text">{item.cause}</td><td className="report-table-text"><div className="report-table-stack">{controls.length ? controls.map((control, index) => <span key={`${item.id}-control-${index}`}>{control}</span>) : <span>—</span>}</div></td><td className="report-table-number">{item.severity.toLocaleString(numberLocale)}</td><td className="report-table-number">{item.occurrence.toLocaleString(numberLocale)}</td><td className="report-table-number">{item.detection.toLocaleString(numberLocale)}</td><td className="report-table-number"><strong className="rpn-number">{item.rpn.toLocaleString(numberLocale)}</strong></td><td className="report-table-number"><StatusBadge value={item.riskLevel}/></td><td className="report-table-text"><div className="report-table-stack">{item.recommendation?.trim() && <span><strong>{item.recommendation.trim()}</strong><small><StatusBadge value="SUGGESTED"/></small></span>}{linkedActions.map((action) => <span key={action.id}><strong>{action.title}</strong><small><StatusBadge value={action.status}/> <StatusBadge value={action.priority}/></small></span>)}{!item.recommendation?.trim() && !linkedActions.length && <span>—</span>}</div></td>{showOperations && <td className="report-table-number"><div className="report-table-actions" aria-label={t("assessment.operations")}><button type="button" className="icon-button" title={t("assessment.viewDetails")} aria-label={`${t("assessment.viewDetails")}: ${item.failureMode}`} onClick={() => onView(item)}><Icon name="eye" size={15}/></button>{canEdit && <><button type="button" className="icon-button" title={t("assessment.editRiskRow")} aria-label={`${t("assessment.editRiskRow")}: ${item.failureMode}`} onClick={() => onEdit(item)}><Icon name="edit" size={15}/></button><button type="button" className="icon-button danger" title={t("assessment.deleteRow")} aria-label={`${t("assessment.deleteRow")}: ${item.failureMode}`} onClick={() => onDelete(item)}><Icon name="trash" size={15}/></button></>}</div></td>}</tr>;
     })}</tbody></table></div> : <EmptyState title={t("assessment.noRiskMatches")} icon="search"/>}
     {pageCount > 1 && <nav className="risk-table-pagination" aria-label={t("assessment.riskPagination")}><span>{t("assessment.riskPageOf", { current: riskPage, total: pageCount })}</span><div><button type="button" className="ghost" onClick={() => setRiskPage((page) => Math.max(1, page - 1))} disabled={riskPage === 1}>{t("assessment.previousPage")}</button><button type="button" className="ghost" onClick={() => setRiskPage((page) => Math.min(pageCount, page + 1))} disabled={riskPage === pageCount}>{t("assessment.nextPage")}</button></div></nav>}
   </>;
@@ -2125,7 +2196,7 @@ export function FmeaReportPage() {
 
   async function requestAiDetailSuggestions() {
     if (!id || !report || aiDetailLoading) return;
-    const autoCreate = !report.assessment.fmeaDetailSeeded && canEditActions;
+    const autoCreate = report.items.length === 0 && !report.assessment.fmeaDetailSeeded && canEditActions;
     if (!autoCreate) return;
     setAiDetailLoading(true); setAiDetailError("");
     try {
@@ -2138,7 +2209,7 @@ export function FmeaReportPage() {
   }
 
   useEffect(() => {
-    if (!report || !id || report.assessment.fmeaDetailSeeded || !canEditActions) return;
+    if (!report || !id || report.assessment.fmeaDetailSeeded || report.items.length > 0 || !canEditActions) return;
     const requestKey = `${id}:${locale}:${report.items.length}:pending`;
     if (aiDetailRequestKeyRef.current === requestKey) return;
     aiDetailRequestKeyRef.current = requestKey;
@@ -2190,7 +2261,7 @@ export function FmeaReportPage() {
      <div className="report-two-column fmea-report-primary-grid"><SectionCard title={t("report.topFailureModes")} description={t("report.topFailureModesDescription")} icon="warning"><div className="report-top-list">{report.topFailureModes.length ? report.topFailureModes.map((item) => <article className="report-top-item" key={item.id}><div className="report-top-index">{item.rowNumber.toLocaleString(numberLocale)}</div><div className="report-top-copy"><strong>{item.failureMode}</strong><small>{item.effect}</small></div><div className="report-score-trio"><span><b>S</b>{item.severity}</span><span><b>O</b>{item.occurrence}</span><span><b>D</b>{item.detection}</span><span><b>AP</b><StatusBadge value={item.actionPriority}/></span><span><b>RPN</b>{item.rpn.toLocaleString(numberLocale)}</span></div></article>) : <EmptyState title={t("report.noFailureModes")} icon="fmea"/>}</div></SectionCard><SectionCard title={t("report.proposedActions")} description={t("report.proposedActionsDescription")} icon="actions" actions={canEditActions ? <button type="button" className="primary" onClick={openManualActionForm}><Icon name="plus"/> {t("report.addManualAction")}</button> : undefined}>{report.suggestedActions.length ? <div className="report-action-list">{report.suggestedActions.map((item) => <article className="report-action-row" key={item.id}><div className="report-action-icon"><Icon name="sparkles" size={17}/></div><div><strong>{item.title}</strong><small>{t("report.relatedRisk")}: {item.failureMode}</small><small>{t("actions.assignee")}: {t("common.none")}</small></div><StatusBadge value={item.priority}/><StatusBadge value="SUGGESTED"/>{canEditActions && <button className="text-button" type="button" onClick={() => chooseSuggestion(item)}>{t("report.useSuggestion")}</button>}</article>)}</div> : <EmptyState title={t("report.noSuggestedActions")} icon="actions"/>}</SectionCard></div>
      {showActionForm && canEditActions && <div ref={actionFormRef} className="report-action-form-anchor"><SectionCard className="report-action-form-card" title={t("report.manualActionTitle")} description={t("report.manualActionDescription")} icon="plus"><form className="report-action-form" onSubmit={createAction}><label>{t("actions.titleLabel")}<input name="title" value={actionDraft.title} onChange={(event) => setActionDraft((draft) => ({ ...draft, title: event.target.value }))} placeholder={t("actions.titlePlaceholder")} required/></label><label>{t("actions.priority")}<StyledSelect name="priority" value={actionDraft.priority} onChange={(event) => setActionDraft((draft) => ({ ...draft, priority: event.target.value }))}><option value="CRITICAL">{t("status.critical")}</option><option value="HIGH">{t("status.high")}</option><option value="MEDIUM">{t("status.medium")}</option><option value="LOW">{t("status.low")}</option></StyledSelect></label><label>{t("report.relatedRisk")}<StyledSelect name="fmeaItemId" value={actionDraft.fmeaItemId} onChange={(event) => setActionDraft((draft) => ({ ...draft, fmeaItemId: event.target.value }))}><option value="">{t("report.noRelatedRisk")}</option>{report.items.map((item) => <option key={item.id} value={item.id}>#{item.rowNumber} · {item.failureMode}</option>)}</StyledSelect></label><label>{t("actions.statusColumn")}<StyledSelect name="status" defaultValue="OPEN"><option value="OPEN">{t("report.actionStatusNew")}</option><option value="ASSIGNED">{t("report.actionStatusWaiting")}</option><option value="IN_PROGRESS">{t("status.inProgress")}</option><option value="WAITING_FOR_REVIEW">{t("status.waitingForReview")}</option></StyledSelect></label><label>{t("actions.assignee")}<StyledSelect name="assigneeName" defaultValue=""><option value="">{t("common.none")}</option>{report.assessment.evaluationTeam.map((member) => <option key={member.id} value={member.displayName}>{member.displayName}</option>)}</StyledSelect></label><label>{t("actions.dueDate")}<LocalizedDateInput name="dueDate" ariaLabel={t("actions.dueDate")}/></label><label className="report-action-description">{t("actions.detailsLabel")}<textarea name="description" rows={3} value={actionDraft.description} onChange={(event) => setActionDraft((draft) => ({ ...draft, description: event.target.value }))} placeholder={t("actions.detailsPlaceholder")} required/></label><div className="report-action-form-actions"><button className="ghost" type="button" onClick={() => setShowActionForm(false)} disabled={actionSaving}>{t("common.cancel")}</button><button className="primary" type="submit" disabled={actionSaving}><Icon name="check"/> {actionSaving ? t("report.registeringAction") : t("report.registerAction")}</button></div></form></SectionCard></div>}
     <SectionCard title={t("report.actionRegister")} description={t("report.actionRegisterDescription")} icon="actions"><>{report.actions.length ? <div className="table-wrap"><table className="report-action-table"><thead><tr><th>{t("actions.action")}</th><th>{t("report.relatedRisk")}</th><th>{t("actions.priorityColumn")}</th><th>{t("actions.assigneeColumn")}</th><th>{t("actions.statusColumn")}</th><th>{t("actions.progress")}</th></tr></thead><tbody>{report.actions.map((item) => <tr key={item.id}><td><strong>{item.title}</strong><small>{item.description}</small></td><td>{item.fmeaItem ? `#${item.fmeaItem.rowNumber} · ${item.fmeaItem.failureMode}` : t("common.none")}</td><td><StatusBadge value={item.priority}/></td><td>{item.assigneeName ?? t("common.none")}</td><td>{canEditActions ? <StyledSelect className="compact-select" value={item.status} disabled={updatingActionId === item.id} onChange={(event) => void updateActionStatus(item.id, event.target.value)}><option value="OPEN">{t("report.actionStatusNew")}</option><option value="ASSIGNED">{t("report.actionStatusWaiting")}</option><option value="IN_PROGRESS">{t("status.inProgress")}</option><option value="WAITING_FOR_REVIEW">{t("status.waitingForReview")}</option><option value="COMPLETED">{t("status.completed")}</option><option value="REJECTED">{t("status.rejected")}</option><option value="OVERDUE">{t("status.overdue")}</option><option value="CANCELLED">{t("status.cancelled")}</option></StyledSelect> : <StatusBadge value={item.status}/>}</td><td><div className="table-progress"><div><span style={{ width: `${item.progress}%` }}/></div><b>{item.progress.toLocaleString(numberLocale)}%</b></div></td></tr>)}</tbody></table></div> : <EmptyState title={t("report.noActions")} icon="actions"/>}</></SectionCard>
-      <SectionCard className="report-details-card" title={t("report.fullDetails")} description={t("report.fullDetailsDescription")} icon="fmea"><details open><summary>{t("report.expandDetails")}</summary>{aiDetailLoading && <div className="fmea-report-ai-seed-status" role="status" aria-live="polite"><span className="spinner"/>{t("report.aiDetailsWorking")}</div>}{aiDetailError && <div className="fmea-report-ai-seed-status error" role="alert"><span>{aiDetailError}</span><button type="button" className="text-button" onClick={() => { aiDetailRequestKeyRef.current = ""; void requestAiDetailSuggestions(); }}>{t("common.retry")}</button></div>}<FmeaInteractiveReportRiskTable report={report} locale={locale} canEdit={canEditActions} onView={setViewingReportItem} onEdit={setEditingReportItem} onDelete={(item) => void deleteReportItem(item)}/></details></SectionCard>
+      <SectionCard className="report-details-card" title={t("report.fullDetails")} description={t("report.fullDetailsDescription")} icon="fmea"><details open><summary>{t("report.expandDetails")}</summary>{aiDetailLoading && <div className="fmea-report-ai-seed-status" role="status" aria-live="polite"><span className="spinner"/>{t("report.aiDetailsWorking")}</div>}{aiDetailError && <div className="fmea-report-ai-seed-status error" role="alert"><span>{aiDetailError}</span><button type="button" className="text-button" onClick={() => { aiDetailRequestKeyRef.current = ""; void requestAiDetailSuggestions(); }}>{t("common.retry")}</button></div>}<FmeaInteractiveReportRiskTable items={report.items} processName={processName} locale={locale} canEdit={canEditActions} onView={setViewingReportItem} onEdit={setEditingReportItem} onDelete={(item) => void deleteReportItem(item)}/></details></SectionCard>
      <div className="report-bottom-actions"><button type="button" className="ghost" onClick={() => navigate("/fmea")}><Icon name="arrow" className="back-arrow"/> {t("report.back")}</button><div><button type="button" className="ghost" onClick={() => void saveReport()} disabled={saving}><Icon name="check"/> {saving ? t("report.saving") : t("report.save")}</button>{canEditActions && report.assessment.status !== "APPROVED" && <button type="button" className="primary" onClick={() => void approveReport()} disabled={saving}><Icon name="check"/> {t("assessment.approve")}</button>}</div></div>
     {viewingReportItem && !editingReportItem && <FmeaReportItemDetailsDialog item={viewingReportItem} locale={locale} canEdit={canEditActions} onClose={() => setViewingReportItem(null)} onEdit={() => { setEditingReportItem(viewingReportItem); setViewingReportItem(null); }}/>}
     {editingReportItem && <div className="fmea-report-dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !reportItemSaving) setEditingReportItem(null); }}><section className="fmea-report-editor-dialog" role="dialog" aria-modal="true" aria-label={t("assessment.editRiskRow")} onMouseDown={(event) => event.stopPropagation()}><FmeaItemEditor key={editingReportItem.id} item={editingReportItem} saving={reportItemSaving} onCancel={() => setEditingReportItem(null)} onSave={saveReportItem}/></section></div>}

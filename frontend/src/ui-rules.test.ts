@@ -363,7 +363,7 @@ describe("FMEA risk register", () => {
     expect(assessmentPagesSource).toContain('function FmeaReportItemDetailsDialog');
     expect(assessmentPagesSource).not.toContain('<FmeaReportDetailSuggestionsPanel');
     expect(assessmentPagesSource).toContain("report/detail-suggestions");
-    expect(assessmentPagesSource).toContain('const autoCreate = !report.assessment.fmeaDetailSeeded && canEditActions;');
+    expect(assessmentPagesSource).toContain('const autoCreate = report.items.length === 0 && !report.assessment.fmeaDetailSeeded && canEditActions;');
     expect(assessmentPagesSource).toContain('result.data.createdCount');
     expect(assessmentPagesSource).toContain('t("report.aiDetailsAutoAdded", { count: result.data.createdCount })');
     expect(assessmentPagesSource).toContain('className="fmea-report-ai-seed-status"');
@@ -535,7 +535,11 @@ describe("FMEA creation stepper", () => {
     expect(assessmentPagesSource).toContain('detail-suggestions');
     expect(assessmentPagesSource).toContain('function FmeaStageTwoDetailsCard');
     expect(assessmentPagesSource).toContain('className="report-details-card"');
-    expect(assessmentPagesSource).toContain('{editingExistingAssessment && wizardStep === 2 && selectedAssessment && <FmeaStageTwoDetailsCard');
+    expect(assessmentPagesSource).toContain('mode: "risk-rows"');
+    expect(assessmentPagesSource).toContain('riskRows?.slice(0, 5)');
+    expect(assessmentPagesSource).toContain('items={stageTwoDetailsItems}');
+    expect(assessmentPagesSource).toContain('report.items.length === 0');
+    expect(assessmentPagesSource).toContain('{wizardStep === 2 && <FmeaStageTwoDetailsCard items={stageTwoDetailsItems}');
   });
 });
 

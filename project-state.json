@@ -36,6 +36,13 @@
     "validation": "PASS — focused assistant UI coverage, workspace typecheck, lint, 204 tests (104 backend, 88 frontend, 12 shared-domain), production build, API contract verification, and source diff review. Browser visual smoke was NOT_RUN because the local authenticated browser automation session was unavailable.",
     "deployment": "NOT_PERFORMED — local-only scope"
   },
+  "latestFmeaStageTwoDetailsTableFix": {
+    "status": "PASS_LOCAL",
+    "scope": "مرحله دوم FMEA اکنون برای ارزیابی جدید و ارزیابی ثبت‌شده کارت جزئیات کامل را در انتهای فرم نشان می‌دهد؛ پنج ردیف معتبر از پیشنهادهای AI در حالت risk-rows پیش‌نمایش می‌شوند، هنگام ثبت نهایی ذخیره می‌شوند، و جدول مشترک با مرحله سوم جست‌وجو، فیلتر، مرتب‌سازی، راهنمای S/O/D و مشاهده جزئیات را ارائه می‌کند.",
+    "validation": "PASS — تست متمرکز UI (۸۵ تست)، pnpm test (۲۱۴ تست شامل ۹۵ frontend، ۱۰۷ backend و ۱۲ shared-domain)، typecheck، lint، production build، API contract verification (۶۶ frontend paths / ۱۱۶ backend routes)، release verification (۲۸ checks)، production dependency audit و git diff check موفق شدند. مرور بصری authenticated browser اجرا نشد چون browser automation محلی در دسترس نبود.",
+    "migration": "NOT_APPLICABLE — از endpoint و مدل داده موجود استفاده شد.",
+    "deployment": "NOT_PERFORMED — محدوده این تغییر فقط source/local است"
+  },
   "latestFmeaStageTwoDetailsChange": {
     "status": "PASS_LOCAL",
     "scope": "در مرحله دوم FMEA برای ارزیابی ثبت‌شده، کارت جزئیات گزارش در انتهای فرم نمایش داده می‌شود و هنگام ورود، endpoint موجود detail-suggestions با autoCreate=true دقیقاً پنج ردیف اولیه را به‌صورت idempotent ایجاد می‌کند؛ پس از تکمیل، داده‌های ذخیره‌شده دوباره بارگذاری می‌شوند و خطای درخواست با امکان retry نمایش داده می‌شود.",

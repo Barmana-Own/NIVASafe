@@ -470,3 +470,22 @@ asset عمومی CSS rule مشترک و selectorهای header را ارائه م
 - authenticated browser visual smoke: NOT_RUN — نشست browser automation محلی در دسترس نبود.
 - migration/database changes: NOT_APPLICABLE — endpoint موجود استفاده شد و فقط JSX، CSS و تست frontend تغییر کردند.
 - external deployment: NOT_PERFORMED — محدوده این تغییر فقط source/local است.
+
+## Checkpoint 2026-09-26 — نمایش جدول کامل FMEA و تولید پنج ردیف در مرحله دوم
+
+- جریان جدید مرحله دوم FMEA اکنون از endpoint موجود fmea/process-suggestions با mode: "risk-rows" استفاده می‌کند، پاسخ را به حداکثر پنج ردیف معتبر محدود می‌کند و ردیف‌ها را قبل از ثبت نهایی در جدول مرحله دوم نمایش می‌دهد.
+- کارت report-details-card در انتهای مرحله دوم برای ارزیابی جدید و ویرایش ارزیابی ثبت‌شده نمایش داده می‌شود و از همان جدول تعاملی مرحله سوم با جست‌وجو، فیلتر سطح ریسک، مرتب‌سازی، راهنمای S/O/D و مشاهده جزئیات استفاده می‌کند.
+- ثبت نهایی ارزیابی جدید، همان پنج ردیف پیش‌نمایش‌شده را در endpoint آیتم‌های FMEA ذخیره می‌کند؛ مسیر ارزیابی ثبت‌شده همچنان از detail-suggestions با autoCreate: true و کنترل idempotent سمت سرور استفاده می‌کند.
+- تولید خودکار گزارش مرحله سوم فقط برای گزارش بدون ردیف اجرا می‌شود تا ردیف‌های تولیدشده در مرحله دوم دوباره تکثیر نشوند.
+- migration/database changes: NOT_APPLICABLE — از endpoint و مدل داده موجود استفاده شد.
+- pnpm --filter @nivasafe/web exec vitest run src/ui-rules.test.ts --reporter=dot: PASS — ۸۵ تست.
+- pnpm test: PASS — مجموع ۲۱۴ تست (۹۵ frontend، ۱۰۷ backend و ۱۲ shared-domain).
+- pnpm typecheck: PASS — هر ۳ package.
+- pnpm lint: PASS — هر ۳ package.
+- pnpm build: PASS — build تولیدی هر ۳ package موفق شد؛ هشدار اندازه chunk اصلی غیرمسدودکننده است.
+- pnpm verify:contract: PASS — ۶۶ مسیر frontend با ۱۱۶ route backend تطبیق داده شدند.
+- pnpm verify:release: PASS — ۲۸ بررسی.
+- pnpm audit --prod --audit-level high: PASS — آسیب‌پذیری شناخته‌شده‌ای یافت نشد.
+- git diff --check: PASS — فقط هشدار نرمال‌سازی line ending ویندوز گزارش شد.
+- authenticated browser visual smoke: NOT_RUN — نشست browser automation محلی در دسترس نبود.
+- external deployment: NOT_PERFORMED — محدوده این تغییر فقط source/local است.
