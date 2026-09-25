@@ -705,6 +705,17 @@ describe("page entry loading", () => {
   });
 });
 
+describe("mobile page action controls", () => {
+  it("keeps dashboard and assessment actions in balanced, bounded mobile grids", () => {
+    expect(generalPagesSource).toContain('className="page-action-label"');
+    expect(assessmentPagesSource).toContain('className="page-action-label"');
+    expect(stylesSource).toContain(".page-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));");
+    expect(stylesSource).toContain(".page-actions > .page-actions-inline { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr));");
+    expect(stylesSource).toContain(".page-actions-inline > .fmea-assistant-toggle { grid-column: 1 / -1; width: 100%;");
+    expect(stylesSource).toContain(".page-action-label { min-width: 0; text-align: center; text-wrap: balance;");
+    expect(stylesSource).toContain("@media (max-width: 380px)");
+  });
+});
 describe("organization navigation wording", () => {
   it("uses the company-only label without CRM wording", () => {
     expect(appLayoutSource).toContain('labelKey: "nav.organizations"');

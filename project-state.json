@@ -36,6 +36,12 @@
     "validation": "PASS — focused assistant UI coverage, workspace typecheck, lint, 204 tests (104 backend, 88 frontend, 12 shared-domain), production build, API contract verification, and source diff review. Browser visual smoke was NOT_RUN because the local authenticated browser automation session was unavailable.",
     "deployment": "NOT_PERFORMED — local-only scope"
   },
+  "latestMobilePageActionLayoutChange": {
+    "status": "PASS_LOCAL",
+    "scope": "دکمه‌های header در داشبورد، FMEA و RULA در موبایل داخل gridهای دو ستونه و bounded قرار گرفتند؛ برچسب‌های اصلی با wrapper مستقل، ارتفاع لمس‌پذیر، فاصله یکنواخت و text-wrap متوازن نمایش داده می‌شوند و در عرض‌های خیلی کم به یک ستون می‌روند. دکمه دستیار FMEA نیز تمام‌عرض باقی می‌ماند.",
+    "validation": "PASS — تست متمرکز UI (۸۴ تست)، pnpm test (۲۱۳ تست شامل ۹۴ frontend، ۱۰۷ backend و ۱۲ shared-domain)، typecheck، lint، production build، API contract verification (۶۵ frontend paths / ۱۱۶ backend routes)، release verification (۲۸ checks)، production dependency audit و git diff check موفق شدند. مرور بصری authenticated browser اجرا نشد چون browser automation محلی به‌دلیل خطای Windows sandbox در دسترس نبود.",
+    "deployment": "NOT_PERFORMED — محدوده این تغییر فقط source/local است"
+  },
   "latestRulaManualActionLayoutChange": {
     "status": "PASS_LOCAL",
     "scope": "فرم اقدام دستی RULA از پنل پیشنهادهای اصلاحی خارج شد و به‌عنوان بخش تمام‌عرض زیر چیدمان دو ستونه پیشنهادها و پیش‌بینی اثر در بخش rula-corrections-section قرار گرفت؛ قواعد width/min-width/max-width نیز برای جلوگیری از برون‌زدگی اضافه شد.",

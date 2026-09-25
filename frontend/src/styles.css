@@ -3372,3 +3372,19 @@ details.optional-fields > :not(summary),
   .rula-result-hero p { font-size: .59rem; }
   .rula-prediction-score-pair { gap: .25rem; }
 }
+
+/* Mobile page-action refinement */
+@media (max-width: 760px) {
+  .page-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; width: 100%; gap: .65rem; }
+  .page-actions > :only-child { grid-column: 1 / -1; }
+  .page-actions > * { width: 100%; min-width: 0; min-height: 4rem; padding: .78rem .65rem; gap: .5rem; line-height: 1.45; text-align: center; white-space: normal; overflow-wrap: normal; }
+  .page-actions > .page-actions-inline { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: .65rem; min-height: 0; padding: 0; }
+  .page-actions-inline > :only-child { grid-column: 1 / -1; }
+  .page-actions-inline > * { width: 100%; min-width: 0; min-height: 4rem; padding: .78rem .65rem; gap: .5rem; line-height: 1.45; text-align: center; white-space: normal; overflow-wrap: normal; }
+  .page-actions-inline > .fmea-assistant-toggle { grid-column: 1 / -1; width: 100%; min-height: 3.5rem; justify-content: flex-start; text-align: start; }
+  .page-action-label { min-width: 0; text-align: center; text-wrap: balance; flex: 1 1 auto; overflow-wrap: normal; }
+}
+@media (max-width: 380px) {
+  .page-actions, .page-actions > .page-actions-inline { grid-template-columns: 1fr; }
+  .page-actions > *, .page-actions-inline > * { grid-column: 1 / -1; }
+}
