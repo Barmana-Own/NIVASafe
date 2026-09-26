@@ -1315,7 +1315,10 @@ describe("authenticated theme picker", () => {
     expect(stylesSource).toContain(".theme-switcher { position: relative;");
     expect(stylesSource).toContain("max-width: min(180px, calc(100vw - 1rem));");
     expect(stylesSource).toContain("@media (min-width: 761px) and (max-width: 1280px)");
-    expect(stylesSource).toContain("height: auto; min-height: 78px; flex-wrap: wrap;");
+    expect(stylesSource).toContain("height: auto; min-height: 78px; flex-wrap: nowrap; row-gap: 0;");
+    expect(stylesSource).toContain(".topbar-title { flex: 1 1 auto; }");
+    expect(stylesSource).toContain(".header-actions { width: auto; flex: 0 0 auto; justify-content: flex-end; gap: .45rem; flex-wrap: nowrap; }");
+    expect(stylesSource).not.toContain(".header-actions { width: 100%; flex: 1 1 100%;");
     expect(stylesSource).toContain(".header-actions { display: flex; align-items: center; justify-content: flex-end; gap: .55rem; min-width: 0; flex: 0 1 auto; flex-wrap: nowrap; }");
     expect(stylesSource).toContain(".header-notifications");
     expect(stylesSource).not.toContain(".header-actions select {");

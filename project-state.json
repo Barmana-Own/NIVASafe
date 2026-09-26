@@ -842,5 +842,12 @@
     "validation": "PASS — pnpm test (232 tests: 123 backend, 97 frontend, 12 shared-domain), pnpm typecheck, pnpm lint, pnpm build, API contract verification (67 frontend paths / 119 backend routes), release verification (28 checks), Prisma validate, production dependency audit and git diff check. Authenticated browser visual smoke and clean migration execution were NOT_RUN; deployment was not performed.",
     "migration": "NOT_APPLICABLE — no database schema change.",
     "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestTopbarTabletResponsiveChange": {
+    "status": "PASS_LOCAL",
+    "scope": "The authenticated application topbar now keeps topbar-title and header-actions on the same row from 761px through 1280px. The tablet-only wrap and full-width action-row rule was removed; the existing compact mobile row below 760px and the desktop shell remain preserved.",
+    "validation": "PASS — pnpm test (232 tests: 123 backend, 97 frontend, 12 shared-domain), typecheck, lint, production build, API contract verification (67 frontend paths / 119 backend routes), release verification (28 checks), production dependency audit, and git diff check. Authenticated browser visual smoke was NOT_RUN because local database-backed authentication was unavailable.",
+    "migration": "NOT_APPLICABLE — frontend-only CSS and regression coverage.",
+    "deployment": "NOT_PERFORMED — source/local scope"
   }
 }
