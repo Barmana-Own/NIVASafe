@@ -33,8 +33,11 @@ describe("RULA posture analysis", () => {
     expect(rulaPostureAnalysisSchema.safeParse({ ...validAnalysis, extra: validAnalysis.legs }).success).toBe(false);
   });
 
-  it("does not allow an AI result to become final without user confirmation", () => {
-    expect(rulaPostureAnalysisSchema.safeParse({ ...validAnalysis, neck: { ...validAnalysis.neck, confirmedByUser: false } }).success).toBe(false);
+  it("treats automatic AI results as complete while keeping them editable", () => {
+    const automatic = { ...validAnalysis, neck: { ...validAnalysis.neck, confirmedByUser: false } };
+    expect(rulaPostureAnalysisSchema.safeParse(automatic).success).toBe(true);
+    expect(isRulaPostureAnalysisReviewed("RIGHT", automatic)).toBe(true);
+    expect(() => assertRulaPostureAnalysisReviewed("RIGHT", automatic)).not.toThrow();
     expect(rulaPostureAnalysisSchema.safeParse({ ...validAnalysis, neck: { ...validAnalysis.neck, source: "USER", confirmedByUser: true } }).success).toBe(true);
   });
 

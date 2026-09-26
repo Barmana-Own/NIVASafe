@@ -2893,6 +2893,8 @@ details.optional-fields > :not(summary),
 .rula-report-view:has(.rula-table-impact.impact-neutral) .rula-factor-meter span { width: 0 !important; }
 .rula-report-view:has(.rula-table-impact.impact-neutral) .rula-factor-impact-label { font-size: 0; background: #f3f6f8; color: #8396a5; }
 .rula-report-view:has(.rula-table-impact.impact-neutral) .rula-factor-impact-label::after { content: "—"; font-size: .58rem; }
+.rula-report-view:has(.rula-table-impact.impact-neutral) .rula-report-impact-panel .rula-prediction-score-pair strong { font-size: 0; color: #8396a5; }
+.rula-report-view:has(.rula-table-impact.impact-neutral) .rula-report-impact-panel .rula-prediction-score-pair strong::after { content: "—"; font-size: 1.6rem; }
 
 /* RULA smart-posture review: compact, image-led analysis workspace. */
 .rula-smart-analysis {
@@ -3423,6 +3425,7 @@ details.optional-fields > :not(summary),
 .rula-result-hero h2 { margin: 0; color: var(--rula-result-ink); font-size: 1.02rem; line-height: 1.5; }
 .rula-result-hero p { max-width: 54rem; margin: .22rem 0 0; color: var(--rula-result-muted); font-size: .67rem; line-height: 1.8; }
 .rula-result-complete { display: inline-flex; align-items: center; gap: .3rem; flex: 0 0 auto; padding: .36rem .58rem; border: 1px solid #bde5d7; border-radius: 999px; color: #19755f; background: #eaf9f2; font-size: .6rem; font-weight: 850; white-space: nowrap; }
+.rula-result-complete.pending { border-color: #d9e1e6; color: #718596; background: #f3f6f8; }
 .rula-report-score-card { grid-template-columns: minmax(0, 1.12fr) minmax(210px, .88fr); gap: 0; padding: .85rem; border-color: var(--rula-result-line); border-radius: 15px; background: #fff; box-shadow: 0 5px 18px rgba(35, 83, 110, .04); }
 .rula-report-score, .rula-report-risk { min-height: 116px; border-radius: 11px; }
 .rula-report-score { order: 0; align-items: center; justify-items: center; padding: .65rem 1rem; border: 0; border-inline-end: 1px solid var(--rula-result-line); color: var(--rula-result-ink); background: transparent; box-shadow: none; text-align: center; }
@@ -3440,6 +3443,7 @@ details.optional-fields > :not(summary),
 .rula-report-risk-head { align-items: center; }
 .rula-report-risk-head small { color: #698196; opacity: 1; font-size: .65rem; }
 .rula-report-risk-badge.review { color: #be4d42; background: #ffebe8; }
+.rula-report-risk-badge.review-required, .rula-prediction-badge.review-required { color: #8396a5; background: #f3f6f8; }
 .rula-report-status-line { margin-top: .42rem; }
 .rula-report-risk p { margin-top: .45rem; color: #607c8f; font-size: .68rem; line-height: 1.85; }
 .rula-main-factors-section, .rula-corrections-section { gap: .8rem; padding: .85rem; border-color: var(--rula-result-line); border-radius: 14px; box-shadow: 0 5px 18px rgba(35, 83, 110, .035); }
