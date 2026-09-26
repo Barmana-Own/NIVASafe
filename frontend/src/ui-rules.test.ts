@@ -762,6 +762,11 @@ describe("mobile page action controls", () => {
     expect(stylesSource).toContain(".page-action-label { min-width: 0; text-align: center; text-wrap: balance;");
     expect(stylesSource).toContain("@media (max-width: 380px)");
   });
+
+  it("uses compact typography for page actions while the desktop shell narrows", () => {
+    expect(stylesSource).toContain("@media (min-width: 761px) and (max-width: 1280px)");
+    expect(stylesSource).toContain(".page-actions > *, .page-actions-inline > * { font-size: .78rem; }");
+  });
 });
 describe("organization navigation wording", () => {
   it("uses the company-only label without CRM wording", () => {

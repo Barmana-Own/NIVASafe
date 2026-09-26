@@ -279,6 +279,11 @@ input:disabled { background: #f1f5f4; color: #71817e; }
 .page-title-block h2 { margin: .2rem 0 .25rem; color: var(--ink); font-size: clamp(1.5rem, 2.1vw, 2.1rem); line-height: 1.35; }
 .page-title-block p { margin: 0; color: var(--muted); font-size: .88rem; line-height: 1.8; }
 .page-actions { display: flex; align-items: center; gap: .65rem; }
+
+/* Keep page-header actions compact while the desktop shell narrows. */
+@media (min-width: 761px) and (max-width: 1280px) {
+  .page-actions > *, .page-actions-inline > * { font-size: .78rem; }
+}
 .eyebrow { font-size: .68rem; font-weight: 900; letter-spacing: .04em; color: var(--green-700); }
 .sidebar-backdrop { display: none; }
 .app.sidebar-collapsed .app-sidebar { width: 78px; padding-inline: .65rem; }.app.sidebar-collapsed .content { margin-inline-start: 78px; }.app.sidebar-collapsed .side-brand { justify-content: center; gap: .25rem; padding-inline: 0; }.app.sidebar-collapsed .side-brand-icon { width: 27px; height: 27px; flex-basis: 27px; }.app.sidebar-collapsed .sidebar-toggle { width: 25px; height: 25px; }.app.sidebar-collapsed .side-brand-copy, .app.sidebar-collapsed .side-user > div:last-child, .app.sidebar-collapsed .nav-label, .app.sidebar-collapsed .side-nav a span { display: none; }.app.sidebar-collapsed .sidebar-toggle .icon { transform: rotate(180deg); }.app.sidebar-collapsed .side-nav a { justify-content: center; padding-inline: .65rem; }.app.sidebar-collapsed .side-user { justify-content: center; padding-inline: 0; }.app.sidebar-collapsed .side-logout { justify-content: center; padding-inline: .4rem; font-size: 0; }.app.sidebar-collapsed .side-logout .icon { margin: 0; }

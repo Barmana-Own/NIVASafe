@@ -849,5 +849,12 @@
     "validation": "PASS — pnpm test (232 tests: 123 backend, 97 frontend, 12 shared-domain), typecheck, lint, production build, API contract verification (67 frontend paths / 119 backend routes), release verification (28 checks), production dependency audit, and git diff check. Authenticated browser visual smoke was NOT_RUN because local database-backed authentication was unavailable.",
     "migration": "NOT_APPLICABLE — frontend-only CSS and regression coverage.",
     "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestPageActionTabletTypographyChange": {
+    "status": "PASS_LOCAL",
+    "scope": "Shared PageHeader actions for the dashboard and FMEA/RULA assessment surfaces use compact 0.78rem typography from 761px through 1280px. The existing mobile action grid below 760px remains unchanged, including its touch-sized controls.",
+    "validation": "PASS — pnpm test (233 tests: 123 backend, 98 frontend, 12 shared-domain), typecheck, lint, production build, API contract verification (67 frontend paths / 119 backend routes), release verification (28 checks), production dependency audit, and git diff check. Authenticated browser visual smoke was NOT_RUN because local database-backed authentication was unavailable.",
+    "migration": "NOT_APPLICABLE — frontend-only CSS and regression coverage.",
+    "deployment": "NOT_PERFORMED — source/local scope"
   }
 }
