@@ -603,6 +603,10 @@ describe("RULA assessment results view", () => {
     const impactPanelIndex = assessmentPagesSource.indexOf('<aside className="rula-report-impact-panel"');
     expect(manualFormIndex).toBeGreaterThan(impactPanelIndex);
     expect(assessmentPagesSource).toContain('</aside></div>{onAddAction && <div className="rula-manual-action-form"');
+    expect(assessmentPagesSource).toContain('type="submit" formNoValidate');
+    expect(assessmentPagesSource).toContain("manualValidationError");
+    expect(assessmentPagesSource).toContain('t("assessment.rulaManualActionTitleRequired")');
+    expect(assessmentPagesSource).toContain('aria-describedby={manualValidationError ? "rula-manual-action-title-error" : undefined}');
     expect(stylesSource).toContain(".rula-corrections-section > .rula-manual-action-form {");
     expect(stylesSource).toContain("max-width: 100%;");
   });
@@ -1526,6 +1530,8 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain("rulaActionLevelForScore");
     expect(assessmentPagesSource).toContain("rulaPredictionEstimate");
     expect(assessmentPagesSource).toContain("rulaPredictedNote");
+    expect(assessmentPagesSource).toContain("buildLocalRulaFallbackSuggestions");
+    expect(assessmentPagesSource).toContain("rula-local-fallback-neutral");
     expect(assessmentPagesSource).toContain("rulaImpact");
     expect(assessmentPagesSource).toContain("sideResults");
     expect(assessmentPagesSource).toContain("rula-report-side-tabs");
@@ -1545,6 +1551,9 @@ describe("form auto-save contract", () => {
     expect(stylesSource).toContain(".rula-assessment-register-table");
     expect(stylesSource).toContain(".rula-report-data-table");
     expect(stylesSource).toContain(".rula-report-context");
+    expect(stylesSource).toContain(".rula-report-section-heading p:empty");
+    expect(i18nSource).not.toContain("پیشنهادهای GPT-5-Mini را با داده‌های وضعیت بدن تطبیق دهید");
+    expect(i18nSource).not.toContain("Review GPT-5-Mini suggestions against the posture data");
     expect(assessmentPagesSource).toContain("rula-assessment-context");
     expect(stylesSource).toContain(".surface-title > div");
     expect(stylesSource).toContain("@media (max-width: 1400px)");

@@ -3444,6 +3444,7 @@ details.optional-fields > :not(summary),
 .rula-report-risk p { margin-top: .45rem; color: #607c8f; font-size: .68rem; line-height: 1.85; }
 .rula-main-factors-section, .rula-corrections-section { gap: .8rem; padding: .85rem; border-color: var(--rula-result-line); border-radius: 14px; box-shadow: 0 5px 18px rgba(35, 83, 110, .035); }
 .rula-report-section-heading { padding-bottom: .58rem; border-bottom-color: var(--rula-result-line); }
+.rula-report-section-heading p:empty, .rula-suggested-actions-heading small:empty { display: none; }
 .rula-report-section-heading h3 { color: var(--rula-result-ink); font-size: .84rem; }
 .rula-report-section-heading p { color: var(--rula-result-muted); font-size: .61rem; }
 .rula-factor-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem; }
