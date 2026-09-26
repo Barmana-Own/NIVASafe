@@ -23,6 +23,7 @@ export const rulaImpactSchema = z.object({
 export type RulaImpact = z.infer<typeof rulaImpactSchema>;
 export type RulaActionPriority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 export type RulaSideResults = Record<"LEFT" | "RIGHT", RulaResult>;
+export const RULA_CORRECTIVE_SUGGESTION_MAX = 6;
 
 export type RulaReportFactor = {
   key: Extract<RulaPosturePart, "neck" | "upperArm" | "trunk">;
@@ -178,7 +179,7 @@ export function primaryRulaResult(sideResults: RulaSideResults): RulaResult {
 }
 export function buildRulaSuggestionsForAssessment(bodySide: "LEFT" | "RIGHT" | "BOTH", analysis: RulaPostureAnalysis, inputs: RulaInput) {
   if (bodySide !== "BOTH" || !analysis.sideAnalyses?.LEFT || !analysis.sideAnalyses.RIGHT) return buildRulaSuggestions(analysis, inputs, bodySide);
-  return (["RIGHT", "LEFT"] as const).flatMap((side) => buildRulaSuggestions(analysis.sideAnalyses![side]!, rulaInputsForAnalysis(inputs, analysis.sideAnalyses![side]!), side).map((suggestion) => ({ ...suggestion, id: suggestion.id + "-" + side.toLowerCase() })));
+  return (["RIGHT", "LEFT"] as const).flatMap((side) => buildRulaSuggestions(analysis.sideAnalyses![side]!, rulaInputsForAnalysis(inputs, analysis.sideAnalyses![side]!), side).map((suggestion) => ({ ...suggestion, id: suggestion.id + "-" + side.toLowerCase() }))).slice(0, RULA_CORRECTIVE_SUGGESTION_MAX);
 }
 
 export function predictedRulaScore(score: number, impacts: Array<Pick<RulaImpact, "scoreReduction"> | null | undefined>): number {

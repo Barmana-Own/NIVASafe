@@ -37,7 +37,9 @@ describe("FMEA live preview", () => {
     expect(riskLevel(101)).toBe("MEDIUM");
     expect(riskLevel(201)).toBe("HIGH");
     expect(riskLevel(401)).toBe("CRITICAL");
-    expect(assessmentPagesSource).toContain("const previewRiskLevel = riskLevel(previewRpn)");
+    expect(assessmentPagesSource).toContain("function fmeaRiskValues");
+    expect(assessmentPagesSource).toContain("const previewRiskLevel = preview.riskLevel");
+    expect(assessmentPagesSource).toContain("riskLevel(rpn, thresholds)");
     expect(assessmentPagesSource).toContain('<StatusBadge value={previewRiskLevel}/>');
     expect(assessmentPagesSource).toContain('<option value="VERY_LOW">{t("status.veryLow")}</option>');
     expect(uiSource).toContain('VERY_LOW: { key: "status.veryLow"');
@@ -154,6 +156,8 @@ describe("corrective-action body-side scope", () => {
     expect(assessmentPagesSource).toContain('const actionSide = action.bodySide ?? payload.bodySide');
     expect(assessmentPagesSource).toContain('bodySide: actionSide');
     expect(assessmentPagesSource).toContain("buildLocalRulaSuggestionsForAssessment");
+    expect(assessmentPagesSource).toContain("const RULA_CORRECTIVE_SUGGESTION_MAX = 6;");
+    expect(assessmentPagesSource).toContain("suggestions.slice(0, RULA_CORRECTIVE_SUGGESTION_MAX)");
     expect(assessmentPagesSource).toContain('t("assessment.rulaActionBodySide")');
     expect(reportsSource).toContain('Body side: ${action.bodySide ?? "-"}');
   });
@@ -195,6 +199,12 @@ describe("FMEA process information", () => {
     expect(assessmentPagesSource).toContain('function applyCustomJobTitle(title: string)');
     expect(assessmentPagesSource).toContain('setCustomJobSelected(true);');
     expect(assessmentPagesSource).toContain('applyCustomJobTitle(title);');
+    expect(assessmentPagesSource).toContain('onUseCustom: (title: string) => void');
+    expect(assessmentPagesSource).toContain('onUseCustom(value.trim())');
+    expect(assessmentPagesSource).toContain('onClick={() => onUseCustom(value.trim())}');
+    expect(assessmentPagesSource).toContain('disabled={loading}');
+    expect(assessmentPagesSource).toContain('setJobCatalogSaveError(true);');
+    expect(assessmentPagesSource).toContain('t("assessment.jobCatalogSaveRequired")');
     expect(assessmentPagesSource).toContain('if (!open) { onOpenChange(true); setHighlighted(0); return; }');
    expect(assessmentPagesSource).toContain('assessment.activityDescriptionSentenceLimit');
    expect(assessmentPagesSource).toContain('t("assessment.addNewItem")');
@@ -1593,9 +1603,13 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain("suggestedRulaPostureScore(part, currentAngle, value, row.score)");
     expect(assessmentPagesSource).toContain("rulaActionLevelFor");
     expect(assessmentPagesSource).toContain("rulaGroupScores");
+    expect(assessmentPagesSource).toContain('"--rula-score-angle"');
+    expect(assessmentPagesSource).toContain("Math.round((scoreForGauge / 7) * 270)");
+    expect(assessmentPagesSource).not.toContain('"--rula-score-progress"');
+    expect(stylesSource).toContain("var(--rula-score-angle)");
     expect(assessmentPagesSource).toContain("rulaSourceLabelKey");
     expect(assessmentPagesSource).toContain("confirmedByUser");
-    expect(assessmentPagesSource).toContain('t("assessment.aiAutoAnalyzed")');
+    expect(assessmentPagesSource).not.toContain('t("assessment.aiAutoAnalyzed")');
     expect(assessmentPagesSource).toContain('source !== "DEFAULT"');
     expect(assessmentPagesSource).toContain("invalidPostureScore");
     expect(assessmentPagesSource).toContain("RULA Score =");

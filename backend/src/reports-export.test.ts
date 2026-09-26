@@ -55,7 +55,7 @@ describe("assessment report exports", () => {
     expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["FMEA"]);
     const sheet = workbook.getWorksheet("FMEA")!;
     expect((sheet.getRow(1).values as unknown[]).slice(1)).toEqual([...FMEA_FINAL_TABLE_HEADERS]);
-    expect((sheet.getRow(2).values as unknown[]).slice(1)).toEqual([1, "Dropped load", "Injury", "Unstable load", "Inspection | Supervisor check", 8, 4, 3, 96, "HIGH", "Add a load restraint | Install restraint (OPEN, HIGH)"]);
+    expect((sheet.getRow(2).values as unknown[]).slice(1)).toEqual([1, "Dropped load", "Injury", "Unstable load", "Inspection | Supervisor check", 8, 4, 3, 96, "LOW", "Add a load restraint | Install restraint (OPEN, HIGH)"]);
 
     const wordBuffer = await buildFmeaFinalTableWordDocument(fmea);
     const wordArchive = await JSZip.loadAsync(wordBuffer);

@@ -6,6 +6,7 @@ import ExcelJS from "exceljs";
 import JSZip from "jszip";
 import PDFDocument from "pdfkit";
 import { z } from "zod";
+import { calculateRpn, DEFAULT_THRESHOLDS, riskLevel, type RiskThresholds } from "@nivasafe/domain";
 import { authenticate } from "../auth-guard.js";
 import { recordAIUsage } from "../ai-usage.js";
 import { getAvailableAssessmentAIProvider } from "../ai-provider.js";
@@ -211,6 +212,7 @@ export type FmeaReportData = {
   approvedAt: Date | null;
   project: { name: string };
   organization: { nameFa: string; nameEn: string };
+  riskThresholds?: RiskThresholds;
   department: string | null;
   activityDescription: string | null;
   equipment: unknown;
@@ -226,6 +228,21 @@ export type FmeaReportData = {
 export type FmeaReportPdfData = FmeaReportData & {
   evaluationTeam: Array<{ displayName: string; email: string; role: string }>;
 };
+
+function fmeaRiskThresholdsForOrganization(organization: { riskMedium: number; riskHigh: number; riskCritical: number }): RiskThresholds {
+  return { medium: organization.riskMedium, high: organization.riskHigh, critical: organization.riskCritical };
+}
+
+function normaliseFmeaItems<T extends FmeaReportData["items"][number]>(items: T[], thresholds: ReturnType<typeof fmeaRiskThresholdsForOrganization>) {
+  return items.map((item) => {
+    const rpn = calculateRpn(item.severity, item.occurrence, item.detection);
+    return { ...item, rpn, riskLevel: riskLevel(rpn, thresholds) };
+  });
+}
+
+function fmeaItemsForOutput(data: FmeaReportData) {
+  return normaliseFmeaItems(data.items, data.riskThresholds ?? DEFAULT_THRESHOLDS);
+}
 
 export type RulaSideResultData = Pick<RulaSideResults["LEFT"], "score" | "actionLevel" | "explanation" | "groupA" | "groupB" | "adjustment" | "trace">;
 export type RulaSideFactorData = Pick<RulaReportFactor, "key" | "angle" | "detected" | "score" | "impactPercent" | "impactLevel" | "source" | "reviewed">;
@@ -245,6 +262,7 @@ const fmeaReportDetailSuggestionBody = z.object({ locale: z.enum(["fa", "en"]).d
 const reportActionSuggestionBody = z.object({ locale: z.enum(["fa", "en"]).default("fa"), excludeTitles: z.array(z.string().trim().min(1).max(240)).max(8).default([]) });
 
 type FmeaReportPayload = {
+  riskThresholds: RiskThresholds;
   assessment: {
     id: string;
     title: string;
@@ -293,12 +311,13 @@ function fmeaActionMetrics(actions: FmeaReportData["actions"]) {
 }
 
 function fmeaSuggestedActions(data: FmeaReportData) {
-  return data.items.filter((item) => Boolean(item.recommendation?.trim()) && !data.actions.some((action) => action.fmeaItem?.rowNumber === item.rowNumber && action.title.trim().toLocaleLowerCase() === item.recommendation!.trim().toLocaleLowerCase()));
+  return fmeaItemsForOutput(data).filter((item) => Boolean(item.recommendation?.trim()) && !data.actions.some((action) => action.fmeaItem?.rowNumber === item.rowNumber && action.title.trim().toLocaleLowerCase() === item.recommendation!.trim().toLocaleLowerCase()));
 }
 
 export function buildFmeaPdfLines(data: FmeaReportPdfData) {
-  const summary = summariseFmea(data.items);
-  const itemRows = data.items.map((item) => ({ ...item, actionPriority: actionPriority(item.riskLevel) }));
+  const items = fmeaItemsForOutput(data);
+  const summary = summariseFmea(items);
+  const itemRows = items.map((item) => ({ ...item, actionPriority: actionPriority(item.riskLevel) }));
   const topItems = topFailureModes(itemRows);
   const suggestedActions = fmeaSuggestedActions(data);
   const actionMetrics = fmeaActionMetrics(data.actions);
@@ -438,7 +457,7 @@ async function loadFmeaReport(id: string, organizationId: string): Promise<FmeaR
     where: { id, organizationId, deletedAt: null },
     include: {
       project: { select: { id: true, name: true, code: true } },
-      organization: { select: { nameFa: true, nameEn: true } },
+      organization: { select: { nameFa: true, nameEn: true, riskMedium: true, riskHigh: true, riskCritical: true } },
       jobCatalog: { select: { titleFa: true, titleEn: true } },
       items: { orderBy: { rowNumber: "asc" } },
     },
@@ -447,22 +466,26 @@ async function loadFmeaReport(id: string, organizationId: string): Promise<FmeaR
   const detailAutoSeed = await prisma.auditLog.findFirst({ where: { organizationId, action: "FMEA_REPORT_DETAIL_AUTOCREATE", entityType: "FmeaAssessment", entityId: id }, select: { id: true } });
   const actions = await prisma.correctiveAction.findMany({ where: { organizationId, OR: [{ fmeaId: id }, { fmeaItem: { assessmentId: id } }] }, include: { fmeaItem: { select: { rowNumber: true, failureMode: true } } }, orderBy: { updatedAt: "desc" } });
   const members = await prisma.organizationMember.findMany({ where: { organizationId, active: true }, select: { role: true, user: { select: { id: true, displayName: true, email: true } } } });
-  const items = fmea.items.map((item) => ({
-    id: item.id,
-    rowNumber: item.rowNumber,
-    processStep: item.processStep,
-    failureMode: item.failureMode,
-    effect: item.effect,
-    cause: item.cause,
-    preventiveControls: item.preventiveControls,
-    detectionControls: item.detectionControls,
-    severity: item.severity,
-    occurrence: item.occurrence,
-    detection: item.detection,
-    rpn: item.rpn,
-    riskLevel: item.riskLevel,
-    recommendation: item.recommendation,
-  }));
+  const thresholds = fmeaRiskThresholdsForOrganization(fmea.organization);
+  const items = fmea.items.map((item) => {
+    const rpn = calculateRpn(item.severity, item.occurrence, item.detection);
+    return {
+      id: item.id,
+      rowNumber: item.rowNumber,
+      processStep: item.processStep,
+      failureMode: item.failureMode,
+      effect: item.effect,
+      cause: item.cause,
+      preventiveControls: item.preventiveControls,
+      detectionControls: item.detectionControls,
+      severity: item.severity,
+      occurrence: item.occurrence,
+      detection: item.detection,
+      rpn,
+      riskLevel: riskLevel(rpn, thresholds),
+      recommendation: item.recommendation,
+    };
+  });
   const reportItems = items as FmeaReportRisk[];
   const processName = { fa: fmea.jobCatalog?.titleFa ?? fmea.title, en: fmea.jobCatalog?.titleEn ?? fmea.title };
   const correctiveActionsByItem = new Map<string, Array<{ id: string; title: string; status: string; priority: string }>>();
@@ -475,6 +498,7 @@ async function loadFmeaReport(id: string, organizationId: string): Promise<FmeaR
   const reportItemsWithActions = items.map((item) => ({ ...item, actionPriority: actionPriority(item.riskLevel), correctiveActions: correctiveActionsByItem.get(item.id) ?? [] }));
   const suggestedActions = fallbackFmeaActionSuggestions({ candidates: items, existingActionTitles: actions.filter((action) => !["CANCELLED", "REJECTED"].includes(action.status)).map((action) => action.title), locale: "fa" });
   return {
+    riskThresholds: thresholds,
     assessment: {
       id: fmea.id,
       title: fmea.title,
@@ -519,7 +543,7 @@ function fmeaRecommendedAction(data: FmeaReportData, item: FmeaReportData["items
 }
 
 function fmeaExportRows(data: FmeaReportData): ExportRow[] {
-  return data.items.map((item) => [
+  return fmeaItemsForOutput(data).map((item) => [
     item.rowNumber,
     item.processStep,
     item.failureMode,
@@ -537,7 +561,7 @@ function fmeaExportRows(data: FmeaReportData): ExportRow[] {
 }
 
 export function fmeaFinalTableRows(data: FmeaReportData): ExportRow[] {
-  return data.items.map((item) => [
+  return fmeaItemsForOutput(data).map((item) => [
     item.rowNumber,
     item.failureMode,
     item.effect,
@@ -754,7 +778,7 @@ function buildRulaExportModel(data: RulaReportData, report?: RulaReportExport): 
 
 export async function buildFmeaWorkbook(data: FmeaReportData) {
   const workbook = new ExcelJS.Workbook();
-  const summary = summariseFmea(data.items);
+  const summary = summariseFmea(fmeaItemsForOutput(data));
   addExportSheet(workbook, "FMEA", ["Row", "Process / activity", "Failure mode", "Failure effect", "Failure cause", "Current controls", "S", "O", "D", "AP", "RPN", "Risk level", "Recommended action"], fmeaExportRows(data), [8, 24, 26, 28, 28, 34, 7, 7, 7, 10, 10, 14, 44]);
   addExportSheet(workbook, "SUMMARY", ["Metric", "Value"], [
     ["Assessment title", data.title],
@@ -844,10 +868,11 @@ async function buildDocx(title: string, subtitle: string, sections: DocxSection[
 }
 
 export async function buildFmeaWordDocument(data: FmeaReportData) {
-  const summary = summariseFmea(data.items);
+  const items = fmeaItemsForOutput(data);
+  const summary = summariseFmea(items);
   const actionMetrics = fmeaActionMetrics(data.actions);
   const totalFailureModes = Math.max(summary.totalFailureModes, 1);
-  const itemRows = data.items.map((item) => ({ ...item, actionPriority: actionPriority(item.riskLevel) }));
+  const itemRows = items.map((item) => ({ ...item, actionPriority: actionPriority(item.riskLevel) }));
   const topItems = topFailureModes(itemRows);
   const suggestedActions = fmeaSuggestedActions(data);
   const evaluationTeam = data.evaluationTeam?.map((member) => `${member.displayName || member.email} (${member.role})`).filter(Boolean).join(" | ") || "-";
@@ -1083,11 +1108,14 @@ export async function registerReportRoutes(app: FastifyInstance) {
   });
   app.get("/api/v1/reports/:type/:id.:format", { preHandler: authenticate }, async (request, reply) => {
     const organizationId = requireOrg(request); requirePermission(request, "reports.generate"); const { type, id, format } = parse(paramsSchema, request.params); const { view } = parse(reportQuerySchema, request.query); const finalFmeaTable = type === "fmea" && view === "final-table";
-    const data = type === "fmea" ? await prisma.fmeaAssessment.findFirst({ where: { id, organizationId, deletedAt: null }, include: { project: true, organization: { select: { nameFa: true, nameEn: true } }, jobCatalog: { select: { titleFa: true, titleEn: true } }, items: { orderBy: { rowNumber: "asc" } } } }) : await prisma.rulaAssessment.findFirst({ where: { id, organizationId }, include: { project: true } });
+    const data = type === "fmea" ? await prisma.fmeaAssessment.findFirst({ where: { id, organizationId, deletedAt: null }, include: { project: true, organization: { select: { nameFa: true, nameEn: true, riskMedium: true, riskHigh: true, riskCritical: true } }, jobCatalog: { select: { titleFa: true, titleEn: true } }, items: { orderBy: { rowNumber: "asc" } } } }) : await prisma.rulaAssessment.findFirst({ where: { id, organizationId }, include: { project: true } });
     if (!data) throw Object.assign(new Error("Assessment not found"), { statusCode: 404, code: "NOT_FOUND" });
     const rulaReport = type === "rula" ? await loadRulaReport(id, organizationId) : null;
     if (type === "fmea") {
       const fmea = data as unknown as FmeaReportData;
+      const organization = fmea.organization as typeof fmea.organization & { riskMedium: number; riskHigh: number; riskCritical: number };
+      fmea.riskThresholds = fmeaRiskThresholdsForOrganization(organization);
+      fmea.items = normaliseFmeaItems(fmea.items, fmea.riskThresholds);
       const linkedActions = await prisma.correctiveAction.findMany({ where: { organizationId, OR: [{ fmeaId: id }, { fmeaItem: { assessmentId: id } }] }, include: { fmeaItem: { select: { rowNumber: true, failureMode: true } } }, orderBy: { updatedAt: "desc" } });
       fmea.actions = linkedActions;
       if (!finalFmeaTable && (format === "pdf" || format === "doc" || format === "docx")) {

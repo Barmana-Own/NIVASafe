@@ -926,5 +926,40 @@
     "validation": "PASS — frontend UI rules (99 tests across 5 files), frontend typecheck, lint, production build, and git diff check. The build emitted only the existing large-chunk warning; authenticated browser visual smoke and deployment were NOT_RUN.",
     "migration": "NOT_APPLICABLE — frontend chart markup, CSS, and regression coverage only.",
     "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestFmeaJobCatalogRegistrationChange": {
+    "status": "PASS_LOCAL",
+    "scope": "عنوان شغل/فرآیند جدید در FMEA و RULA اکنون با عنوان فعلی و بدون اتکا به state قدیمی برای endpoint بانک ارسال می‌شود؛ پس از پاسخ موفق، رکورد سازمانی به فهرست بانک اضافه و همان رکورد به ارزیابی متصل می‌شود. دکمه هنگام ثبت غیرفعال است و خطای ثبت اجازه ادامه ارزیابی نمی‌دهد تا عنوانی که در بانک ثبت نشده به‌صورت مخفیانه ذخیره نشود.",
+    "validation": "PASS — focused frontend UI suite (99 tests across 5 files), frontend typecheck, lint, production build, API contract verification (67 frontend paths / 119 backend routes), release verification (28 checks), project-state JSON validation, and git diff check. The production build emitted only the existing large-chunk warning; authenticated browser smoke, clean migration execution, and deployment are NOT_RUN.",
+    "migration": "NOT_APPLICABLE — existing JobCatalog model, migration, and POST /fmea/job-catalog endpoint are reused.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestRulaTableAiLabelRemovalChange": {
+    "status": "PASS_LOCAL",
+    "scope": "متن «تحلیل‌شده خودکار توسط هوش مصنوعی» و معرفی تحلیل خودکار از جدول‌های تحلیل پوسچر و گزارش داده‌های RULA حذف شد؛ برچسب‌های منبع نتیجه و تأیید کاربر در صورت نیاز حفظ شدند.",
+    "validation": "PASS — focused frontend UI suite (99 tests across 5 files), frontend typecheck, lint, production build, project-state JSON validation, and git diff check. The production build emitted only the existing large-chunk warning; authenticated browser smoke and deployment are NOT_RUN.",
+    "migration": "NOT_APPLICABLE — frontend table rendering, localization, and regression coverage only.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestRulaScoreGaugeProgressFix": {
+    "status": "PASS_LOCAL",
+    "scope": "پیشروی نمودار نیم‌دایره امتیاز RULA به متغیر CSS صحیح متصل شد و مقدار امتیاز ۱ تا ۷ اکنون به زاویه ۰ تا ۲۷۰ درجه تبدیل می‌شود؛ در حالت نتیجه آماده، مقدار سبز نمودار نمایش داده می‌شود و در حالت انتظار نمودار خالی می‌ماند.",
+    "validation": "PASS — focused frontend UI suite (99 tests across 5 files), frontend typecheck, lint, production build, project-state JSON validation, and git diff check. The production build emitted only the existing large-chunk warning; authenticated browser smoke and deployment are NOT_RUN.",
+    "migration": "NOT_APPLICABLE — frontend gauge calculation, CSS variable binding, and regression coverage only.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestRulaCorrectiveSuggestionLimitChange": {
+    "status": "PASS_LOCAL",
+    "scope": "اقدامات اصلاحی پیشنهادی RULA در تولید پیشنهاد، پاسخ API و رابط گزارش به حداکثر ۶ مورد محدود شدند؛ برای ارزیابی دوطرفه نیز سقف کلی ۶ مورد است و اقدامات انتخاب‌شده یا دستی حذف نمی‌شوند.",
+    "validation": "PASS — focused backend RULA suggestion/report tests (18 tests), frontend UI rules (99 tests across 5 files), backend typecheck/build, frontend typecheck/production build, and git diff check. The frontend build emitted only the existing large-chunk warning; the full backend suite retains one unrelated pre-existing failure in organization-rules.test.ts (subscriptionIsUsable trial expectation). Authenticated browser visual smoke, clean database migration, and deployment were NOT_RUN.",
+    "migration": "NOT_APPLICABLE — suggestion limits, report payload normalization, frontend display guard, and regression coverage only.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestFmeaRiskCalculationConsistencyChange": {
+    "status": "PASS_LOCAL",
+    "scope": "مقادیر RPN و سطح ریسک در جدول‌های FMEA، پیش‌نمایش افزودن ردیف خطر و خروجی گزارش اکنون با محاسبه مشترک S×O×D و آستانه‌های سازمان یکسان می‌شوند؛ در تنظیمات پیش‌فرض، RPN از ۴۰۱ به بالا بحرانی است و داده‌های قدیمی هنگام نمایش و گزارش دوباره محاسبه می‌شوند.",
+    "validation": "PASS — frontend UI suite (99 tests across 5 files), backend focused FMEA/report suite (18 tests), frontend/backend typecheck, frontend/backend production build, API contract verification (67 frontend paths / 119 backend routes), release verification (28 checks), JSON validation, and git diff check. Full backend suite retains one unrelated pre-existing failure in organization-rules.test.ts (subscriptionIsUsable trial expectation). Authenticated browser smoke, clean migration execution, and deployment were NOT_RUN.",
+    "migration": "NOT_APPLICABLE — calculation normalization and response/export/UI consistency only; no schema change.",
+    "deployment": "NOT_PERFORMED — source/local scope"
   }
 }

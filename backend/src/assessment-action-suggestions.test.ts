@@ -140,6 +140,21 @@ describe("assessment corrective action suggestions", () => {
     expect(suggestions[0]).toMatchObject({ priority: "CRITICAL", scoreReduction: 6, affectedParts: ["trunk"], bodySide: "RIGHT", source: "AI" });
   });
 
+  it("limits RULA corrective suggestions to six items", () => {
+    const suggestions = parseRulaActionSuggestions(JSON.stringify({
+      actions: Array.from({ length: 8 }, (_, index) => ({
+        titleFa: `اقدام ${index + 1}`,
+        titleEn: `Action ${index + 1}`,
+        descriptionFa: "شرح",
+        descriptionEn: "Description",
+        priority: "MEDIUM",
+        scoreReduction: 1,
+        affectedParts: ["neck"],
+      })),
+    }), "RIGHT");
+    expect(suggestions).toHaveLength(6);
+  });
+
   it("provides a non-empty low-risk RULA fallback", () => {
     const inputs = { upperArm: 1, lowerArm: 1, wrist: 1, wristTwist: 1, neck: 1, trunk: 1, legs: 1, muscleUse: false, force: 0 };
     const suggestions = fallbackRulaActionSuggestions({ bodySide: "RIGHT", analysis: fallbackRulaPostureAnalysis(inputs), inputs, locale: "fa" });

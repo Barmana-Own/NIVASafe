@@ -49,6 +49,7 @@ describe("RULA results report", () => {
     expect(primaryRulaResult(sideResults!).score).toBe(Math.max(sideResults!.LEFT.score, sideResults!.RIGHT.score));
 
     const suggestions = buildRulaSuggestionsForAssessment("BOTH", bothAnalysis, inputs);
+    expect(suggestions).toHaveLength(6);
     expect(suggestions.some((suggestion) => suggestion.bodySide === "LEFT")).toBe(true);
     expect(suggestions.some((suggestion) => suggestion.bodySide === "RIGHT")).toBe(true);
     expect(new Set(suggestions.map((suggestion) => suggestion.id)).size).toBe(suggestions.length);

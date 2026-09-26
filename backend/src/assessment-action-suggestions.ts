@@ -2,12 +2,14 @@ import type { RulaInput } from "@nivasafe/domain";
 import { actionPriority, type FmeaReportRisk } from "./fmea-report.js";
 import {
   buildRulaSuggestionsForAssessment,
+  RULA_CORRECTIVE_SUGGESTION_MAX,
   type RulaActionPriority,
   type RulaCorrectionSuggestion,
 } from "./rula-report.js";
 import { rulaPosturePartKeys, type RulaPostureAnalysis, type RulaPosturePart } from "./rula-posture.js";
 
 const MAX_ACTION_SUGGESTIONS = 8;
+const MAX_RULA_ACTION_SUGGESTIONS = RULA_CORRECTIVE_SUGGESTION_MAX;
 const actionPriorities = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
 type ActionSuggestionSource = "AI" | "FALLBACK";
 
@@ -53,8 +55,8 @@ function priority(value: unknown, fallback: ReturnType<typeof actionPriority>): 
   return actionPriorities.includes(candidate as (typeof actionPriorities)[number]) ? candidate as ReturnType<typeof actionPriority> : fallback;
 }
 
-function boundedLimit(value: number) {
-  return Math.max(1, Math.min(MAX_ACTION_SUGGESTIONS, Math.trunc(value)));
+function boundedLimit(value: number, maximum = MAX_ACTION_SUGGESTIONS) {
+  return Math.max(1, Math.min(maximum, Math.trunc(value)));
 }
 
 function fmeaSuggestionKey(suggestion: Pick<FmeaActionSuggestion, "fmeaItemId" | "title">) {
@@ -233,7 +235,7 @@ export function buildRulaActionSuggestionsPrompt(input: RulaActionSuggestionCont
     "NIVASAFE_RULA_ACTION_SUGGESTIONS",
     'Return only valid JSON: {"actions":[{"titleFa":"","titleEn":"","descriptionFa":"","descriptionEn":"","priority":"HIGH","scoreReduction":1,"affectedParts":["trunk"],"bodySide":"RIGHT"}]}.',
     "For a BOTH-side assessment, return bodySide as LEFT, RIGHT, or BOTH for every action and keep the two sides independent; do not merge the sides into one score.",
-    "Use " + language + " as the primary language and provide both Persian and English fields. Return at most " + MAX_ACTION_SUGGESTIONS + " distinct actions.",
+    "Use " + language + " as the primary language and provide both Persian and English fields. Return at most " + MAX_RULA_ACTION_SUGGESTIONS + " distinct actions.",
     "Use the supplied posture and task data only. Do not invent angles, loads, equipment, diagnoses, or incidents. scoreReduction is an advisory estimate from 0 to 6 and must not be presented as a guaranteed result.",
     "Prioritize elimination, substitution, engineering controls, administrative controls, then PPE. A qualified HSE professional must review the suggestions.",
     "Body side: " + input.bodySide + "; current RULA score: " + input.score + "; action level: " + input.actionLevel,
@@ -248,7 +250,7 @@ export function parseRulaActionSuggestions(answer: string, bodySide: "LEFT" | "R
   const rows = parsed?.actions;
   if (!Array.isArray(rows)) return [];
   const seen = new Set<string>();
-  return rows.slice(0, MAX_ACTION_SUGGESTIONS).flatMap((value, index) => {
+  return rows.slice(0, MAX_RULA_ACTION_SUGGESTIONS).flatMap((value, index) => {
     if (!value || typeof value !== "object" || Array.isArray(value)) return [];
     const row = value as Record<string, unknown>;
     const titleFa = rulaText(row.titleFa, rulaText(row.title, ""));
@@ -326,10 +328,10 @@ function fallbackRulaActions(locale: "fa" | "en", bodySide: "LEFT" | "RIGHT" | "
 export function fallbackRulaActionSuggestions(input: { bodySide: "LEFT" | "RIGHT" | "BOTH"; analysis: RulaPostureAnalysis; inputs: RulaInput; locale: "fa" | "en"; limit?: number }) {
   const deterministic = buildRulaSuggestionsForAssessment(input.bodySide, input.analysis, input.inputs).map((suggestion) => ({ ...suggestion, source: "FALLBACK" as const }));
   const suggestions = deterministic.length ? deterministic : fallbackRulaActions(input.locale, input.bodySide);
-  return suggestions.slice(0, boundedLimit(input.limit ?? MAX_ACTION_SUGGESTIONS));
+  return suggestions.slice(0, boundedLimit(input.limit ?? MAX_RULA_ACTION_SUGGESTIONS, MAX_RULA_ACTION_SUGGESTIONS));
 }
 
-export function mergeRulaActionSuggestions(primary: RulaCorrectionSuggestion[], fallback: RulaCorrectionSuggestion[], existingActionTitles: string[] = [], limit = MAX_ACTION_SUGGESTIONS) {
+export function mergeRulaActionSuggestions(primary: RulaCorrectionSuggestion[], fallback: RulaCorrectionSuggestion[], existingActionTitles: string[] = [], limit = MAX_RULA_ACTION_SUGGESTIONS) {
   const registered = new Set(existingActionTitles.map(normalisedKey).filter(Boolean));
   const seen = new Set<string>();
   return [...primary, ...fallback].flatMap((suggestion) => {
@@ -339,5 +341,5 @@ export function mergeRulaActionSuggestions(primary: RulaCorrectionSuggestion[], 
     if (seen.has(key)) return [];
     seen.add(key);
     return [suggestion];
-  }).slice(0, boundedLimit(limit));
+  }).slice(0, boundedLimit(limit, MAX_RULA_ACTION_SUGGESTIONS));
 }
