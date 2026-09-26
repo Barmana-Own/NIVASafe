@@ -37,6 +37,10 @@ type DashboardData = {
   recent: { fmeas: Array<{ id: string; title: string; code: string; status: string; updatedAt?: string }>; rulas: Array<{ id: string; title: string; score: number; actionLevel: number; updatedAt?: string }> };
 };
 
+function dashboardAssessmentReportPath(type: "FMEA" | "RULA", id: string) {
+  return `/${type.toLowerCase()}/${encodeURIComponent(id)}/report`;
+}
+
 const kpis: Record<string, { labelKey: string; captionKey: string; icon: IconName; tone: string; href: string }> = {
   projects: { labelKey: "dashboard.kpiProjects", captionKey: "dashboard.kpiProjectsCaption", icon: "projects", tone: "teal", href: "/projects" },
   fmeas: { labelKey: "dashboard.kpiFmea", captionKey: "dashboard.kpiFmeaCaption", icon: "fmea", tone: "blue", href: "/fmea" },
@@ -106,8 +110,8 @@ export function DashboardPage() {
     <LoadState state={state}>{(data) => {
       const totalRisk = data.riskDistribution.reduce((sum, item) => sum + Number(item._count), 0) || 1;
       const recent = [
-        ...data.recent.fmeas.map((item) => ({ type: "FMEA", title: item.title, meta: item.code, value: item.status, date: item.updatedAt, href: "/fmea" })),
-        ...data.recent.rulas.map((item) => ({ type: "RULA", title: item.title, meta: t("assessment.actionLevel", { level: item.actionLevel }), value: `${t("assessment.score")} ${item.score}`, date: item.updatedAt, href: "/rula" })),
+        ...data.recent.fmeas.map((item) => ({ type: "FMEA", title: item.title, meta: item.code, value: item.status, date: item.updatedAt, href: dashboardAssessmentReportPath("FMEA", item.id) })),
+        ...data.recent.rulas.map((item) => ({ type: "RULA", title: item.title, meta: t("assessment.actionLevel", { level: item.actionLevel }), value: `${t("assessment.score")} ${item.score}`, date: item.updatedAt, href: dashboardAssessmentReportPath("RULA", item.id) })),
       ].slice(0, 6);
       const liveOrder = [...widgetOrder.filter((id) => Boolean(dashboardWidgetLabels[id]) && (!id.startsWith("kpi:") || data.counters[id.slice(4)] !== undefined)), ...Object.keys(data.counters).map((key) => `kpi:${key}`).filter((id) => !widgetOrder.includes(id) && Boolean(dashboardWidgetLabels[id]))];
       function renderWidget(id: string): ReactNode {

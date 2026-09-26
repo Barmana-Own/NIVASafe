@@ -64,6 +64,14 @@ describe("assessment corrective action suggestions", () => {
     expect(suggestions[0]!.title).toContain("نشتی اتصال");
   });
 
+  it("provides a distinct fallback action when the primary suggestion is excluded", () => {
+    const first = fallbackFmeaActionSuggestions({ candidates: fmeaCandidates, existingActionTitles: [], locale: "fa" });
+    const next = fallbackFmeaActionSuggestions({ candidates: fmeaCandidates, existingActionTitles: [first[0]!.title], locale: "fa" });
+    expect(next.length).toBeGreaterThan(0);
+    expect(next[0]!.title).not.toBe(first[0]!.title);
+    expect(next[0]!.fmeaItemId).toBe("item-1");
+  });
+
   it("prioritizes AI FMEA actions and removes duplicates", () => {
     const fallback = fallbackFmeaActionSuggestions({ candidates: fmeaCandidates, existingActionTitles: [], locale: "fa" });
     const ai = parseFmeaActionSuggestions(JSON.stringify({ actions: [{ rowNumber: 1, title: "تعویض واشر و آزمون نشتی", description: "اقدام مشخص", priority: "HIGH" }] }), fmeaCandidates);

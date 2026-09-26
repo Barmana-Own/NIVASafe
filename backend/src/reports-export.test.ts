@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
-import { buildFmeaPdfLines, buildFmeaWorkbook, buildFmeaWordDocument, buildPdfDocument, buildRulaWorkbook, buildRulaWordDocument, type FmeaReportData, type RulaReportData, type RulaReportExport } from "./modules/reports.js";
+import { buildFmeaFinalTablePdfDocument, buildFmeaFinalTableWorkbook, buildFmeaFinalTableWordDocument, buildFmeaPdfLines, buildFmeaWorkbook, buildFmeaWordDocument, buildPdfDocument, buildRulaWorkbook, buildRulaWordDocument, FMEA_FINAL_TABLE_HEADERS, type FmeaReportData, type RulaReportData, type RulaReportExport } from "./modules/reports.js";
 
 const fmea: FmeaReportData = {
   title: "Production line FMEA",
@@ -46,6 +46,28 @@ describe("assessment report exports", () => {
     const injectionWorkbook = new ExcelJS.Workbook();
     await injectionWorkbook.xlsx.load(injectionBuffer as unknown as Parameters<typeof injectionWorkbook.xlsx.load>[0]);
     expect(injectionWorkbook.getWorksheet("SUMMARY")?.getCell("B2").value).toBe("'=HYPERLINK(\"https://example.invalid\")");
+  });
+
+  it("exports the final FMEA table with identical columns and row order in Excel, Word, and PDF", async () => {
+    const workbookBuffer = await buildFmeaFinalTableWorkbook(fmea);
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(workbookBuffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["FMEA"]);
+    const sheet = workbook.getWorksheet("FMEA")!;
+    expect((sheet.getRow(1).values as unknown[]).slice(1)).toEqual([...FMEA_FINAL_TABLE_HEADERS]);
+    expect((sheet.getRow(2).values as unknown[]).slice(1)).toEqual([1, "Dropped load", "Injury", "Unstable load", "Inspection | Supervisor check", 8, 4, 3, 96, "HIGH", "Add a load restraint | Install restraint (OPEN, HIGH)"]);
+
+    const wordBuffer = await buildFmeaFinalTableWordDocument(fmea);
+    const wordArchive = await JSZip.loadAsync(wordBuffer);
+    const wordDocument = await wordArchive.file("word/document.xml")!.async("string");
+    expect(wordDocument).toContain("Final FMEA assessment table");
+    expect(wordDocument).toContain("Recommended corrective action");
+    expect(wordDocument).toContain("Dropped load");
+    expect(wordDocument).not.toContain("Process / activity");
+
+    const pdfBuffer = await buildFmeaFinalTablePdfDocument(fmea);
+    expect(pdfBuffer.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+    expect(pdfBuffer.byteLength).toBeGreaterThan(1_000);
   });
 
   it("creates a readable RULA Excel workbook with factor and action sections", async () => {
@@ -140,9 +162,15 @@ describe("assessment report exports", () => {
       const document = await archive.file("word/document.xml")!.async("string");
       expect(document).toContain(expectedText);
     }
+    const fmeaArchive = await JSZip.loadAsync(fmeaBuffer);
+    const fmeaDocument = await fmeaArchive.file("word/document.xml")!.async("string");
+    for (const section of ["Risk-level distribution", "Top failure modes", "Proposed corrective actions / controls", "Full FMEA details", "Corrective actions"]) {
+      expect(fmeaDocument).toContain(section);
+    }
     const pdfLines = buildFmeaPdfLines({ ...fmea, evaluationTeam: [{ displayName: "Safety lead", email: "lead@example.com", role: "HSE_MANAGER" }] });
     expect(pdfLines.join("\n")).toContain("REPORT HEADER");
     expect(pdfLines.join("\n")).toContain("EXECUTIVE RISK SUMMARY");
+    expect(pdfLines.join("\n")).toContain("Average corrective-action progress: 25%");
     expect(pdfLines.join("\n")).toContain("RISK-LEVEL DISTRIBUTION");
     expect(pdfLines.join("\n")).toContain("TOP FAILURE MODES");
     expect(pdfLines.join("\n")).toContain("CORRECTIVE ACTIONS / CONTROLS");

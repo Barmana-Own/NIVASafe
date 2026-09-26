@@ -856,5 +856,68 @@
     "validation": "PASS — pnpm test (233 tests: 123 backend, 98 frontend, 12 shared-domain), typecheck, lint, production build, API contract verification (67 frontend paths / 119 backend routes), release verification (28 checks), production dependency audit, and git diff check. Authenticated browser visual smoke was NOT_RUN because local database-backed authentication was unavailable.",
     "migration": "NOT_APPLICABLE — frontend-only CSS and regression coverage.",
     "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestFmeaReportProcessContextChange": {
+    "status": "PASS_LOCAL",
+    "scope": "The FMEA full-details report table no longer repeats the process/activity column in every row. The process/activity and assessment date now appear in a compact dedicated context bar above the searchable table, with responsive mobile stacking; row details and the existing registered-assessment table remain intact.",
+    "validation": "PASS for the focused change — frontend UI rules (89 tests), web typecheck, workspace lint, production build, and git diff check. Full workspace tests executed with 236 passed and one unrelated pre-existing backend failure in organization-rules.test.ts (subscriptionIsUsable trial expectation); the focused source review found no new API, database, authentication, authorization, or secret-handling changes. Authenticated browser visual smoke and deployment were NOT_RUN.",
+    "migration": "NOT_APPLICABLE — frontend markup, CSS, and regression coverage only.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestFmeaStageTwoRiskRowLayoutChange": {
+    "status": "PASS_LOCAL",
+    "scope": "FMEA creation stage two now presents the compact assessment-details bar followed by the risk evaluation table. The manual risk-row editor is collapsed behind an accessible add-row control below the table, uses compact typography, and appends rows with the next sequential number; draft-row deletion remains available from the table for new assessments.",
+    "validation": "PASS — focused frontend suite (99 tests across 5 files), web typecheck, workspace lint, production build, and git diff check. Full workspace tests were not rerun for this frontend-only change; the previously recorded workspace baseline had 236 passed and one unrelated pre-existing backend failure in organization-rules.test.ts (subscriptionIsUsable trial expectation). Authenticated browser visual smoke and deployment were NOT_RUN.",
+    "migration": "NOT_APPLICABLE — frontend markup, CSS, localization, and regression coverage only.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestFmeaSearchIconAlignmentChange": {
+    "status": "PASS_LOCAL",
+    "scope": "The FMEA report risk-table search icon is now vertically centered in the input, protected from pointer interference, and paired with a compact blue report-search style including clearer focus feedback.",
+    "validation": "PASS — focused frontend suite (99 tests across 5 files), web typecheck, workspace lint, production build, and git diff check. No backend, database, authentication, authorization, or secret-handling code changed; deployment and authenticated browser visual smoke were NOT_RUN.",
+    "migration": "NOT_APPLICABLE — frontend CSS and regression coverage only.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestFmeaStageTwoTableCapabilitiesChange": {
+    "status": "PASS_LOCAL",
+    "scope": "مرحله دوم FMEA اکنون جدول مرور و ثبت را با صفحه‌بندی شش‌ردیفی، مشاهده، ویرایش، حذف، جابجایی ردیف و افزودن ردیف خطر از فرم مستقل پشتیبانی می‌کند. ردیف‌های موجود هنگام ویرایش ارزیابی با PATCH ذخیره می‌شوند، ردیف‌های حذف‌شده از مسیر امن حذف می‌شوند و پیشنهادهای AI در رابط و parser سرور به حداکثر ۱۵ مورد محدود شده‌اند.",
+    "validation": "PASS — frontend/backend TypeScript checks, focused frontend UI rules (99 tests across 5 files), focused backend FMEA-process tests, backend lint/build, frontend production build, API contract verification (67 frontend paths / 119 backend routes), release verification (28 checks), and git diff check. Full backend suite retains one unrelated pre-existing failure in organization-rules.test.ts (subscriptionIsUsable trial expectation); authenticated browser visual smoke and deployment were NOT_RUN.",
+    "migration": "NOT_APPLICABLE — از endpoint و مدل داده موجود استفاده شد.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestFmeaRiskDistributionPercentageChartChange": {
+    "status": "PASS_LOCAL",
+    "scope": "گزارش FMEA اکنون درصد سهم هر سطح ریسک از کل را در راهنمای نمودار حلقه‌ای نمایش می‌دهد. قطعه‌های نمودار و ردیف‌های راهنما با hover و focus همگام می‌شوند و درصد سطح انتخاب‌شده را با انیمیشن در مرکز نمودار نشان می‌دهند.",
+    "validation": "PASS — frontend UI rules (99 tests across 5 files), frontend TypeScript check, production build, and git diff check. Backend, database, authentication, authorization, API contract, and release behavior were unchanged; authenticated browser visual smoke and deployment were NOT_RUN.",
+    "migration": "NOT_APPLICABLE — frontend SVG/chart markup, CSS animation, localization, and regression coverage only.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestFmeaReportListExpansionAndIncrementalAiActionChange": {
+    "status": "PASS_LOCAL",
+    "scope": "گزارش FMEA اکنون فهرست حالات خرابی را به‌صورت رتبه‌بندی‌شده با نمایش اولیه پنج مورد و امکان بازکردن موارد بیشتر ارائه می‌کند. فهرست اقدامات اصلاحی هوش مصنوعی نیز در هر بار حداکثر هشت مورد دارد، ابتدا پنج مورد را نشان می‌دهد و با دکمه دریافت پیشنهاد هوش مصنوعی هر بار یک پیشنهاد غیرتکراری به فهرست اضافه می‌کند؛ اقدام دستی همچنان مسیر مستقل خود را دارد.",
+    "validation": "PASS — frontend UI rules (99 tests across 5 files), backend focused suggestion/report tests (18 tests), workspace typecheck, lint, production build, API contract verification (67 frontend paths / 119 backend routes), release verification (28 checks), and git diff check. Full workspace tests: 127 passed and one unrelated pre-existing failure remains in organization-rules.test.ts (subscriptionIsUsable trial expectation). Authenticated browser visual smoke, clean database migration, and deployment were NOT_RUN.",
+    "migration": "NOT_APPLICABLE — report payload, suggestion request validation/fallback behavior, frontend markup, CSS, localization, and regression tests only.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestFmeaReportActionAccordionChange": {
+    "status": "PASS_LOCAL",
+    "scope": "گزارش FMEA اکنون بخش ثبت اقدام اصلاحی و فهرست اقدامات اصلاحی را به‌صورت کشویی نمایش می‌دهد. هر دو بخش در حالت اولیه بسته هستند، کنترل‌های بازکردن و بستن با وضعیت aria-expanded ارائه شده‌اند و دکمه افزودن اقدام دستی فرم ثبت را باز می‌کند.",
+    "validation": "PASS — frontend UI rules (99 tests across 5 files), workspace typecheck, lint, production build, and git diff check. Backend, database, authentication, authorization, and API contracts were unchanged; authenticated browser visual smoke and deployment were NOT_RUN.",
+    "migration": "NOT_APPLICABLE — frontend markup, CSS, localization, state handling, and regression coverage only.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestFmeaFullPageDocumentExportChange": {
+    "status": "PASS_LOCAL",
+    "scope": "گزارش نهایی FMEA در نوار اقدامات فقط Word و PDF را نگه می‌دارد و Excel از همین صفحه حذف شده است. خروجی‌های Word و PDF اکنون خلاصه ریسک، اطلاعات فرایند، توزیع سطح ریسک، حالات خرابی مهم، پیشنهادهای اقدام اصلاحی، جزئیات کامل FMEA و اقدامات اصلاحی ثبت‌شده را شامل می‌شوند.",
+    "validation": "PASS — focused backend report-export tests (5 tests), frontend UI rules (99 tests across 5 files), workspace typecheck, lint, production build, API contract verification (67 frontend paths / 119 backend routes), release verification (28 checks), project-state JSON validation, and git diff check. The production build emitted only the existing large-chunk warning; authenticated browser visual smoke, clean database migration, and deployment were NOT_RUN.",
+    "migration": "NOT_APPLICABLE — frontend toolbar and report document generation changes only; the existing Excel endpoint remains available for other report surfaces.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestFmeaFinalTableExportChange": {
+    "status": "PASS_LOCAL",
+    "scope": "گزارش FMEA اکنون نوار خروجی را دقیقاً بالای جدول نهایی ارزیابی نمایش می‌دهد. Excel، Word و PDF از مسیر final-table همان ستون‌ها، ترتیب و داده‌های جدول آخر را صادر می‌کنند؛ خروجی PDF نیز به‌صورت جدول واقعی landscape تولید می‌شود و خروجی‌های پیشین برای سایر سطوح حفظ شده‌اند.",
+    "validation": "PASS — backend report-export suite (6 tests), frontend UI rules (99 tests across 5 files), workspace typecheck, lint, production build, API contract verification (67 frontend paths / 119 backend routes), release verification (28 checks), project-state JSON validation, and git diff check. The production build emitted only the existing large-chunk warning; authenticated browser visual smoke, clean database migration, and deployment were NOT_RUN.",
+    "migration": "NOT_APPLICABLE — report export query, document generation, frontend toolbar, and regression coverage only; existing report export paths remain compatible.",
+    "deployment": "NOT_PERFORMED — source/local scope"
   }
 }

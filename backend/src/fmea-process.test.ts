@@ -25,9 +25,11 @@ import {
   normalizeJobTitle,
   assertFmeaProcessItemSelectionLimit,
   FMEA_PROCESS_AI_SUGGESTION_MAX,
+  FMEA_RISK_AI_SUGGESTION_MAX_TOTAL,
   FMEA_PROCESS_SELECTION_MAX,
   FMEA_PROCESS_SUGGESTION_MAX,
   limitProcessSuggestions,
+  limitFmeaRiskSuggestions,
 } from "./fmea-process.js";
 
 describe("FMEA process-information helpers", () => {
@@ -73,6 +75,8 @@ describe("FMEA process-information helpers", () => {
       specialConditions: "کار در شیفت شب",
       suggestions: { equipment: ["دستگاه برش"], materials: ["ورق فلزی"], controls: ["مجوز کار"] },
     });
+    const boundedSuggestions = parseFmeaProcessAutofill(JSON.stringify({ equipment: Array.from({ length: 8 }, (_, index) => `تجهیز ${index + 1}`), materials: Array.from({ length: 8 }, (_, index) => `ماده ${index + 1}`), controls: Array.from({ length: 8 }, (_, index) => `کنترل ${index + 1}`) }));
+    expect(Object.values(boundedSuggestions.suggestions).flat()).toHaveLength(15);
     expect(parseFmeaProcessAutofill('{"activityDescription":"جمله اول. جمله دوم. جمله سوم."}')).toMatchObject({ activityDescription: "" });
   });
 
@@ -80,6 +84,8 @@ describe("FMEA process-information helpers", () => {
     expect(parseFmeaRiskSuggestions("answer: {\"failureModes\":[\" نشت روغن \",\"نشت روغن\"],\"effects\":[\"آسیب به محصول\"],\"causes\":[\"شل بودن اتصال\"],\"preventiveControls\":[\"بازرسی دوره‌ای\"],\"detectionControls\":[\"چک‌لیست قبل از شروع\"],\"recommendations\":[\"ایمن‌سازی\"]}"))
       .toEqual({ failureModes: ["نشت روغن"], effects: ["آسیب به محصول"], causes: ["شل بودن اتصال"], preventiveControls: ["بازرسی دوره‌ای"], detectionControls: ["چک‌لیست قبل از شروع"], recommendations: ["ایمن‌سازی"] });
     expect(parseFmeaRiskSuggestions("invalid")).toEqual({ failureModes: [], effects: [], causes: [], preventiveControls: [], detectionControls: [], recommendations: [] });
+    const bounded = limitFmeaRiskSuggestions(Object.fromEntries(["failureModes", "effects", "causes", "preventiveControls", "detectionControls", "recommendations"].map((field) => [field, Array.from({ length: 6 }, (_, index) => `${field}-${index + 1}`)])));
+    expect(Object.values(bounded).flat()).toHaveLength(FMEA_RISK_AI_SUGGESTION_MAX_TOTAL);
   });
 
   it("accepts only bounded advisory S/O/D score suggestions", () => {
@@ -141,7 +147,15 @@ describe("FMEA process-information helpers", () => {
     expect(suggestions).toContain("NIVASAFE_PROCESS_SUGGESTIONS");
     expect(suggestions).toContain("The user will confirm every item");
     expect(suggestions).toContain(`Return at most ${FMEA_PROCESS_AI_SUGGESTION_MAX} concise items per array`);
-    expect(limitProcessSuggestions({ equipment: Array.from({ length: 10 }, (_, index) => `تجهیز ${index + 1}`), materials: [], controls: [] }, FMEA_PROCESS_AI_SUGGESTION_MAX).equipment).toHaveLength(FMEA_PROCESS_AI_SUGGESTION_MAX);
+    const boundedProcessSuggestions = limitProcessSuggestions({
+      equipment: Array.from({ length: 10 }, (_, index) => `تجهیز ${index + 1}`),
+      materials: Array.from({ length: 10 }, (_, index) => `ماده ${index + 1}`),
+      controls: Array.from({ length: 10 }, (_, index) => `کنترل ${index + 1}`),
+    }, FMEA_PROCESS_AI_SUGGESTION_MAX);
+    expect(boundedProcessSuggestions.equipment).toHaveLength(FMEA_PROCESS_AI_SUGGESTION_MAX);
+    expect(boundedProcessSuggestions.materials).toHaveLength(FMEA_PROCESS_AI_SUGGESTION_MAX);
+    expect(boundedProcessSuggestions.controls).toHaveLength(FMEA_PROCESS_AI_SUGGESTION_MAX);
+    expect(Object.values(boundedProcessSuggestions).flat()).toHaveLength(15);
 
     const jobTitles = buildJobTitleSuggestionsPrompt({ jobTitle: "اپراتور", department: "تولید", activityDescription: "کار با خط تولید", existingJobTitles: ["اپراتور خط تولید"], locale: "fa" });
     expect(jobTitles).toContain("NIVASAFE_FMEA_JOB_TITLE_SUGGESTIONS");
@@ -160,7 +174,7 @@ describe("FMEA process-information helpers", () => {
     expect(autofill).toContain("NIVASAFE_FMEA_PROCESS_AUTOFILL");
     expect(autofill).toContain('"specialConditions"');
     expect(autofill).toContain("The user will review and edit every autofilled value");
-    expect(autofill).toContain(`Return at most ${FMEA_PROCESS_SUGGESTION_MAX} concise items per equipment/materials/controls array`);
+    expect(autofill).toContain(`Return at most ${FMEA_PROCESS_AI_SUGGESTION_MAX} concise items per equipment/materials/controls array`);
 
     const description = buildDescriptionPrompt({ jobTitle: "Welder", department: "Fabrication", locale: "en" });
     expect(description).toContain("NIVASAFE_PROCESS_DESCRIPTION");

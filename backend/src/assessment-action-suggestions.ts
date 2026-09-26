@@ -146,6 +146,13 @@ function fallbackFmeaDescription(candidate: FmeaActionCandidate, locale: "fa" | 
   return `Review the controls${controls ? ` (${controls})` : ""} for “${failureMode}” and its effect “${effect}”, then register the corrective action after HSE review.`;
 }
 
+function fallbackFmeaAlternateTitle(candidate: FmeaActionCandidate, locale: "fa" | "en", variant: 1 | 2 | 3) {
+  const failureMode = boundedText(candidate.failureMode, locale === "fa" ? "خطر شناسایی‌شده" : "identified hazard", 180);
+  if (variant === 1) return locale === "fa" ? `بازبینی کنترل پیشگیرانه برای «${failureMode}»` : `Review preventive control for “${failureMode}”`;
+  if (variant === 2) return locale === "fa" ? `تدوین چک‌لیست بازرسی برای «${failureMode}»` : `Create an inspection checklist for “${failureMode}”`;
+  return locale === "fa" ? `آموزش و پایش اجرای کنترل «${failureMode}»` : `Train and monitor the control for “${failureMode}”`;
+}
+
 export function fallbackFmeaActionSuggestions(input: { candidates: FmeaActionCandidate[]; existingActionTitles: string[]; locale: "fa" | "en"; limit?: number }): FmeaActionSuggestion[] {
   const registered = new Set(input.existingActionTitles.map(normalisedKey).filter(Boolean));
   const seen = new Set<string>();
@@ -153,22 +160,27 @@ export function fallbackFmeaActionSuggestions(input: { candidates: FmeaActionCan
     .sort((left, right) => right.rpn - left.rpn || right.severity - left.severity || left.rowNumber - right.rowNumber)
     .flatMap((candidate) => {
       const recommendation = boundedText(candidate.recommendation, "", 240);
-      const title = recommendation || fallbackFmeaTitle(candidate, input.locale);
-      if (!title || registered.has(normalisedKey(title))) return [];
-      const suggestion: FmeaActionSuggestion = {
-        id: `fmea-fallback-${candidate.rowNumber}`,
-        title,
-        description: recommendation ? `${boundedText(candidate.failureMode)}: ${boundedText(candidate.effect)}` : fallbackFmeaDescription(candidate, input.locale),
-        fmeaItemId: candidate.id,
-        failureMode: candidate.failureMode,
-        priority: actionPriority(candidate.riskLevel),
-        status: "SUGGESTED",
-        source: "FALLBACK",
-      };
-      const key = fmeaSuggestionKey(suggestion);
-      if (seen.has(key)) return [];
-      seen.add(key);
-      return [suggestion];
+      const primaryTitle = recommendation || fallbackFmeaTitle(candidate, input.locale);
+      const titles = registered.has(normalisedKey(primaryTitle))
+        ? ([1, 2, 3] as const).map((variant) => fallbackFmeaAlternateTitle(candidate, input.locale, variant)).filter((title) => !registered.has(normalisedKey(title)))
+        : [primaryTitle];
+      return titles.flatMap((title, index) => {
+        if (!title || registered.has(normalisedKey(title))) return [];
+        const suggestion: FmeaActionSuggestion = {
+          id: `fmea-fallback-${candidate.rowNumber}-${title === primaryTitle ? "primary" : `alternate-${index + 1}`}`,
+          title,
+          description: recommendation && title === primaryTitle ? `${boundedText(candidate.failureMode)}: ${boundedText(candidate.effect)}` : fallbackFmeaDescription(candidate, input.locale),
+          fmeaItemId: candidate.id,
+          failureMode: candidate.failureMode,
+          priority: actionPriority(candidate.riskLevel),
+          status: "SUGGESTED",
+          source: "FALLBACK",
+        };
+        const key = fmeaSuggestionKey(suggestion);
+        if (seen.has(key)) return [];
+        seen.add(key);
+        return [suggestion];
+      });
     })
     .slice(0, boundedLimit(input.limit ?? MAX_ACTION_SUGGESTIONS));
 }

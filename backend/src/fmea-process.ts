@@ -1,7 +1,7 @@
 export const FMEA_PROCESS_DESCRIPTION_MAX = 1_200;
 export const FMEA_PROCESS_ITEM_MAX = 20;
 export const FMEA_PROCESS_SUGGESTION_MAX = 10;
-export const FMEA_PROCESS_AI_SUGGESTION_MAX = 6;
+export const FMEA_PROCESS_AI_SUGGESTION_MAX = 5;
 export const FMEA_PROCESS_SELECTION_MAX = 5;
 export const FMEA_PROCESS_ITEM_LENGTH_MAX = 160;
 export const FMEA_JOB_TITLE_MAX = 180;
@@ -9,6 +9,7 @@ export const FMEA_JOB_TITLE_SUGGESTION_MAX = 8;
 export const FMEA_SPECIAL_CONDITIONS_MAX = 1_200;
 export const FMEA_PROCESS_RISK_ROW_SUGGESTION_MIN = 5;
 export const FMEA_PROCESS_RISK_ROW_SUGGESTION_MAX = 5;
+export const FMEA_RISK_AI_SUGGESTION_MAX_TOTAL = 15;
 
 export type ProcessSuggestionCategory = "equipment" | "materials" | "controls";
 
@@ -164,9 +165,9 @@ export function parseFmeaProcessAutofill(answer: string): FmeaProcessAutofill {
     activityDescription: cleanDescription(parsed.activityDescription),
     specialConditions: cleanText(parsed.specialConditions, FMEA_SPECIAL_CONDITIONS_MAX),
     suggestions: {
-      equipment: cleanTextList(parsed.equipment, FMEA_PROCESS_SUGGESTION_MAX),
-      materials: cleanTextList(parsed.materials, FMEA_PROCESS_SUGGESTION_MAX),
-      controls: cleanTextList(parsed.controls, FMEA_PROCESS_SUGGESTION_MAX),
+      equipment: cleanTextList(parsed.equipment, FMEA_PROCESS_AI_SUGGESTION_MAX),
+      materials: cleanTextList(parsed.materials, FMEA_PROCESS_AI_SUGGESTION_MAX),
+      controls: cleanTextList(parsed.controls, FMEA_PROCESS_AI_SUGGESTION_MAX),
     },
   };
 }
@@ -185,7 +186,27 @@ export function assertFmeaProcessItemSelectionLimit(input: Partial<Record<Proces
 
 export function parseFmeaRiskSuggestions(answer: string): FmeaRiskSuggestions {
   const parsed = parseJsonObject(answer);
-  return parsed ? Object.fromEntries(riskSuggestionFields.map((field) => [field, cleanTextList(parsed[field], 6)])) as FmeaRiskSuggestions : emptyFmeaRiskSuggestions();
+  return parsed ? limitFmeaRiskSuggestions(Object.fromEntries(riskSuggestionFields.map((field) => [field, cleanTextList(parsed[field], 6)])) as FmeaRiskSuggestions) : emptyFmeaRiskSuggestions();
+}
+
+export function limitFmeaRiskSuggestions(value: Partial<FmeaRiskSuggestions> | null | undefined, maxItems = FMEA_RISK_AI_SUGGESTION_MAX_TOTAL): FmeaRiskSuggestions {
+  const limit = Math.max(0, Math.min(FMEA_RISK_AI_SUGGESTION_MAX_TOTAL, Math.floor(maxItems)));
+  const candidates = Object.fromEntries(riskSuggestionFields.map((field) => [field, Array.isArray(value?.[field]) ? value[field]!.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim()).filter((item, index, list) => list.indexOf(item) === index).slice(0, 6) : []])) as FmeaRiskSuggestions;
+  const result = emptyFmeaRiskSuggestions();
+  let remaining = limit;
+  while (remaining > 0) {
+    let added = false;
+    for (const field of riskSuggestionFields) {
+      const next = candidates[field].shift();
+      if (!next) continue;
+      result[field].push(next);
+      remaining -= 1;
+      added = true;
+      if (remaining === 0) break;
+    }
+    if (!added) break;
+  }
+  return result;
 }
 
 export function parseFmeaRiskScoreSuggestion(answer: string): FmeaRiskScoreSuggestion | null {
@@ -366,7 +387,7 @@ export function buildFmeaProcessAutofillPrompt(input: { projectName?: string | n
     "Department/unit: return one concise unit or department name, maximum 160 characters.",
     `Activity description: return one or two concise sentences, maximum ${FMEA_PROCESS_DESCRIPTION_MAX} characters.`,
     `Special work conditions: return only relevant conditions or limitations supported by the context, maximum ${FMEA_SPECIAL_CONDITIONS_MAX} characters; otherwise return an empty string.`,
-    `Return at most ${FMEA_PROCESS_SUGGESTION_MAX} concise items per equipment/materials/controls array, each item at most ${FMEA_PROCESS_ITEM_LENGTH_MAX} characters.`,
+    `Return at most ${FMEA_PROCESS_AI_SUGGESTION_MAX} concise items per equipment/materials/controls array, each item at most ${FMEA_PROCESS_ITEM_LENGTH_MAX} characters, for a maximum of 15 suggestions overall.`,
     "Do not return markdown, explanations, risk rows, scores, codes, or recommendations. The user will review and edit every autofilled value before registration.",
     `Project: ${cleanText(input.projectName, 180) || "-"}`,
     `Job/process title: ${cleanText(input.jobTitle, FMEA_JOB_TITLE_MAX)}`,
@@ -407,7 +428,7 @@ export function buildFmeaRiskSuggestionsPrompt(input: {
   return [
     "NIVASAFE_FMEA_RISK_ROW_SUGGESTIONS",
     `Return only valid JSON with exactly these arrays and one score object: {"failureModes":[],"effects":[],"causes":[],"preventiveControls":[],"detectionControls":[],"recommendations":[],"scoreSuggestion":{"severity":1,"occurrence":1,"detection":1,"rationale":""}}.`,
-    `Use ${language}. Return at most 6 concise items per array, each item at most 160 characters. Do not add markdown or explanations.`,
+    `Use ${language}. Return at most 6 concise items per array and at most ${FMEA_RISK_AI_SUGGESTION_MAX_TOTAL} items across all arrays, each item at most 160 characters. Do not add markdown or explanations.`,
     "scoreSuggestion must contain integer severity, occurrence, and detection values from 1 to 10. Severity describes impact, occurrence describes likelihood of recurrence, and detection describes how difficult the failure is to detect; include a concise rationale. These are advisory values, not final assessment results.",
     `Project: ${cleanText(input.projectName, 180) || "-"}`,
     `Job/process: ${cleanText(input.jobTitle, 180)}`,

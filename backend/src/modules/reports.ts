@@ -16,6 +16,7 @@ import { isRulaPostureAnalysisReviewed, type RulaPostureAnalysis } from "../rula
 import { buildFmeaActionSuggestionsPrompt, buildRulaActionSuggestionsPrompt, fallbackFmeaActionSuggestions, fallbackRulaActionSuggestions, mergeFmeaActionSuggestions, mergeRulaActionSuggestions, parseFmeaActionSuggestions, parseRulaActionSuggestions, type FmeaActionCandidate } from "../assessment-action-suggestions.js";
 
 const paramsSchema = z.object({ type: z.enum(["fmea", "rula"]), id: z.string().uuid(), format: z.enum(["pdf", "xlsx", "doc", "docx"]) });
+const reportQuerySchema = z.object({ view: z.enum(["final-table"]).optional() });
 
 const pdfRtlCharacter = /[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]/u;
 const pdfLtrCharacter = /[A-Za-z\u00c0-\u024f\u1e00-\u1eff0-9]/u;
@@ -194,6 +195,11 @@ export async function buildPdfDocument(title: string, lines: string[]) {
 function sendPdf(reply: FastifyReply, title: string, lines: string[]) {
   return buildPdfDocument(title, lines).then((buffer) => reply.header("content-type", "application/pdf").header("content-disposition", `attachment; filename=${reportFilename(title, "pdf")}`).send(buffer));
 }
+
+function sendPdfBuffer(reply: FastifyReply, title: string, buffer: Buffer) {
+  return reply.header("content-type", "application/pdf").header("content-disposition", `attachment; filename=${reportFilename(title, "pdf")}`).send(buffer);
+}
+
 function reportList(value: unknown) { return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim()).join(", ") || "-" : "-"; }
 
 export type FmeaReportData = {
@@ -212,6 +218,7 @@ export type FmeaReportData = {
   existingControls: unknown;
   specialConditions: string | null;
   jobCatalog: { titleFa: string; titleEn: string } | null;
+  evaluationTeam?: Array<{ displayName: string; email: string; role: string }>;
   items: Array<{ id?: string; rowNumber: number; processStep: string; failureMode: string; effect: string; cause: string; preventiveControls: string | null; detectionControls: string | null; severity: number; occurrence: number; detection: number; rpn: number; riskLevel: string; recommendation: string | null }>;
   actions: Array<{ id?: string; title: string; description: string; priority: string; status: string; progress: number; assigneeName: string | null; dueDate: Date | null; fmeaItemId: string | null; fmeaItem: { rowNumber: number; failureMode: string } | null }>;
 };
@@ -235,7 +242,7 @@ export type RulaReportExport = {
 
 const reportIdParams = z.object({ id: z.string().uuid() });
 const fmeaReportDetailSuggestionBody = z.object({ locale: z.enum(["fa", "en"]).default("fa"), autoCreate: z.boolean().default(false) });
-const reportActionSuggestionBody = z.object({ locale: z.enum(["fa", "en"]).default("fa") });
+const reportActionSuggestionBody = z.object({ locale: z.enum(["fa", "en"]).default("fa"), excludeTitles: z.array(z.string().trim().min(1).max(240)).max(8).default([]) });
 
 type FmeaReportPayload = {
   assessment: {
@@ -278,11 +285,23 @@ function pdfDate(value: Date | null | undefined) {
   return value?.toISOString().slice(0, 10) ?? "-";
 }
 
+function fmeaActionMetrics(actions: FmeaReportData["actions"]) {
+  const completed = actions.filter((action) => action.status === "COMPLETED").length;
+  const active = actions.filter((action) => !["COMPLETED", "CANCELLED", "REJECTED"].includes(action.status)).length;
+  const progress = actions.length ? Math.round(actions.reduce((total, action) => total + Math.max(0, Math.min(100, action.progress)), 0) / actions.length) : 0;
+  return { completed, active, progress };
+}
+
+function fmeaSuggestedActions(data: FmeaReportData) {
+  return data.items.filter((item) => Boolean(item.recommendation?.trim()) && !data.actions.some((action) => action.fmeaItem?.rowNumber === item.rowNumber && action.title.trim().toLocaleLowerCase() === item.recommendation!.trim().toLocaleLowerCase()));
+}
+
 export function buildFmeaPdfLines(data: FmeaReportPdfData) {
   const summary = summariseFmea(data.items);
   const itemRows = data.items.map((item) => ({ ...item, actionPriority: actionPriority(item.riskLevel) }));
   const topItems = topFailureModes(itemRows);
-  const suggestedActions = data.items.filter((item) => Boolean(item.recommendation?.trim()) && !data.actions.some((action) => action.fmeaItem?.rowNumber === item.rowNumber && action.title.trim().toLowerCase() === item.recommendation!.trim().toLowerCase()));
+  const suggestedActions = fmeaSuggestedActions(data);
+  const actionMetrics = fmeaActionMetrics(data.actions);
   const team = data.evaluationTeam.map((member) => `${member.displayName || member.email} (${member.role})`).filter(Boolean).join(" | ") || "-";
   const processTitle = data.jobCatalog?.titleEn || data.title;
   const controls = (item: FmeaReportData["items"][number]) => [item.preventiveControls, item.detectionControls].filter(Boolean).join(" | ") || "-";
@@ -312,6 +331,10 @@ export function buildFmeaPdfLines(data: FmeaReportPdfData) {
     `High-priority risks: ${summary.highPriorityRisks}`,
     `Corrective actions needed: ${summary.correctiveActionsNeeded}`,
     `Immediate actions: ${summary.immediateActions}`,
+    `Registered corrective actions: ${data.actions.length}`,
+    `Completed corrective actions: ${actionMetrics.completed}`,
+    `Active corrective actions: ${actionMetrics.active}`,
+    `Average corrective-action progress: ${actionMetrics.progress}%`,
     "",
     "RISK-LEVEL DISTRIBUTION",
     `Critical: ${summary.distribution.CRITICAL}`,
@@ -470,14 +493,17 @@ async function loadFmeaReport(id: string, organizationId: string): Promise<FmeaR
     },
     summary: summariseFmea(reportItems),
     items: reportItemsWithActions,
-    topFailureModes: topFailureModes(reportItemsWithActions).map((item) => ({ ...item, actionPriority: actionPriority(item.riskLevel) })),
-    suggestedActions,
+    topFailureModes: topFailureModes(reportItemsWithActions, reportItemsWithActions.length).map((item) => ({ ...item, actionPriority: actionPriority(item.riskLevel) })),
+    suggestedActions: suggestedActions.slice(0, 5),
     actions,
   };
 }
 
 type ExportCell = string | number | null;
 type ExportRow = ExportCell[];
+
+export const FMEA_FINAL_TABLE_HEADERS = ["Row", "Failure mode", "Effect", "Cause", "Current controls", "S", "O", "D", "RPN", "Risk level", "Recommended corrective action"] as const;
+const FMEA_FINAL_TABLE_WIDTHS = [8, 28, 32, 32, 42, 7, 7, 7, 10, 16, 48];
 
 function fmeaCorrectiveActions(data: FmeaReportData, item: FmeaReportData["items"][number]) {
   return data.actions.filter((action) => (item.id && action.fmeaItemId === item.id) || action.fmeaItem?.rowNumber === item.rowNumber);
@@ -508,6 +534,104 @@ function fmeaExportRows(data: FmeaReportData): ExportRow[] {
     item.riskLevel,
     fmeaRecommendedAction(data, item),
   ]);
+}
+
+export function fmeaFinalTableRows(data: FmeaReportData): ExportRow[] {
+  return data.items.map((item) => [
+    item.rowNumber,
+    item.failureMode,
+    item.effect,
+    item.cause,
+    [item.preventiveControls, item.detectionControls].filter(Boolean).join(" | ") || "-",
+    item.severity,
+    item.occurrence,
+    item.detection,
+    item.rpn,
+    item.riskLevel,
+    fmeaRecommendedAction(data, item),
+  ]);
+}
+
+function pdfFinalTableCellText(value: ExportCell) {
+  return normalizePdfText(String(value ?? "-")) || "-";
+}
+
+function pdfFinalTableRowHeight(doc: PDFKit.PDFDocument, row: ExportRow, widths: number[], fonts: PdfFontPaths, header = false) {
+  const font = header ? fonts.bold : fonts.regular;
+  const fontSize = header ? 7.1 : 7.3;
+  const heights = row.map((value, index) => {
+    doc.font(font).fontSize(fontSize);
+    return doc.heightOfString(pdfFinalTableCellText(value), { width: Math.max(12, widths[index]! - 8), lineGap: 2 });
+  });
+  return Math.max(24, Math.max(...heights, 0) + 10);
+}
+
+function drawFmeaFinalTableRow(doc: PDFKit.PDFDocument, row: ExportRow, widths: number[], fonts: PdfFontPaths, header = false) {
+  const y = doc.y;
+  const height = pdfFinalTableRowHeight(doc, row, widths, fonts, header);
+  let x = doc.page.margins.left;
+  row.forEach((value, index) => {
+    const width = widths[index] ?? 20;
+    doc.save();
+    doc.rect(x, y, width, height).fillAndStroke(header ? "#1e5b8f" : "#ffffff", "#c9d9e5");
+    doc.fillColor(header ? "#ffffff" : "#253746");
+    doc.x = x + 4;
+    doc.y = y + 4;
+    drawPdfText(doc, pdfFinalTableCellText(value), fonts, Math.max(12, width - 8), header ? 7.1 : 7.3, header);
+    doc.restore();
+    x += width;
+  });
+  doc.y = y + height;
+  return height;
+}
+
+export async function buildFmeaFinalTablePdfDocument(data: FmeaReportData) {
+  const fonts = resolvePdfFontPaths();
+  const rows = fmeaFinalTableRows(data);
+  const allValues = [...FMEA_FINAL_TABLE_HEADERS, ...rows.flat()];
+  if (allValues.some((value) => hasPdfRtlText(String(value ?? ""))) && !fonts) throw new Error("A Unicode PDF font is required for Persian or Arabic report content");
+  const resolvedFonts = fonts ?? { regular: "Helvetica", bold: "Helvetica-Bold" };
+  const margin = 24;
+  const doc = new PDFDocument({ size: "A4", layout: "landscape", margin, bufferPages: true, info: { Title: "NIVASafe — FMEA final assessment table", Author: "NIVASafe" } });
+  const chunks: Buffer[] = [];
+  const complete = new Promise<Buffer>((resolve, reject) => {
+    doc.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+  });
+  const tableWidth = doc.page.width - margin * 2;
+  const baseWidths = [30, 105, 105, 100, 125, 25, 25, 25, 40, 62, 150];
+  const widthScale = tableWidth / baseWidths.reduce((sum, width) => sum + width, 0);
+  const widths = baseWidths.map((width) => width * widthScale);
+  doc.save();
+  doc.rect(0, 0, doc.page.width, 56).fill("#123f66");
+  doc.restore();
+  doc.fillColor("#ffffff");
+  doc.font(resolvedFonts.bold).fontSize(15).text("NIVASafe", margin, 13, { width: tableWidth, lineBreak: false });
+  doc.font(resolvedFonts.regular).fontSize(9).text("FMEA final assessment table", margin, 35, { width: tableWidth, lineBreak: false });
+  doc.y = 74;
+  doc.fillColor("#253746");
+  drawPdfText(doc, `Process / job: ${data.jobCatalog?.titleEn || data.title}`, resolvedFonts, tableWidth, 8.5, true);
+  doc.moveDown(0.2);
+  drawPdfText(doc, `Assessment code: ${data.code} | Assessment date: ${pdfDate(data.approvedAt ?? data.updatedAt)}`, resolvedFonts, tableWidth, 8.5);
+  doc.moveDown(0.8);
+  const drawHeader = () => drawFmeaFinalTableRow(doc, [...FMEA_FINAL_TABLE_HEADERS], widths, resolvedFonts, true);
+  drawHeader();
+  for (const row of rows.length ? rows : [Array.from({ length: FMEA_FINAL_TABLE_HEADERS.length }, () => "-")]) {
+    const rowHeight = pdfFinalTableRowHeight(doc, row, widths, resolvedFonts);
+    if (doc.y + rowHeight > doc.page.height - margin - 28) {
+      doc.addPage();
+      drawHeader();
+    }
+    drawFmeaFinalTableRow(doc, row, widths, resolvedFonts);
+  }
+  const pageRange = doc.bufferedPageRange();
+  for (let index = pageRange.start; index < pageRange.start + pageRange.count; index += 1) {
+    doc.switchToPage(index);
+    drawPdfFooter(doc, resolvedFonts, margin, index - pageRange.start + 1, pageRange.count);
+  }
+  doc.end();
+  return complete;
 }
 
 function xmlEscape(value: unknown) {
@@ -671,6 +795,12 @@ export async function buildFmeaWorkbook(data: FmeaReportData) {
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
+export async function buildFmeaFinalTableWorkbook(data: FmeaReportData) {
+  const workbook = new ExcelJS.Workbook();
+  addExportSheet(workbook, "FMEA", [...FMEA_FINAL_TABLE_HEADERS], fmeaFinalTableRows(data), FMEA_FINAL_TABLE_WIDTHS);
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
 export async function buildRulaWorkbook(data: RulaReportData, report?: RulaReportExport) {
   const workbook = new ExcelJS.Workbook();
   const model = buildRulaExportModel(data, report);
@@ -715,11 +845,26 @@ async function buildDocx(title: string, subtitle: string, sections: DocxSection[
 
 export async function buildFmeaWordDocument(data: FmeaReportData) {
   const summary = summariseFmea(data.items);
+  const actionMetrics = fmeaActionMetrics(data.actions);
+  const totalFailureModes = Math.max(summary.totalFailureModes, 1);
+  const itemRows = data.items.map((item) => ({ ...item, actionPriority: actionPriority(item.riskLevel) }));
+  const topItems = topFailureModes(itemRows);
+  const suggestedActions = fmeaSuggestedActions(data);
+  const evaluationTeam = data.evaluationTeam?.map((member) => `${member.displayName || member.email} (${member.role})`).filter(Boolean).join(" | ") || "-";
   return buildDocx("NIVASafe — FMEA risk assessment", `Code: ${data.code} · Project: ${data.project.name}`, [
-    { heading: "Executive summary", headers: ["Metric", "Value"], rows: [["Total failure modes", summary.totalFailureModes], ["High-priority risks", summary.highPriorityRisks], ["Corrective actions needed", summary.correctiveActionsNeeded], ["Immediate actions", summary.immediateActions], ["Risk distribution", Object.entries(summary.distribution).map(([level, count]) => `${level}: ${count}`).join(" | ")] ] },
-    { heading: "Process information", headers: ["Field", "Value"], rows: [["Job/process", data.jobCatalog?.titleEn ?? data.title], ["Company", data.organization.nameEn], ["Assessment status", data.status], ["Assessment date", (data.approvedAt ?? data.updatedAt).toISOString().slice(0, 10)], ["Assessment method", "FMEA"], ["Department/unit", data.department ?? "-"], ["Activity description", data.activityDescription ?? "-"], ["Equipment/machinery", reportList(data.equipment)], ["Materials", reportList(data.materials)], ["Existing process controls", reportList(data.existingControls)], ["Special conditions", data.specialConditions ?? "-"]] },
-    { heading: "Risk register", headers: ["Row", "Process / activity", "Failure mode", "Failure effect", "Failure cause", "Current controls", "S", "O", "D", "AP", "RPN", "Risk level", "Recommended action"], rows: fmeaExportRows(data) },
+    { heading: "Executive summary", headers: ["Metric", "Value"], rows: [["Total failure modes", summary.totalFailureModes], ["High-priority risks", summary.highPriorityRisks], ["Corrective actions needed", summary.correctiveActionsNeeded], ["Immediate actions", summary.immediateActions], ["Registered corrective actions", data.actions.length], ["Completed corrective actions", actionMetrics.completed], ["Active corrective actions", actionMetrics.active], ["Average corrective-action progress", `${actionMetrics.progress}%`]] },
+    { heading: "Process information", headers: ["Field", "Value"], rows: [["Job/process", data.jobCatalog?.titleEn ?? data.title], ["Company", data.organization.nameEn || data.organization.nameFa], ["Assessment status", data.status], ["Assessment date", (data.approvedAt ?? data.updatedAt).toISOString().slice(0, 10)], ["Assessment method", "FMEA"], ["Evaluation team", evaluationTeam], ["Department/unit", data.department ?? "-"], ["Activity description", data.activityDescription ?? "-"], ["Equipment/machinery", reportList(data.equipment)], ["Materials", reportList(data.materials)], ["Existing process controls", reportList(data.existingControls)], ["Special conditions", data.specialConditions ?? "-"]] },
+    { heading: "Risk-level distribution", headers: ["Risk level", "Count", "Share"], rows: Object.entries(summary.distribution).map(([level, count]) => [level, count, `${Math.round((count / totalFailureModes) * 100)}%`]) },
+    { heading: "Top failure modes", headers: ["Row", "Process / activity", "Failure mode", "Effect", "S", "O", "D", "AP", "RPN", "Risk level"], rows: topItems.map((item) => [item.rowNumber, item.processStep, item.failureMode, item.effect, item.severity, item.occurrence, item.detection, item.actionPriority, item.rpn, item.riskLevel]) },
+    { heading: "Proposed corrective actions / controls", headers: ["Related risk", "Failure mode", "Proposed action", "Priority"], rows: suggestedActions.length ? suggestedActions.map((item) => [`#${item.rowNumber}`, item.failureMode, item.recommendation?.trim() ?? "-", actionPriority(item.riskLevel)]) : [["-", "-", "No unregistered recommendations", "-"]] },
+    { heading: "Full FMEA details", headers: ["Row", "Process / activity", "Failure mode", "Failure effect", "Failure cause", "Current controls", "S", "O", "D", "AP", "RPN", "Risk level", "Recommended action"], rows: fmeaExportRows(data) },
     { heading: "Corrective actions", headers: ["Related risk", "Title", "Description", "Priority", "Status", "Assignee", "Progress", "Due date"], rows: data.actions.map((action) => [action.fmeaItem ? `#${action.fmeaItem.rowNumber} · ${action.fmeaItem.failureMode}` : "-", action.title, action.description, action.priority, action.status, action.assigneeName ?? "-", action.progress, action.dueDate?.toISOString().slice(0, 10) ?? "-"]) },
+  ]);
+}
+
+export async function buildFmeaFinalTableWordDocument(data: FmeaReportData) {
+  return buildDocx("NIVASafe — FMEA final assessment table", `Process / job: ${data.jobCatalog?.titleEn ?? data.title} · Assessment date: ${(data.approvedAt ?? data.updatedAt).toISOString().slice(0, 10)}`, [
+    { heading: "Final FMEA assessment table", headers: [...FMEA_FINAL_TABLE_HEADERS], rows: fmeaFinalTableRows(data) },
   ]);
 }
 
@@ -769,7 +914,7 @@ export async function registerReportRoutes(app: FastifyInstance) {
         recommendation: item.recommendation,
       }];
     });
-    const existingActionTitles = report.actions.filter((action) => !["CANCELLED", "REJECTED"].includes(action.status)).map((action) => action.title);
+    const existingActionTitles = [...report.actions.filter((action) => !["CANCELLED", "REJECTED"].includes(action.status)).map((action) => action.title), ...body.excludeTitles];
     const fallback = fallbackFmeaActionSuggestions({ candidates, existingActionTitles, locale: body.locale });
     const provider = getAvailableAssessmentAIProvider();
     let suggestions = fallback;
@@ -937,16 +1082,30 @@ export async function registerReportRoutes(app: FastifyInstance) {
     return envelope(await loadRulaReport(id, organizationId));
   });
   app.get("/api/v1/reports/:type/:id.:format", { preHandler: authenticate }, async (request, reply) => {
-    const organizationId = requireOrg(request); requirePermission(request, "reports.generate"); const { type, id, format } = parse(paramsSchema, request.params);
+    const organizationId = requireOrg(request); requirePermission(request, "reports.generate"); const { type, id, format } = parse(paramsSchema, request.params); const { view } = parse(reportQuerySchema, request.query); const finalFmeaTable = type === "fmea" && view === "final-table";
     const data = type === "fmea" ? await prisma.fmeaAssessment.findFirst({ where: { id, organizationId, deletedAt: null }, include: { project: true, organization: { select: { nameFa: true, nameEn: true } }, jobCatalog: { select: { titleFa: true, titleEn: true } }, items: { orderBy: { rowNumber: "asc" } } } }) : await prisma.rulaAssessment.findFirst({ where: { id, organizationId }, include: { project: true } });
     if (!data) throw Object.assign(new Error("Assessment not found"), { statusCode: 404, code: "NOT_FOUND" });
     const rulaReport = type === "rula" ? await loadRulaReport(id, organizationId) : null;
-    if (type === "fmea") { const linkedActions = await prisma.correctiveAction.findMany({ where: { organizationId, OR: [{ fmeaId: id }, { fmeaItem: { assessmentId: id } }] }, include: { fmeaItem: { select: { rowNumber: true, failureMode: true } } }, orderBy: { updatedAt: "desc" } }); (data as unknown as FmeaReportData).actions = linkedActions; }
+    if (type === "fmea") {
+      const fmea = data as unknown as FmeaReportData;
+      const linkedActions = await prisma.correctiveAction.findMany({ where: { organizationId, OR: [{ fmeaId: id }, { fmeaItem: { assessmentId: id } }] }, include: { fmeaItem: { select: { rowNumber: true, failureMode: true } } }, orderBy: { updatedAt: "desc" } });
+      fmea.actions = linkedActions;
+      if (!finalFmeaTable && (format === "pdf" || format === "doc" || format === "docx")) {
+        const members = await prisma.organizationMember.findMany({ where: { organizationId, active: true }, select: { user: { select: { displayName: true, email: true } }, role: true }, orderBy: { user: { displayName: "asc" } } });
+        fmea.evaluationTeam = members.map((member) => ({ displayName: member.user.displayName, email: member.user.email, role: member.role }));
+      }
+    }
+    if (finalFmeaTable) {
+      const fmea = data as unknown as FmeaReportData;
+      if (format === "pdf") return sendPdfBuffer(reply, "NIVASafe-FMEA-final-table", await buildFmeaFinalTablePdfDocument(fmea));
+      if (format === "doc" || format === "docx") return sendWord(reply, "NIVASafe-FMEA-final-table", await buildFmeaFinalTableWordDocument(fmea));
+      const document = await buildFmeaFinalTableWorkbook(fmea);
+      return reply.header("content-type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet").header("content-disposition", `attachment; filename="${reportFilename("NIVASafe-FMEA-final-table", "xlsx")}"`).send(document);
+    }
     if (format === "pdf") {
       if (type === "fmea") {
         const fmea = data as unknown as FmeaReportData;
-        const members = await prisma.organizationMember.findMany({ where: { organizationId, active: true }, select: { user: { select: { displayName: true, email: true } }, role: true }, orderBy: { user: { displayName: "asc" } } });
-        return sendPdf(reply, `NIVASafe-${type.toUpperCase()}`, buildFmeaPdfLines({ ...fmea, evaluationTeam: members.map((member) => ({ displayName: member.user.displayName, email: member.user.email, role: member.role })) }));
+        return sendPdf(reply, `NIVASafe-${type.toUpperCase()}`, buildFmeaPdfLines({ ...fmea, evaluationTeam: fmea.evaluationTeam ?? [] }));
       }
       const rula = data as RulaReportData;
       const reviewComplete = rulaReport?.assessment.postureReviewComplete ?? true;

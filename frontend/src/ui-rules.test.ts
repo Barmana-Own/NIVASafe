@@ -192,11 +192,20 @@ describe("FMEA process information", () => {
     expect(assessmentPagesSource).toContain('function requestDescriptionSuggestion');
     expect(assessmentPagesSource).toContain('assessment.addNewJob');
     expect(assessmentPagesSource).toContain('name="customJobSelected"');
+    expect(assessmentPagesSource).toContain('function applyCustomJobTitle(title: string)');
+    expect(assessmentPagesSource).toContain('setCustomJobSelected(true);');
+    expect(assessmentPagesSource).toContain('applyCustomJobTitle(title);');
     expect(assessmentPagesSource).toContain('if (!open) { onOpenChange(true); setHighlighted(0); return; }');
-    expect(assessmentPagesSource).toContain('assessment.activityDescriptionSentenceLimit');
-    expect(assessmentPagesSource).toContain('t("assessment.addNewItem")');
+   expect(assessmentPagesSource).toContain('assessment.activityDescriptionSentenceLimit');
+   expect(assessmentPagesSource).toContain('t("assessment.addNewItem")');
+    expect(assessmentPagesSource).toContain("function FmeaAssessmentDetailsBar");
+    expect(assessmentPagesSource).toContain('className="fmea-assessment-details-bar"');
+    expect(assessmentPagesSource).toContain('<FmeaAssessmentDetailsBar jobTitle={jobQuery}');
+    expect(stylesSource).toContain(".fmea-assessment-details-bar {");
+    expect(i18nSource).toContain('"assessment.assessmentDetails": "جزئیات ارزیابی"');
     expect(assessmentPagesSource).toContain("const FMEA_PROCESS_SUGGESTION_MAX = 10");
-    expect(assessmentPagesSource).toContain("const FMEA_PROCESS_BOARD_SUGGESTION_MAX = 6");
+    expect(assessmentPagesSource).toContain("const FMEA_PROCESS_BOARD_SUGGESTION_MAX = 5");
+    expect(assessmentPagesSource).toContain("suggestions: normaliseProcessBoardSuggestions(value.suggestions)");
     expect(assessmentPagesSource).toContain("const FMEA_PROCESS_SELECTION_MAX = 5");
     expect(assessmentPagesSource).toContain("const selectionLocked = !isSelected && selected.length >= FMEA_PROCESS_SELECTION_MAX");
     expect(assessmentPagesSource).toContain('t("assessment.suggestionSelectionLimit"');
@@ -227,7 +236,7 @@ describe("FMEA process information", () => {
     expect(stylesSource).toContain(".fmea-description-suggestion {");
     expect(assessmentPagesSource).toContain('name="fmeaProcessImage"');
     expect(assessmentPagesSource).toContain("const FMEA_PROCESS_IMAGE_MAX_COUNT = 3");
-    expect(assessmentPagesSource).toContain('fmeaProcessImageCount", { count: processImages.length, max: FMEA_PROCESS_IMAGE_MAX_COUNT }');
+    expect(assessmentPagesSource).toContain('fmeaProcessImageCount", { count: processImages.length.toLocaleString(numberLocale), max: FMEA_PROCESS_IMAGE_MAX_COUNT.toLocaleString(numberLocale) }');
     expect(assessmentPagesSource).toContain('multiple accept="image/jpeg,image/png,image/webp"');
     expect(assessmentPagesSource).toContain("handleFmeaProcessImageChange");
     expect(assessmentPagesSource).toContain('"/fmea/process-image-analysis"');
@@ -235,9 +244,16 @@ describe("FMEA process information", () => {
     expect(assessmentPagesSource).toContain('void requestFmeaProcessImageAnalysis(processImages)');
     expect(assessmentPagesSource).toContain('uploadFmeaProcessImages');
     expect(assessmentPagesSource).toContain("new Map(analyses.flatMap((analysis) => analysis.riskRows)");
+    expect(assessmentPagesSource).toContain("values()).slice(0, FMEA_AI_SUGGESTION_TOTAL_MAX)");
     expect(assessmentPagesSource).toContain("fmea-image-annotation-layer");
     expect(assessmentPagesSource).toContain("fmea-image-annotation-label");
+    expect(assessmentPagesSource).toContain('className="fmea-process-image-preview-button"');
+    expect(assessmentPagesSource).toContain('AssessmentImageLightbox');
+    expect(assessmentPagesSource).toContain('assessment.expandImage');
+    expect(i18nSource).toContain('"assessment.fmeaProcessImageCount": "{{count}} از {{max}} تصویر انتخاب شده"');
+    expect(i18nSource).toContain('"assessment.fmeaProcessImageCount": "{{count}} of {{max}} images selected"');
     expect(stylesSource).toContain(".fmea-image-annotation-label {");
+    expect(stylesSource).toContain(".assessment-image-lightbox-backdrop {");
     expect(assessmentPagesSource).not.toContain('t("assessment.fmeaProcessImageAnalyze")');
     expect(assessmentPagesSource).not.toContain('t("assessment.fmeaProcessImageHint")');
     expect(assessmentPagesSource).not.toContain('className="fmea-process-image-analysis"');
@@ -323,6 +339,8 @@ describe("FMEA risk register", () => {
     expect(assessmentPagesSource).toContain('autoRequestKey={fmeaAssistantEnabled ? [locale, selectedAssessment.id');
     expect(assessmentPagesSource).toContain('preventiveControls: value("preventiveControls")');
     expect(assessmentPagesSource).toContain('autoEnabled={fmeaAssistantEnabled}');
+    expect(assessmentPagesSource).toContain('const FMEA_AI_SUGGESTION_TOTAL_MAX = 15');
+    expect(assessmentPagesSource).toContain('const FMEA_PROCESS_AI_SUGGESTION_TOTAL_MAX = 15');
     expect(stylesSource).toContain(".risk-table-toolbar {");
     expect(stylesSource).toContain(".risk-score-guide {");
     expect(stylesSource).toContain(".fmea-risk-table {");
@@ -352,16 +370,36 @@ describe("FMEA risk register", () => {
   it("provides a dedicated results report with persisted corrective-action links", () => {
     expect(appSource).toContain('<Route path="fmea/:id/report" element={<FmeaReportPage />} />');
     expect(assessmentPagesSource).toContain("FmeaReportRiskTable");
+    expect(assessmentPagesSource).toContain("function FmeaReportTableContext");
+    expect(assessmentPagesSource).toContain('className="fmea-report-table-context"');
+    expect(assessmentPagesSource).toContain("evaluationDate={report.assessment.approvedAt ?? report.assessment.updatedAt}");
     expect(assessmentPagesSource).toContain("assessment-report-table fmea-report-data-table");
     expect(assessmentPagesSource).toContain('t("assessment.processActivity")');
     expect(assessmentPagesSource).toContain('t("assessment.operations")');
     expect(assessmentPagesSource).toContain('t("report.fullDetails")');
     expect(assessmentPagesSource).toContain('t("report.addManualAction")');
+    expect(assessmentPagesSource).toContain("const FMEA_REPORT_VISIBLE_ITEM_COUNT = 5");
+    expect(assessmentPagesSource).toContain("const FMEA_REPORT_AI_ACTION_MAX = 8");
+    expect(assessmentPagesSource).toContain('t("report.getAiActionSuggestion")');
+    expect(assessmentPagesSource).toContain('t("report.showMoreFailureModes", { count: hiddenTopFailureModeCount })');
+    expect(assessmentPagesSource).toContain('t("report.showMoreActions", { count: hiddenSuggestedActionCount })');
+    expect(stylesSource).toContain(".report-list-toggle {");
     expect(assessmentPagesSource).toContain("function openManualActionForm()");
+    expect(assessmentPagesSource).toContain("showActionRegister");
+    expect(assessmentPagesSource).toContain('aria-controls="fmea-manual-action-form"');
+    expect(assessmentPagesSource).toContain('aria-controls="fmea-action-register-content"');
     expect(assessmentPagesSource).toContain("setActionFormScrollRequest");
     expect(assessmentPagesSource).toContain("scrollIntoView({ behavior: window.matchMedia");
     expect(assessmentPagesSource).toContain('className="report-action-form-anchor"');
     expect(stylesSource).toContain(".report-action-form-anchor { scroll-margin-top:");
+    expect(stylesSource).toContain(".report-action-form-card.is-collapsed .surface-body");
+    expect(stylesSource).toContain(".report-action-register-card.is-collapsed .surface-body");
+    expect(stylesSource).toContain(".fmea-report-table-context {");
+    expect(stylesSource).toContain("inset-block-start: 50%;");
+    expect(stylesSource).toContain(".fmea-report-table-toolbar .risk-table-search input {");
+    expect(stylesSource).toContain(".fmea-report-table-toolbar .risk-table-search:focus-within input {");
+    const interactiveReportTableSource = assessmentPagesSource.slice(assessmentPagesSource.indexOf("function FmeaInteractiveReportRiskTable"), assessmentPagesSource.indexOf("function FmeaReportItemDetailsDialog"));
+    expect(interactiveReportTableSource).not.toContain('t("assessment.processActivity")}</th>');
     expect(assessmentPagesSource).toContain('onClick={() => onView(item)}');
     expect(assessmentPagesSource).toContain('onClick={() => onEdit(item)}');
     expect(assessmentPagesSource).toContain('function FmeaReportItemDetailsDialog');
@@ -384,6 +422,7 @@ describe("FMEA risk register", () => {
     expect(reportsSource).toContain('app.get("/api/v1/fmea/:id/report"');
     expect(reportsSource).toContain('app.post("/api/v1/fmea/:id/report/save"');
     expect(reportsSource).toContain('app.post("/api/v1/fmea/:id/report/detail-suggestions"');
+    expect(reportsSource).toContain("excludeTitles: z.array");
     expect(reportsSource).toContain('autoCreate: z.boolean().default(false)');
     expect(reportsSource).toContain("buildFmeaReportDetailSeedRows");
     expect(reportsSource).toContain('FMEA_REPORT_DETAIL_AUTOCREATE');
@@ -396,31 +435,59 @@ describe("FMEA risk register", () => {
     expect(assessmentPagesSource).toContain("function FmeaReportStepper({ onStepClick }");
     expect(assessmentPagesSource).toContain('className="fmea-report-dashboard-grid"');
     expect(assessmentPagesSource).toContain("fmeaReportDonutGradient");
+    expect(assessmentPagesSource).toContain("function FmeaRiskDistributionChart");
+    expect(assessmentPagesSource).toContain("formatFmeaRiskPercentage");
+    expect(assessmentPagesSource).toContain("onMouseEnter={() => activate(entry.level)}");
+    expect(assessmentPagesSource).toContain('t("report.ofTotal")');
     expect(assessmentPagesSource).toContain("completedActionCount");
     expect(assessmentPagesSource).toContain("inProgressActionCount");
     expect(assessmentPagesSource).toContain("remainingActionCount");
-    expect(assessmentPagesSource).toContain('className="fmea-risk-donut-label"');
+    expect(assessmentPagesSource).toContain('fmea-risk-donut-label');
     expect(stylesSource).toContain(".fmea-risk-donut {");
     expect(stylesSource).toContain(".fmea-risk-donut-label {");
+    expect(stylesSource).toContain(".fmea-risk-donut-svg {");
+    expect(stylesSource).toContain(".fmea-risk-donut-segment.is-active");
+    expect(stylesSource).toContain("@keyframes fmea-risk-percentage-in");
+    expect(stylesSource).toContain(".fmea-risk-legend-value small");
+    expect(i18nSource).toContain('"report.ofTotal": "از کل"');
+    expect(i18nSource).toContain('"report.ofTotal": "of total"');
     expect(stylesSource).toContain(".fmea-action-progress-ring {");
     expect(stylesSource).toContain(".fmea-report-dashboard-grid {");
     expect(fmeaReportHelpersSource).toContain("summariseFmea");
     expect(fmeaReportHelpersSource).toContain("topFailureModes");
   });
 
-  it("shows only the assessment process name in the full FMEA details table", () => {
-    expect(assessmentPagesSource).toContain('const processName = locale === "en" ? report.assessment.processName.en : report.assessment.processName.fa;');
-    expect(assessmentPagesSource).toContain('<td className="report-table-text">{processName}</td>');
-    expect(assessmentPagesSource).not.toContain('<td className="report-table-text">{item.processStep}</td>');
+  it("moves the FMEA process and date above the full details table", () => {
+    expect(assessmentPagesSource).toContain("function FmeaReportTableContext");
+    expect(assessmentPagesSource).toContain('className="fmea-report-table-context"');
+    const reportTableSource = assessmentPagesSource.slice(assessmentPagesSource.indexOf("function FmeaReportRiskTable"), assessmentPagesSource.indexOf("function FmeaScoreGuide"));
+    expect(reportTableSource).not.toContain('t("assessment.processActivity")}</th>');
+    expect(reportTableSource).not.toContain('<td className="report-table-text">{processName}</td>');
   });
 
-  it("provides the same FMEA report through Excel, PDF, and Word downloads", () => {
-    expect(assessmentPagesSource).toContain('downloadFmeaReport("xlsx")');
-    expect(assessmentPagesSource).toContain('downloadFmeaReport("pdf")');
-    expect(assessmentPagesSource).toContain('downloadFmeaReport("docx")');
+  it("puts the final-table exports above the FMEA results table", () => {
+    const fmeaReportSource = assessmentPagesSource.slice(assessmentPagesSource.indexOf("export function FmeaReportPage"), assessmentPagesSource.indexOf("export function RulaReportPage"));
+    expect(assessmentPagesSource).toContain("function FmeaFinalTableExportBar");
+    expect(assessmentPagesSource).toContain('onDownload("xlsx")');
+    expect(assessmentPagesSource).toContain('onDownload("pdf")');
+    expect(assessmentPagesSource).toContain('onDownload("docx")');
+    expect(fmeaReportSource).toContain("onDownload={downloadFmeaFinalTable}");
+    expect(fmeaReportSource).toContain('view=final-table');
+    expect(fmeaReportSource).not.toContain('downloadFmeaReport("xlsx")');
     expect(i18nSource).toContain('"assessment.downloadPdf"');
+    expect(i18nSource).toContain('"report.finalTableExportTitle"');
+    expect(stylesSource).toContain(".fmea-final-table-export-bar");
+    expect(reportsSource).toContain("buildFmeaFinalTableWorkbook");
+    expect(reportsSource).toContain("buildFmeaFinalTableWordDocument");
+    expect(reportsSource).toContain("buildFmeaFinalTablePdfDocument");
+    expect(reportsSource).toContain("FMEA_FINAL_TABLE_HEADERS");
+    expect(reportsSource).toContain('z.enum(["final-table"])');
     expect(reportsSource).toContain("fmeaExportRows");
     expect(reportsSource).toContain("fmeaRecommendedAction");
+    expect(reportsSource).toContain('heading: "Risk-level distribution"');
+    expect(reportsSource).toContain('heading: "Top failure modes"');
+    expect(reportsSource).toContain('heading: "Proposed corrective actions / controls"');
+    expect(reportsSource).toContain('heading: "Full FMEA details"');
   });
 
   it("shows three FMEA AI suggestions per field before the reversible remainder toggle", () => {
@@ -498,7 +565,27 @@ describe("FMEA creation stepper", () => {
     expect(assessmentPagesSource).toContain('if (wizardStep === 1) {\n      nextWizardStep();\n      return;\n    }');
     expect(assessmentPagesSource).toContain('if (creatingRef.current) return;');
     expect(assessmentPagesSource).toContain('function FmeaReviewRiskRow');
-    expect(assessmentPagesSource).toContain('{wizardStep === 2 && <FmeaReviewRiskRow');
+    expect(assessmentPagesSource).toContain('const [reviewRiskFormOpen, setReviewRiskFormOpen] = useState(false)');
+    expect(assessmentPagesSource).toContain('{reviewRiskFormOpen && <FmeaReviewRiskRow');
+    expect(assessmentPagesSource).toContain('className="fmea-add-risk-row-trigger"');
+    expect(assessmentPagesSource).toContain('aria-controls={reviewRiskFormOpen ? "fmea-review-risk-form" : undefined}');
+    expect(assessmentPagesSource).toContain('canDelete={canEdit()}');
+    expect(assessmentPagesSource).toContain('function removeStageTwoDraftRow(item: FmeaReportItem)');
+    expect(assessmentPagesSource).toContain('rowNumber: savedItems.length + index + 1');
+    expect(assessmentPagesSource).toContain('pageSize={FMEA_STAGE_TWO_RISK_PAGE_SIZE}');
+    expect(assessmentPagesSource).toContain('const FMEA_STAGE_TWO_RISK_PAGE_SIZE = 6');
+    expect(assessmentPagesSource).toContain('function editStageTwoItem(item: FmeaReportItem, draftValue: FmeaItemDraft)');
+    expect(assessmentPagesSource).toContain('function removeStageTwoRow(item: FmeaReportItem)');
+    expect(assessmentPagesSource).toContain('function moveStageTwoRow(item: FmeaReportItem, direction: FmeaRowMoveDirection)');
+    expect(assessmentPagesSource).toContain('onEditItem={canEdit() ? editStageTwoItem : undefined}');
+    expect(assessmentPagesSource).toContain('onMove={moveStageTwoRow}');
+    expect(i18nSource).toContain('"assessment.moveRowUp": "جابجایی ردیف به بالا"');
+    expect(i18nSource).toContain('"assessment.moveRowDown": "جابجایی ردیف به پایین"');
+    expect(stylesSource).toContain('.fmea-stage-two-review {');
+    expect(stylesSource).toContain('.fmea-review-risk-card-compact {');
+    const stageTwoReviewStart = assessmentPagesSource.indexOf('{wizardStep === 2 && <div className="fmea-stage-two-review">');
+    const stageTwoReviewSource = assessmentPagesSource.slice(stageTwoReviewStart, assessmentPagesSource.indexOf('<div className="wizard-actions">', stageTwoReviewStart));
+    expect(stageTwoReviewSource.indexOf('FmeaStageTwoDetailsCard')).toBeLessThan(stageTwoReviewSource.indexOf('fmea-add-risk-row-trigger'));
     expect(assessmentPagesSource).toContain('{registeredAssessmentsView && selectedAssessment && canEdit() && wizardStep === 2 && <SectionCard title={t("assessment.addRiskRow")');
     expect(assessmentPagesSource).toContain('className="ghost button-link fmea-registered-button"');
     expect(assessmentPagesSource).toContain('aria-controls="fmea-registered-assessments"');
@@ -536,7 +623,7 @@ describe("FMEA creation stepper", () => {
 
   });
 
-  it("seeds five persisted details and renders the report details card at the end of registered step two", () => {
+  it("seeds five persisted details and renders the report details card before the manual add-row control", () => {
     expect(assessmentPagesSource).toContain('const [reviewDetailSeedLoading, setReviewDetailSeedLoading] = useState(false)');
     expect(assessmentPagesSource).toContain('body: JSON.stringify({ locale, autoCreate: true })');
     expect(assessmentPagesSource).toContain('detail-suggestions');
@@ -546,7 +633,9 @@ describe("FMEA creation stepper", () => {
     expect(assessmentPagesSource).toContain('riskRows?.slice(0, 5)');
     expect(assessmentPagesSource).toContain('items={stageTwoDetailsItems}');
     expect(assessmentPagesSource).toContain('report.items.length === 0');
-    expect(assessmentPagesSource).toContain('{wizardStep === 2 && <FmeaStageTwoDetailsCard items={stageTwoDetailsItems}');
+    expect(assessmentPagesSource).toContain('<FmeaStageTwoDetailsCard items={stageTwoDetailsItems}');
+    expect(i18nSource).toContain('"assessment.closeRiskRowForm": "بستن فرم افزودن ردیف"');
+    expect(i18nSource).toContain('"assessment.closeRiskRowForm": "Close add-row form"');
   });
 });
 
@@ -671,6 +760,9 @@ describe("RULA process information", () => {
     expect(i18nSource).toContain('"assessment.repetitiveMuscleCriterionZeroScore": "امتیاز صفر"');
     expect(i18nSource).toContain('"assessment.repetitiveMuscleCriterionOneScore": "1 point"');
     expect(i18nSource).toContain('"assessment.repetitiveMuscleCriterionZeroScore": "0 points"');
+    expect(assessmentPagesSource).toContain('className="rula-analysis-image-button"');
+    expect(assessmentPagesSource).toContain('analysis={visibleAnalysis} locale={locale}');
+    expect(stylesSource).toContain(".rula-analysis-image-button {");
   });
 
   it("renders required and optional metadata in the shared inline label row", () => {
@@ -801,6 +893,15 @@ describe("multi-organization workspace management", () => {
 });
 
 describe("dashboard widget layout", () => {
+  it("opens saved dashboard assessments in their reports", () => {
+    expect(generalPagesSource).toContain('function dashboardAssessmentReportPath(type: "FMEA" | "RULA", id: string)');
+    expect(generalPagesSource).toContain('dashboardAssessmentReportPath("FMEA", item.id)');
+    expect(generalPagesSource).toContain('dashboardAssessmentReportPath("RULA", item.id)');
+    expect(generalPagesSource).toContain('return `/${type.toLowerCase()}/${encodeURIComponent(id)}/report`');
+    expect(generalPagesSource).not.toContain('date: item.updatedAt, href: "/fmea"');
+    expect(generalPagesSource).not.toContain('date: item.updatedAt, href: "/rula"');
+  });
+
   it("visually separates each widget control and its ordering actions", () => {
     expect(generalPagesSource).toContain('className={`widget-control${removed ? " is-removed" : visible ? "" : " is-hidden"}`}');
     expect(generalPagesSource).toContain('className={`widget-visibility-toggle icon-only${visible ? "" : " is-hidden"}`}');

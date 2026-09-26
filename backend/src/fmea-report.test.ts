@@ -29,6 +29,12 @@ describe("FMEA report calculations", () => {
     expect(topFailureModes(rows, 3).map((item) => item.rowNumber)).toEqual([1, 2, 3]);
   });
 
+  it("can return the complete ranked list when the report is expanded", () => {
+    const extendedRows: FmeaReportRisk[] = [...rows, { rowNumber: 6, failureMode: "Additional", effect: "", cause: "", severity: 2, occurrence: 2, detection: 2, rpn: 8, riskLevel: "VERY_LOW", recommendation: null }];
+    expect(topFailureModes(extendedRows, extendedRows.length)).toHaveLength(6);
+    expect(topFailureModes(extendedRows).map((item) => item.rowNumber)).toEqual([1, 2, 3, 4, 5]);
+  });
+
   it("parses bounded editable report-detail drafts and guarantees a five-row fallback", () => {
     const parsed = parseFmeaReportDetailSuggestions(JSON.stringify({ rows: [
       { processStep: "مونتاژ", failureMode: "گیرکردن قطعه", effect: "توقف خط", cause: "تنظیم نامناسب", preventiveControls: "بازرسی", detectionControls: "چک‌لیست", recommendation: "تنظیم مجدد", severity: 7, occurrence: "3", detection: 4 },

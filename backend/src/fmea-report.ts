@@ -60,9 +60,10 @@ export function summariseFmea(items: FmeaReportRisk[]) {
 }
 
 export function topFailureModes<T extends FmeaReportRisk>(items: T[], limit = 5): T[] {
+  const boundedLimit = Math.min(items.length, Math.max(1, Math.trunc(limit)));
   return [...items]
     .sort((left, right) => (riskPriority[normaliseRiskLevel(right.riskLevel)] ?? 0) - (riskPriority[normaliseRiskLevel(left.riskLevel)] ?? 0) || right.rpn - left.rpn || right.severity - left.severity || right.occurrence - left.occurrence || left.rowNumber - right.rowNumber)
-    .slice(0, Math.max(1, Math.min(5, limit)));
+    .slice(0, boundedLimit);
 }
 
 function boundedDetailText(value: unknown, fallback = "") {
