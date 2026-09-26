@@ -2260,13 +2260,6 @@ function fmeaReportRiskDistributionEntries(distribution: FmeaReport["summary"]["
   return { total, entries };
 }
 
-function fmeaReportDonutGradient(distribution: FmeaReport["summary"]["distribution"]) {
-  const { total, entries } = fmeaReportRiskDistributionEntries(distribution);
-  if (!total) return "conic-gradient(#dfeaf0 0 100%)";
-  const segments = entries.map((entry) => `${fmeaReportRiskColors[entry.level]} ${entry.startPercentage}% ${entry.startPercentage + entry.percentage}%`);
-  return `conic-gradient(${segments.join(", ")})`;
-}
-
 function fmeaReportRiskLabelKey(level: FmeaReportRiskLevel) {
   return level === "VERY_LOW" ? "status.veryLow" : `status.${level.toLocaleLowerCase()}`;
 }
@@ -2286,7 +2279,7 @@ function FmeaRiskDistributionChart({ distribution, totalFailureModes, locale }: 
   const clearActive = () => setActiveLevel(null);
   const activeLabel = activeEntry ? t(fmeaReportRiskLabelKey(activeEntry.level)) : "";
   return <div className="fmea-risk-distribution-visual">
-    <div className={`fmea-risk-donut${activeEntry ? " has-active" : ""}`} style={{ background: fmeaReportDonutGradient(distribution) }} role="group" aria-label={t("report.riskDistribution")} onMouseLeave={clearActive}>
+    <div className={`fmea-risk-donut${activeEntry ? " has-active" : ""}`} role="group" aria-label={t("report.riskDistribution")} onMouseLeave={clearActive}>
       <svg className="fmea-risk-donut-svg" viewBox="0 0 120 120" role="img" aria-label={t("report.riskDistribution")}>
         <circle className="fmea-risk-donut-track" cx="60" cy="60" r="43" pathLength="100"/>
         {entries.filter((entry) => entry.count > 0).map((entry) => <circle key={entry.level} className={`fmea-risk-donut-segment${entry.level === activeLevel ? " is-active" : ""}`} cx="60" cy="60" r="43" pathLength="100" stroke={fmeaReportRiskColors[entry.level]} strokeDasharray={`${entry.percentage} ${100 - entry.percentage}`} strokeDashoffset={-entry.startPercentage} tabIndex={0} role="img" aria-label={`${t(fmeaReportRiskLabelKey(entry.level))}: ${entry.count.toLocaleString(numberLocale)}، ${formatFmeaRiskPercentage(entry.percentage, locale)} ${t("report.ofTotal")}`} onMouseEnter={() => activate(entry.level)} onFocus={() => activate(entry.level)} onBlur={clearActive}/>) }

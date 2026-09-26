@@ -919,5 +919,12 @@
     "validation": "PASS — backend report-export suite (6 tests), frontend UI rules (99 tests across 5 files), workspace typecheck, lint, production build, API contract verification (67 frontend paths / 119 backend routes), release verification (28 checks), project-state JSON validation, and git diff check. The production build emitted only the existing large-chunk warning; authenticated browser visual smoke, clean database migration, and deployment were NOT_RUN.",
     "migration": "NOT_APPLICABLE — report export query, document generation, frontend toolbar, and regression coverage only; existing report export paths remain compatible.",
     "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestFmeaRiskDonutBackgroundRemovalChange": {
+    "status": "PASS_LOCAL",
+    "scope": "پس‌زمینه conic-gradient از حلقه توزیع سطح ریسک حذف شد تا فقط قطعه‌های SVG نمودار نمایش داده شوند و ظاهر نمودار با نمونه‌های مرجع یکپارچه شود.",
+    "validation": "PASS — frontend UI rules (99 tests across 5 files), frontend typecheck, lint, production build, and git diff check. The build emitted only the existing large-chunk warning; authenticated browser visual smoke and deployment were NOT_RUN.",
+    "migration": "NOT_APPLICABLE — frontend chart markup, CSS, and regression coverage only.",
+    "deployment": "NOT_PERFORMED — source/local scope"
   }
 }

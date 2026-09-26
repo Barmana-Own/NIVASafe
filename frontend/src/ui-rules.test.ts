@@ -434,7 +434,7 @@ describe("FMEA risk register", () => {
     expect(assessmentPagesSource).toContain('name="fmeaItemId"');
     expect(assessmentPagesSource).toContain("function FmeaReportStepper({ onStepClick }");
     expect(assessmentPagesSource).toContain('className="fmea-report-dashboard-grid"');
-    expect(assessmentPagesSource).toContain("fmeaReportDonutGradient");
+    expect(assessmentPagesSource).not.toContain("fmeaReportDonutGradient");
     expect(assessmentPagesSource).toContain("function FmeaRiskDistributionChart");
     expect(assessmentPagesSource).toContain("formatFmeaRiskPercentage");
     expect(assessmentPagesSource).toContain("onMouseEnter={() => activate(entry.level)}");
@@ -444,6 +444,7 @@ describe("FMEA risk register", () => {
     expect(assessmentPagesSource).toContain("remainingActionCount");
     expect(assessmentPagesSource).toContain('fmea-risk-donut-label');
     expect(stylesSource).toContain(".fmea-risk-donut {");
+    expect(stylesSource).toContain("background: transparent");
     expect(stylesSource).toContain(".fmea-risk-donut-label {");
     expect(stylesSource).toContain(".fmea-risk-donut-svg {");
     expect(stylesSource).toContain(".fmea-risk-donut-segment.is-active");
