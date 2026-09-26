@@ -558,6 +558,9 @@ describe("RULA creation stepper", () => {
     expect(assessmentPagesSource).toContain('if (wizardStep === 3) { if (!validateRulaProcessInfo()) { setWizardStep(1); return; }');
     expect(assessmentPagesSource).toContain('function validateWizardStep() {\n    if (wizardStep === 1) return validateRulaProcessInfo();\n    setError("");\n    return true;\n  }');
     expect(assessmentPagesSource).toContain('if (hasUnconfirmedRulaResults(postureAnalysis, rulaBodySide)) { setError(t("assessment.confirmPostureResultsHint")); setWizardStep(2); return; }');
+    expect(assessmentPagesSource).toContain('navigate(`/rula/${created.data.id}/report`)');
+    expect(i18nSource).toContain('"assessment.calculateRegisterRula": "ثبت و نمایش گزارش"');
+    expect(i18nSource).toContain('"assessment.calculateRegisterRula": "Register and view report"');
     expect(stylesSource).toContain('.wizard-stepper > button:focus-visible');
     expect(assessmentPagesSource).toContain('<fieldset hidden={wizardStep !== 3}><legend>{t("assessment.rulaAssessmentReporting")}</legend>');
     expect(i18nSource).toContain('"assessment.rulaReviewScoring": "مرور و ثبت و امتیاز دهی"');
@@ -906,7 +909,10 @@ describe("production login safety", () => {
     expect(accountPagesSource).not.toContain('placeholder="••••••••"');
     expect(accountPagesSource).toContain('autoComplete="username"');
     expect(accountPagesSource).toContain('autoComplete="current-password"');
+    expect(accountPagesSource).toContain('placeholder={t("auth.loginUsernamePlaceholder")}');
     expect(accountPagesSource).toContain('placeholder={t("auth.passwordPlaceholder")}');
+    expect(i18nSource).toContain('"auth.loginUsernamePlaceholder": "نام کاربری را وارد کنید"');
+    expect(i18nSource).toContain('"auth.loginUsernamePlaceholder": "Enter your username"');
   });
 
   it("renders the localized public hero message", () => {
@@ -1104,6 +1110,8 @@ describe("assistant AI connectivity UX", () => {
     expect(stylesSource).toContain("inset-block-start: calc(100% + .5rem);");
     expect(stylesSource).toContain("inset-inline-start: auto; inset-inline-end: 0;");
     expect(stylesSource).not.toContain(".topbar .language-menu { position: fixed;");
+    expect(stylesSource).toContain(".login-toolbar .language-menu");
+    expect(stylesSource).toContain('[dir="rtl"] .login-toolbar .language-menu');
 
     expect(stylesSource).toContain("width: min(174px, calc(100vw - 1rem));");
     expect(stylesSource).toContain('[dir="rtl"] .language-picker .language-menu { inset-inline-start: 0; inset-inline-end: auto; }');
@@ -1435,6 +1443,13 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain('name={inputName}');
     expect(assessmentPagesSource).toContain('inputName="jobTitle"');
     expect(assessmentPagesSource).toContain('name="taskDescription"');
+    expect(assessmentPagesSource).toContain("function requestRulaTaskDescriptionSuggestion");
+    expect(assessmentPagesSource).toContain('mode: "description"');
+    expect(assessmentPagesSource).toContain('id="rula-task-description"');
+    expect(assessmentPagesSource).toContain('className="fmea-description-ai"');
+    expect(assessmentPagesSource).toContain('className="fmea-description-suggestion"');
+    expect(assessmentPagesSource).toContain("acceptRulaTaskDescriptionSuggestion");
+    expect(assessmentPagesSource).toContain("dismissRulaTaskDescriptionSuggestion");
     expect(assessmentPagesSource).toContain('name="postureDescription"');
     expect(assessmentPagesSource).toContain('name="durationPerOccurrence"');
     expect(assessmentPagesSource).toContain('name="repetitionsPerShift"');

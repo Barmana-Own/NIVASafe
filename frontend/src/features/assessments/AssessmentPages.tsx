@@ -73,6 +73,7 @@ const FMEA_PROCESS_SELECTION_MAX = 5;
 const FMEA_ASSISTANT_STORAGE_KEY = "nivasafe-fmea-assistant-enabled-v2";
 const FMEA_JOB_CATALOG_LIMIT = 200;
 const FMEA_JOB_VISIBLE_COUNT = 12;
+const RULA_TASK_DESCRIPTION_MAX = 500;
 const RULA_POSTURE_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 const RULA_POSTURE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
@@ -3014,6 +3015,10 @@ export function RulaPage() {
   const numberLocale = locale === "en" ? "en-US" : "fa-IR";
   const assessmentLabel = "RULA"; const draftKey = draftKeyFor("rula"); const state = useLoad<Rula[]>("/rula"); const projects = useLoad<Project[]>("/projects"); const [error, setError] = useState(""); const [draftNotice, setDraftNotice] = useState(""); const [draftSyncAvailable, setDraftSyncAvailable] = useState(false); const [history, setHistory] = useState<VersionRow[]>([]); const [historyAssessment, setHistoryAssessment] = useState(""); const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1); const [draft, setDraftState] = useState<DraftRecord | null>(() => readLocalDraft(draftKey)); const [selectedProjectId, setSelectedProjectId] = useState(() => draftValue(readLocalDraft(draftKey), "projectId")); const [lastSaved, setLastSaved] = useState<Date | null>(null); const [autosaveError, setAutosaveError] = useState(false); const [postureImage, setPostureImage] = useState<File | null>(null); const [postureImagePreview, setPostureImagePreview] = useState(""); const [postureImageError, setPostureImageError] = useState(""); const [postureImageAnalysisLoading, setPostureImageAnalysisLoading] = useState(false); const [postureImageAnalysisError, setPostureImageAnalysisError] = useState(""); const [postureDescription, setPostureDescription] = useState(() => String(draft?.postureDescription ?? "")); const [rulaTaskDescription, setRulaTaskDescription] = useState(() => String(draft?.taskDescription ?? "")); const [rulaBodySide, setRulaBodySide] = useState<"LEFT" | "RIGHT" | "BOTH">(() => draft?.bodySide === "LEFT" ? "LEFT" : draft?.bodySide === "BOTH" ? "BOTH" : "RIGHT"); const [submitting, setSubmitting] = useState(false); const [postureAnalysis, setPostureAnalysis] = useState<RulaPostureAnalysis>(() => parsePostureAnalysis(draft?.postureAnalysis)); const [rulaForce, setRulaForce] = useState(() => { const value = Number(draft?.force ?? 0); return Number.isInteger(value) && value >= 0 && value <= 3 ? value : 0; }); const [rulaMuscleUse, setRulaMuscleUse] = useState(() => rulaMuscleUseFromValue(draft?.muscleUse)); const [selectedRulaActions, setSelectedRulaActions] = useState<RulaCorrectionAction[]>([]); const dialog = useDialog(); const formRef = useRef<HTMLFormElement>(null); const postureImageInputRef = useRef<HTMLInputElement>(null); const postureImageAnalysisRequestId = useRef(0); const postureImageAnalysisContextKey = useRef(""); const saveTimer = useRef<number | null>(null); const draftWriteQueue = useRef<Promise<void>>(Promise.resolve());
    const [jobQuery, setJobQuery] = useState(() => draftValue(readLocalDraft(draftKey), "jobTitle"));
+   const [taskDescriptionAiLoading, setTaskDescriptionAiLoading] = useState(false);
+   const [taskDescriptionAiStatus, setTaskDescriptionAiStatus] = useState<ProcessSuggestionResponse["aiStatus"] | null>(null);
+   const [taskDescriptionAiError, setTaskDescriptionAiError] = useState("");
+   const [taskDescriptionSuggestion, setTaskDescriptionSuggestion] = useState("");
    const [selectedJobId, setSelectedJobId] = useState(() => draftValue(readLocalDraft(draftKey), "jobCatalogId"));
    const [selectedJob, setSelectedJob] = useState<JobCatalogEntry | null>(null);
    const [customJobSelected, setCustomJobSelected] = useState(() => draftBoolean(readLocalDraft(draftKey), "customJobSelected"));
@@ -3025,6 +3030,7 @@ export function RulaPage() {
    const [jobSearchOpen, setJobSearchOpen] = useState(false);
    const { orgId } = getSession();
    const rulaJobRequestId = useRef(0);
+   const taskDescriptionRequestId = useRef(0);
    const overview = useMemo(() => rulaOverview(state.data ?? []), [state.data]);
   const currentRulaInputs = useMemo(() => rulaInputsFromAnalysis(postureAnalysis, rulaForce, rulaMuscleUse), [postureAnalysis, rulaForce, rulaMuscleUse]);
   const currentRulaSideResults = useMemo(() => {
@@ -3201,12 +3207,20 @@ export function RulaPage() {
        if (formRef.current) queueDraft(formRef.current, draftKey, saveTimer, draftWriteQueue, (time) => { setAutosaveError(false); setLastSaved(time); }, () => setAutosaveError(true));
      }, 0);
    }
+   function clearRulaTaskDescriptionAssistant() {
+     taskDescriptionRequestId.current += 1;
+     setTaskDescriptionAiLoading(false);
+     setTaskDescriptionSuggestion("");
+     setTaskDescriptionAiError("");
+     setTaskDescriptionAiStatus(null);
+   }
    function selectRulaJob(job: JobCatalogEntry) {
      const title = localizedJobTitle(job, locale);
      setSelectedJob(job);
      setSelectedJobId(job.id);
      setCustomJobSelected(false);
      setJobQuery(title);
+     clearRulaTaskDescriptionAssistant();
      setJobSearchOpen(false);
      setJobSearchError("");
      setError("");
@@ -3222,6 +3236,7 @@ export function RulaPage() {
      setSelectedJobId("");
      setCustomJobSelected(true);
      setJobQuery(title);
+     clearRulaTaskDescriptionAssistant();
      setJobSearchOpen(false);
      setJobSearchError("");
      setError("");
@@ -3247,6 +3262,7 @@ export function RulaPage() {
    }
    function changeRulaJobQuery(value: string) {
      setJobQuery(value);
+     clearRulaTaskDescriptionAssistant();
      setJobSearchError("");
      if (selectedJob && value.trim() !== localizedJobTitle(selectedJob, locale)) {
        setSelectedJob(null);
@@ -3260,8 +3276,63 @@ export function RulaPage() {
      setSelectedJob(null);
      setSelectedJobId("");
      setCustomJobSelected(false);
+     clearRulaTaskDescriptionAssistant();
      setJobSearchError("");
      queueRulaJobDraft();
+   }
+   function changeRulaTaskDescription(value: string) {
+     taskDescriptionRequestId.current += 1;
+     setTaskDescriptionAiLoading(false);
+     setRulaTaskDescription(value);
+     setTaskDescriptionSuggestion("");
+     setTaskDescriptionAiError("");
+     setTaskDescriptionAiStatus(null);
+   }
+   async function requestRulaTaskDescriptionSuggestion() {
+     const title = jobQuery.trim();
+     if (title.length < 2) {
+       setError(t("assessment.jobActivityRequired"));
+       return;
+     }
+     const requestId = ++taskDescriptionRequestId.current;
+     setTaskDescriptionAiLoading(true);
+     setTaskDescriptionAiError("");
+     setTaskDescriptionSuggestion("");
+     try {
+       const result = await api<ProcessSuggestionResponse>("/fmea/process-suggestions", {
+         method: "POST",
+         body: JSON.stringify({ jobCatalogId: selectedJobId || null, jobTitle: title, department: null, activityDescription: rulaTaskDescription.trim() || null, locale, mode: "description" }),
+       });
+       if (requestId !== taskDescriptionRequestId.current) return;
+       setTaskDescriptionAiStatus(result.data.aiStatus);
+       const suggestion = result.data.descriptionSuggestion?.trim() ?? "";
+       if (suggestion && suggestion.length <= RULA_TASK_DESCRIPTION_MAX && countShortDescriptionSentences(suggestion) <= 2) {
+         setTaskDescriptionSuggestion(suggestion);
+         setTaskDescriptionAiError("");
+       } else setTaskDescriptionAiError(t("assessment.descriptionSuggestionUnavailable"));
+     } catch {
+       if (requestId === taskDescriptionRequestId.current) {
+         setTaskDescriptionAiStatus("unavailable");
+         setTaskDescriptionAiError(t("assessment.descriptionSuggestionUnavailable"));
+       }
+     } finally {
+       if (requestId === taskDescriptionRequestId.current) setTaskDescriptionAiLoading(false);
+     }
+   }
+   function acceptRulaTaskDescriptionSuggestion() {
+     const suggestion = taskDescriptionSuggestion.trim();
+     if (!suggestion) return;
+     setRulaTaskDescription(suggestion);
+     setTaskDescriptionSuggestion("");
+     setTaskDescriptionAiError("");
+     setError("");
+     window.setTimeout(() => {
+       queueRulaJobDraft();
+       document.getElementById("rula-task-description")?.focus();
+     }, 0);
+   }
+   function dismissRulaTaskDescriptionSuggestion() {
+     setTaskDescriptionSuggestion("");
    }
    function validateRulaProcessInfo() {
     const values = formRef.current ? new FormData(formRef.current) : null;
@@ -3323,7 +3394,13 @@ export function RulaPage() {
                   <label><span className="field-label-line">{t("assessment.bodySide")}</span><StyledSelect name="bodySide" value={rulaBodySide} onChange={(event) => changeBodySide(event.target.value as "LEFT" | "RIGHT" | "BOTH")}><option value="RIGHT">{t("assessment.right")}</option><option value="LEFT">{t("assessment.left")}</option><option value="BOTH">{t("assessment.bothSides")}</option></StyledSelect></label>
                   <JobCatalogSearch value={jobQuery} selectedJob={selectedJob} customSelected={customJobSelected} jobs={jobCatalog} loading={jobLoading} error={jobSearchError} open={jobSearchOpen} onOpenChange={setJobSearchOpen} onChange={changeRulaJobQuery} onSelect={selectRulaJob} onUseCustom={() => void useCustomRulaJobTitle()} onClear={clearRulaJob} inputName="jobTitle" inputId="rula-job-search" listId="rula-job-catalog-options" label={t("assessment.rulaJobTitle")} placeholder={t("assessment.jobActivityPlaceholder")} hint={t("assessment.jobCatalogHint")} className="rula-job-search"/>
                   <input type="hidden" name="jobCatalogId" value={selectedJobId} readOnly/><input type="hidden" name="customJobSelected" value={customJobSelected ? "true" : "false"} readOnly/>
-                  <label className="span-two"><span className="field-label-line"><span>{t("assessment.rulaTask")}</span><span className="required-label">{t("common.required")}</span></span><textarea name="taskDescription" value={rulaTaskDescription} maxLength={500} rows={2} placeholder={t("assessment.rulaTaskPlaceholder")} onChange={(event) => setRulaTaskDescription(event.target.value)} required/></label>
+                  <div className="fmea-description-field span-two">
+                    <div className="fmea-description-head"><label htmlFor="rula-task-description"><span className="fmea-field-label"><span>{t("assessment.rulaTask")}</span><span className="required-label">{t("common.required")}</span></span></label><button type="button" className="fmea-description-ai" onClick={() => void requestRulaTaskDescriptionSuggestion()} disabled={taskDescriptionAiLoading} aria-busy={taskDescriptionAiLoading}><Icon name="sparkles" size={15}/>{taskDescriptionAiLoading ? t("assessment.aiDescriptionWorking") : t(rulaTaskDescription.trim() ? "assessment.improveDescriptionWithAi" : "assessment.suggestDescriptionWithAi")}</button></div>
+                    <textarea id="rula-task-description" name="taskDescription" value={rulaTaskDescription} maxLength={RULA_TASK_DESCRIPTION_MAX} rows={2} required aria-describedby="rula-task-description-hint rula-task-description-error" placeholder={t("assessment.rulaTaskPlaceholder")} onChange={(event) => changeRulaTaskDescription(event.target.value)}/>
+                    <div className="fmea-description-meta"><span id="rula-task-description-hint" className="field-counter">{rulaTaskDescription.length.toLocaleString(numberLocale)} / {Number(RULA_TASK_DESCRIPTION_MAX).toLocaleString(numberLocale)}</span>{taskDescriptionAiStatus && !taskDescriptionAiLoading && <span className={`ai-status ${taskDescriptionAiStatus}`}>{t(`assessment.aiStatus.${taskDescriptionAiStatus}`)}</span>}</div>
+                    {taskDescriptionSuggestion && <div className="fmea-description-suggestion" role="status" aria-live="polite"><div className="fmea-description-suggestion-head"><div><strong>{t("assessment.descriptionSuggestionTitle")}</strong><small>{t("assessment.descriptionSuggestionHint")}</small></div><span className={`ai-status ${taskDescriptionAiStatus ?? "connected"}`}>{taskDescriptionAiStatus ? t(`assessment.aiStatus.${taskDescriptionAiStatus}`) : "AI"}</span></div><p>{taskDescriptionSuggestion}</p><div className="fmea-description-suggestion-actions"><button type="button" className="primary" onClick={acceptRulaTaskDescriptionSuggestion}>{t("assessment.useDescriptionSuggestion")}</button><button type="button" className="ghost" onClick={dismissRulaTaskDescriptionSuggestion}>{t("assessment.dismissDescriptionSuggestion")}</button></div></div>}
+                    {taskDescriptionAiError && <small id="rula-task-description-error" className="field-error fmea-description-assist-error" role="status">{taskDescriptionAiError}</small>}
+                  </div>
                  <label><span className="field-label-line"><span>{t("assessment.rulaDuration")}</span><span className="optional-label">{t("common.optional")}</span></span><span className="measure-control"><input name="durationPerOccurrence" type="number" min="0.1" max="1440" step="0.1" defaultValue={draftValue(draft, "durationPerOccurrence")} placeholder="15"/><StyledSelect name="durationUnit" defaultValue={draftValue(draft, "durationUnit", "MINUTE")}><option value="SECOND">{t("assessment.seconds")}</option><option value="MINUTE">{t("assessment.minutes")}</option><option value="HOUR">{t("assessment.hours")}</option></StyledSelect></span></label>
                  <label><span className="field-label-line"><span>{t("assessment.rulaRepetitions")}</span><span className="optional-label">{t("common.optional")}</span></span><input name="repetitionsPerShift" type="number" min="1" max="10000" step="1" defaultValue={draftValue(draft, "repetitionsPerShift")} placeholder="120"/></label>
                  <label><span className="field-label-line"><span>{t("assessment.rulaPostureHold")}</span><span className="optional-label">{t("common.optional")}</span></span><span className="measure-control"><input name="postureHoldDuration" type="number" min="0.1" max="1440" step="0.1" defaultValue={draftValue(draft, "postureHoldDuration")} placeholder="30"/><StyledSelect name="postureHoldUnit" defaultValue={draftValue(draft, "postureHoldUnit", "SECOND")}><option value="SECOND">{t("assessment.seconds")}</option><option value="MINUTE">{t("assessment.minutes")}</option><option value="HOUR">{t("assessment.hours")}</option></StyledSelect></span></label>
