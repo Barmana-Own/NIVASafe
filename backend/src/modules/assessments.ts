@@ -5,7 +5,7 @@ import { calculateRpn, calculateRula, riskLevel, type RulaInput } from "@nivasaf
 import { authenticate } from "../auth-guard.js";
 import { recordAIUsage } from "../ai-usage.js";
 import { audit, envelope, parse, prisma, requireOrg, requirePermission } from "../core.js";
-import { getAvailableAIProvider } from "../ai-provider.js";
+import { getAvailableAssessmentAIProvider } from "../ai-provider.js";
 import { allowedMime, hasValidFileSignature } from "./files.js";
 import { assertFmeaProcessItemSelectionLimit, buildDescriptionPrompt, buildFmeaImageAnalysisPrompt, buildFmeaProcessAutofillPrompt, buildFmeaRiskRowsPrompt, buildFmeaRiskSuggestionsPrompt, buildJobTitleSuggestionsPrompt, buildProcessSuggestionsPrompt, catalogSuggestions, cleanDescription, cleanJobTitleList, cleanTextList, defaultFmeaProcessStep, emptyFmeaRiskSuggestions, emptyProcessSuggestions, fallbackProcessDescription, FMEA_PROCESS_DESCRIPTION_MAX, FMEA_PROCESS_ITEM_LENGTH_MAX, FMEA_PROCESS_ITEM_MAX, FMEA_PROCESS_AI_SUGGESTION_MAX, FMEA_PROCESS_RISK_ROW_SUGGESTION_MAX, FMEA_PROCESS_SUGGESTION_MAX, isValidShortActivityDescription, limitProcessSuggestions, nextFmeaRowNumber, normalizeJobTitle, parseFmeaImageAnalysis, parseFmeaProcessAutofill, parseFmeaRiskRows, parseFmeaRiskScoreSuggestion, parseFmeaRiskSuggestions, parseJobTitleSuggestions, parseProcessSuggestions, type FmeaImageAnalysis, type FmeaProcessAutofill, type FmeaRiskRowSuggestion, type FmeaRiskScoreSuggestion, type FmeaRiskSuggestions, type ProcessSuggestions } from "../fmea-process.js";
 import { fallbackFmeaReportDetailSuggestions } from "../fmea-report.js";
@@ -272,7 +272,7 @@ export async function registerAssessmentRoutes(app: FastifyInstance) {
       activityDescription: multipartFieldValue(file.fields.activityDescription) ?? "",
       locale: multipartFieldValue(file.fields.locale) ?? "fa",
     });
-    const provider = getAvailableAIProvider("risk");
+    const provider = getAvailableAssessmentAIProvider();
     if (!provider.available() || !provider.supportsImages()) throw Object.assign(new Error("AI image analysis is not available"), { statusCode: 503, code: "FMEA_IMAGE_AI_UNAVAILABLE" });
     try {
       const result = await provider.analyze({
@@ -306,7 +306,7 @@ export async function registerAssessmentRoutes(app: FastifyInstance) {
       postureDescription: multipartFieldValue(file.fields.postureDescription) ?? "",
       locale: multipartFieldValue(file.fields.locale) ?? "fa",
     });
-    const provider = getAvailableAIProvider("risk");
+    const provider = getAvailableAssessmentAIProvider();
     if (!provider.available() || !provider.supportsImages()) throw Object.assign(new Error("AI image analysis is not available"), { statusCode: 503, code: "RULA_IMAGE_AI_UNAVAILABLE" });
     try {
       const result = await provider.analyze({
@@ -343,7 +343,7 @@ export async function registerAssessmentRoutes(app: FastifyInstance) {
       specialConditions: body.specialConditions?.trim() || "",
       suggestions: databaseSuggestions,
     });
-    const provider = getAvailableAIProvider("risk");
+    const provider = getAvailableAssessmentAIProvider();
     let aiSuggestions = emptyProcessSuggestions();
     let jobTitleSuggestions: string[] = [];
     let riskSuggestions = emptyFmeaRiskSuggestions();

@@ -835,5 +835,12 @@
     "validation": "PASS — 223 tests (114 backend, 97 frontend, 12 shared-domain), typecheck, lint, production build, API contract (67 frontend paths / 117 backend routes), release verification (28 checks), production dependency audit, security review and git diff check passed. Prisma validate passed; Prisma generate failed because Windows denied replacement of the locked query-engine DLL. Authenticated browser visual smoke was not run because local authenticated browser automation was unavailable.",
     "migration": "NOT_APPLICABLE — existing JSON posture analysis and current image-analysis endpoints were extended; no database schema change.",
     "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestAssessmentActionAiChange": {
+    "status": "PASS_LOCAL",
+    "scope": "FMEA and RULA report pages now request bounded corrective-action suggestions from the assessment AI route using the forced GPT-5-Mini model. Server-owned row/part mappings, HSE-safe structured parsing, registered-action de-duplication, deterministic non-empty localized fallbacks, provider/token audit records and retry/status UI are implemented; suggestions remain advisory until the user registers them.",
+    "validation": "PASS — pnpm test (232 tests: 123 backend, 97 frontend, 12 shared-domain), pnpm typecheck, pnpm lint, pnpm build, API contract verification (67 frontend paths / 119 backend routes), release verification (28 checks), Prisma validate, production dependency audit and git diff check. Authenticated browser visual smoke and clean migration execution were NOT_RUN; deployment was not performed.",
+    "migration": "NOT_APPLICABLE — no database schema change.",
+    "deployment": "NOT_PERFORMED — source/local scope"
   }
 }

@@ -53,6 +53,17 @@ describe("AI provider adapters", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
+  it("forces GPT-5-Mini for assessment AI even when the risk default differs", async () => {
+    process.env.AI_RISK_MODEL = "DeepSeek-V4-Flash";
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ choices: [{ message: { content: "Assessment answer" } }] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.doMock("./core.js", () => ({ prisma: { knowledgeDocument: { findMany: vi.fn().mockResolvedValue([]) } } }));
+    const { getAvailableAssessmentAIProvider } = await import("./ai-provider.js");
+    await getAvailableAssessmentAIProvider().analyze({ organizationId: "org", message: "assessment guidance" });
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(body.model).toBe("GPT-5-Mini");
+  });
+
   it("uses role-specific ArvanCloud models through the chat completions endpoint", async () => {
     const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ choices: [{ message: { content: "Role-aware answer" } }] }), { status: 200 })));
     vi.stubGlobal("fetch", fetchMock);

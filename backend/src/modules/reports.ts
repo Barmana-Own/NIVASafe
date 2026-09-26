@@ -8,11 +8,12 @@ import PDFDocument from "pdfkit";
 import { z } from "zod";
 import { authenticate } from "../auth-guard.js";
 import { recordAIUsage } from "../ai-usage.js";
-import { getAvailableAIProvider } from "../ai-provider.js";
+import { getAvailableAssessmentAIProvider } from "../ai-provider.js";
 import { audit, envelope, parse, prisma, requireOrg, requirePermission } from "../core.js";
 import { actionPriority, buildFmeaReportDetailSeedRows, buildFmeaReportDetailSuggestionsPrompt, ensureMinimumFmeaReportDetailSuggestions, fallbackFmeaReportDetailSuggestions, FMEA_REPORT_DETAIL_SUGGESTION_MAX, FMEA_REPORT_DETAIL_SUGGESTION_MIN, parseFmeaReportDetailSuggestions, summariseFmea, topFailureModes, type FmeaReportDetailSuggestion, type FmeaReportRisk } from "../fmea-report.js";
-import { buildRulaFactors, buildRulaSuggestions, parseRulaInputs, parseRulaPostureAnalysis, predictedRulaScore, rulaImpactSchema } from "../rula-report.js";
+import { buildRulaFactors, parseRulaInputs, parseRulaPostureAnalysis, predictedRulaScore, rulaImpactSchema } from "../rula-report.js";
 import { isRulaPostureAnalysisReviewed, type RulaPostureAnalysis } from "../rula-posture.js";
+import { buildFmeaActionSuggestionsPrompt, buildRulaActionSuggestionsPrompt, fallbackFmeaActionSuggestions, fallbackRulaActionSuggestions, mergeFmeaActionSuggestions, mergeRulaActionSuggestions, parseFmeaActionSuggestions, parseRulaActionSuggestions, type FmeaActionCandidate } from "../assessment-action-suggestions.js";
 
 const paramsSchema = z.object({ type: z.enum(["fmea", "rula"]), id: z.string().uuid(), format: z.enum(["pdf", "xlsx", "doc", "docx"]) });
 
@@ -230,6 +231,7 @@ export type RulaReportExport = {
 
 const reportIdParams = z.object({ id: z.string().uuid() });
 const fmeaReportDetailSuggestionBody = z.object({ locale: z.enum(["fa", "en"]).default("fa"), autoCreate: z.boolean().default(false) });
+const reportActionSuggestionBody = z.object({ locale: z.enum(["fa", "en"]).default("fa") });
 
 type FmeaReportPayload = {
   assessment: {
@@ -251,7 +253,7 @@ type FmeaReportPayload = {
   summary: ReturnType<typeof summariseFmea>;
   items: Array<FmeaReportRisk & { processStep: string; preventiveControls: string | null; detectionControls: string | null; correctiveActions: Array<{ id: string; title: string; status: string; priority: string }> }>;
   topFailureModes: Array<FmeaReportRisk & { processStep: string; preventiveControls: string | null; detectionControls: string | null; correctiveActions: Array<{ id: string; title: string; status: string; priority: string }>; actionPriority: string }>;
-  suggestedActions: Array<{ id: string; title: string; description: string; fmeaItemId: string; failureMode: string; priority: string; status: "SUGGESTED" }>;
+  suggestedActions: Array<{ id: string; title: string; description: string; fmeaItemId: string; failureMode: string; priority: string; status: "SUGGESTED"; source: "AI" | "FALLBACK" }>;
   actions: Array<{ id: string; title: string; description: string; priority: string; status: string; progress: number; assigneeName: string | null; dueDate: Date | null; fmeaItemId: string | null; fmeaItem: { rowNumber: number; failureMode: string } | null }>;
 };
 
@@ -262,24 +264,6 @@ function actionRulaImpact(action: { rulaImpact: unknown; beforeRisk: number | nu
     scoreReduction: Math.max(0, Math.min(6, (action.beforeRisk ?? score) - (action.afterRisk ?? score))),
     affectedParts: [],
   };
-}
-
-function rulaInputsForAnalysis(inputs: ReturnType<typeof parseRulaInputs>, analysis: RulaPostureAnalysis) {
-  return {
-    ...inputs,
-    upperArm: analysis.upperArm.score,
-    lowerArm: analysis.lowerArm.score,
-    wrist: analysis.wrist.score,
-    wristTwist: analysis.wristTwist.score,
-    neck: analysis.neck.score,
-    trunk: analysis.trunk.score,
-    legs: analysis.legs.score,
-  };
-}
-
-function buildRulaSuggestionsForAssessment(bodySide: "LEFT" | "RIGHT" | "BOTH", analysis: RulaPostureAnalysis, inputs: ReturnType<typeof parseRulaInputs>) {
-  if (bodySide !== "BOTH" || !analysis.sideAnalyses?.LEFT || !analysis.sideAnalyses.RIGHT) return buildRulaSuggestions(analysis, inputs, bodySide);
-  return (["RIGHT", "LEFT"] as const).flatMap((side) => buildRulaSuggestions(analysis.sideAnalyses![side]!, rulaInputsForAnalysis(inputs, analysis.sideAnalyses![side]!), side).map((suggestion) => ({ ...suggestion, id: `${suggestion.id}-${side.toLowerCase()}` })));
 }
 
 function isActiveRulaAction(status: string) {
@@ -388,7 +372,7 @@ async function loadRulaReport(id: string, organizationId: string) {
       postureAnalysis,
     },
     factors: buildRulaFactors(postureAnalysis),
-    suggestedActions: buildRulaSuggestionsForAssessment(bodySide, postureAnalysis, inputs),
+    suggestedActions: fallbackRulaActionSuggestions({ bodySide, analysis: postureAnalysis, inputs, locale: "fa" }),
     actions: rula.actions.map((action, index) => ({
       id: action.id,
       title: action.title,
@@ -447,7 +431,7 @@ async function loadFmeaReport(id: string, organizationId: string): Promise<FmeaR
     correctiveActionsByItem.set(action.fmeaItemId, current);
   }
   const reportItemsWithActions = items.map((item) => ({ ...item, actionPriority: actionPriority(item.riskLevel), correctiveActions: correctiveActionsByItem.get(item.id) ?? [] }));
-  const suggestedActions = items.filter((item) => Boolean(item.recommendation?.trim()) && !actions.some((action) => action.fmeaItemId === item.id && action.title.trim().toLowerCase() === item.recommendation!.trim().toLowerCase())).map((item) => ({ id: item.id, title: item.recommendation!.trim(), description: `${item.failureMode}: ${item.effect}`, fmeaItemId: item.id, failureMode: item.failureMode, priority: actionPriority(item.riskLevel), status: "SUGGESTED" as const }));
+  const suggestedActions = fallbackFmeaActionSuggestions({ candidates: items, existingActionTitles: actions.filter((action) => !["CANCELLED", "REJECTED"].includes(action.status)).map((action) => action.title), locale: "fa" });
   return {
     assessment: {
       id: fmea.id,
@@ -722,6 +706,58 @@ export async function registerReportRoutes(app: FastifyInstance) {
     const organizationId = requireOrg(request); requirePermission(request, "reports.generate"); const { id } = parse(reportIdParams, request.params);
     return envelope(await loadFmeaReport(id, organizationId));
   });
+  app.post("/api/v1/fmea/:id/report/action-suggestions", { preHandler: authenticate, config: { rateLimit: { max: 8, timeWindow: "1 minute" } } }, async (request) => {
+    const organizationId = requireOrg(request); requirePermission(request, "reports.generate");
+    const { id } = parse(reportIdParams, request.params);
+    const body = parse(reportActionSuggestionBody, request.body);
+    const report = await loadFmeaReport(id, organizationId);
+    const candidates: FmeaActionCandidate[] = report.items.flatMap((item) => {
+      if (!item.id) return [];
+      return [{
+        id: item.id,
+        rowNumber: item.rowNumber,
+        processStep: item.processStep,
+        failureMode: item.failureMode,
+        effect: item.effect,
+        cause: item.cause,
+        preventiveControls: item.preventiveControls,
+        detectionControls: item.detectionControls,
+        severity: item.severity,
+        occurrence: item.occurrence,
+        detection: item.detection,
+        rpn: item.rpn,
+        riskLevel: item.riskLevel,
+        recommendation: item.recommendation,
+      }];
+    });
+    const existingActionTitles = report.actions.filter((action) => !["CANCELLED", "REJECTED"].includes(action.status)).map((action) => action.title);
+    const fallback = fallbackFmeaActionSuggestions({ candidates, existingActionTitles, locale: body.locale });
+    const provider = getAvailableAssessmentAIProvider();
+    let suggestions = fallback;
+    let aiStatus: "connected" | "fallback" | "unavailable" = provider.name === "fallback" ? "fallback" : "connected";
+    let model: string | null = null;
+    try {
+      const result = await provider.analyze({
+        organizationId,
+        userId: request.actor!.userId,
+        message: buildFmeaActionSuggestionsPrompt({
+          processName: body.locale === "en" ? report.assessment.processName.en : report.assessment.processName.fa,
+          projectName: report.assessment.project.name,
+          locale: body.locale,
+          candidates,
+          existingActionTitles,
+        }),
+      });
+      suggestions = mergeFmeaActionSuggestions(parseFmeaActionSuggestions(result.answer, candidates), fallback, existingActionTitles);
+      aiStatus = result.usedFallback || result.provider === "fallback" ? "fallback" : "connected";
+      model = result.model ?? null;
+      await recordAIUsage(prisma, { organizationId, userId: request.actor!.userId, useCase: "risk", sourceType: "FMEA_ACTION_SUGGESTIONS", sourceId: request.id, result });
+    } catch {
+      aiStatus = "fallback";
+    }
+    await audit(request, "FMEA_REPORT_ACTION_SUGGESTIONS", "FmeaAssessment", id, { provider: provider.name, model, aiStatus, suggestionCount: suggestions.length });
+    return envelope({ suggestions, provider: provider.name, model, aiStatus, minimum: report.items.length ? 1 : 0 });
+  });
   app.post("/api/v1/fmea/:id/report/detail-suggestions", { preHandler: authenticate, config: { rateLimit: { max: 8, timeWindow: "1 minute" } } }, async (request) => {
     const organizationId = requireOrg(request); requirePermission(request, "reports.generate");
     const { id } = parse(reportIdParams, request.params);
@@ -743,7 +779,7 @@ export async function registerReportRoutes(app: FastifyInstance) {
     if (!fmea) throw Object.assign(new Error("Assessment not found"), { statusCode: 404, code: "NOT_FOUND" });
     const processName = body.locale === "en" ? fmea.jobCatalog?.titleEn ?? fmea.title : fmea.jobCatalog?.titleFa ?? fmea.title;
     const fallback = fallbackFmeaReportDetailSuggestions({ processName, projectName: fmea.project.name, locale: body.locale, limit: FMEA_REPORT_DETAIL_SUGGESTION_MAX });
-    const provider = getAvailableAIProvider("risk");
+    const provider = getAvailableAssessmentAIProvider();
     let suggestions = fallback;
     let aiStatus: "connected" | "fallback" | "unavailable" = provider.name === "fallback" ? "fallback" : "connected";
     try {
@@ -808,6 +844,52 @@ export async function registerReportRoutes(app: FastifyInstance) {
     if (!fmea) throw Object.assign(new Error("Assessment not found"), { statusCode: 404, code: "NOT_FOUND" });
     await prisma.auditLog.create({ data: { userId: request.actor?.userId, organizationId, action: "FMEA_REPORT_SAVED", entityType: "FmeaAssessment", entityId: id, metadata: { version: fmea.version }, requestId: request.id } });
     return envelope({ assessmentId: fmea.id, savedAt: new Date().toISOString() });
+  });
+  app.post("/api/v1/rula/:id/report/action-suggestions", { preHandler: authenticate, config: { rateLimit: { max: 8, timeWindow: "1 minute" } } }, async (request) => {
+    const organizationId = requireOrg(request); requirePermission(request, "reports.generate");
+    const { id } = parse(reportIdParams, request.params);
+    const body = parse(reportActionSuggestionBody, request.body);
+    const rula = await prisma.rulaAssessment.findFirst({
+      where: { id, organizationId },
+      include: { project: { select: { name: true } }, actions: { select: { title: true, status: true } } },
+    });
+    if (!rula) throw Object.assign(new Error("Assessment not found"), { statusCode: 404, code: "NOT_FOUND" });
+    const inputs = parseRulaInputs(rula.inputs);
+    const analysis = parseRulaPostureAnalysis(rula.postureAnalysis, inputs);
+    const bodySide: "LEFT" | "RIGHT" | "BOTH" = rula.bodySide === "LEFT" ? "LEFT" : rula.bodySide === "BOTH" ? "BOTH" : "RIGHT";
+    const activityInfo = rula.activityInfo && typeof rula.activityInfo === "object" && !Array.isArray(rula.activityInfo) ? rula.activityInfo as Record<string, unknown> : {};
+    const textField = (key: string) => typeof activityInfo[key] === "string" ? activityInfo[key] as string : null;
+    const fallback = fallbackRulaActionSuggestions({ bodySide, analysis, inputs, locale: body.locale });
+    const existingActionTitles = rula.actions.filter((action) => !["CANCELLED", "REJECTED"].includes(action.status)).map((action) => action.title);
+    const provider = getAvailableAssessmentAIProvider();
+    let suggestions = mergeRulaActionSuggestions([], fallback, existingActionTitles);
+    let aiStatus: "connected" | "fallback" | "unavailable" = provider.name === "fallback" ? "fallback" : "connected";
+    let model: string | null = null;
+    try {
+      const result = await provider.analyze({
+        organizationId,
+        userId: request.actor!.userId,
+        message: buildRulaActionSuggestionsPrompt({
+          bodySide,
+          score: rula.score,
+          actionLevel: rula.actionLevel,
+          inputs,
+          analysis,
+          jobTitle: textField("jobTitle"),
+          taskDescription: textField("taskDescription"),
+          postureDescription: textField("postureDescription"),
+          locale: body.locale,
+        }),
+      });
+      suggestions = mergeRulaActionSuggestions(parseRulaActionSuggestions(result.answer, bodySide), fallback, existingActionTitles);
+      aiStatus = result.usedFallback || result.provider === "fallback" ? "fallback" : "connected";
+      model = result.model ?? null;
+      await recordAIUsage(prisma, { organizationId, userId: request.actor!.userId, useCase: "risk", sourceType: "RULA_ACTION_SUGGESTIONS", sourceId: request.id, result });
+    } catch {
+      aiStatus = "fallback";
+    }
+    await audit(request, "RULA_REPORT_ACTION_SUGGESTIONS", "RulaAssessment", id, { provider: provider.name, model, aiStatus, suggestionCount: suggestions.length });
+    return envelope({ suggestions, provider: provider.name, model, aiStatus, minimum: 1 });
   });
   app.get("/api/v1/rula/:id/report", { preHandler: authenticate }, async (request) => {
     const organizationId = requireOrg(request); requirePermission(request, "reports.generate"); const { id } = parse(reportIdParams, request.params);

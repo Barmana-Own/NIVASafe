@@ -9,7 +9,7 @@ type AIUsageWriter = {
   };
 };
 
-export type AIUsageSourceType = "AI_ANALYSIS_REQUEST" | "CHAT_MESSAGE" | "FMEA_IMAGE_REVIEW" | "FMEA_REPORT_DETAILS" | "RULA_IMAGE_REVIEW";
+export type AIUsageSourceType = "AI_ANALYSIS_REQUEST" | "CHAT_MESSAGE" | "FMEA_IMAGE_REVIEW" | "FMEA_REPORT_DETAILS" | "FMEA_ACTION_SUGGESTIONS" | "RULA_IMAGE_REVIEW" | "RULA_ACTION_SUGGESTIONS";
 
 export type AIUsageRecordInput = {
   organizationId: string;

@@ -501,16 +501,22 @@ export function getAIProvider(name = getConfiguredAIProviderName("chat"), useCas
   return createProvider(name, useCase, modelOverride);
 }
 
-export function getAvailableAIProvider(useCase: AIUseCase = "chat") {
-  const selected = getAIProvider(getConfiguredAIProviderName(useCase), useCase);
+export const ASSESSMENT_AI_MODEL = "GPT-5-Mini";
+
+export function getAvailableAIProvider(useCase: AIUseCase = "chat", modelOverride?: string) {
+  const selected = getAIProvider(getConfiguredAIProviderName(useCase), useCase, modelOverride);
   const fallback = getAIProvider("fallback", useCase);
   const candidates: AIProvider[] = [selected];
   if (useCase === "risk" && process.env.AI_RISK_FALLBACK_MODEL?.trim()) {
     const fallbackProviderName = configuredRiskFallbackProviderName();
-    if (fallbackProviderName !== "fallback") candidates.push(getAIProvider(fallbackProviderName, useCase, process.env.AI_RISK_FALLBACK_MODEL));
+    if (fallbackProviderName !== "fallback") candidates.push(getAIProvider(fallbackProviderName, useCase, modelOverride ?? process.env.AI_RISK_FALLBACK_MODEL));
   }
   if (selected.name !== fallback.name) candidates.push(fallback);
   return new FailoverProvider(candidates);
+}
+
+export function getAvailableAssessmentAIProvider() {
+  return getAvailableAIProvider("risk", ASSESSMENT_AI_MODEL);
 }
 
 export function getRoutedAIProvider(useCase: AIUseCase, requestedProvider?: string) {

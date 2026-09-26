@@ -44,6 +44,7 @@ export type RulaCorrectionSuggestion = {
   scoreReduction: number;
   affectedParts: RulaPosturePart[];
   bodySide: "LEFT" | "RIGHT" | "BOTH";
+  source?: "AI" | "FALLBACK";
 };
 
 export function parseRulaInputs(value: unknown): RulaInput {
@@ -138,7 +139,25 @@ export function buildRulaSuggestions(analysis: RulaPostureAnalysis, inputs: Rula
       affectedParts: ["upperArm", "lowerArm", "wrist"],
     });
   }
-  return suggestions.map((suggestion) => ({ ...suggestion, bodySide }));
+  return suggestions.map((suggestion) => ({ ...suggestion, bodySide, source: "FALLBACK" as const }));
+}
+
+export function rulaInputsForAnalysis(inputs: RulaInput, analysis: RulaPostureAnalysis): RulaInput {
+  return {
+    ...inputs,
+    upperArm: analysis.upperArm.score,
+    lowerArm: analysis.lowerArm.score,
+    wrist: analysis.wrist.score,
+    wristTwist: analysis.wristTwist.score,
+    neck: analysis.neck.score,
+    trunk: analysis.trunk.score,
+    legs: analysis.legs.score,
+  };
+}
+
+export function buildRulaSuggestionsForAssessment(bodySide: "LEFT" | "RIGHT" | "BOTH", analysis: RulaPostureAnalysis, inputs: RulaInput) {
+  if (bodySide !== "BOTH" || !analysis.sideAnalyses?.LEFT || !analysis.sideAnalyses.RIGHT) return buildRulaSuggestions(analysis, inputs, bodySide);
+  return (["RIGHT", "LEFT"] as const).flatMap((side) => buildRulaSuggestions(analysis.sideAnalyses![side]!, rulaInputsForAnalysis(inputs, analysis.sideAnalyses![side]!), side).map((suggestion) => ({ ...suggestion, id: suggestion.id + "-" + side.toLowerCase() })));
 }
 
 export function predictedRulaScore(score: number, impacts: Array<Pick<RulaImpact, "scoreReduction"> | null | undefined>): number {

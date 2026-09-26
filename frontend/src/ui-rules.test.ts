@@ -366,6 +366,9 @@ describe("FMEA risk register", () => {
     expect(assessmentPagesSource).toContain('function FmeaReportItemDetailsDialog');
     expect(assessmentPagesSource).not.toContain('<FmeaReportDetailSuggestionsPanel');
     expect(assessmentPagesSource).toContain("report/detail-suggestions");
+    expect(assessmentPagesSource).toContain("report/action-suggestions");
+    expect(reportsSource).toContain("FMEA_REPORT_ACTION_SUGGESTIONS");
+    expect(reportsSource).toContain("RULA_REPORT_ACTION_SUGGESTIONS");
     expect(assessmentPagesSource).toContain('const autoCreate = report.items.length === 0 && !report.assessment.fmeaDetailSeeded && canEditActions;');
     expect(assessmentPagesSource).toContain('result.data.createdCount');
     expect(assessmentPagesSource).toContain('t("report.aiDetailsAutoAdded", { count: result.data.createdCount })');
