@@ -234,6 +234,9 @@ describe("FMEA process information", () => {
     expect(assessmentPagesSource).toContain('void requestFmeaProcessImageAnalysis(processImages)');
     expect(assessmentPagesSource).toContain('uploadFmeaProcessImages');
     expect(assessmentPagesSource).toContain("new Map(analyses.flatMap((analysis) => analysis.riskRows)");
+    expect(assessmentPagesSource).toContain("fmea-image-annotation-layer");
+    expect(assessmentPagesSource).toContain("fmea-image-annotation-label");
+    expect(stylesSource).toContain(".fmea-image-annotation-label {");
     expect(assessmentPagesSource).not.toContain('t("assessment.fmeaProcessImageAnalyze")');
     expect(assessmentPagesSource).not.toContain('t("assessment.fmeaProcessImageHint")');
     expect(assessmentPagesSource).not.toContain('className="fmea-process-image-analysis"');
@@ -1433,7 +1436,8 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain('postureImageInvalidType');
     expect(assessmentPagesSource).toContain('registeringRula');
     expect(assessmentPagesSource).toContain('entityType", "RulaAssessment"');
-    expect(assessmentPagesSource).toContain("rulaAiImageFuture");
+    expect(assessmentPagesSource).toContain("rulaAiImageActive");
+    expect(assessmentPagesSource).toContain("rulaImageAnalysisWorking");
     expect(assessmentPagesSource).toContain('activityInfo: rulaActivityInfoFromForm(values)');
   });
 
@@ -1459,7 +1463,15 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain("invalidPostureScore");
     expect(assessmentPagesSource).toContain("RULA Score =");
     expect(assessmentPagesSource).toContain("rula-skeleton-overlay");
-    expect(assessmentPagesSource).toContain('const calloutKeys: RulaPosturePart[] = ["upperArm", "lowerArm", "wrist", "neck", "trunk"]');
+    expect(assessmentPagesSource).toContain("RulaPostureOverlayLayer");
+    expect(assessmentPagesSource).toContain('preserveAspectRatio="none"');
+    expect(assessmentPagesSource).toContain("rulaOverlaySegments");
+    expect(assessmentPagesSource).toContain("Math.max(2, annotation.y * 100)");
+    expect(assessmentPagesSource).toContain("if (!processImages.length) return;");
+    expect(assessmentPagesSource).toContain("...(side === \"RIGHT\" ? nextSides.RIGHT! : {})");
+    expect(assessmentPagesSource).toContain('"/rula/posture-image-analysis"');
+    expect(assessmentPagesSource).not.toContain("joint-neck");
+    expect(assessmentPagesSource).not.toContain("bone-neck");
     expect(assessmentPagesSource).toContain('name="postureAnalysis"');
     expect(assessmentPagesSource).toContain("setPostureAnalysis");
   });

@@ -10,6 +10,7 @@ import { allowedMime, hasValidFileSignature } from "./files.js";
 import { assertFmeaProcessItemSelectionLimit, buildDescriptionPrompt, buildFmeaImageAnalysisPrompt, buildFmeaProcessAutofillPrompt, buildFmeaRiskRowsPrompt, buildFmeaRiskSuggestionsPrompt, buildJobTitleSuggestionsPrompt, buildProcessSuggestionsPrompt, catalogSuggestions, cleanDescription, cleanJobTitleList, cleanTextList, defaultFmeaProcessStep, emptyFmeaRiskSuggestions, emptyProcessSuggestions, fallbackProcessDescription, FMEA_PROCESS_DESCRIPTION_MAX, FMEA_PROCESS_ITEM_LENGTH_MAX, FMEA_PROCESS_ITEM_MAX, FMEA_PROCESS_AI_SUGGESTION_MAX, FMEA_PROCESS_RISK_ROW_SUGGESTION_MAX, FMEA_PROCESS_SUGGESTION_MAX, isValidShortActivityDescription, limitProcessSuggestions, nextFmeaRowNumber, normalizeJobTitle, parseFmeaImageAnalysis, parseFmeaProcessAutofill, parseFmeaRiskRows, parseFmeaRiskScoreSuggestion, parseFmeaRiskSuggestions, parseJobTitleSuggestions, parseProcessSuggestions, type FmeaImageAnalysis, type FmeaProcessAutofill, type FmeaRiskRowSuggestion, type FmeaRiskScoreSuggestion, type FmeaRiskSuggestions, type ProcessSuggestions } from "../fmea-process.js";
 import { fallbackFmeaReportDetailSuggestions } from "../fmea-report.js";
 import { resolveRulaTitle, rulaActivityInfoSchema, rulaBodySideSchema, rulaTitleSchema } from "../rula-process.js";
+import { buildRulaPostureImageAnalysisPrompt, parseRulaPostureImageAnalysis, rulaPostureImageAnalysisResponseSchema, type RulaPostureImageAnalysis } from "../rula-posture-ai.js";
 import { assertRulaPostureAnalysisReviewed, isRulaPostureAnalysisReviewed, rulaPostureAnalysisSchema, type RulaPostureAnalysis } from "../rula-posture.js";
 
 const idParam = z.object({ id: z.string().uuid() });
@@ -21,6 +22,7 @@ const requiredProcessDescription = z.string().trim().min(2).max(FMEA_PROCESS_DES
 const processItemList = z.array(z.string().trim().min(1).max(FMEA_PROCESS_ITEM_LENGTH_MAX)).max(FMEA_PROCESS_ITEM_MAX).optional();
 const fmeaBody = z.object({ projectId: z.string().uuid(), activityId: nullableUuid, jobCatalogId: nullableUuid, title: z.string().trim().min(2).max(180), code: z.string().trim().min(2).max(80), scope: z.string().trim().max(500).nullable().optional(), department: nullableDepartment, activityDescription: requiredProcessDescription, equipment: processItemList, materials: processItemList, existingControls: processItemList, specialConditions: nullableProcessText, status: z.enum(["DRAFT", "IN_PROGRESS", "UNDER_REVIEW", "APPROVED", "REJECTED", "ARCHIVED"]).optional() });
 const fmeaImageAnalysisBody = z.object({ jobTitle: z.string().trim().min(2).max(180), department: nullableDepartment, activityDescription: nullableProcessText, locale: z.enum(["fa", "en"]).default("fa") });
+const rulaPostureImageAnalysisBody = z.object({ bodySide: rulaBodySideSchema, jobTitle: z.string().trim().min(2).max(180), taskDescription: z.string().trim().min(2).max(500), postureDescription: z.string().trim().max(1000).default(""), locale: z.enum(["fa", "en"]).default("fa") });
 const nullableRiskText = z.preprocess((value) => value === "" ? null : value, z.string().trim().max(1_200).nullable().optional());
 const requiredRiskText = z.string().trim().min(1).max(1_200);
 const fmeaItemBody = z.object({ rowNumber: z.number().int().positive(), processStep: requiredRiskText, failureMode: requiredRiskText, effect: requiredRiskText, cause: requiredRiskText, preventiveControls: nullableRiskText, detectionControls: nullableRiskText, severity: z.number().int().min(1).max(10), occurrence: z.number().int().min(1).max(10), detection: z.number().int().min(1).max(10), recommendation: nullableRiskText, residualSeverity: z.number().int().min(1).max(10).nullable().optional(), residualOccurrence: z.number().int().min(1).max(10).nullable().optional(), residualDetection: z.number().int().min(1).max(10).nullable().optional() });
@@ -286,6 +288,42 @@ export async function registerAssessmentRoutes(app: FastifyInstance) {
     } catch {
       await audit(request, "FMEA_PROCESS_IMAGE_ANALYSIS_FAILED", "FmeaProcessImage", undefined, { provider: provider.name, mimeType: file.mimetype, size: buffer.length });
       throw Object.assign(new Error("AI image analysis is temporarily unavailable"), { statusCode: 503, code: "FMEA_IMAGE_AI_UNAVAILABLE" });
+    }
+  });
+  app.post("/api/v1/rula/posture-image-analysis", { preHandler: authenticate, config: { rateLimit: { max: 8, timeWindow: "1 minute" } } }, async (request) => {
+    const organizationId = requireOrg(request);
+    requirePermission(request, "assessments.create");
+    const file = await request.file();
+    if (!file) throw Object.assign(new Error("File is required"), { statusCode: 400, code: "FILE_REQUIRED" });
+    if (!allowedMime.has(file.mimetype) || !file.mimetype.startsWith("image/")) throw Object.assign(new Error("Unsupported image type"), { statusCode: 415, code: "RULA_IMAGE_TYPE_NOT_ALLOWED" });
+    const buffer = await file.toBuffer();
+    if (buffer.length > FMEA_PROCESS_IMAGE_MAX_BYTES) throw Object.assign(new Error("حجم تصویر نباید بیشتر از ۱۰ مگابایت باشد."), { statusCode: 413, code: "RULA_IMAGE_SIZE_LIMIT" });
+    if (!hasValidFileSignature(buffer, file.mimetype)) throw Object.assign(new Error("محتوای تصویر با نوع اعلام‌شده مطابقت ندارد."), { statusCode: 415, code: "RULA_IMAGE_SIGNATURE_INVALID" });
+    const body = parse(rulaPostureImageAnalysisBody, {
+      bodySide: multipartFieldValue(file.fields.bodySide) ?? "RIGHT",
+      jobTitle: multipartFieldValue(file.fields.jobTitle) ?? "",
+      taskDescription: multipartFieldValue(file.fields.taskDescription) ?? "",
+      postureDescription: multipartFieldValue(file.fields.postureDescription) ?? "",
+      locale: multipartFieldValue(file.fields.locale) ?? "fa",
+    });
+    const provider = getAvailableAIProvider("risk");
+    if (!provider.available() || !provider.supportsImages()) throw Object.assign(new Error("AI image analysis is not available"), { statusCode: 503, code: "RULA_IMAGE_AI_UNAVAILABLE" });
+    try {
+      const result = await provider.analyze({
+        organizationId,
+        userId: request.actor!.userId,
+        message: buildRulaPostureImageAnalysisPrompt(body),
+        image: { mimeType: file.mimetype, base64: buffer.toString("base64") },
+      });
+      const analysis: RulaPostureImageAnalysis = parseRulaPostureImageAnalysis(result.answer, body.bodySide);
+      await recordAIUsage(prisma, { organizationId, userId: request.actor!.userId, useCase: "risk", sourceType: "RULA_IMAGE_REVIEW", sourceId: request.id, result });
+      const overlayPointCount = Object.values(analysis.sides).reduce((count, side) => count + (side ? Object.keys(side.overlay.points).length : 0), 0);
+      await audit(request, "RULA_POSTURE_IMAGE_ANALYSIS", "RulaPostureImage", undefined, { provider: result.provider, aiStatus: result.usedFallback ? "fallback" : "connected", mimeType: file.mimetype, size: buffer.length, overlayPointCount });
+      const response = rulaPostureImageAnalysisResponseSchema.parse({ ...analysis, provider: result.provider, aiStatus: result.usedFallback ? "fallback" : "connected" });
+      return envelope(response);
+    } catch {
+      await audit(request, "RULA_POSTURE_IMAGE_ANALYSIS_FAILED", "RulaPostureImage", undefined, { provider: provider.name, mimeType: file.mimetype, size: buffer.length });
+      throw Object.assign(new Error("AI image analysis is temporarily unavailable"), { statusCode: 503, code: "RULA_IMAGE_AI_UNAVAILABLE" });
     }
   });
   app.post("/api/v1/fmea/process-suggestions", { preHandler: authenticate, config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (request) => {

@@ -828,5 +828,12 @@
     "backend/src/organization-rules.test.ts",
     "backend/src/server.ts",
     ".env.production.example"
-  ]
+  ],
+  "latestAiImageAnalysisChange": {
+    "status": "PASS_LOCAL",
+    "scope": "FMEA process images now preserve original aspect ratio and display validated normalized hazard boxes and labels per image. RULA posture photos now use image-relative anatomical landmarks, confidence-gated skeleton segments, missing-landmark gaps, deterministic angle-to-score suggestions, and independent BOTH-side overlays. All AI results remain advisory and require assessor confirmation.",
+    "validation": "PASS — 223 tests (114 backend, 97 frontend, 12 shared-domain), typecheck, lint, production build, API contract (67 frontend paths / 117 backend routes), release verification (28 checks), production dependency audit, security review and git diff check passed. Prisma validate passed; Prisma generate failed because Windows denied replacement of the locked query-engine DLL. Authenticated browser visual smoke was not run because local authenticated browser automation was unavailable.",
+    "migration": "NOT_APPLICABLE — existing JSON posture analysis and current image-analysis endpoints were extended; no database schema change.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  }
 }

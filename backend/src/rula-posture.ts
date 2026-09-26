@@ -7,6 +7,30 @@ export const rulaBodySideKeys = ["LEFT", "RIGHT"] as const;
 export const rulaBodySideResultSchema = z.enum(rulaBodySideKeys);
 export type RulaBodySideResult = typeof rulaBodySideKeys[number];
 
+export const rulaOverlayPointKeys = ["head", "neck", "shoulder", "elbow", "wrist", "hip", "knee", "ankle"] as const;
+export type RulaOverlayPointKey = typeof rulaOverlayPointKeys[number];
+
+export const rulaPostureImagePointSchema = z.object({
+  x: z.number().refine(Number.isFinite).min(0).max(1),
+  y: z.number().refine(Number.isFinite).min(0).max(1),
+  confidence: z.number().refine(Number.isFinite).min(0).max(1).nullable().optional(),
+}).strict();
+
+export const rulaPostureImageOverlaySchema = z.object({
+  points: z.object({
+    head: rulaPostureImagePointSchema.optional(),
+    neck: rulaPostureImagePointSchema.optional(),
+    shoulder: rulaPostureImagePointSchema.optional(),
+    elbow: rulaPostureImagePointSchema.optional(),
+    wrist: rulaPostureImagePointSchema.optional(),
+    hip: rulaPostureImagePointSchema.optional(),
+    knee: rulaPostureImagePointSchema.optional(),
+    ankle: rulaPostureImagePointSchema.optional(),
+  }).strict(),
+}).strict();
+
+export type RulaPostureImageOverlay = z.infer<typeof rulaPostureImageOverlaySchema>;
+
 const angle = z.number().refine(Number.isFinite).min(-180).max(180).nullable();
 const postureResult = z.object({
   angle,
@@ -35,6 +59,12 @@ export const rulaPostureAnalysisSchema = rulaSinglePostureAnalysisSchema.extend(
   sideAnalyses: z.object({
     LEFT: rulaSinglePostureAnalysisSchema.optional(),
     RIGHT: rulaSinglePostureAnalysisSchema.optional(),
+  }).strict().optional(),
+  /** Vision landmarks are advisory and remain normalized to the original image. */
+  imageOverlay: rulaPostureImageOverlaySchema.optional(),
+  sideImageOverlays: z.object({
+    LEFT: rulaPostureImageOverlaySchema.optional(),
+    RIGHT: rulaPostureImageOverlaySchema.optional(),
   }).strict().optional(),
 }).strict();
 

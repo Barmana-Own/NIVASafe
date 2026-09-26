@@ -123,6 +123,7 @@ function tokenUsageReferences(row: ActivityLogDbRow): TokenUsageReference[] {
   };
   if (row.action === "AI_REQUEST_CREATE" || row.action === "AI_REQUEST_RETRY") add("AI_ANALYSIS_REQUEST", row.entityId);
   if (row.action === "FMEA_PROCESS_IMAGE_ANALYSIS" || row.action === "FMEA_PROCESS_IMAGE_ANALYSIS_FAILED") add("FMEA_IMAGE_REVIEW", row.requestId);
+  if (row.action === "RULA_POSTURE_IMAGE_ANALYSIS" || row.action === "RULA_POSTURE_IMAGE_ANALYSIS_FAILED") add("RULA_IMAGE_REVIEW", row.requestId);
   if (row.action === "FMEA_REPORT_DETAIL_SUGGESTIONS") add("FMEA_REPORT_DETAILS", row.requestId);
   if (row.action === "CHAT_MESSAGE") add("CHAT_MESSAGE", row.entityId);
   return references;

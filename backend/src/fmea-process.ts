@@ -57,9 +57,19 @@ export type FmeaImageRiskRow = {
   detection: number;
 };
 
+export type FmeaImageAnnotation = {
+  label: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  confidence: number;
+};
+
 export type FmeaImageAnalysis = {
   summary: string;
   riskRows: FmeaImageRiskRow[];
+  annotations: FmeaImageAnnotation[];
 };
 
 const categories: ProcessSuggestionCategory[] = ["equipment", "materials", "controls"];
@@ -232,9 +242,31 @@ function parseImageRiskScore(value: unknown) {
   return Number.isInteger(score) && score >= 1 && score <= 10 ? score : null;
 }
 
+function parseImageCoordinate(value: unknown) {
+  const candidate = typeof value === "string" ? normaliseScoreText(value).trim() : value;
+  const parsed = typeof candidate === "number" ? candidate : Number(candidate);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseFmeaImageAnnotations(value: unknown): FmeaImageAnnotation[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 16).flatMap((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const annotation = item as Record<string, unknown>;
+    const label = cleanText(annotation.label, 160).replace(/\s+/gu, " ");
+    const x = parseImageCoordinate(annotation.x);
+    const y = parseImageCoordinate(annotation.y);
+    const width = parseImageCoordinate(annotation.width);
+    const height = parseImageCoordinate(annotation.height);
+    const confidence = parseImageCoordinate(annotation.confidence);
+    if (!label || x === null || y === null || width === null || height === null || confidence === null || confidence < 0.5 || x < 0 || y < 0 || width <= 0 || height <= 0 || x + width > 1 || y + height > 1) return [];
+    return [{ label, x, y, width, height, confidence }];
+  }).slice(0, 8);
+}
+
 export function parseFmeaImageAnalysis(answer: string): FmeaImageAnalysis {
   const parsed = parseJsonObject(answer);
-  if (!parsed) return { summary: "", riskRows: [] };
+  if (!parsed) return { summary: "", riskRows: [], annotations: [] };
   const rawRiskRows = parsed.riskRows ?? parsed.rows;
   const riskRows = Array.isArray(rawRiskRows)
     ? rawRiskRows.slice(0, 6).flatMap((value) => {
@@ -260,7 +292,7 @@ export function parseFmeaImageAnalysis(answer: string): FmeaImageAnalysis {
       }];
     })
     : [];
-  return { summary: cleanText(parsed.summary, 500), riskRows };
+  return { summary: cleanText(parsed.summary, 500), riskRows, annotations: parseFmeaImageAnnotations(parsed.annotations) };
 }
 
 export function cleanDescription(value: unknown) {
@@ -421,9 +453,11 @@ export function buildFmeaImageAnalysisPrompt(input: { jobTitle: string; departme
   const language = input.locale === "en" ? "English" : "Persian";
   return [
     "NIVASAFE_FMEA_IMAGE_REVIEW",
-    'Return only valid JSON: {"summary":"","riskRows":[{"failureMode":"","effect":"","cause":"","preventiveControls":"","detectionControls":"","recommendation":"","severity":1,"occurrence":1,"detection":1}]}.',
-    `Use ${language}. Return at most 6 concise risk rows. Every text field must be no more than 1,200 characters. Do not add markdown or explanations outside JSON.`,
-    "Inspect the supplied workplace or process image for plausible FMEA hazards. Use only visible evidence and the supplied process context; do not identify people or infer unsupported facts. If the image is unclear, state that in summary and return an empty riskRows array.",
+    'Return only valid JSON: {"summary":"","riskRows":[{"failureMode":"","effect":"","cause":"","preventiveControls":"","detectionControls":"","recommendation":"","severity":1,"occurrence":1,"detection":1}],"annotations":[{"label":"","x":0,"y":0,"width":0,"height":0,"confidence":0}]}.',
+    `Use ${language}. Return at most 6 concise risk rows and at most 8 annotations. Every text field must be no more than 1,200 characters. Do not add markdown or explanations outside JSON.`,
+    "Inspect the supplied workplace or process image for plausible FMEA hazards. Use only visible evidence and the supplied process context; do not identify people or infer unsupported facts. If the image is unclear, state that in summary and return an empty riskRows array and annotations array.",
+    "For annotations, return only visibly supported hazard regions. Use normalized x, y, width and height values from 0 to 1 relative to the original image, with x/y as the top-left corner. Confidence must be from 0 to 1. Do not annotate anything that is not visibly supported. Do not use a cropped-preview coordinate system.",
+
     "Each score is advisory: severity, occurrence, and detection are integers from 1 to 10 and must be reviewed by a qualified HSE assessor before use. Do not invent exact measurements, equipment specifications, or organization-specific controls.",
     `Job/process: ${cleanText(input.jobTitle, 180) || "-"}`,
     `Department/unit: ${cleanText(input.department, 120) || "-"}`,

@@ -105,8 +105,29 @@ describe("FMEA process-information helpers", () => {
       { failureMode: "ریزش بار", effect: "آسیب به تجهیزات", cause: "چیدمان نامناسب", preventiveControls: "بازرسی", detectionControls: "نظارت", recommendation: "ایمن‌سازی", severity: 8, occurrence: "3", detection: 4 },
       { failureMode: "نامعتبر", effect: "", cause: "علت", severity: 11, occurrence: 2, detection: 2 },
     ] }));
-    expect(result).toEqual({ summary: "یک خطر قابل بررسی دیده شد.", riskRows: [{ failureMode: "ریزش بار", effect: "آسیب به تجهیزات", cause: "چیدمان نامناسب", preventiveControls: "بازرسی", detectionControls: "نظارت", recommendation: "ایمن‌سازی", severity: 8, occurrence: 3, detection: 4 }] });
+    expect(result).toEqual({ summary: "یک خطر قابل بررسی دیده شد.", riskRows: [{ failureMode: "ریزش بار", effect: "آسیب به تجهیزات", cause: "چیدمان نامناسب", preventiveControls: "بازرسی", detectionControls: "نظارت", recommendation: "ایمن‌سازی", severity: 8, occurrence: 3, detection: 4 }], annotations: [] });
     expect(parseFmeaImageAnalysis(JSON.stringify({ summary: "خطر بررسی شد.", rows: [{ failureMode: "لغزش", effect: "آسیب", cause: "سطح خیس", preventiveControls: "نظافت", detectionControls: "بازرسی", recommendation: "خشک‌کردن", severity: "۸", occurrence: "٧", detection: "2" }] }))).toMatchObject({ riskRows: [{ severity: 8, occurrence: 7, detection: 2 }] });
+  });
+
+
+  it("keeps only valid image-relative FMEA hazard annotations", () => {
+    const result = parseFmeaImageAnalysis(JSON.stringify({
+      summary: "دو ناحیه قابل بررسی دیده شد.",
+      annotations: [
+        { label: "سطح خیس", x: 0.1, y: 0.2, width: 0.35, height: 0.2, confidence: 0.91 },
+        { label: "ناحیه نامعتبر", x: 0.8, y: 0.2, width: 0.4, height: 0.2, confidence: 0.9 },
+        { label: "اعتماد پایین", x: 0.2, y: 0.3, width: 0.1, height: 0.1, confidence: 0.2 },
+      ],
+    }));
+
+    expect(result.annotations).toEqual([{ label: "سطح خیس", x: 0.1, y: 0.2, width: 0.35, height: 0.2, confidence: 0.91 }]);
+  });
+
+  it("requires normalized image coordinates in the FMEA vision prompt", () => {
+    const prompt = buildFmeaImageAnalysisPrompt({ jobTitle: "اپراتور خط", department: "تولید", activityDescription: "بازرسی تجهیزات", locale: "fa" });
+    expect(prompt).toContain('\"annotations\"');
+    expect(prompt).toContain("normalized x, y, width and height values from 0 to 1");
+    expect(prompt).toContain("Do not annotate anything that is not visibly supported");
   });
 
   it("keeps AI prompts bounded and explicit about review before registration", () => {
