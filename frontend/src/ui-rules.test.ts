@@ -151,7 +151,8 @@ describe("corrective-action body-side scope", () => {
     expect(generalPagesSource).toContain('name="bodySide"');
     expect(generalPagesSource).toContain('name="rulaId"');
     expect(generalPagesSource).toContain('t("actions.bodySideColumn")');
-    expect(assessmentPagesSource).toContain('bodySide: action.bodySide ?? payload.bodySide');
+    expect(assessmentPagesSource).toContain('const actionSide = action.bodySide ?? payload.bodySide');
+    expect(assessmentPagesSource).toContain('bodySide: actionSide');
     expect(assessmentPagesSource).toContain("buildLocalRulaSuggestionsForAssessment");
     expect(assessmentPagesSource).toContain('t("assessment.rulaActionBodySide")');
     expect(reportsSource).toContain('Body side: ${action.bodySide ?? "-"}');
@@ -1511,10 +1512,14 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain("rulaPredictionEstimate");
     expect(assessmentPagesSource).toContain("rulaPredictedNote");
     expect(assessmentPagesSource).toContain("rulaImpact");
+    expect(assessmentPagesSource).toContain("sideResults");
+    expect(assessmentPagesSource).toContain("rula-report-side-tabs");
+    expect(assessmentPagesSource).toContain("downloadPdf");
+    expect(assessmentPagesSource).not.toContain("const suggestions = resultReady ? rawSuggestions : [];");
     expect(assessmentPagesSource).toContain('status !== "CANCELLED" && action.status !== "REJECTED"');
     expect(assessmentPagesSource).toContain("priority-${action.priority.toLowerCase()}");
     expect(assessmentPagesSource).toContain('body: JSON.stringify({ status: "CANCELLED" })');
-    expect(reportsSource).toContain("predictedScore: predictedRulaScore(rula.score, activeImpacts)");
+    expect(reportsSource).toContain("const predictedScore = sideResults");
     expect(reportsSource).toContain('"Prediction note"');
     expect(reportsSource).toContain('"Related factors"');
     expect(stylesSource).toContain(".rula-prediction-card");

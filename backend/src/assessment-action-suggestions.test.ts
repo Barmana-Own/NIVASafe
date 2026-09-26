@@ -82,6 +82,40 @@ describe("assessment corrective action suggestions", () => {
     expect(prompt).toContain("qualified HSE");
   });
 
+  it("includes independent side posture data in BOTH prompts and preserves AI side labels", () => {
+    const inputs = { upperArm: 2, lowerArm: 1, wrist: 1, wristTwist: 1, neck: 3, trunk: 2, legs: 1, muscleUse: true, force: 1 };
+    const baseAnalysis = fallbackRulaPostureAnalysis(inputs);
+    const analysis = {
+      ...baseAnalysis,
+      sideAnalyses: {
+        LEFT: { ...baseAnalysis, neck: { ...baseAnalysis.neck, score: 4 } },
+        RIGHT: { ...baseAnalysis, neck: { ...baseAnalysis.neck, score: 2 } },
+      },
+    };
+    const prompt = buildRulaActionSuggestionsPrompt({
+      bodySide: "BOTH",
+      score: 5,
+      actionLevel: 3,
+      inputs,
+      analysis,
+      sideResults: { LEFT: { score: 6, actionLevel: 3 }, RIGHT: { score: 3, actionLevel: 2 } },
+      jobTitle: "اپراتور خط",
+      taskDescription: "کنترل دستگاه",
+      locale: "fa",
+    });
+    expect(prompt).toContain("Independent side scores");
+    expect(prompt).toContain('"LEFT"');
+    expect(prompt).toContain('"RIGHT"');
+    expect(prompt).toContain("keep the two sides independent");
+
+    const suggestions = parseRulaActionSuggestions(JSON.stringify({
+      actions: [
+        { title: "اقدام سمت چپ", priority: "HIGH", scoreReduction: 2, affectedParts: ["neck"], bodySide: "LEFT" },
+        { title: "اقدام سمت راست", priority: "MEDIUM", scoreReduction: 1, affectedParts: ["trunk"], bodySide: "RIGHT" },
+      ],
+    }), "BOTH");
+    expect(suggestions.map((suggestion) => suggestion.bodySide)).toEqual(["LEFT", "RIGHT"]);
+  });
   it("sanitizes RULA action parts and bounds score reduction", () => {
     const suggestions = parseRulaActionSuggestions(JSON.stringify({
       actions: [{

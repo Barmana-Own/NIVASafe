@@ -195,6 +195,7 @@ export type RulaActionSuggestionContext = {
   taskDescription?: string | null;
   postureDescription?: string | null;
   locale: "fa" | "en";
+  sideResults?: Partial<Record<"LEFT" | "RIGHT", { score: number; actionLevel: number }>>;
 };
 
 function isRulaPart(value: unknown): value is RulaPosturePart {
@@ -211,20 +212,25 @@ function rulaSuggestionKey(suggestion: RulaCorrectionSuggestion) {
 
 export function buildRulaActionSuggestionsPrompt(input: RulaActionSuggestionContext) {
   const language = input.locale === "en" ? "English" : "Persian";
-  const posture = rulaPosturePartKeys.map((key) => ({ part: key, angle: input.analysis[key].angle, score: input.analysis[key].score, detected: input.analysis[key].detected }));
+  const postureForSide = (analysis: RulaPostureAnalysis) => rulaPosturePartKeys.map((key) => ({ part: key, angle: analysis[key].angle, score: analysis[key].score, detected: analysis[key].detected }));
+  const posture = input.bodySide === "BOTH" && input.analysis.sideAnalyses?.LEFT && input.analysis.sideAnalyses.RIGHT
+    ? { LEFT: postureForSide(input.analysis.sideAnalyses.LEFT), RIGHT: postureForSide(input.analysis.sideAnalyses.RIGHT) }
+    : postureForSide(input.analysis);
+  const sideScores = input.sideResults ? Object.fromEntries(Object.entries(input.sideResults).map(([side, value]) => [side, { score: value.score, actionLevel: value.actionLevel }])) : undefined;
   return [
     "NIVASAFE_RULA_ACTION_SUGGESTIONS",
-    'Return only valid JSON: {"actions":[{"titleFa":"","titleEn":"","descriptionFa":"","descriptionEn":"","priority":"HIGH","scoreReduction":1,"affectedParts":["trunk"]}]}.' ,
-    `Use ${language} as the primary language and provide both Persian and English fields. Return at most ${MAX_ACTION_SUGGESTIONS} distinct actions.`,
+    'Return only valid JSON: {"actions":[{"titleFa":"","titleEn":"","descriptionFa":"","descriptionEn":"","priority":"HIGH","scoreReduction":1,"affectedParts":["trunk"],"bodySide":"RIGHT"}]}.',
+    "For a BOTH-side assessment, return bodySide as LEFT, RIGHT, or BOTH for every action and keep the two sides independent; do not merge the sides into one score.",
+    "Use " + language + " as the primary language and provide both Persian and English fields. Return at most " + MAX_ACTION_SUGGESTIONS + " distinct actions.",
     "Use the supplied posture and task data only. Do not invent angles, loads, equipment, diagnoses, or incidents. scoreReduction is an advisory estimate from 0 to 6 and must not be presented as a guaranteed result.",
     "Prioritize elimination, substitution, engineering controls, administrative controls, then PPE. A qualified HSE professional must review the suggestions.",
-    `Body side: ${input.bodySide}; current RULA score: ${input.score}; action level: ${input.actionLevel}`,
-    `Job: ${rulaText(input.jobTitle, "-")}; Task: ${rulaText(input.taskDescription, "-")}; Posture description: ${rulaText(input.postureDescription, "-")}`,
-    `Inputs: ${JSON.stringify(input.inputs)}`,
-    `Posture analysis: ${JSON.stringify(posture)}`,
+    "Body side: " + input.bodySide + "; current RULA score: " + input.score + "; action level: " + input.actionLevel,
+    "Independent side scores: " + JSON.stringify(sideScores ?? {}),
+    "Job: " + rulaText(input.jobTitle, "-") + "; Task: " + rulaText(input.taskDescription, "-") + "; Posture description: " + rulaText(input.postureDescription, "-"),
+    "Inputs: " + JSON.stringify(input.inputs),
+    "Posture analysis by side: " + JSON.stringify(posture),
   ].join("\n");
 }
-
 export function parseRulaActionSuggestions(answer: string, bodySide: "LEFT" | "RIGHT" | "BOTH"): RulaCorrectionSuggestion[] {
   const parsed = parseJsonObject(answer);
   const rows = parsed?.actions;
@@ -241,8 +247,12 @@ export function parseRulaActionSuggestions(answer: string, bodySide: "LEFT" | "R
     const affectedParts = Array.isArray(row.affectedParts) ? row.affectedParts.filter(isRulaPart).slice(0, 7) : [];
     const rawReduction = typeof row.scoreReduction === "number" ? row.scoreReduction : Number(row.scoreReduction);
     const scoreReduction = Number.isFinite(rawReduction) ? Math.max(0, Math.min(6, Math.trunc(rawReduction))) : 0;
+    const candidateBodySide = typeof row.bodySide === "string" ? row.bodySide.trim().toUpperCase() : "";
+    const resolvedBodySide = bodySide === "BOTH"
+      ? (candidateBodySide === "LEFT" || candidateBodySide === "RIGHT" || candidateBodySide === "BOTH" ? candidateBodySide : "BOTH")
+      : bodySide;
     const suggestion: RulaCorrectionSuggestion = {
-      id: `rula-ai-${bodySide.toLowerCase()}-${index + 1}`,
+      id: "rula-ai-" + resolvedBodySide.toLowerCase() + "-" + (index + 1),
       titleFa: titleFa || titleEn,
       titleEn: titleEn || titleFa,
       descriptionFa,
@@ -250,7 +260,7 @@ export function parseRulaActionSuggestions(answer: string, bodySide: "LEFT" | "R
       priority: priority(row.priority, "MEDIUM") as RulaActionPriority,
       scoreReduction,
       affectedParts,
-      bodySide,
+      bodySide: resolvedBodySide,
       source: "AI",
     };
     const key = rulaSuggestionKey(suggestion);

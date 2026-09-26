@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildRulaFactors, buildRulaSuggestions, fallbackRulaPostureAnalysis, predictedRulaScore, rulaImpactSchema, type RulaImpact } from "./rula-report.js";
+import { buildRulaFactors, buildRulaSideResults, buildRulaSuggestions, buildRulaSuggestionsForAssessment, fallbackRulaPostureAnalysis, predictedRulaScore, primaryRulaResult, rulaImpactSchema, type RulaImpact } from "./rula-report.js";
 import { rulaPosturePartKeys, type RulaPostureAnalysis } from "./rula-posture.js";
 
 const analysis: RulaPostureAnalysis = {
@@ -35,6 +35,24 @@ describe("RULA results report", () => {
     expect(buildRulaSuggestions(analysis, inputs, "LEFT").every((suggestion) => suggestion.bodySide === "LEFT")).toBe(true);
   });
 
+  it("calculates both body sides independently and exposes side-scoped suggestions", () => {
+    const bothAnalysis: RulaPostureAnalysis = {
+      ...analysis,
+      sideAnalyses: {
+        LEFT: { ...analysis, neck: { ...analysis.neck, score: 5 }, trunk: { ...analysis.trunk, score: 4 } },
+        RIGHT: { ...analysis, upperArm: { ...analysis.upperArm, score: 1 }, neck: { ...analysis.neck, score: 1 }, trunk: { ...analysis.trunk, score: 1 } },
+      },
+    };
+    const sideResults = buildRulaSideResults("BOTH", inputs, bothAnalysis);
+    expect(sideResults).toBeDefined();
+    expect(sideResults!.LEFT.score).not.toBe(sideResults!.RIGHT.score);
+    expect(primaryRulaResult(sideResults!).score).toBe(Math.max(sideResults!.LEFT.score, sideResults!.RIGHT.score));
+
+    const suggestions = buildRulaSuggestionsForAssessment("BOTH", bothAnalysis, inputs);
+    expect(suggestions.some((suggestion) => suggestion.bodySide === "LEFT")).toBe(true);
+    expect(suggestions.some((suggestion) => suggestion.bodySide === "RIGHT")).toBe(true);
+    expect(new Set(suggestions.map((suggestion) => suggestion.id)).size).toBe(suggestions.length);
+  });
   it("updates the predicted score from selected actions and keeps it bounded", () => {
     const impacts: RulaImpact[] = [{ scoreReduction: 2, affectedParts: ["neck", "trunk"] }, { scoreReduction: 1, affectedParts: ["upperArm"] }];
     expect(predictedRulaScore(6, impacts)).toBe(3);

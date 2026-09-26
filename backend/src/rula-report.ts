@@ -1,4 +1,4 @@
-import { calculateRula, type RulaInput } from "@nivasafe/domain";
+import { calculateRula, type RulaInput, type RulaResult } from "@nivasafe/domain";
 import { z } from "zod";
 import { isRulaPostureResultReviewed, rulaPostureAnalysisSchema, rulaPosturePartKeys, type RulaPostureAnalysis, type RulaPosturePart } from "./rula-posture.js";
 
@@ -22,6 +22,7 @@ export const rulaImpactSchema = z.object({
 
 export type RulaImpact = z.infer<typeof rulaImpactSchema>;
 export type RulaActionPriority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+export type RulaSideResults = Record<"LEFT" | "RIGHT", RulaResult>;
 
 export type RulaReportFactor = {
   key: Extract<RulaPosturePart, "neck" | "upperArm" | "trunk">;
@@ -155,6 +156,26 @@ export function rulaInputsForAnalysis(inputs: RulaInput, analysis: RulaPostureAn
   };
 }
 
+export function buildRulaSideResults(bodySide: "LEFT" | "RIGHT" | "BOTH", inputs: RulaInput, analysis?: RulaPostureAnalysis): RulaSideResults | undefined {
+  if (bodySide !== "BOTH" || !analysis?.sideAnalyses?.LEFT || !analysis.sideAnalyses.RIGHT) return undefined;
+  return {
+    LEFT: calculateRula(rulaInputsForAnalysis(inputs, analysis.sideAnalyses.LEFT)),
+    RIGHT: calculateRula(rulaInputsForAnalysis(inputs, analysis.sideAnalyses.RIGHT)),
+  };
+}
+
+export function primaryRulaResult(sideResults: RulaSideResults): RulaResult {
+  const primary = sideResults.RIGHT.score >= sideResults.LEFT.score ? sideResults.RIGHT : sideResults.LEFT;
+  return {
+    ...primary,
+    explanation: "LEFT: " + sideResults.LEFT.explanation + "; RIGHT: " + sideResults.RIGHT.explanation,
+    trace: [
+      "LEFT — " + sideResults.LEFT.trace.join(" | "),
+      "RIGHT — " + sideResults.RIGHT.trace.join(" | "),
+      "Final score: " + primary.score,
+    ],
+  };
+}
 export function buildRulaSuggestionsForAssessment(bodySide: "LEFT" | "RIGHT" | "BOTH", analysis: RulaPostureAnalysis, inputs: RulaInput) {
   if (bodySide !== "BOTH" || !analysis.sideAnalyses?.LEFT || !analysis.sideAnalyses.RIGHT) return buildRulaSuggestions(analysis, inputs, bodySide);
   return (["RIGHT", "LEFT"] as const).flatMap((side) => buildRulaSuggestions(analysis.sideAnalyses![side]!, rulaInputsForAnalysis(inputs, analysis.sideAnalyses![side]!), side).map((suggestion) => ({ ...suggestion, id: suggestion.id + "-" + side.toLowerCase() })));

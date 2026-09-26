@@ -71,6 +71,33 @@ describe("assessment report exports", () => {
     expect(incompleteWorkbook.getWorksheet("RULA")?.getColumn(2).values).not.toContain(6);
   });
 
+  it("exports independent RULA side scores and factors for BOTH assessments", async () => {
+    const bothReport: RulaReportExport = {
+      ...rulaReport,
+      assessment: { ...rula, bodySide: "BOTH" },
+      sideResults: {
+        RIGHT: { score: 6, actionLevel: 3, explanation: "Right needs review", groupA: 4, groupB: 5, adjustment: 1, trace: ["RIGHT score: 6"] },
+        LEFT: { score: 3, actionLevel: 2, explanation: "Left is acceptable", groupA: 2, groupB: 3, adjustment: 0, trace: ["LEFT score: 3"] },
+      },
+      sideFactors: {
+        RIGHT: [{ key: "neck", angle: 32, detected: true, score: 4, impactPercent: 57, impactLevel: "HIGH", source: "AI", reviewed: true }],
+        LEFT: [{ key: "neck", angle: 12, detected: true, score: 2, impactPercent: 40, impactLevel: "LOW", source: "AI", reviewed: true }],
+      },
+    };
+    const workbookBuffer = await buildRulaWorkbook(rula, bothReport);
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(workbookBuffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    expect(workbook.getWorksheet("RULA")?.getColumn(1).values).toContain("RIGHT score");
+    expect(workbook.getWorksheet("RULA")?.getColumn(1).values).toContain("LEFT score");
+    expect(workbook.getWorksheet("FACTORS")?.getColumn(1).values).toContain("RIGHT / neck");
+    expect(workbook.getWorksheet("FACTORS")?.getColumn(1).values).toContain("LEFT / neck");
+
+    const wordBuffer = await buildRulaWordDocument(rula, bothReport);
+    const archive = await JSZip.loadAsync(wordBuffer);
+    const document = await archive.file("word/document.xml")!.async("string");
+    expect(document).toContain("RIGHT score");
+    expect(document).toContain("LEFT score");
+  });
   it("keeps RULA Excel and Word exports aligned", async () => {
     const parityReport: RulaReportExport = {
       ...rulaReport,

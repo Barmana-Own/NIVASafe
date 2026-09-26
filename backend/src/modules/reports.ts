@@ -11,7 +11,7 @@ import { recordAIUsage } from "../ai-usage.js";
 import { getAvailableAssessmentAIProvider } from "../ai-provider.js";
 import { audit, envelope, parse, prisma, requireOrg, requirePermission } from "../core.js";
 import { actionPriority, buildFmeaReportDetailSeedRows, buildFmeaReportDetailSuggestionsPrompt, ensureMinimumFmeaReportDetailSuggestions, fallbackFmeaReportDetailSuggestions, FMEA_REPORT_DETAIL_SUGGESTION_MAX, FMEA_REPORT_DETAIL_SUGGESTION_MIN, parseFmeaReportDetailSuggestions, summariseFmea, topFailureModes, type FmeaReportDetailSuggestion, type FmeaReportRisk } from "../fmea-report.js";
-import { buildRulaFactors, parseRulaInputs, parseRulaPostureAnalysis, predictedRulaScore, rulaImpactSchema } from "../rula-report.js";
+import { buildRulaFactors, buildRulaSideResults, parseRulaInputs, parseRulaPostureAnalysis, predictedRulaScore, rulaImpactSchema, type RulaReportFactor, type RulaSideResults } from "../rula-report.js";
 import { isRulaPostureAnalysisReviewed, type RulaPostureAnalysis } from "../rula-posture.js";
 import { buildFmeaActionSuggestionsPrompt, buildRulaActionSuggestionsPrompt, fallbackFmeaActionSuggestions, fallbackRulaActionSuggestions, mergeFmeaActionSuggestions, mergeRulaActionSuggestions, parseFmeaActionSuggestions, parseRulaActionSuggestions, type FmeaActionCandidate } from "../assessment-action-suggestions.js";
 
@@ -220,10 +220,14 @@ export type FmeaReportPdfData = FmeaReportData & {
   evaluationTeam: Array<{ displayName: string; email: string; role: string }>;
 };
 
-export type RulaReportData = { title: string; project: { name: string }; score: number; actionLevel: number; explanation: string; status?: string; bodySide?: "LEFT" | "RIGHT" | "BOTH"; postureReviewComplete?: boolean };
+export type RulaSideResultData = Pick<RulaSideResults["LEFT"], "score" | "actionLevel" | "explanation" | "groupA" | "groupB" | "adjustment" | "trace">;
+export type RulaSideFactorData = Pick<RulaReportFactor, "key" | "angle" | "detected" | "score" | "impactPercent" | "impactLevel" | "source" | "reviewed">;
+export type RulaReportData = { title: string; project: { name: string }; score: number; actionLevel: number; explanation: string; status?: string; bodySide?: "LEFT" | "RIGHT" | "BOTH"; postureReviewComplete?: boolean; sideResults?: Partial<Record<"LEFT" | "RIGHT", RulaSideResultData>>; sideFactors?: Partial<Record<"LEFT" | "RIGHT", RulaSideFactorData[]>> };
 export type RulaReportExport = {
   assessment: { title: string; project: { name: string }; score: number; actionLevel: number; explanation: string; status?: string; bodySide?: "LEFT" | "RIGHT" | "BOTH"; postureReviewComplete?: boolean };
   factors: Array<{ key: string; angle: number | null; detected?: boolean; score: number; impactPercent: number; impactLevel: string; source?: string; reviewed?: boolean }>;
+  sideResults?: Partial<Record<"LEFT" | "RIGHT", RulaSideResultData>>;
+  sideFactors?: Partial<Record<"LEFT" | "RIGHT", RulaSideFactorData[]>>;
   actions: Array<{ title: string; description: string; priority: string; status?: string; bodySide?: "LEFT" | "RIGHT" | "BOTH" | null; rulaImpact?: { scoreReduction: number; affectedParts?: string[] } | null }>;
   predictedScore: number;
   predictedNote?: string;
@@ -354,8 +358,21 @@ async function loadRulaReport(id: string, organizationId: string) {
   const inputs = parseRulaInputs(rula.inputs);
   const postureAnalysis = parseRulaPostureAnalysis(rula.postureAnalysis, inputs);
   const bodySide: "LEFT" | "RIGHT" | "BOTH" = rula.bodySide === "LEFT" ? "LEFT" : rula.bodySide === "BOTH" ? "BOTH" : "RIGHT";
+  const sideResults = buildRulaSideResults(bodySide, inputs, postureAnalysis);
+  const sideFactors = bodySide === "BOTH" && postureAnalysis.sideAnalyses?.LEFT && postureAnalysis.sideAnalyses.RIGHT
+    ? { LEFT: buildRulaFactors(postureAnalysis.sideAnalyses.LEFT), RIGHT: buildRulaFactors(postureAnalysis.sideAnalyses.RIGHT) }
+    : undefined;
   const impacts = rula.actions.map((action) => actionRulaImpact(action, rula.score));
   const activeImpacts = rula.actions.flatMap((action, index) => isActiveRulaAction(action.status) ? [impacts[index]] : []);
+  const activeActions = rula.actions.flatMap((action, index) => isActiveRulaAction(action.status) && impacts[index] ? [{ action, impact: impacts[index] }] : []);
+  const predictedScore = sideResults
+    ? Math.max(...(["RIGHT", "LEFT"] as const).map((side) => predictedRulaScore(
+      sideResults[side].score,
+      activeActions
+        .filter(({ action }) => !action.bodySide || action.bodySide === "BOTH" || action.bodySide === side)
+        .map(({ impact }) => impact),
+    )))
+    : predictedRulaScore(rula.score, activeImpacts);
   return {
     assessment: {
       id: rula.id,
@@ -372,6 +389,8 @@ async function loadRulaReport(id: string, organizationId: string) {
       postureAnalysis,
     },
     factors: buildRulaFactors(postureAnalysis),
+    sideResults,
+    sideFactors,
     suggestedActions: fallbackRulaActionSuggestions({ bodySide, analysis: postureAnalysis, inputs, locale: "fa" }),
     actions: rula.actions.map((action, index) => ({
       id: action.id,
@@ -387,7 +406,7 @@ async function loadRulaReport(id: string, organizationId: string) {
       bodySide: (action.bodySide === "LEFT" || action.bodySide === "BOTH" ? action.bodySide : action.bodySide === "RIGHT" ? "RIGHT" : null) as "LEFT" | "RIGHT" | "BOTH" | null,
       rulaImpact: impacts[index],
     })),
-    predictedScore: predictedRulaScore(rula.score, activeImpacts),
+    predictedScore,
   };
 }
 
@@ -563,18 +582,38 @@ function buildRulaExportModel(data: RulaReportData, report?: RulaReportExport): 
 
   if (report && reviewComplete) {
     summaryRows.push(["Predicted score (estimate)", report.predictedScore], ["Prediction note", predictionNote]);
+    if (assessment.bodySide === "BOTH" && report.sideResults) {
+      for (const side of ["RIGHT", "LEFT"] as const) {
+        const sideResult = report.sideResults[side];
+        if (sideResult) summaryRows.push([side + " score", sideResult.score], [side + " action level", sideResult.actionLevel]);
+      }
+    }
   }
 
   const factorRows: ExportRow[] = report?.factors.map((factor) => [
     factor.key,
-    factor.angle === null ? "-" : `${factor.angle}°`,
+    factor.angle === null ? "-" : String(factor.angle) + "°",
     factor.detected === undefined ? "-" : factor.detected ? "Yes" : "No",
     factor.reviewed === false ? "-" : factor.score,
-    factor.reviewed === false ? "-" : `${factor.impactPercent}%`,
+    factor.reviewed === false ? "-" : String(factor.impactPercent) + "%",
     factor.reviewed === false ? "Manual review required" : factor.impactLevel,
     factor.source ?? "-",
   ]) ?? [];
-
+  if (report?.sideFactors) {
+    for (const side of ["RIGHT", "LEFT"] as const) {
+      for (const factor of report.sideFactors[side] ?? []) {
+        factorRows.push([
+          side + " / " + factor.key,
+          factor.angle === null ? "-" : String(factor.angle) + "°",
+          factor.detected ? "Yes" : "No",
+          factor.reviewed === false ? "-" : factor.score,
+          factor.reviewed === false ? "-" : String(factor.impactPercent) + "%",
+          factor.reviewed === false ? "Manual review required" : factor.impactLevel,
+          factor.source ?? "-",
+        ]);
+      }
+    }
+  }
   const actionRows: ExportRow[] = report?.actions.map((action) => [
     action.title,
     action.description,
@@ -859,6 +898,7 @@ export async function registerReportRoutes(app: FastifyInstance) {
     const bodySide: "LEFT" | "RIGHT" | "BOTH" = rula.bodySide === "LEFT" ? "LEFT" : rula.bodySide === "BOTH" ? "BOTH" : "RIGHT";
     const activityInfo = rula.activityInfo && typeof rula.activityInfo === "object" && !Array.isArray(rula.activityInfo) ? rula.activityInfo as Record<string, unknown> : {};
     const textField = (key: string) => typeof activityInfo[key] === "string" ? activityInfo[key] as string : null;
+    const sideResults = buildRulaSideResults(bodySide, inputs, analysis);
     const fallback = fallbackRulaActionSuggestions({ bodySide, analysis, inputs, locale: body.locale });
     const existingActionTitles = rula.actions.filter((action) => !["CANCELLED", "REJECTED"].includes(action.status)).map((action) => action.title);
     const provider = getAvailableAssessmentAIProvider();
@@ -875,6 +915,7 @@ export async function registerReportRoutes(app: FastifyInstance) {
           actionLevel: rula.actionLevel,
           inputs,
           analysis,
+          sideResults,
           jobTitle: textField("jobTitle"),
           taskDescription: textField("taskDescription"),
           postureDescription: textField("postureDescription"),
@@ -916,6 +957,17 @@ export async function registerReportRoutes(app: FastifyInstance) {
         `Status: ${rula.status ?? "-"}`,
         `Explanation: ${reviewComplete ? rula.explanation : "Posture review is incomplete; the final RULA score is unavailable."}`,
         ...(rulaReport && reviewComplete ? [
+           ...(rulaReport.sideResults && rula.bodySide === "BOTH" ? [
+            "Independent side results:",
+            ...(["RIGHT", "LEFT"] as const).flatMap((side) => {
+              const sideResult = rulaReport.sideResults?.[side];
+              return sideResult ? [side + " score: " + sideResult.score, side + " action level: " + sideResult.actionLevel] : [];
+            }),
+          ] : []),
+          ...(rulaReport.sideFactors && rula.bodySide === "BOTH" ? [
+            "Independent side factors:",
+            ...(["RIGHT", "LEFT"] as const).flatMap((side) => (rulaReport.sideFactors?.[side] ?? []).map((factor) => side + " / " + factor.key + " | Angle: " + (factor.angle ?? "-") + " | Score: " + (factor.reviewed === false ? "-" : factor.score) + " | Contribution: " + (factor.reviewed === false ? "-" : factor.impactPercent + "%") + " | Effect: " + (factor.reviewed === false ? "Manual review required" : factor.impactLevel))),
+          ] : []),
           `Predicted score (estimate): ${rulaReport.predictedScore}`,
           "Prediction note: Estimated from selected corrective actions; reassessment is required for the final RULA result.",
           "Main factors:",

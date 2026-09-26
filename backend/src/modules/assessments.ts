@@ -9,6 +9,7 @@ import { getAvailableAssessmentAIProvider } from "../ai-provider.js";
 import { allowedMime, hasValidFileSignature } from "./files.js";
 import { assertFmeaProcessItemSelectionLimit, buildDescriptionPrompt, buildFmeaImageAnalysisPrompt, buildFmeaProcessAutofillPrompt, buildFmeaRiskRowsPrompt, buildFmeaRiskSuggestionsPrompt, buildJobTitleSuggestionsPrompt, buildProcessSuggestionsPrompt, catalogSuggestions, cleanDescription, cleanJobTitleList, cleanTextList, defaultFmeaProcessStep, emptyFmeaRiskSuggestions, emptyProcessSuggestions, fallbackProcessDescription, FMEA_PROCESS_DESCRIPTION_MAX, FMEA_PROCESS_ITEM_LENGTH_MAX, FMEA_PROCESS_ITEM_MAX, FMEA_PROCESS_AI_SUGGESTION_MAX, FMEA_PROCESS_RISK_ROW_SUGGESTION_MAX, FMEA_PROCESS_SUGGESTION_MAX, isValidShortActivityDescription, limitProcessSuggestions, nextFmeaRowNumber, normalizeJobTitle, parseFmeaImageAnalysis, parseFmeaProcessAutofill, parseFmeaRiskRows, parseFmeaRiskScoreSuggestion, parseFmeaRiskSuggestions, parseJobTitleSuggestions, parseProcessSuggestions, type FmeaImageAnalysis, type FmeaProcessAutofill, type FmeaRiskRowSuggestion, type FmeaRiskScoreSuggestion, type FmeaRiskSuggestions, type ProcessSuggestions } from "../fmea-process.js";
 import { fallbackFmeaReportDetailSuggestions } from "../fmea-report.js";
+import { buildRulaSideResults, primaryRulaResult } from "../rula-report.js";
 import { resolveRulaTitle, rulaActivityInfoSchema, rulaBodySideSchema, rulaTitleSchema } from "../rula-process.js";
 import { buildRulaPostureImageAnalysisPrompt, parseRulaPostureImageAnalysis, rulaPostureImageAnalysisResponseSchema, type RulaPostureImageAnalysis } from "../rula-posture-ai.js";
 import { assertRulaPostureAnalysisReviewed, isRulaPostureAnalysisReviewed, rulaPostureAnalysisSchema, type RulaPostureAnalysis } from "../rula-posture.js";
@@ -60,17 +61,10 @@ function calculateRulaAssessment(bodySide: "LEFT" | "RIGHT" | "BOTH", rawInputs:
     const inputs = inputsWithPostureAnalysis(rawInputs, analysis);
     return { inputs, result: calculateRula(inputs), sideResults: undefined };
   }
-  const leftInputs = inputsWithPostureAnalysis(rawInputs, postureAnalysisForSide(analysis, "LEFT"));
+  const sideResults = buildRulaSideResults(bodySide, rawInputs, analysis);
+  if (!sideResults) throw Object.assign(new Error("هر دو سمت بدن باید به‌صورت جداگانه بررسی و ثبت شوند."), { statusCode: 400, code: "RULA_BOTH_SIDES_REQUIRED" });
   const rightInputs = inputsWithPostureAnalysis(rawInputs, postureAnalysisForSide(analysis, "RIGHT"));
-  const left = calculateRula(leftInputs);
-  const right = calculateRula(rightInputs);
-  const primary = right.score >= left.score ? right : left;
-  const result = {
-    ...primary,
-    explanation: `LEFT: ${left.explanation}; RIGHT: ${right.explanation}`,
-    trace: [`LEFT — ${left.trace.join(" | ")}`, `RIGHT — ${right.trace.join(" | ")}`, `Final score: ${primary.score}`],
-  };
-  return { inputs: rightInputs, result, sideResults: { LEFT: left, RIGHT: right } };
+  return { inputs: rightInputs, result: primaryRulaResult(sideResults), sideResults };
 }
 
 function rulaReviewComplete(bodySide: string, value: unknown) {
