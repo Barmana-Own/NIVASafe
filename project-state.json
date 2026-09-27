@@ -1010,5 +1010,12 @@
     "validation": "PASS — frontend/backend TypeScript checks, focused frontend UI rules (90 tests), focused backend report-export tests (7 tests), frontend/backend production builds, workspace lint, API contract verification (67 frontend paths / 120 backend routes), release verification (28 checks), and source diff review. Authenticated browser smoke, database migration, and deployment remain NOT_RUN for this incremental change.",
     "migration": "NOT_APPLICABLE — existing FMEA/RULA assessment records and report routes are reused; no database migration required.",
     "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestLoginToolbarPlaceholderChange": {
+    "status": "PASS_LOCAL",
+    "scope": "چهار گزینه امکانات، مجوزها، درباره نیواسیف و تماس با ما در هدر صفحه ورود فعلاً به‌صورت متن غیرفعال نمایش داده می‌شوند و هیچ href یا مقصدی ندارند؛ مسیرهای داخلی ورود، ثبت‌نام و فرم ورود حفظ شده‌اند.",
+    "validation": "PASS — focused frontend UI suite (103 tests across 5 files), frontend typecheck, lint, production build, git diff check, and focused security scan. The production build emitted only the existing large-chunk warning; authenticated browser visual smoke and deployment were NOT_RUN.",
+    "migration": "NOT_APPLICABLE — frontend markup, CSS, and regression coverage only.",
+    "deployment": "NOT_PERFORMED — source/local scope"
   }
 }

@@ -1082,10 +1082,10 @@ describe("production login safety", () => {
     expect(accountPagesSource).toContain('<div className="login-toolbar-brand"><div className="login-brand-panel">');
     expect(accountPagesSource).not.toContain('<div className="login-toolbar-brand"><img src="/brand/nivasafe-icon.png"');
     expect(accountPagesSource).toContain('<h1>{t("auth.heroTitle")}</h1>');
-    expect(accountPagesSource).toContain('href="#login-features">{t("auth.features")}</a>');
-    expect(accountPagesSource).toContain('href="#login-support">{t("auth.licenses")}</a>');
-    expect(accountPagesSource).toContain('href="#login-about">{t("auth.about")}</a>');
-    expect(accountPagesSource).toContain('href="#login-form">{t("auth.contact")}</a>');
+    expect(accountPagesSource).toContain('<span className="login-toolbar-link">{t("auth.features")}</span>');
+    expect(accountPagesSource).toContain('<span className="login-toolbar-link">{t("auth.licenses")}</span>');
+    expect(accountPagesSource).toContain('<span className="login-toolbar-link">{t("auth.about")}</span>');
+    expect(accountPagesSource).toContain('<span className="login-toolbar-link">{t("auth.contact")}</span>');
     expect(accountPagesSource).not.toContain('<div className="eyebrow">{t("auth.loginEyebrow")}</div>');
     expect(accountPagesSource).not.toContain('className="login-card-footer"');
     expect(accountPagesSource.indexOf('className="login-hero-visual"')).toBeLessThan(accountPagesSource.indexOf('<h1>{t("auth.heroTitle")}</h1>'));
@@ -1126,11 +1126,17 @@ describe("production login safety", () => {
     expect(i18nSource).toContain('"auth.supportBar": "Supported by Qazvin Science and Technology Park and holding valid licenses"');
   });
 
-  it("uses same-page targets for the requested login toolbar destinations", () => {
+  it("keeps the placeholder login toolbar destinations inactive", () => {
     expect(accountPagesSource).not.toContain("https://app.nivasafe.com");
     expect(accountPagesSource).not.toContain("support@nivasafe.com");
     expect(accountPagesSource).not.toContain('t("auth.website")');
     expect(accountPagesSource).not.toContain('t("auth.goToWebsite")');
+    expect(accountPagesSource).not.toContain('href="#login-features"');
+    expect(accountPagesSource).not.toContain('href="#login-support"');
+    expect(accountPagesSource).not.toContain('href="#login-about"');
+    expect(accountPagesSource).not.toContain('href="#login-form">{t("auth.contact")}</a>');
+    expect(accountPagesSource).toContain('className="login-toolbar-links"');
+    expect(accountPagesSource).toContain('className="login-toolbar-link"');
     expect(i18nSource).not.toContain('"auth.website"');
     expect(i18nSource).not.toContain('"auth.goToWebsite"');
     expect(i18nSource).toContain('"auth.features": "Features"');

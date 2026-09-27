@@ -75,10 +75,10 @@ export function LoginPage() {
       <nav className="login-toolbar" aria-label={t("auth.links")}>
         <div className="login-toolbar-brand"><div className="login-brand-panel"><div className="login-brand-copy"><img className="login-logo-wordmark" src={brandLogoForLocale(locale)} alt={brandAltForLocale(locale)}/></div></div></div>
         <div className="login-toolbar-links">
-          <a href="#login-features">{t("auth.features")}</a>
-          <a href="#login-support">{t("auth.licenses")}</a>
-          <a href="#login-about">{t("auth.about")}</a>
-          <a href="#login-form">{t("auth.contact")}</a>
+          <span className="login-toolbar-link">{t("auth.features")}</span>
+          <span className="login-toolbar-link">{t("auth.licenses")}</span>
+          <span className="login-toolbar-link">{t("auth.about")}</span>
+          <span className="login-toolbar-link">{t("auth.contact")}</span>
         </div>
         <LanguageSwitcher className="login-language-switch" />
       </nav>
