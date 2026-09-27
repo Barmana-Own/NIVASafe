@@ -509,6 +509,16 @@ describe("FMEA risk register", () => {
     expect(fmeaReportHelpersSource).toContain("topFailureModes");
   });
 
+  it("keeps search icons separated from placeholders in both text directions", () => {
+    expect(stylesSource).toContain('.search-box .icon { position: absolute; inset-block-start: 50%; inset-inline-start: .8rem; inset-inline-end: auto;');
+    expect(stylesSource).toContain('.search-box input { padding-inline-start: 2.5rem; padding-inline-end: .92rem; }');
+    expect(stylesSource).toContain('[dir="rtl"] .search-box .icon { inset-inline-start: auto; inset-inline-end: .8rem; }');
+    expect(stylesSource).toContain('[dir="rtl"] .search-box input { padding-inline-start: .92rem; padding-inline-end: 2.5rem; }');
+    expect(assessmentPagesSource).toContain('className="search-box risk-table-search"');
+    expect(generalPagesSource).toContain('className="search-box"');
+    expect(adminPageSource).toContain('className="search-box"');
+  });
+
   it("moves the FMEA process and date above the full details table", () => {
     expect(assessmentPagesSource).toContain("function FmeaReportTableContext");
     expect(assessmentPagesSource).toContain('className="fmea-report-table-context"');
@@ -610,6 +620,10 @@ describe("FMEA creation stepper", () => {
     expect(assessmentPagesSource).toContain('<fieldset ref={fmeaReviewStepRef} id="fmea-review-step" data-step="2"');
     expect(assessmentPagesSource).toContain('function continueToFmeaReview(event: ReactMouseEvent<HTMLButtonElement>)');
     expect(assessmentPagesSource).toContain('event.stopPropagation();');
+    expect(assessmentPagesSource).toContain('function scrollAssessmentValidationToTop()');
+    expect(assessmentPagesSource).toContain('alert.scrollIntoView({ block: "start", behavior: "smooth" });');
+    expect(assessmentPagesSource).toContain('className="alert error assessment-validation-alert"');
+    expect(assessmentPagesSource).toContain('scrollAssessmentValidationToTop();');
     expect(assessmentPagesSource).toContain('function submitFmeaFromReview(event: FormEvent<HTMLFormElement>)');
     expect(assessmentPagesSource).toContain('if (wizardStep !== 2) return;');
     expect(assessmentPagesSource).toContain('onSubmit={submitFmeaFromReview}');
@@ -697,6 +711,7 @@ describe("RULA creation stepper", () => {
     expect(assessmentPagesSource).toContain('onClick={() => { setError(""); setWizardStep(step); }} disabled={submitting}');
     expect(assessmentPagesSource).toContain('disabled={wizardStep === 1 || submitting} onClick={() => { setError(""); setWizardStep((step) => step === 3 ? 2 : 1); }}>{t("assessment.previousStep")}</button>');
     expect(assessmentPagesSource).toContain('function advanceRulaWizard()');
+    expect(assessmentPagesSource).toContain('if (missing) { setError(t("assessment.validationEnter", { field: missing[1] })); scrollAssessmentValidationToTop(); return false; }');
     expect(assessmentPagesSource).toContain('setWizardStep((step) => step === 1 ? 2 : step === 2 ? 3 : 3);');
     expect(assessmentPagesSource).toContain('function validateWizardStep() {\n    if (wizardStep === 1) return validateRulaProcessInfo();\n    setError("");\n    return true;\n  }');
     expect(assessmentPagesSource).not.toContain('hasUnconfirmedRulaResults(postureAnalysis, rulaBodySide)');
@@ -705,6 +720,7 @@ describe("RULA creation stepper", () => {
     expect(i18nSource).toContain('"assessment.calculateRegisterRula": "ثبت و نمایش گزارش"');
     expect(i18nSource).toContain('"assessment.calculateRegisterRula": "Register and view report"');
     expect(stylesSource).toContain('.wizard-stepper > button:focus-visible');
+    expect(stylesSource).toContain('.assessment-validation-alert { scroll-margin-top: 1rem; }');
     expect(assessmentPagesSource).toContain('<fieldset hidden={wizardStep !== 3}><legend>{t("assessment.rulaAssessmentReporting")}</legend>');
     expect(assessmentPagesSource).toContain('onClick={advanceRulaWizard}>{t("common.next")}');
     expect(i18nSource).toContain('"assessment.rulaReviewScoring": "مرور و ثبت و امتیاز دهی"');
@@ -1654,6 +1670,10 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain('entityType", "RulaAssessment"');
     expect(assessmentPagesSource).toContain("rulaAiImageActive");
     expect(assessmentPagesSource).toContain("rulaImageAnalysisWorking");
+    expect(assessmentPagesSource).toContain('"/rula/posture-analysis"');
+    expect(assessmentPagesSource).toContain("requestRulaPostureTextAnalysis");
+    expect(assessmentPagesSource).toContain("rulaTextAnalysisWorking");
+    expect(assessmentPagesSource).toContain("rulaTextAnalysisActive");
     expect(assessmentPagesSource).toContain('activityInfo: rulaActivityInfoFromForm(values)');
   });
 
@@ -1691,6 +1711,11 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain("if (!processImages.length) return;");
     expect(assessmentPagesSource).toContain("...(side === \"RIGHT\" ? nextSides.RIGHT! : {})");
     expect(assessmentPagesSource).toContain('"/rula/posture-image-analysis"');
+    expect(assessmentPagesSource).toContain('sideAnalyses: { RIGHT: right.analysis, LEFT: left.analysis }');
+    expect(assessmentPagesSource).toContain('const visibleAnalysis = bodySide === "BOTH" ? analysis.sideAnalyses?.[activeSide] ?? analysis : analysis');
+    expect(assessmentPagesSource).toContain('const visibleResult = bodySide === "BOTH" ? sideResults?.[activeSide] ?? result : result');
+    expect(assessmentPagesSource).toContain('if (wizardStep === 1)');
+    expect(assessmentPagesSource).toContain('postureImageAnalysisContextKey.current = ""');
     expect(assessmentPagesSource).not.toContain("joint-neck");
     expect(assessmentPagesSource).not.toContain("bone-neck");
     expect(assessmentPagesSource).toContain('name="postureAnalysis"');

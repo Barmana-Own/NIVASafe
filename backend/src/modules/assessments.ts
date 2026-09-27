@@ -11,7 +11,7 @@ import { assertFmeaProcessItemSelectionLimit, buildDescriptionPrompt, buildFmeaI
 import { fallbackFmeaReportDetailSuggestions } from "../fmea-report.js";
 import { buildRulaSideResults, primaryRulaResult } from "../rula-report.js";
 import { resolveRulaTitle, rulaActivityInfoSchema, rulaBodySideSchema, rulaTitleSchema } from "../rula-process.js";
-import { buildRulaPostureImageAnalysisPrompt, parseRulaPostureImageAnalysis, rulaPostureImageAnalysisResponseSchema, type RulaPostureImageAnalysis } from "../rula-posture-ai.js";
+import { buildRulaPostureImageAnalysisPrompt, buildRulaPostureTextAnalysisPrompt, fallbackRulaPostureTextAnalysis, parseRulaPostureImageAnalysis, parseRulaPostureTextAnalysis, rulaPostureImageAnalysisResponseSchema, rulaPostureTextAnalysisResponseSchema, type RulaPostureImageAnalysis, type RulaPostureTextAnalysisInput } from "../rula-posture-ai.js";
 import { assertRulaPostureAnalysisReviewed, isRulaPostureAnalysisReviewed, rulaPostureAnalysisSchema, type RulaPostureAnalysis } from "../rula-posture.js";
 
 const idParam = z.object({ id: z.string().uuid() });
@@ -24,6 +24,22 @@ const processItemList = z.array(z.string().trim().min(1).max(FMEA_PROCESS_ITEM_L
 const fmeaBody = z.object({ projectId: z.string().uuid(), activityId: nullableUuid, jobCatalogId: nullableUuid, title: z.string().trim().min(2).max(180), code: z.string().trim().min(2).max(80), scope: z.string().trim().max(500).nullable().optional(), department: nullableDepartment, activityDescription: requiredProcessDescription, equipment: processItemList, materials: processItemList, existingControls: processItemList, specialConditions: nullableProcessText, status: z.enum(["DRAFT", "IN_PROGRESS", "UNDER_REVIEW", "APPROVED", "REJECTED", "ARCHIVED"]).optional() });
 const fmeaImageAnalysisBody = z.object({ jobTitle: z.string().trim().min(2).max(180), department: nullableDepartment, activityDescription: nullableProcessText, locale: z.enum(["fa", "en"]).default("fa") });
 const rulaPostureImageAnalysisBody = z.object({ bodySide: rulaBodySideSchema, jobTitle: z.string().trim().min(2).max(180), taskDescription: z.string().trim().min(2).max(500), postureDescription: z.string().trim().max(1000).default(""), locale: z.enum(["fa", "en"]).default("fa") });
+const rulaPostureTextAnalysisBody = z.object({
+  bodySide: rulaBodySideSchema,
+  jobTitle: z.string().trim().min(2).max(180),
+  taskDescription: z.string().trim().min(2).max(500),
+  postureDescription: z.preprocess((value) => value === null ? "" : value, z.string().trim().max(1000).default("")),
+  durationPerOccurrence: z.number().positive().max(1440).optional(),
+  durationUnit: z.enum(["SECOND", "MINUTE", "HOUR"]).optional(),
+  repetitionsPerShift: z.number().int().min(1).max(10000).optional(),
+  postureHoldDuration: z.number().positive().max(1440).optional(),
+  postureHoldUnit: z.enum(["SECOND", "MINUTE", "HOUR"]).optional(),
+  loadWeight: z.number().nonnegative().max(10000).nullable().optional(),
+  loadUnit: z.enum(["KG", "LB"]).optional(),
+  force: z.number().int().min(0).max(3),
+  muscleUse: z.boolean(),
+  locale: z.enum(["fa", "en"]).default("fa"),
+});
 const nullableRiskText = z.preprocess((value) => value === "" ? null : value, z.string().trim().max(1_200).nullable().optional());
 const requiredRiskText = z.string().trim().min(1).max(1_200);
 const fmeaItemBody = z.object({ rowNumber: z.number().int().positive(), processStep: requiredRiskText, failureMode: requiredRiskText, effect: requiredRiskText, cause: requiredRiskText, preventiveControls: nullableRiskText, detectionControls: nullableRiskText, severity: z.number().int().min(1).max(10), occurrence: z.number().int().min(1).max(10), detection: z.number().int().min(1).max(10), recommendation: nullableRiskText, residualSeverity: z.number().int().min(1).max(10).nullable().optional(), residualOccurrence: z.number().int().min(1).max(10).nullable().optional(), residualDetection: z.number().int().min(1).max(10).nullable().optional() });
@@ -283,6 +299,34 @@ export async function registerAssessmentRoutes(app: FastifyInstance) {
       await audit(request, "FMEA_PROCESS_IMAGE_ANALYSIS_FAILED", "FmeaProcessImage", undefined, { provider: provider.name, mimeType: file.mimetype, size: buffer.length });
       throw Object.assign(new Error("AI image analysis is temporarily unavailable"), { statusCode: 503, code: "FMEA_IMAGE_AI_UNAVAILABLE" });
     }
+  });
+  app.post("/api/v1/rula/posture-analysis", { preHandler: authenticate, config: { rateLimit: { max: 12, timeWindow: "1 minute" } } }, async (request) => {
+    const organizationId = requireOrg(request);
+    requirePermission(request, "assessments.create");
+    const body = parse(rulaPostureTextAnalysisBody, request.body) as RulaPostureTextAnalysisInput;
+    const provider = getAvailableAssessmentAIProvider();
+    let providerResult: Awaited<ReturnType<typeof provider.analyze>> | null = null;
+    let analysis: RulaPostureImageAnalysis;
+    let aiStatus: "connected" | "fallback" = "fallback";
+    try {
+      providerResult = await provider.analyze({
+        organizationId,
+        userId: request.actor!.userId,
+        message: buildRulaPostureTextAnalysisPrompt(body),
+      });
+      analysis = parseRulaPostureTextAnalysis(providerResult.answer, body.bodySide);
+      aiStatus = providerResult.usedFallback || providerResult.provider === "fallback" ? "fallback" : "connected";
+    } catch {
+      analysis = fallbackRulaPostureTextAnalysis(body);
+      providerResult = null;
+      aiStatus = "fallback";
+    }
+    if (providerResult) {
+      await recordAIUsage(prisma, { organizationId, userId: request.actor!.userId, useCase: "risk", sourceType: "RULA_TEXT_REVIEW", sourceId: request.id, result: providerResult });
+    }
+    await audit(request, "RULA_POSTURE_TEXT_ANALYSIS", "RulaPostureText", undefined, { provider: providerResult?.provider ?? "fallback", aiStatus, bodySide: body.bodySide });
+    const response = rulaPostureTextAnalysisResponseSchema.parse({ ...analysis, provider: providerResult?.provider ?? "fallback", aiStatus });
+    return envelope(response);
   });
   app.post("/api/v1/rula/posture-image-analysis", { preHandler: authenticate, config: { rateLimit: { max: 8, timeWindow: "1 minute" } } }, async (request) => {
     const organizationId = requireOrg(request);

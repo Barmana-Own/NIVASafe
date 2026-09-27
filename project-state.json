@@ -1017,5 +1017,26 @@
     "validation": "PASS — focused frontend UI suite (103 tests across 5 files), frontend typecheck, lint, production build, git diff check, and focused security scan. The production build emitted only the existing large-chunk warning; authenticated browser visual smoke and deployment were NOT_RUN.",
     "migration": "NOT_APPLICABLE — frontend markup, CSS, and regression coverage only.",
     "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestSearchBoxIconAlignmentChange": {
+    "status": "PASS_LOCAL",
+    "scope": "جایگاه آیکون جستجو و فاصله داخلی متن ورودی در همه search-boxها برای هر دو جهت RTL و LTR صریح شد؛ آیکون و placeholder دیگر روی هم قرار نمی‌گیرند و جستجوی دانش، مدیریت کاربران و جداول FMEA از همین قاعده مشترک استفاده می‌کنند.",
+    "validation": "PASS — focused frontend UI suite (104 tests across 5 files), frontend typecheck, lint, production build, git diff check, and focused security scan. The production build emitted only the existing large-chunk warning; authenticated browser visual smoke and deployment were NOT_RUN.",
+    "migration": "NOT_APPLICABLE — shared frontend CSS and regression coverage only.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestAssessmentValidationScrollChange": {
+    "status": "PASS_LOCAL",
+    "scope": "هنگام تلاش برای عبور از مرحله با داده‌های اجباری ناقص در جریان‌های FMEA و RULA، پیام خطا اکنون به‌صورت خودکار در ابتدای صفحه نمایش داده می‌شود؛ اسکرول نرم به هشدار اعتبارسنجی انجام می‌شود و اعتبارسنجی‌های موجود حفظ شده‌اند.",
+    "validation": "PASS — focused frontend UI suite (104 tests across 5 files), frontend typecheck, lint, production build, and git diff check. The production build emitted only the existing large-chunk warning; authenticated browser visual smoke and deployment were NOT_RUN.",
+    "migration": "NOT_APPLICABLE — frontend validation helper, alert class, CSS, and regression coverage only.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestRulaProcessInformationPostureAnalysisChange": {
+    "status": "PASS_LOCAL",
+    "scope": "در مرحله دوم RULA، عکس پوسچر اختیاری است. با ورود به مرحله تحلیل هوشمند پوسچر، اطلاعات مرحله اطلاعات فرآیند شامل عنوان شغل، شرح فعالیت، توضیحات پوسچر، مدت، تکرار، مدت نگه‌داشتن و بار به endpoint متنی تحلیل هوش مصنوعی ارسال می‌شود؛ نتیجه بدون عکس در جدول قابل ویرایش نمایش داده می‌شود. برای انتخاب هر دو سمت، نتایج راست و چپ در sideAnalyses مستقل نگهداری و امتیاز هر سمت جداگانه از همان داده محاسبه می‌شود.",
+    "validation": "PASS — focused backend RULA posture AI tests (8 tests), focused frontend UI suite (104 tests across 5 files), frontend/backend typechecks, frontend/backend lint, frontend/backend production builds, project-state JSON validation and git diff check passed. The full backend suite had 141 passed and one unrelated pre-existing failure in organization-rules.test.ts (subscriptionIsUsable trial expectation); the frontend build emitted only the existing large-chunk warning. Authenticated browser smoke, clean migration execution and deployment were NOT_RUN.",
+    "migration": "NOT_APPLICABLE — existing RULA activityInfo/postureAnalysis JSON fields, authentication, AI usage tracking and assessment routes were reused; no database migration required.",
+    "deployment": "NOT_PERFORMED — source/local scope"
   }
 }

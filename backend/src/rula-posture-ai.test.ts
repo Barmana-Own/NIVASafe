@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildRulaPostureImageAnalysisPrompt, parseRulaPostureImageAnalysis, rulaPostureImageAnalysisResponseSchema } from "./rula-posture-ai.js";
+import { buildRulaPostureImageAnalysisPrompt, buildRulaPostureTextAnalysisPrompt, fallbackRulaPostureTextAnalysis, parseRulaPostureImageAnalysis, parseRulaPostureTextAnalysis, rulaPostureImageAnalysisResponseSchema, rulaPostureTextAnalysisResponseSchema } from "./rula-posture-ai.js";
 
 describe("RULA posture image analysis", () => {
   it("requires normalized, image-relative landmarks and preserves valid side overlays", () => {
@@ -89,5 +89,52 @@ describe("RULA posture image analysis", () => {
     expect(prompt).toContain('\"overlay\":{\"points\"');
     expect(prompt).toContain("normalized x and y coordinates from 0 to 1");
     expect(prompt).toContain("Do not draw a skeleton when a landmark is not visible");
+  });
+
+  it("builds a text-analysis prompt from process information without sending an image", () => {
+    const prompt = buildRulaPostureTextAnalysisPrompt({
+      bodySide: "BOTH",
+      jobTitle: "اپراتور خط تولید",
+      taskDescription: "جابجایی دستی قطعات و کنترل دستگاه",
+      postureDescription: "گردن رو به پایین و بازوها در ارتفاع شانه",
+      durationPerOccurrence: 15,
+      durationUnit: "MINUTE",
+      repetitionsPerShift: 40,
+      postureHoldDuration: 30,
+      postureHoldUnit: "SECOND",
+      loadWeight: 8,
+      loadUnit: "KG",
+      force: 1,
+      muscleUse: true,
+      locale: "fa",
+    });
+    expect(prompt).toContain("NIVASAFE_RULA_POSTURE_TEXT_REVIEW");
+    expect(prompt).toContain("No image is provided");
+    expect(prompt).toContain("اپراتور خط تولید");
+    expect(prompt).toContain("Force adjustment input: 1");
+    expect(prompt).toContain("LEFT and RIGHT");
+  });
+
+  it("parses complete text results and keeps both anatomical sides independent", () => {
+    const row = (score: number) => ({ angle: null, score, detected: true, confidence: 0.35 });
+    const result = parseRulaPostureTextAnalysis(JSON.stringify({
+      sides: {
+        RIGHT: { upperArm: row(3), lowerArm: row(2), wrist: row(2), wristTwist: row(1), neck: row(3), trunk: row(2), legs: row(1), overlay: { points: {} } },
+        LEFT: { upperArm: row(2), lowerArm: row(1), wrist: row(1), wristTwist: row(2), neck: row(2), trunk: row(1), legs: row(2), overlay: { points: {} } },
+      },
+      notes: "بررسی انسانی لازم است.",
+    }), "BOTH");
+    expect(result.sides.RIGHT?.upperArm.score).toBe(3);
+    expect(result.sides.LEFT?.upperArm.score).toBe(2);
+    expect(result.sides.RIGHT?.overlay.points).toEqual({});
+  });
+
+  it("provides a bounded text fallback when the configured provider cannot return structured output", () => {
+    const result = fallbackRulaPostureTextAnalysis({ bodySide: "BOTH", jobTitle: "اپراتور", taskDescription: "کار ایستاده با خم شدن گردن", force: 0, muscleUse: false, locale: "fa" });
+    expect(result.sides.LEFT).toBeDefined();
+    expect(result.sides.RIGHT).toBeDefined();
+    expect(result.sides.LEFT?.neck.score).toBeGreaterThan(1);
+    expect(result.sides.RIGHT?.overlay.points).toEqual({});
+    expect(rulaPostureTextAnalysisResponseSchema.parse({ ...result, provider: "fallback", aiStatus: "fallback" }).sides.RIGHT).toBeDefined();
   });
 });
