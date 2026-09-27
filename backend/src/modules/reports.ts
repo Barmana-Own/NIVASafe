@@ -13,7 +13,7 @@ import { getAvailableAssessmentAIProvider } from "../ai-provider.js";
 import { audit, envelope, parse, prisma, requireOrg, requirePermission } from "../core.js";
 import { actionPriority, buildFmeaReportDetailSeedRows, buildFmeaReportDetailSuggestionsPrompt, ensureMinimumFmeaReportDetailSuggestions, fallbackFmeaReportDetailSuggestions, FMEA_REPORT_DETAIL_SUGGESTION_MAX, FMEA_REPORT_DETAIL_SUGGESTION_MIN, parseFmeaReportDetailSuggestions, summariseFmea, topFailureModes, type FmeaReportDetailSuggestion, type FmeaReportRisk } from "../fmea-report.js";
 import { buildRulaFactors, buildRulaSideResults, parseRulaInputs, parseRulaPostureAnalysis, predictedRulaScore, rulaImpactSchema, type RulaReportFactor, type RulaSideResults } from "../rula-report.js";
-import { isRulaPostureAnalysisReviewed, type RulaPostureAnalysis } from "../rula-posture.js";
+import { isRulaPostureAnalysisReviewed, rulaPostureAnalysisSchema, type RulaPostureAnalysis } from "../rula-posture.js";
 import { buildFmeaActionSuggestionsPrompt, buildRulaActionSuggestionsPrompt, fallbackFmeaActionSuggestions, fallbackRulaActionSuggestions, mergeFmeaActionSuggestions, mergeRulaActionSuggestions, parseFmeaActionSuggestions, parseRulaActionSuggestions, type FmeaActionCandidate } from "../assessment-action-suggestions.js";
 
 const paramsSchema = z.object({ type: z.enum(["fmea", "rula"]), id: z.string().uuid(), format: z.enum(["pdf", "xlsx", "doc", "docx"]) });
@@ -910,7 +910,57 @@ function sendWord(reply: FastifyReply, title: string, document: Buffer) {
   return reply.header("content-type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document").header("content-disposition", `attachment; filename="${reportFilename(title, "docx")}"`).send(document);
 }
 
+export type RegisteredReportInput = {
+  id: string;
+  title: string;
+  code?: string | null;
+  projectName: string;
+  projectCode?: string | null;
+  finalizedAt: Date;
+};
+
+export type RegisteredReportSummary = Omit<RegisteredReportInput, "finalizedAt"> & {
+  type: "FMEA" | "RULA";
+  finalizedAt: string;
+};
+
+export function buildRegisteredReportSummaries(fmea: RegisteredReportInput[], rula: RegisteredReportInput[]): RegisteredReportSummary[] {
+  return [
+    ...fmea.map((item) => ({ ...item, type: "FMEA" as const, finalizedAt: item.finalizedAt.toISOString() })),
+    ...rula.map((item) => ({ ...item, type: "RULA" as const, finalizedAt: item.finalizedAt.toISOString() })),
+  ].sort((left, right) => {
+    const dateOrder = right.finalizedAt.localeCompare(left.finalizedAt);
+    if (dateOrder !== 0) return dateOrder;
+    return `${left.type}:${left.id}`.localeCompare(`${right.type}:${right.id}`);
+  });
+}
+
 export async function registerReportRoutes(app: FastifyInstance) {
+  app.get("/api/v1/reports/registered", { preHandler: authenticate }, async (request) => {
+    const organizationId = requireOrg(request);
+    requirePermission(request, "reports.generate");
+    const [fmeaAssessments, rulaAssessments] = await Promise.all([
+      prisma.fmeaAssessment.findMany({
+        where: { organizationId, status: "APPROVED", deletedAt: null },
+        select: { id: true, title: true, code: true, approvedAt: true, updatedAt: true, project: { select: { name: true, code: true } }, jobCatalog: { select: { titleFa: true } } },
+        orderBy: { updatedAt: "desc" },
+      }),
+      prisma.rulaAssessment.findMany({
+        where: { organizationId, status: { not: "ARCHIVED" } },
+        select: { id: true, title: true, subjectCode: true, bodySide: true, postureAnalysis: true, updatedAt: true, project: { select: { name: true, code: true } } },
+        orderBy: { updatedAt: "desc" },
+      }),
+    ]);
+    const finalRula = rulaAssessments.filter((assessment) => {
+      const bodySide = assessment.bodySide === "LEFT" || assessment.bodySide === "BOTH" ? assessment.bodySide : "RIGHT";
+      const postureAnalysis = rulaPostureAnalysisSchema.safeParse(assessment.postureAnalysis);
+      return postureAnalysis.success && isRulaPostureAnalysisReviewed(bodySide, postureAnalysis.data as RulaPostureAnalysis);
+    });
+    return envelope(buildRegisteredReportSummaries(
+      fmeaAssessments.map((assessment) => ({ id: assessment.id, title: assessment.jobCatalog?.titleFa ?? assessment.title, code: assessment.code, projectName: assessment.project.name, projectCode: assessment.project.code, finalizedAt: assessment.approvedAt ?? assessment.updatedAt })),
+      finalRula.map((assessment) => ({ id: assessment.id, title: assessment.title, code: assessment.subjectCode ?? assessment.id.slice(0, 8).toUpperCase(), projectName: assessment.project.name, projectCode: assessment.project.code, finalizedAt: assessment.updatedAt })),
+    ));
+  });
   app.get("/api/v1/fmea/:id/report", { preHandler: authenticate }, async (request) => {
     const organizationId = requireOrg(request); requirePermission(request, "reports.generate"); const { id } = parse(reportIdParams, request.params);
     return envelope(await loadFmeaReport(id, organizationId));

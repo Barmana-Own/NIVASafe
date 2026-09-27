@@ -120,10 +120,10 @@ export function AppLayout() {
           </NavLink>)}
         </div>)}
       </nav>
-      <div className="side-user">
+      <Link className="side-user" to="/profile" aria-label={t("nav.profile")} title={t("nav.profile")}>
         <div className="avatar">{session.user.displayName[0]}</div>
         <div><strong>{session.user.displayName}</strong><small>{roleLabel(role)}</small></div>
-      </div>
+      </Link>
       <button className="side-logout" onClick={logout}><Icon name="logout" size={18}/> {t("shell.logoutAccount")}</button>
     </aside>
     {mobileOpen && <button className="sidebar-backdrop" aria-label={t("shell.closeMenu")} onClick={() => setMobileOpen(false)}/>}

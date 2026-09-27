@@ -7,6 +7,7 @@ import { authenticate } from "../auth-guard.js";
 import { audit, envelope, pageParams, parse, prisma, requireOrg, requirePermission } from "../core.js";
 import { openLocalObject, storage } from "../storage.js";
 import { allowedMime, hasValidFileSignature, kindOf } from "./files.js";
+import { appendKnowledgeText, extractKnowledgeText } from "../knowledge-extraction.js";
 
 const managerRoles = ["SUPER_ADMIN", "ORG_ADMIN", "HSE_MANAGER"] as const;
 const documentSchema = z.object({
@@ -215,7 +216,7 @@ export async function registerKnowledgeRoutes(app: FastifyInstance) {
       if (!organizationId) fail("برای ویرایش سند سازمانی، یک سازمان را انتخاب کنید.", 400, "ORGANIZATION_REQUIRED");
       await enforceKnowledgeQuota(organizationId, { text: body.content, replacingText: found.content });
     }
-    const nextAiOnly = body.aiOnly ?? found.aiOnly;
+    const nextAiOnly = body.aiOnly ?? (body.published === true ? false : found.aiOnly);
     const nextAiReadable = body.aiReadable ?? found.aiReadable;
     if (nextAiOnly && !nextAiReadable) fail("برای سندهای فقط AI، خوانش هوش مصنوعی باید فعال باشد.", 400, "AI_ONLY_REQUIRES_AI_READABLE");
     const nextVisibility = nextAiOnly ? "HIDDEN" : body.visibility ?? (found.aiOnly ? "ALL" : found.visibility);
@@ -224,9 +225,9 @@ export async function registerKnowledgeRoutes(app: FastifyInstance) {
     await validateVisibilityTargets({ isGlobal: nextGlobal, visibility: nextVisibility, visibleUserIds: nextAiOnly ? [] : nextVisibleUserIds, visibleOrganizationIds: nextGlobal ? nextVisibleOrganizationIds : [], organizationId: organizationId ?? found.organizationId });
     const data: Prisma.KnowledgeDocumentUncheckedUpdateInput = {
       ...(body.title !== undefined ? { title: body.title } : {}), ...(body.content !== undefined ? { content: body.content } : {}), ...(body.tags !== undefined ? { tags: body.tags } : {}),
-      ...(body.published !== undefined || body.aiOnly !== undefined ? { published: nextAiOnly ? false : body.published ?? found.published } : {}), ...(body.aiReadable !== undefined ? { aiReadable: body.aiReadable } : {}), ...(body.aiOnly !== undefined ? { aiOnly: body.aiOnly } : {}), ...(body.isGlobal !== undefined ? { isGlobal: body.isGlobal } : {}),
-      ...(body.visibility !== undefined || body.aiOnly !== undefined ? { visibility: nextVisibility } : {}), ...(body.categoryId !== undefined ? { categoryId: body.categoryId } : {}),
-      ...(body.visibility !== undefined || body.aiOnly !== undefined || body.visibleUserIds !== undefined ? { visibleUserIds: nextVisibility === "SELECTED" ? nextVisibleUserIds : Prisma.JsonNull } : {}),
+      ...(body.published !== undefined || body.aiOnly !== undefined ? { published: nextAiOnly ? false : body.published ?? found.published } : {}), ...(body.aiReadable !== undefined ? { aiReadable: body.aiReadable } : {}), ...(body.aiOnly !== undefined || body.published === true ? { aiOnly: nextAiOnly } : {}), ...(body.isGlobal !== undefined ? { isGlobal: body.isGlobal } : {}),
+      ...(body.visibility !== undefined || body.aiOnly !== undefined || (body.published === true && found.aiOnly) ? { visibility: nextVisibility } : {}), ...(body.categoryId !== undefined ? { categoryId: body.categoryId } : {}),
+      ...(body.visibility !== undefined || body.aiOnly !== undefined || body.visibleUserIds !== undefined || (body.published === true && found.aiOnly) ? { visibleUserIds: nextVisibility === "SELECTED" ? nextVisibleUserIds : Prisma.JsonNull } : {}),
       ...(body.isGlobal === false ? { visibleOrganizationIds: Prisma.JsonNull } : body.visibleOrganizationIds !== undefined ? { visibleOrganizationIds: nextGlobal && nextVisibleOrganizationIds.length ? nextVisibleOrganizationIds : Prisma.JsonNull } : {}), version: { increment: 1 },
     };
     const item = await prisma.knowledgeDocument.update({ where: { id }, data });
@@ -275,13 +276,22 @@ export async function registerKnowledgeRoutes(app: FastifyInstance) {
     if (!allowedMime.has(file.mimetype)) fail("Unsupported file type", 415, "FILE_TYPE_NOT_ALLOWED");
     const buffer = await file.toBuffer();
     if (!hasValidFileSignature(buffer, file.mimetype)) fail("محتوای فایل با نوع اعلام‌شده مطابقت ندارد.", 415, "FILE_SIGNATURE_INVALID");
-    await enforceKnowledgeQuota(organizationId, { fileBytes: buffer.length });
+    const extractedText = await extractKnowledgeText(buffer, file.mimetype);
+    await enforceKnowledgeQuota(organizationId, { fileBytes: buffer.length, text: extractedText });
     const objectKey = `${randomUUID()}${extname(file.filename).toLowerCase()}`;
     await storage.put(objectKey, buffer, file.mimetype);
     try {
-      const attachment = await prisma.attachment.create({ data: { organizationId, uploadedById: request.actor!.userId, originalName: file.filename, objectKey, mimeType: file.mimetype, size: buffer.length, kind: kindOf(file.mimetype), entityType: "KnowledgeDocument", entityId: id, checksum: createHash("sha256").update(buffer).digest("hex") } });
-      await audit(request, "KNOWLEDGE_FILE_UPLOAD", "Attachment", attachment.id, { documentId: id, originalName: file.filename });
-      return reply.code(201).send(envelope({ id: attachment.id, originalName: attachment.originalName, mimeType: attachment.mimeType, size: attachment.size, kind: attachment.kind, createdAt: attachment.createdAt, downloadPath: `/knowledge/attachments/${attachment.id}/download` }));
+      const attachment = await prisma.$transaction(async (tx) => {
+        const created = await tx.attachment.create({ data: { organizationId, uploadedById: request.actor!.userId, originalName: file.filename, objectKey, mimeType: file.mimetype, size: buffer.length, kind: kindOf(file.mimetype), entityType: "KnowledgeDocument", entityId: id, checksum: createHash("sha256").update(buffer).digest("hex") } });
+        if (extractedText) {
+          const current = await tx.knowledgeDocument.findUnique({ where: { id }, select: { content: true } });
+          if (!current) throw Object.assign(new Error("Document not found"), { statusCode: 404, code: "NOT_FOUND" });
+          await tx.knowledgeDocument.update({ where: { id }, data: { content: appendKnowledgeText(current.content, extractedText, file.filename), version: { increment: 1 } } });
+        }
+        return created;
+      });
+      await audit(request, "KNOWLEDGE_FILE_UPLOAD", "Attachment", attachment.id, { documentId: id, originalName: file.filename, indexedCharacters: extractedText.length });
+      return reply.code(201).send(envelope({ id: attachment.id, originalName: attachment.originalName, mimeType: attachment.mimeType, size: attachment.size, kind: attachment.kind, createdAt: attachment.createdAt, downloadPath: `/knowledge/attachments/${attachment.id}/download`, indexed: Boolean(extractedText), indexedCharacters: extractedText.length }));
     } catch (error) {
       await storage.delete(objectKey).catch(() => undefined);
       throw error;

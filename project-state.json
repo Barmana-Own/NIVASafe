@@ -4,6 +4,34 @@
   "task": "Bilingual interface with explicit language selection, locale-aware brand alignment, preserved form auto-save, reliable registration account-type selection, secure registration contact and username validation, direct login with a server-assigned workspace, multi-company workspace management with independent subscriptions and tenant isolation, dedicated administrator workspaces, role-specific ArvanCloud AI integration with per-user token accounting, complete FMEA reporting, structured RULA process-information capture, editable RULA posture analysis, RULA results/corrective-action prediction reporting, a three-stage FMEA creation stepper with explicit process-information to review/register transition and report/results labels, a production-ready installable PWA with controlled updates, selectable blue/dark and white/light authenticated shell themes, removal of PDF download controls from authenticated assessment panels, automatic FMEA risk-row numbering/process context, three-visible expandable FMEA risk-row AI suggestions, PDF-reference aligned FMEA score panels, automatic editable FMEA risk-row text and S/O/D autofill for empty/untouched fields, database-backed job/process title suggestions with explicit user selection and expanded organization/global catalog search, project-scoped editable FMEA process-information autofill with a local assistant toggle, FMEA report manual-action form scroll-to-entry behavior, separate FMEA report view/edit operations with AI-generated editable detail drafts, requested RULA creation-step labels, optional RULA assessment title and both-body-side selection, a blue-theme sidebar logo with a white surround preserving original logo colors, site-wide styled native select controls and option states, and a consolidated project creation form with atomic initial process/activity bootstrap, global Enter-to-next-field navigation and automatic inline add/edit panel scroll/focus behavior, and a database-backed fast FMEA job-title catalog with local filtering and expanded industrial roles",
   "classification": "focused-cross-cutting-change",
   "status": "complete",
+  "latestCorrectiveActionsLayoutChange": {
+    "status": "PASS_LOCAL",
+    "scope": "صفحه اقدامات اصلاحی اکنون فرم ثبت اقدام جدید را با شبکه‌بندی روشن و واکنش‌گرا نمایش می‌دهد: پروژه، ارزیابی RULA و سمت بدن در ردیف اول؛ عنوان و شرح در ردیف دوم؛ اولویت، مسئول و موعد در ردیف بعدی و دکمه ثبت در جایگاه مستقل و هم‌تراز. در موبایل همه کنترل‌ها به یک ستون قابل استفاده تبدیل می‌شوند.",
+    "validation": "PASS — frontend UI rules (103 tests across 5 files), frontend typecheck, lint, production build, project-state JSON parse and git diff check passed. The production build emitted only the existing large-chunk warning. Browser visual smoke is NOT_RUN.",
+    "migration": "NOT_APPLICABLE — frontend form layout and styling only.",
+    "deployment": "NOT_PERFORMED — local-only scope"
+  },
+  "latestUserRoleOptionsChange": {
+    "status": "PASS_LOCAL",
+    "scope": "فهرست نقش‌های قابل انتخاب در مدیریت اعضا، درخواست عضویت، دعوت ایمیلی و پنل مدیریت سازمان به شش نقش موردنیاز محدود شد: مدیر HSE، کارشناس HSE، افسر ایمنی، ممیز خارجی، پرسنل و مشاهده‌گر. مدیر ارشد سیستم فقط در سطح نقش سراسری باقی ماند و نقش‌های قدیمیِ ذخیره‌شده بدون حذف داده، فقط به‌صورت خواندنی نمایش داده می‌شوند.",
+    "validation": "PASS — frontend UI rules (103 tests across 5 files), frontend typecheck, lint, production build, project-state JSON parse and git diff check passed. The production build emitted only the existing large-chunk warning. Browser visual smoke is NOT_RUN.",
+    "migration": "NOT_APPLICABLE — user-facing role options only; existing legacy membership data is preserved.",
+    "deployment": "NOT_PERFORMED — local-only scope"
+  },
+  "latestAccountShortcutChange": {
+    "status": "PASS_LOCAL",
+    "scope": "The signed-in user card in the authenticated sidebar is now an accessible link to /profile, so selecting the account identity from the dashboard or any authenticated page opens account settings; hover, focus, collapsed-sidebar and mobile behavior remain compatible with the existing layout.",
+    "validation": "PASS — focused frontend UI rules (92 tests), frontend typecheck, production build, project-state JSON parse and git diff check passed. Browser visual smoke was NOT_RUN.",
+    "migration": "NOT_APPLICABLE — frontend navigation and styling only.",
+    "deployment": "NOT_PERFORMED — local-only scope"
+  },
+  "latestAssistantChatUxChange": {
+    "status": "PASS_LOCAL",
+    "scope": "The assistant composer clears the submitted prompt immediately, keeps the pending user/typing state visible without disabling the input, restores the prompt only when the request fails and the user has not started another draft, and clears the autosave draft. Conversation placeholders are replaced with a topic derived from the first user prompt, including legacy date-based placeholders, and common concatenated Persian introductions are normalized at the AI provider boundary with explicit spacing guidance in the chat prompt.",
+    "validation": "PASS_LOCAL — backend chat-text and AI-provider regression tests (22 tests), frontend assistant UI rules (91 tests), frontend full suite (101 tests), shared-domain suite (12 tests), frontend/backend typechecks and lint, production frontend/backend builds, Prisma validation, API contract verification (67 frontend paths / 120 backend routes), release verification (28 checks), project-state JSON parse and git diff check passed. The complete backend suite passed 138 tests with one pre-existing unrelated subscription trial expectation failure; authenticated browser smoke was NOT_RUN.",
+    "migration": "NOT_APPLICABLE — existing ChatConversation.title field and message routes were reused.",
+    "deployment": "NOT_PERFORMED — local-only scope"
+  },
   "latestUserProvisioningChange": {
     "status": "PASS_LOCAL",
     "scope": "Add username-aware authentication and recovery, keep self-registration usernames optional, add a tenant-scoped organization member request workflow, and let Super Admins approve requests with a strong initial password while preserving legacy email invitations and existing account/password controls.",
@@ -960,6 +988,27 @@
     "scope": "مقادیر RPN و سطح ریسک در جدول‌های FMEA، پیش‌نمایش افزودن ردیف خطر و خروجی گزارش اکنون با محاسبه مشترک S×O×D و آستانه‌های سازمان یکسان می‌شوند؛ در تنظیمات پیش‌فرض، RPN از ۴۰۱ به بالا بحرانی است و داده‌های قدیمی هنگام نمایش و گزارش دوباره محاسبه می‌شوند.",
     "validation": "PASS — frontend UI suite (99 tests across 5 files), backend focused FMEA/report suite (18 tests), frontend/backend typecheck, frontend/backend production build, API contract verification (67 frontend paths / 119 backend routes), release verification (28 checks), JSON validation, and git diff check. Full backend suite retains one unrelated pre-existing failure in organization-rules.test.ts (subscriptionIsUsable trial expectation). Authenticated browser smoke, clean migration execution, and deployment were NOT_RUN.",
     "migration": "NOT_APPLICABLE — calculation normalization and response/export/UI consistency only; no schema change.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestKnowledgeBaseAiIntegrationChange": {
+    "status": "PASS_LOCAL",
+    "scope": "پایگاه دانش اکنون اسناد منتشرشده و قابل خواندن برای AI را بر اساس عنوان، برچسب و متن رتبه‌بندی می‌کند و همان زمینه را به همه مدل‌های متصل گفت‌وگوی دستیار و پیشنهادهای ارزیابی می‌دهد. منابع استفاده‌شده در پاسخ گفت‌وگو نمایش داده می‌شوند. متن پیوست‌های TXT/CSV/DOCX/XLSX و PDF تا حد ممکن هنگام بارگذاری استخراج و به سند متصل ایندکس می‌شود؛ گزینه «فقط برای هوش مصنوعی» از فرم و عملیات رابط حذف شده و مسیر انتشار اسناد قدیمی آن را رفع می‌کند، در حالی که کنترل «قابل خواندن برای AI» و قواعد سطح نمایش حفظ شده‌اند.",
+    "validation": "PASS — focused backend knowledge/AI suite (24 tests), focused frontend suite (99 tests across 5 files), backend and frontend typechecks, backend and frontend production builds, workspace lint (3 packages), API contract verification (67 frontend paths / 119 backend routes), release verification (28 checks), and git diff check. The full backend suite had 133 passed and one unrelated pre-existing failure in organization-rules.test.ts (subscriptionIsUsable trial expectation). Authenticated browser smoke and deployment were NOT_RUN.",
+    "migration": "NOT_APPLICABLE — existing KnowledgeDocument and Attachment schema reused; no database migration required.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestKnowledgeBaseAttachmentAndScrollChange": {
+    "status": "PASS_LOCAL",
+    "scope": "پایگاه دانش اکنون اسکرول عمودی را در پوسته اصلی و موبایل حفظ می‌کند. بارگذاری فایل برای هر سند از مسیر اختصاصی همان سند انجام می‌شود، پیوست پس از بارگذاری دوباره در کارت سند نمایش داده می‌شود و همان Attachment با مرجع KNOWLEDGE در مدیریت فایل‌ها باقی می‌ماند؛ بارگذاری عمومی فایل همچنان سند پایگاه دانش ایجاد نمی‌کند.",
+    "validation": "PASS — focused frontend UI suite (89 tests), frontend typecheck, workspace lint, frontend/backend production builds, focused backend knowledge suite (6 tests), API contract verification (67 frontend paths / 119 backend routes), release verification (28 checks), and git diff check. Full backend suite: 133 passed and one unrelated pre-existing failure remains in organization-rules.test.ts (subscriptionIsUsable trial expectation); the frontend build emitted only the existing large-chunk warning. Authenticated browser visual smoke, clean database migration, and deployment were NOT_RUN for this incremental change.",
+    "migration": "NOT_APPLICABLE — existing KnowledgeDocument and Attachment relations/routes reused; no database migration required.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestRegisteredReportsSectionChange": {
+    "status": "PASS_LOCAL",
+    "scope": "بخش فایل‌ها اکنون یک بخش مستقل برای گزارش‌های نهایی ارزیابی دارد. گزارش‌های FMEA تأییدشده و گزارش‌های RULA دارای بررسی کامل پوسچر از endpoint سازمانی گزارش‌ها به‌ترتیب تاریخ نهایی‌سازی دریافت می‌شوند و با کلیک روی هر مورد، گزارش همان ارزیابی باز می‌شود.",
+    "validation": "PASS — frontend/backend TypeScript checks, focused frontend UI rules (90 tests), focused backend report-export tests (7 tests), frontend/backend production builds, workspace lint, API contract verification (67 frontend paths / 120 backend routes), release verification (28 checks), and source diff review. Authenticated browser smoke, database migration, and deployment remain NOT_RUN for this incremental change.",
+    "migration": "NOT_APPLICABLE — existing FMEA/RULA assessment records and report routes are reused; no database migration required.",
     "deployment": "NOT_PERFORMED — source/local scope"
   }
 }

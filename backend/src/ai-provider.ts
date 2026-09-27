@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "./core.js";
+import { normaliseChatAnswer } from "./chat-text.js";
 
 export interface AIProviderResult {
   provider: string;
@@ -30,7 +31,7 @@ export interface AIProvider {
 
 export type AIUseCase = "risk" | "chat";
 
-type KnowledgeDocumentRow = { id: string; title: string; content: string; visibility: string; visibleUserIds: unknown; visibleOrganizationIds: unknown; isGlobal: boolean; aiOnly: boolean };
+type KnowledgeDocumentRow = { id: string; title: string; content: string; tags: unknown; visibility: string; visibleUserIds: unknown; visibleOrganizationIds: unknown; isGlobal: boolean; aiOnly: boolean; updatedAt: Date };
 
 type KnowledgeContext = {
   context: string;
@@ -154,6 +155,7 @@ function systemInstruction(useCase: AIUseCase) {
       ? "Introduce yourself as the NIVASafe intelligent assistant only when the user greets you or asks who you are."
       : "This is an assessment or risk-suggestion request. Do not introduce yourself, describe your identity as an assistant, or add a generic introductory preamble; start directly with the requested result.",
     "Answer in the same language as the user.",
+    useCase === "chat" ? "Preserve normal word spacing and punctuation; never concatenate separate words. In Persian, use regular spaces between separate words and use a zero-width non-joiner only for true compound words." : "",
     "Prioritize elimination, substitution, engineering controls, administrative controls, and PPE in that order.",
     "Clearly distinguish general guidance from decisions that require a qualified HSE professional.",
     "Use the supplied organization knowledge when relevant and do not invent organization-specific facts.",
@@ -161,9 +163,37 @@ function systemInstruction(useCase: AIUseCase) {
 }
 
 const knowledgeLimits = {
-  chat: { maxDocuments: 3, maxCharsPerDocument: 900 },
-  risk: { maxDocuments: 5, maxCharsPerDocument: 1600 },
+  chat: { maxDocuments: 3, maxCharsPerDocument: 900, candidateDocuments: 100 },
+  risk: { maxDocuments: 5, maxCharsPerDocument: 1600, candidateDocuments: 100 },
 } as const;
+
+const knowledgeStopWords = new Set([
+  "برای", "درباره", "چیست", "چطور", "چگونه", "شود", "کنید", "است", "این", "آن", "یک", "های", "را", "به", "از", "در", "با", "و", "یا", "که", "the", "and", "for", "with", "what", "how", "are", "this", "that",
+]);
+
+function normaliseKnowledgeText(value: string) {
+  return value.normalize("NFKC").replace(/[يى]/g, "ی").replace(/ك/g, "ک").replace(/\u200c/g, " ").toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+}
+
+function knowledgeStringArray(value: unknown) {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && Boolean(item.trim())).map((item) => normaliseKnowledgeText(item)) : [];
+}
+
+function knowledgeSearchTerms(message: string) {
+  return [...new Set(normaliseKnowledgeText(message).split(/\s+/).filter((term) => term.length >= 3 && !knowledgeStopWords.has(term)))].slice(0, 12);
+}
+
+function knowledgeRelevance(document: KnowledgeDocumentRow, terms: string[]) {
+  if (!terms.length) return 0;
+  const title = normaliseKnowledgeText(document.title);
+  const tags = knowledgeStringArray(document.tags).join(" ");
+  const content = normaliseKnowledgeText(document.content.slice(0, 20_000));
+  return terms.reduce((score, term) => score + (title.includes(term) ? 6 : 0) + (tags.includes(term) ? 4 : 0) + (content.includes(term) ? 1 : 0), 0);
+}
+
+function knowledgeUpdatedAt(document: KnowledgeDocumentRow) {
+  return document.updatedAt instanceof Date ? document.updatedAt.getTime() : 0;
+}
 
 function outputTokenLimit(useCase: AIUseCase) {
   const environmentKey = useCase === "chat" ? "AI_CHAT_MAX_OUTPUT_TOKENS" : "AI_MAX_OUTPUT_TOKENS";
@@ -174,27 +204,33 @@ function outputTokenLimit(useCase: AIUseCase) {
 }
 
 async function loadKnowledge(organizationId: string, message: string, userId: string | undefined, useCase: AIUseCase): Promise<KnowledgeContext> {
-  const terms = message.split(/\s+/).map((term) => term.trim()).filter((term) => term.length > 3).slice(0, 8);
+  const terms = knowledgeSearchTerms(message);
   const conditions: Prisma.KnowledgeDocumentWhereInput[] = [
     { OR: [{ organizationId }, { isGlobal: true }] },
     { deletedAt: null },
     { published: true },
     { aiReadable: true },
   ];
-  if (terms.length) conditions.push({ OR: terms.flatMap((term) => [{ title: { contains: term } }, { content: { contains: term } }]) });
   const candidates: KnowledgeDocumentRow[] = await prisma.knowledgeDocument.findMany({
     where: { AND: conditions },
     orderBy: { updatedAt: "desc" },
-    take: knowledgeLimits[useCase].maxDocuments,
-    select: { id: true, title: true, content: true, visibility: true, visibleUserIds: true, visibleOrganizationIds: true, isGlobal: true, aiOnly: true },
+    take: knowledgeLimits[useCase].candidateDocuments,
+    select: { id: true, title: true, content: true, tags: true, visibility: true, visibleUserIds: true, visibleOrganizationIds: true, isGlobal: true, aiOnly: true, updatedAt: true },
   });
-  const documents = candidates.filter((document) => {
+  const visible = candidates.filter((document) => {
     const organizationVisible = !document.isGlobal || !Array.isArray(document.visibleOrganizationIds) || document.visibleOrganizationIds.length === 0 || document.visibleOrganizationIds.includes(organizationId);
-    const userVisible = document.visibility !== "SELECTED" || (Boolean(userId) && Array.isArray(document.visibleUserIds) && document.visibleUserIds.some((id) => id === userId));
+    const userVisible = document.visibility !== "HIDDEN" && (document.visibility !== "SELECTED" || (Boolean(userId) && Array.isArray(document.visibleUserIds) && document.visibleUserIds.some((id) => id === userId)));
     return organizationVisible && userVisible;
   });
+  const ranked = visible.map((document) => ({ document, score: knowledgeRelevance(document, terms) })).sort((left, right) => right.score - left.score || knowledgeUpdatedAt(right.document) - knowledgeUpdatedAt(left.document));
+  const relevant = terms.length ? ranked.filter((item) => item.score > 0) : [];
+  const documents = (relevant.length ? relevant : ranked).slice(0, knowledgeLimits[useCase].maxDocuments).map((item) => item.document);
   return {
-    context: documents.map((document, index) => `[${index + 1}] ${document.title}\n${document.content.slice(0, knowledgeLimits[useCase].maxCharsPerDocument)}`).join("\n\n"),
+    context: documents.map((document, index) => {
+      const tags = knowledgeStringArray(document.tags);
+      const tagLine = tags.length ? `\nTags: ${tags.join(", ")}` : "";
+      return `[${index + 1}] ${document.title}${tagLine}\n${document.content.slice(0, knowledgeLimits[useCase].maxCharsPerDocument)}`;
+    }).join("\n\n"),
     citations: documents.map((document) => ({ id: document.id, title: document.title })),
   };
 }
@@ -255,7 +291,7 @@ class KnowledgeFallbackProvider implements AIProvider {
     const answer = documents.length
       ? `${introduction}بر اساس پایگاه دانش سازمان:\n${documents.map((document) => document.split("\n").slice(1).join("\n").slice(0, 320)).join("\n")}`
       : `${introduction}راهنمای پایه: خطر را شناسایی کنید، شدت و احتمال را بسنجید، کنترل‌های موجود را ثبت کنید، اقدام اصلاحی دارای مسئول و مهلت بسازید و نتیجه را به تأیید متخصص HSE برسانید.`;
-    return { provider: this.name, answer, confidence: documents.length ? 0.72 : 0.45, citations: knowledge.citations };
+    return { provider: this.name, answer: this.useCase === "chat" ? normaliseChatAnswer(answer) : answer, confidence: documents.length ? 0.72 : 0.45, citations: knowledge.citations };
   }
 }
 
@@ -310,7 +346,7 @@ const assessmentIntroductionPatterns = [
 ];
 
 function normaliseAIAnswer(answer: string, useCase: AIUseCase) {
-  if (useCase !== "risk") return answer.trim();
+  if (useCase !== "risk") return normaliseChatAnswer(answer);
   return assessmentIntroductionPatterns.reduce((result, pattern) => result.replace(pattern, ""), answer).trim();
 }
 

@@ -137,14 +137,16 @@ export async function api<T>(path: string, options: RequestInit = {}, retry = tr
   let response: Response;
   const hasBody = options.body !== undefined && options.body !== null;
   try {
-    response = await fetch(`${API}${path}`, {
+    const requestOptions: RequestInit = {
       ...options,
       headers: {
         ...(hasBody && !(options.body instanceof FormData) ? { "content-type": "application/json" } : {}),
         ...authHeaders(session, orgId),
         ...options.headers,
       },
-    });
+    };
+    if (!hasBody && !options.cache) requestOptions.cache = "no-store";
+    response = await fetch(`${API}${path}`, requestOptions);
   } catch {
     throw new Error(localizedMessage("ارتباط با سرور برقرار نشد. لطفاً دوباره تلاش کنید.", "Unable to connect to the server. Please try again."));
   }

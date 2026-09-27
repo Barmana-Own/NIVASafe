@@ -83,6 +83,7 @@ describe("AI provider adapters", () => {
     expect(chatBody.model).toBe("DeepSeek-V4-Flash");
     expect(chatBody.max_tokens).toBe(900);
     expect(chatBody.messages[0].content).toContain("Introduce yourself as the NIVASafe intelligent assistant");
+    expect(chatBody.messages[0].content).toContain("Preserve normal word spacing and punctuation");
     expect(chatBody.messages[1].content).toContain("Recent conversation history (reference only):");
     expect(chatBody.messages[1].content).toContain("User: Earlier question");
     expect(chatBody.messages[1].content).toContain("Assistant: Earlier answer");
@@ -96,6 +97,29 @@ describe("AI provider adapters", () => {
     expect(chat.answer).toContain("من دستیار هوشمند سامانه NIVASafe");
     expect(risk.answer).not.toContain("من دستیار هوشمند سامانه NIVASafe");
     expect(risk.answer).toContain("راهنمای پایه:");
+  });
+
+  it("normalises concatenated Persian chat introductions before storage", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ choices: [{ message: { content: "سلاممنچتبات NIVASafe هستم." } }] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.doMock("./core.js", () => ({ prisma: { knowledgeDocument: { findMany: vi.fn().mockResolvedValue([]) } } }));
+    const { getAIProvider } = await import("./ai-provider.js");
+    const result = await getAIProvider("arvancloud", "chat").analyze({ organizationId: "org", message: "سلام" });
+    expect(result.answer).toBe("سلام، من چت‌بات NIVASafe هستم.");
+  });
+
+  it("retrieves relevant published knowledge by title, tags, and content while respecting visibility", async () => {
+    vi.doMock("./core.js", () => ({ prisma: { knowledgeDocument: { findMany: vi.fn().mockResolvedValue([
+      { id: "doc-relevant", title: "LOTO procedure", content: "Lockout controls must be verified before maintenance.", tags: ["LOTO", "maintenance"], visibility: "ALL", visibleUserIds: null, visibleOrganizationIds: null, isGlobal: false, aiOnly: false, updatedAt: new Date("2026-09-27") },
+      { id: "doc-hidden", title: "LOTO hidden procedure", content: "This hidden document must never reach the assistant.", tags: ["LOTO"], visibility: "HIDDEN", visibleUserIds: null, visibleOrganizationIds: null, isGlobal: false, aiOnly: false, updatedAt: new Date("2026-09-28") },
+      { id: "doc-selected", title: "LOTO selected procedure", content: "This selected document is for another user.", tags: ["LOTO"], visibility: "SELECTED", visibleUserIds: ["another-user"], visibleOrganizationIds: null, isGlobal: false, aiOnly: false, updatedAt: new Date("2026-09-29") },
+    ]) } } }));
+    const { getAIProvider } = await import("./ai-provider.js");
+    const result = await getAIProvider("fallback", "chat").analyze({ organizationId: "org", userId: "user", message: "LOTO procedure" });
+    expect(result.citations).toEqual([{ id: "doc-relevant", title: "LOTO procedure" }]);
+    expect(result.answer).toContain("Lockout controls must be verified");
+    expect(result.answer).not.toContain("hidden document");
+    expect(result.answer).not.toContain("another user");
   });
 
   it("removes a known assistant introduction from risk-provider output", async () => {

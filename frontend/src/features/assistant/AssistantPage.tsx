@@ -6,7 +6,7 @@ import { scopedDraftKey } from "../../forms/autoSave";
 import { useI18n } from "../../i18n";
 
 type Conversation = { id: string; title: string; updatedAt?: string };
-type Message = { id: string; role: string; content: string; provider?: string; createdAt: string };
+type Message = { id: string; role: string; content: string; provider?: string; createdAt: string; citations?: Array<{ id: string; title: string }> };
 type AIProvider = { name: string; available: boolean; reason?: string | null; riskModel?: string | null; chatModel?: string | null; configuredForRisk?: boolean; configuredForChat?: boolean };
 
 export function AssistantPage() {
@@ -61,7 +61,7 @@ export function AssistantPage() {
     try {
       const result = await api<Conversation>("/chat/conversations", {
         method: "POST",
-        body: JSON.stringify({ title: `${t("assistant.newConversation")} ${new Date().toLocaleDateString(numberLocale)}` }),
+        body: JSON.stringify({ title: t("assistant.newConversation") }),
       });
       setSelected(result.data.id);
       setMobileConversationsOpen(false);
@@ -74,6 +74,7 @@ export function AssistantPage() {
     event.preventDefault();
     if (sendingRef.current) return;
     const element = event.currentTarget;
+    const input = element.elements.namedItem("content");
     const form = new FormData(element);
     const content = String(form.get("content") || "").trim();
     if (!content) return;
@@ -82,16 +83,16 @@ export function AssistantPage() {
     setSending(true);
     setPendingMessage(content);
     setError("");
+    element.reset();
+    void clearAutoSaveDraft(composerDraftKey);
     let id = selected;
     try {
       if (!id) {
-        const created = await api<Conversation>("/chat/conversations", { method: "POST", body: JSON.stringify({ title: content.slice(0, 40) }) });
+        const created = await api<Conversation>("/chat/conversations", { method: "POST", body: JSON.stringify({ title: t("assistant.newConversation") }) });
         id = created.data.id;
         setSelected(id);
       }
       const response = await api<Message>(`/chat/conversations/${id}/messages`, { method: "POST", body: JSON.stringify({ content }) });
-      await clearAutoSaveDraft(composerDraftKey);
-      element.reset();
       setPendingResponse(response.data);
       setPendingMessage(null);
       messages.reload();
@@ -100,6 +101,10 @@ export function AssistantPage() {
       setPendingMessage(null);
       setPendingResponse(null);
       setError((reason as Error).message);
+      if (input instanceof HTMLInputElement && !input.value.trim()) {
+        input.value = content;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      }
       if (id) messages.reload();
     } finally {
       sendingRef.current = false;
@@ -117,7 +122,7 @@ export function AssistantPage() {
   }
 
   function renderMessage(item: Message) {
-    return <div className={"message " + item.role} key={item.id}><div className="message-avatar">{item.role === "user" ? (locale === "en" ? "Y" : "ش") : <Icon name="sparkles" size={16}/>}</div><div className="message-bubble"><strong>{item.role === "user" ? t("assistant.you") : t("assistant.assistant")}</strong><p>{item.content}</p><small>{item.provider || formatDate(item.createdAt, true)}</small></div></div>;
+    return <div className={"message " + item.role} key={item.id}><div className="message-avatar">{item.role === "user" ? (locale === "en" ? "Y" : "ش") : <Icon name="sparkles" size={16}/>}</div><div className="message-bubble"><strong>{item.role === "user" ? t("assistant.you") : t("assistant.assistant")}</strong><p>{item.content}</p>{item.role !== "user" && item.citations?.length ? <div className="message-citations"><small>{t("assistant.knowledgeSources")}</small>{item.citations.map((citation) => <span key={citation.id}>{citation.title}</span>)}</div> : null}<small>{item.provider || formatDate(item.createdAt, true)}</small></div></div>;
   }
   return <section className="page-shell assistant-page">
     <PageHeader eyebrow={t("assistant.eyebrow")} title={t("assistant.title")} description={t("assistant.description")}/>
@@ -140,7 +145,7 @@ export function AssistantPage() {
           <span className="ai-orb"><Icon name="sparkles"/></span><div><h3>{t("assistant.chatTitle")}</h3><p>{chatDescription}</p></div><span className={`online ${providers.loading || providers.error || !chatUsesRemoteProvider ? "no" : "yes"}`}><span className="online-dot"/>{chatStatus}</span>
         </div>
         <div className="chat-log" ref={logRef} aria-busy={sending}>{!selected && !pendingMessage ? <EmptyState title={t("assistant.chooseConversation")} description={t("assistant.chooseConversationDescription")} icon="assistant"/> : selected && messages.loading && !pendingMessage ? <div className="state"><div className="spinner"/></div> : !messages.data?.length && !pendingMessage && !pendingResponse ? <div className="chat-welcome"><span className="ai-orb large"><Icon name="sparkles" size={28}/></span><h3>{t("assistant.welcome")}</h3><p>{t("assistant.welcomeDescription")}</p><div className="suggestions"><button type="button" onClick={() => fillSuggestion(t("assistant.suggestionOneText"))}>{t("assistant.suggestionOne")}</button><button type="button" onClick={() => fillSuggestion(t("assistant.suggestionTwoText"))}>{t("assistant.suggestionTwo")}</button></div></div> : <>{messages.data?.map(renderMessage)}{pendingResponse && renderMessage(pendingResponse)}{pendingMessage && <div className="message user pending-message"><div className="message-avatar">{locale === "en" ? "Y" : "ش"}</div><div className="message-bubble"><strong>{t("assistant.you")}</strong><p>{pendingMessage}</p><small>{t("assistant.sending")}</small></div></div>}{sending && <div className="message assistant pending-message"><div className="message-avatar"><Icon name="sparkles" size={16}/></div><div className="message-bubble"><strong>{t("assistant.assistant")}</strong><p>{t("assistant.waitingForResponse")}</p><span className="assistant-typing" aria-hidden="true"><i/><i/><i/></span></div></div>}</>}</div>
-        <AutoSaveForm storageKey={composerDraftKey} className="composer" onSubmit={send}><input name="content" placeholder={t("assistant.questionPlaceholder")} autoComplete="off" minLength={2} maxLength={4000} required disabled={sending}/><button type="submit" className="primary" aria-label={t("assistant.send")} disabled={sending}><Icon name="arrow"/></button>{sending && <small className="composer-send-status" role="status"><span className="composer-spinner" aria-hidden="true"/>{t("assistant.waitingForResponse")}</small>}</AutoSaveForm>
+        <AutoSaveForm storageKey={composerDraftKey} className="composer" onSubmit={send}><input name="content" placeholder={t("assistant.questionPlaceholder")} autoComplete="off" minLength={2} maxLength={4000} required aria-busy={sending}/><button type="submit" className="primary" aria-label={t("assistant.send")} disabled={sending}><Icon name="arrow"/></button>{sending && <small className="composer-send-status" role="status"><span className="composer-spinner" aria-hidden="true"/>{t("assistant.waitingForResponse")}</small>}</AutoSaveForm>
         <small className="assistant-note">{t("assistant.disclaimer")}</small>
       </section>
     </div>

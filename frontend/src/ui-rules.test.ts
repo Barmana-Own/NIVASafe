@@ -59,6 +59,22 @@ describe("organization file assessment references", () => {
   });
 });
 
+describe("registered assessment reports", () => {
+  it("keeps finalized reports separate from general file management and opens the saved report", () => {
+    expect(filesPageSource).toContain('useLoad<RegisteredReport[]>(canViewReports ? "/reports/registered" : null)');
+    expect(filesPageSource).toContain('title={t("files.reportsSection")}');
+    expect(filesPageSource).toContain('className="registered-report-card"');
+    expect(filesPageSource).toContain('navigate(`/${report.type.toLowerCase()}/${encodeURIComponent(report.id)}/report`)');
+    expect(reportsSource).toContain('app.get("/api/v1/reports/registered"');
+    expect(reportsSource).toContain('status: "APPROVED"');
+    expect(reportsSource).toContain('isRulaPostureAnalysisReviewed');
+    expect(stylesSource).toContain(".registered-report-list");
+    expect(stylesSource).toContain(".registered-report-card:hover");
+    expect(i18nSource).toContain('"files.reportsSection": "گزارش‌های نهایی ارزیابی"');
+    expect(i18nSource).toContain('"files.reportsSection": "Final assessment reports"');
+  });
+});
+
 describe("authenticated header controls", () => {
   it("keeps sign-out in the sidebar while the topbar stays focused on utility controls", () => {
     expect(appLayoutSource).not.toContain("className={`online");
@@ -76,6 +92,16 @@ describe("authenticated header controls", () => {
     expect(i18nSource).toContain('"shell.themeWhite": "روشن"');
     expect(i18nSource).toContain('"shell.themeBlue": "Dark"');
     expect(i18nSource).toContain('"shell.themeWhite": "Light"');
+  });
+});
+
+describe("account shortcut", () => {
+  it("makes the signed-in user card open account settings", () => {
+    expect(appLayoutSource).toContain('<Link className="side-user" to="/profile"');
+    expect(appLayoutSource).toContain('aria-label={t("nav.profile")}');
+    expect(stylesSource).toContain(".side-user:hover, .side-user:focus-visible");
+    expect(i18nSource).toContain('"nav.profile": "تنظیمات حساب"');
+    expect(i18nSource).toContain('"nav.profile": "Account settings"');
   });
 });
 
@@ -160,6 +186,21 @@ describe("corrective-action body-side scope", () => {
     expect(assessmentPagesSource).toContain("suggestions.slice(0, RULA_CORRECTIVE_SUGGESTION_MAX)");
     expect(assessmentPagesSource).toContain('t("assessment.rulaActionBodySide")');
     expect(reportsSource).toContain('Body side: ${action.bodySide ?? "-"}');
+  });
+});
+
+describe("corrective-action form layout", () => {
+  it("keeps the new-action fields in deliberate responsive rows with a dedicated submit control", () => {
+    expect(generalPagesSource).toContain('className="action-field action-project"');
+    expect(generalPagesSource).toContain('className="action-field action-rula"');
+    expect(generalPagesSource).toContain('className="action-field action-body-side"');
+    expect(generalPagesSource).toContain('className="action-field action-description"');
+    expect(generalPagesSource).toContain('className="primary action-submit" type="submit"');
+    expect(stylesSource).toContain(".action-form { grid-template-columns: repeat(12, minmax(0, 1fr)); align-items: start; }");
+    expect(stylesSource).toContain(".action-form .action-description { grid-column: span 8; }");
+    expect(stylesSource).toContain(".action-form .action-submit { align-self: end; min-height: var(--control-height); width: 100%; white-space: nowrap; }");
+    expect(stylesSource).toContain(".action-form .action-submit { grid-column: 1 / -1; justify-self: start; width: min(100%, 15rem); }");
+    expect(stylesSource).toContain(".action-form .action-submit { width: 100%; }");
   });
 });
 
@@ -1208,18 +1249,27 @@ describe("assistant AI connectivity UX", () => {
     expect(assistantPageSource).toContain("messageTooShort");
   });
 
-  it("locks the composer and conversation switching while a response is pending", () => {
+  it("clears the submitted prompt immediately while keeping the response state visible", () => {
     expect(assistantPageSource).toContain("sendingRef");
     expect(assistantPageSource).toContain("if (sendingRef.current) return;");
     expect(assistantPageSource).toContain("setSending(true)");
     expect(assistantPageSource).toContain("setPendingMessage(content)");
+    expect(assistantPageSource).toContain("element.reset();");
+    expect(assistantPageSource).toContain("void clearAutoSaveDraft(composerDraftKey);");
     expect(assistantPageSource).toContain("setPendingResponse(response.data)");
-    expect(assistantPageSource).toContain("disabled={sending}");
+    expect(assistantPageSource).toContain("aria-busy={sending}");
+    expect(assistantPageSource).toContain("input.dispatchEvent(new Event(\"input\", { bubbles: true }));");
     expect(assistantPageSource).toContain('t("assistant.waitingForResponse")');
     expect(stylesSource).toContain(".composer-spinner");
     expect(stylesSource).toContain("@keyframes assistant-typing-bounce");
     expect(i18nSource).toContain('"assistant.waitingForResponse": "در حال دریافت پاسخ..."');
     expect(i18nSource).toContain('"assistant.waitingForResponse": "Waiting for the assistant response..."');
+  });
+
+  it("shows conversation topics instead of generated date-only labels", () => {
+    expect(assistantPageSource).toContain("<strong>{item.title}</strong>");
+    expect(assistantPageSource).toContain("body: JSON.stringify({ title: t(\"assistant.newConversation\") })");
+    expect(assistantPageSource).toContain("conversations.data.map");
   });
 
   it("keeps the mobile shell inline and keeps the chat composer reachable", () => {
@@ -1278,7 +1328,21 @@ describe("assistant navigation label", () => {
 describe("knowledge form layout", () => {
   it("keeps visibility and multi-select controls balanced and responsive", () => {
     expect(generalPagesSource).toContain('className="knowledge-options"');
+    expect(generalPagesSource).toContain('className="page-shell knowledge-page"');
+    expect(generalPagesSource).not.toContain('name="aiOnly"');
+    expect(generalPagesSource).not.toContain("toggleAiOnly");
+    expect(generalPagesSource).toContain("knowledge.aiLinkTitle");
+    expect(generalPagesSource).toContain('/knowledge/${documentId}/attachments');
+    expect(generalPagesSource).toContain('className="knowledge-attachment-upload"');
+    expect(filesApiSource).toContain('KNOWLEDGE_ATTACHMENT_ROUTE_REQUIRED');
+    expect(apiClientSource).toContain('requestOptions.cache = "no-store"');
+    expect(assistantPageSource).toContain("message-citations");
     expect(stylesSource).toContain(".knowledge-options > label:not(.checkbox-card):not(.knowledge-file)");
+    expect(stylesSource).toContain(".knowledge-ai-link {");
+    expect(stylesSource).toContain(".knowledge-page { min-height: 100%; overflow: visible; }");
+    expect(stylesSource).toContain("overflow-y: auto;");
+    expect(stylesSource).toContain(".knowledge-attachment-upload {");
+    expect(stylesSource).toContain(".message-citations {");
     expect(stylesSource).toContain("height: 112px; min-height: 112px;");
     expect(stylesSource).toContain(".knowledge-options .checkbox-card { min-height: 76px;");
     expect(stylesSource).toContain("@media (max-width: 900px) {\n  .knowledge-form-top, .knowledge-options { grid-template-columns: 1fr; }");
@@ -1713,7 +1777,9 @@ describe("global admin panel", () => {
     expect(stylesSource).toContain(".global-admin-shell");
     expect(stylesSource).toContain(".organization-admin-shell");
     expect(stylesSource).toContain(".admin-panel-page");
-    expect(adminPageSource).toContain('const organizationRoles = ["ORG_ADMIN", "HSE_MANAGER", "HSE_SPECIALIST", "HSE_OFFICER", "EXTERNAL_AUDITOR", "PERSONNEL", "VIEWER"];');
+    expect(adminPageSource).toContain('const organizationRoles = ["HSE_MANAGER", "HSE_SPECIALIST", "HSE_OFFICER", "EXTERNAL_AUDITOR", "PERSONNEL", "VIEWER"];');
+    expect(adminPageSource).toContain('const organizationAssignableRoles = organizationRoles;');
+    expect(adminPageSource).toContain('className="status-badge neutral member-legacy-role"');
     expect(adminPageSource).toContain("`/admin/users/${target.id}/password`");
     expect(adminPageSource).toContain("`/admin/memberships/${membership.id}`");
     expect(adminModuleSource).toContain('"/api/v1/admin/users/:id/password"');
@@ -1722,16 +1788,20 @@ describe("global admin panel", () => {
 });
 
 describe("administrator invitations", () => {
-  it("offers assistants and organization administrators through the member invite flow", () => {
+  it("offers only the approved HSE and limited organization roles through member flows", () => {
     const accountSource = readFileSync(new URL("./features/account/AccountPages.tsx", import.meta.url), "utf8");
-    expect(accountSource).toContain('const roles = ["ORG_ADMIN", "HSE_MANAGER", "HSE_SPECIALIST", "HSE_OFFICER", "EXTERNAL_AUDITOR", "PERSONNEL", "VIEWER"];');
+    expect(accountSource).toContain('const roles = ["HSE_MANAGER", "HSE_SPECIALIST", "HSE_OFFICER", "EXTERNAL_AUDITOR", "PERSONNEL", "VIEWER"];');
+    expect(accountSource).toContain("const invitationRoles = [...roles];");
+    expect(accountSource).not.toContain('const roles = ["ORG_ADMIN"');
+    expect(accountSource).not.toContain('const invitationRoles = ["ORG_ADMIN"');
+    expect(accountSource).toContain("const memberRoles = organizationMemberRoles;");
     expect(accountSource).toContain('api("/member-requests"');
     expect(adminPageSource).toContain('`/admin/member-requests/${request.id}/approve`');
     expect(accountSource).toContain('api<{ developmentToken?: string }>("/invitations"');
     expect(i18nSource).toContain('"members.legacyInviteTitle": "دعوت ایمیلی سازگاری"');
     expect(i18nSource).toContain('"members.legacyInviteTitle": "Legacy email invitation"');
-    expect(i18nSource).toContain('"role.assistant": "دستیار"');
-    expect(i18nSource).toContain('"role.assistant": "Assistant"');
+    expect(i18nSource).toContain('"role.superAdmin": "مدیر ارشد سیستم"');
+    expect(i18nSource).toContain('"role.superAdmin": "Chief system administrator"');
   });
 });
 

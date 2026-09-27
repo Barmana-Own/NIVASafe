@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
-import { buildFmeaFinalTablePdfDocument, buildFmeaFinalTableWorkbook, buildFmeaFinalTableWordDocument, buildFmeaPdfLines, buildFmeaWorkbook, buildFmeaWordDocument, buildPdfDocument, buildRulaWorkbook, buildRulaWordDocument, FMEA_FINAL_TABLE_HEADERS, type FmeaReportData, type RulaReportData, type RulaReportExport } from "./modules/reports.js";
+import { buildFmeaFinalTablePdfDocument, buildFmeaFinalTableWorkbook, buildFmeaFinalTableWordDocument, buildFmeaPdfLines, buildFmeaWorkbook, buildFmeaWordDocument, buildPdfDocument, buildRegisteredReportSummaries, buildRulaWorkbook, buildRulaWordDocument, FMEA_FINAL_TABLE_HEADERS, type FmeaReportData, type RulaReportData, type RulaReportExport } from "./modules/reports.js";
 
 const fmea: FmeaReportData = {
   title: "Production line FMEA",
@@ -32,6 +32,15 @@ const rulaReport: RulaReportExport = {
 };
 
 describe("assessment report exports", () => {
+  it("orders registered FMEA and RULA reports by finalization date", () => {
+    const reports = buildRegisteredReportSummaries(
+      [{ id: "fmea-1", title: "FMEA one", code: "FMEA-1", projectName: "Project one", projectCode: "P-1", finalizedAt: new Date("2026-09-20T10:00:00.000Z") }],
+      [{ id: "rula-1", title: "RULA one", code: "RULA-1", projectName: "Project two", projectCode: "P-2", finalizedAt: new Date("2026-09-21T10:00:00.000Z") }],
+    );
+    expect(reports.map((report) => `${report.type}:${report.id}`)).toEqual(["RULA:rula-1", "FMEA:fmea-1"]);
+    expect(reports[0]?.finalizedAt).toBe("2026-09-21T10:00:00.000Z");
+  });
+
   it("creates a readable FMEA Excel workbook with separate report sheets", async () => {
     const buffer = await buildFmeaWorkbook(fmea);
     const workbook = new ExcelJS.Workbook();
