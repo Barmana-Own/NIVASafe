@@ -472,7 +472,7 @@ export async function registerAssessmentRoutes(app: FastifyInstance) {
    app.delete("/api/v1/fmea/:id/items/:itemId", { preHandler: authenticate }, async (request) => { const organizationId = requireOrg(request); requirePermission(request, "assessments.update"); const params = parse(z.object({ id: z.string().uuid(), itemId: z.string().uuid() }), request.params); await getFmea(params.id, organizationId); const result = await prisma.fmeaItem.deleteMany({ where: { id: params.itemId, assessmentId: params.id } }); if (!result.count) throw Object.assign(new Error("FMEA item not found"), { statusCode: 404 }); await audit(request, "FMEA_ITEM_DELETE", "FmeaItem", params.itemId, { assessmentId: params.id }); return envelope({ success: true }); });
 
   app.get("/api/v1/rula", { preHandler: authenticate }, async (request) => {
-    const assessments = await prisma.rulaAssessment.findMany({ where: { organizationId: requireOrg(request) }, include: { project: { select: { name: true, code: true } } }, orderBy: { updatedAt: "desc" } });
+    const assessments = await prisma.rulaAssessment.findMany({ where: { organizationId: requireOrg(request) }, include: { project: { select: { id: true, name: true, code: true } } }, orderBy: { updatedAt: "desc" } });
     return envelope(assessments.map((assessment) => ({ ...assessment, postureReviewComplete: rulaReviewComplete(assessment.bodySide, assessment.postureAnalysis) })));
   });
   app.get("/api/v1/rula/:id", { preHandler: authenticate }, async (request) => envelope(await getRula(parse(idParam, request.params).id, requireOrg(request))));

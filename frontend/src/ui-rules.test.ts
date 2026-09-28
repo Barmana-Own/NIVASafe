@@ -738,7 +738,8 @@ describe("RULA assessment results view", () => {
     expect(assessmentPagesSource).toContain('t("assessment.rulaResults")');
     expect(assessmentPagesSource).toContain('t("assessment.backToNewRula")');
     expect(assessmentPagesSource).toContain('{resultsView && <SectionCard title={t("assessment.rulaResults")}');
-    expect(assessmentPagesSource).toContain('{!resultsView && canEdit() && <SectionCard title={t("assessment.evaluateNew", { type: assessmentLabel })}');
+    expect(assessmentPagesSource).toContain('{!resultsView && canEdit() && <SectionCard');
+    expect(assessmentPagesSource).toContain('editingExistingAssessment ? t("assessment.editRula") : t("assessment.evaluateNew", { type: assessmentLabel })');
     expect(i18nSource).toContain('"assessment.backToNewRula": "بازگشت به ارزیابی جدید RULA"');
     expect(i18nSource).toContain('"assessment.backToNewRula": "Back to new RULA assessment"');
   });
@@ -841,6 +842,11 @@ describe("RULA process information", () => {
     expect(assessmentPagesSource).toContain('<span className="field-label-line"><span>{t("assessment.rulaLoadWeight")}</span><span className="optional-label">{t("common.optional")}</span></span>');
     expect(assessmentPagesSource).toContain('<span className="field-label-line"><span>{t("assessment.force")}</span><span className="required-label">{t("common.required")}</span></span>');
     expect(stylesSource).toContain('.field-label-line { display: flex; align-items: center;');
+  });
+
+  it("keeps the RULA task description compact while giving it enough writing space", () => {
+    expect(assessmentPagesSource).toContain('id="rula-task-description"');
+    expect(stylesSource).toContain(".rula-process-form-grid #rula-task-description { min-height: 132px; font-size: .72rem; line-height: 1.45; }");
   });
 
   it("reuses the FMEA searchable job catalog control for RULA", () => {
@@ -1633,8 +1639,8 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain("return assessmentDraftKey(kind, session?.user.id, orgId);");
     expect(assessmentPagesSource).toContain("assessmentWizardStepKey(draftKey)");
     expect(assessmentPagesSource).toContain("writeStoredDraft(browserStorage(), key, draft)");
-    expect(assessmentPagesSource).toContain("onInput={(event) => queueDraft");
-    expect(assessmentPagesSource).toContain("onChange={(event) => queueDraft");
+    expect(assessmentPagesSource).toContain("onInput={(event) => { if (!editingExistingAssessment) queueDraft");
+    expect(assessmentPagesSource).toContain("onChange={(event) => { if (!editingExistingAssessment) queueDraft");
     expect(assessmentPagesSource).toContain("const draftWriteQueue = useRef<Promise<void>>(Promise.resolve())");
     expect(assessmentPagesSource).toContain("await clearAutoSaveDraft(draftKey)");
     expect(assessmentPagesSource).toContain("draft.inputs && typeof draft.inputs === \"object\"");
@@ -1664,7 +1670,8 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain('noValidate aria-busy={submitting}');
     expect(assessmentPagesSource).toContain("handlePostureImageChange");
     expect(assessmentPagesSource).toContain("removePostureImage");
-    expect(assessmentPagesSource).toContain('capture="environment"');
+    expect(assessmentPagesSource).toContain('accept="image/jpeg,image/png,image/webp"');
+    expect(assessmentPagesSource).not.toContain('capture="environment"');
     expect(assessmentPagesSource).toContain('postureImageInvalidType');
     expect(assessmentPagesSource).toContain('registeringRula');
     expect(assessmentPagesSource).toContain('entityType", "RulaAssessment"');
@@ -1736,6 +1743,7 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain("rulaRelatedFactor");
     expect(assessmentPagesSource).toContain("RulaCorrectionSuggestionsTable");
     expect(assessmentPagesSource).toContain("assessment-report-table rula-correction-table");
+    expect(assessmentPagesSource).not.toContain('t("assessment.resultSource")}</th><th>{t("assessment.rulaReportSelectedActions")}</th>');
     expect(assessmentPagesSource).toContain('t("assessment.rulaSuggestedAction")');
     expect(assessmentPagesSource).toContain('t("assessment.rulaActionBodySide")');
     expect(assessmentPagesSource).toContain('t("assessment.rulaActionPriority")');
@@ -1762,6 +1770,9 @@ describe("form auto-save contract", () => {
     expect(stylesSource).toContain(".rula-report-risk-badge.immediate");
     expect(stylesSource).toContain(".rula-manual-factors");
     expect(stylesSource).toContain(".rula-correction-table");
+    expect(stylesSource).toContain(".rula-correction-table thead { position: static;");
+    expect(stylesSource).toContain(".rula-correction-table tbody { display: table-row-group; }");
+    expect(stylesSource).toContain(".rula-correction-table tbody tr { display: table-row;");
     expect(stylesSource).toContain(".rula-manual-action-scope-note");
     expect(stylesSource).toContain(".rula-assessment-register-table");
     expect(stylesSource).toContain(".rula-report-data-table");
@@ -1773,8 +1784,20 @@ describe("form auto-save contract", () => {
     expect(stylesSource).toContain(".surface-title > div");
     expect(stylesSource).toContain("@media (max-width: 1400px)");
     expect(stylesSource).toContain(".rula-assessment-register-table .report-table-actions");
+    expect(stylesSource).toContain(".rula-report-data-table td:last-child .report-table-actions");
     expect(stylesSource).toContain("grid-template-columns: repeat(3, 27px)");
     expect(stylesSource).toContain("overflow-wrap: anywhere");
+    expect(assessmentPagesSource).toContain("function RulaReportStepper");
+    expect(assessmentPagesSource).toContain("function goToPreviousStep()");
+    expect(assessmentPagesSource).toContain('navigate(`/rula?edit=${encodeURIComponent(id)}&step=2`)');
+    expect(assessmentPagesSource).toContain('onEdit={reportPostureEditHandler}');
+    expect(assessmentPagesSource).toContain('t("assessment.editPostureResult")');
+    expect(assessmentPagesSource).toContain('part=${encodeURIComponent(part)}');
+    expect(assessmentPagesSource).toContain('const editingAssessmentId = searchParams.get("edit")?.trim() ?? ""');
+    expect(assessmentPagesSource).toContain('await api(`/rula/${editingAssessmentId}`, { method: "PATCH"');
+    expect(assessmentPagesSource).toContain('t("assessment.editRula")');
+    expect(i18nSource).toContain('"assessment.editRula": "ویرایش ارزیابی RULA"');
+    expect(i18nSource).toContain('"assessment.editRula": "Edit RULA assessment"');
   });
 });
 

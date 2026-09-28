@@ -23,10 +23,28 @@ const fmea: FmeaReportData = {
   actions: [{ title: "Install restraint", description: "Install and inspect a restraint before loading", priority: "HIGH", status: "OPEN", progress: 25, assigneeName: "Safety lead", dueDate: new Date("2026-09-10T00:00:00.000Z"), fmeaItemId: "item-1", fmeaItem: { rowNumber: 1, failureMode: "Dropped load" } }],
 };
 
-const rula: RulaReportData = { title: "Packing posture", project: { name: "Ergonomics project" }, score: 6, actionLevel: 3, explanation: "Needs review" };
+const rula: RulaReportData = {
+  title: "Packing posture",
+  project: { name: "Ergonomics project" },
+  score: 6,
+  actionLevel: 3,
+  explanation: "Needs review",
+  bodySide: "RIGHT",
+  activityInfo: { jobTitle: "Packing operator", taskDescription: "Pack finished products", durationPerOccurrence: 15, durationUnit: "MINUTE", repetitionsPerShift: 24, postureHoldDuration: 20, postureHoldUnit: "SECOND", loadWeight: 8, loadUnit: "KG", postureDescription: "The operator reaches forward to place the load." },
+  postureAnalysis: {
+    upperArm: { angle: 32, score: 3, detected: true, source: "AI", confirmedByUser: false },
+    lowerArm: { angle: 48, score: 2, detected: true, source: "AI", confirmedByUser: false },
+    wrist: { angle: 18, score: 2, detected: true, source: "AI", confirmedByUser: false },
+    wristTwist: { angle: 10, score: 1, detected: false, source: "AI", confirmedByUser: false },
+    neck: { angle: 24, score: 3, detected: true, source: "AI", confirmedByUser: false },
+    trunk: { angle: 28, score: 3, detected: true, source: "AI", confirmedByUser: false },
+    legs: { angle: 0, score: 1, detected: true, source: "AI", confirmedByUser: false },
+  },
+};
 const rulaReport: RulaReportExport = {
   assessment: rula,
   factors: [{ key: "neck", angle: 24, detected: true, score: 3, impactPercent: 43, impactLevel: "HIGH", source: "AI" }],
+  suggestedActions: [{ id: "adjust-work-surface", titleFa: "تنظیم ارتفاع سطح کار", titleEn: "Adjust work surface", descriptionFa: "ارتفاع سطح کار را تنظیم کنید.", descriptionEn: "Raise the work surface", priority: "HIGH", scoreReduction: 2, affectedParts: ["neck", "trunk"], bodySide: "RIGHT", source: "AI" }],
   actions: [{ title: "Adjust work surface", description: "Raise the work surface", priority: "HIGH", status: "OPEN", rulaImpact: { scoreReduction: 2, affectedParts: ["neck", "trunk"] } }],
   predictedScore: 4,
 };
@@ -83,12 +101,16 @@ describe("assessment report exports", () => {
     const buffer = await buildRulaWorkbook(rula, rulaReport);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
-    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["RULA", "FACTORS", "ACTIONS"]);
+    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["RULA", "PROCESS", "IMPACT", "FACTORS", "RULA DATA", "CORRECTIONS", "ACTIONS"]);
     expect(workbook.getWorksheet("RULA")?.getColumn(2).values).toContain(4);
     expect(workbook.getWorksheet("FACTORS")?.getRow(2).values).toContain("neck");
     expect(workbook.getWorksheet("ACTIONS")?.getRow(2).values).toContain("Adjust work surface");
     expect(workbook.getWorksheet("ACTIONS")?.getRow(2).values).toContain("Selected");
     expect(workbook.getWorksheet("ACTIONS")?.getRow(2).values).toContain("neck, trunk");
+    expect(workbook.getWorksheet("PROCESS")?.getRow(2).values).toContain("Packing operator");
+    expect(workbook.getWorksheet("RULA DATA")?.getColumn(4).values).toContain("Neck");
+    expect(workbook.getWorksheet("CORRECTIONS")?.getRow(2).values).toContain("Adjust work surface");
+    expect(workbook.getWorksheet("CORRECTIONS")?.getRow(2).values).toContain("Selected");
 
     const incompleteReport: RulaReportExport = {
       ...rulaReport,
@@ -153,7 +175,7 @@ describe("assessment report exports", () => {
 
     const archive = await JSZip.loadAsync(wordBuffer);
     const document = await archive.file("word/document.xml")!.async("string");
-    for (const value of ["Status", "IN_REVIEW", "Predicted score (estimate)", "Reassess after controls", "neck", "43%", "Adjust work surface", "neck, trunk", "Selected"]) {
+    for (const value of ["Status", "IN_REVIEW", "Predicted score (estimate)", "Reassess after controls", "neck", "43%", "Adjust work surface", "neck, trunk", "Selected", "Process information", "RULA assessment data", "Proposed corrective actions", "Packing operator"]) {
       expect(document).toContain(value);
     }
   });

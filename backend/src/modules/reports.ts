@@ -13,7 +13,7 @@ import { getAvailableAssessmentAIProvider } from "../ai-provider.js";
 import { audit, envelope, parse, prisma, requireOrg, requirePermission } from "../core.js";
 import { actionPriority, buildFmeaReportDetailSeedRows, buildFmeaReportDetailSuggestionsPrompt, ensureMinimumFmeaReportDetailSuggestions, fallbackFmeaReportDetailSuggestions, FMEA_REPORT_DETAIL_SUGGESTION_MAX, FMEA_REPORT_DETAIL_SUGGESTION_MIN, parseFmeaReportDetailSuggestions, summariseFmea, topFailureModes, type FmeaReportDetailSuggestion, type FmeaReportRisk } from "../fmea-report.js";
 import { buildRulaFactors, buildRulaSideResults, parseRulaInputs, parseRulaPostureAnalysis, predictedRulaScore, rulaImpactSchema, type RulaReportFactor, type RulaSideResults } from "../rula-report.js";
-import { isRulaPostureAnalysisReviewed, rulaPostureAnalysisSchema, type RulaPostureAnalysis } from "../rula-posture.js";
+import { isRulaPostureAnalysisReviewed, isRulaPostureResultReviewed, rulaPostureAnalysisSchema, type RulaPostureAnalysis, type RulaPosturePart, type RulaPostureResult } from "../rula-posture.js";
 import { buildFmeaActionSuggestionsPrompt, buildRulaActionSuggestionsPrompt, fallbackFmeaActionSuggestions, fallbackRulaActionSuggestions, mergeFmeaActionSuggestions, mergeRulaActionSuggestions, parseFmeaActionSuggestions, parseRulaActionSuggestions, type FmeaActionCandidate } from "../assessment-action-suggestions.js";
 
 const paramsSchema = z.object({ type: z.enum(["fmea", "rula"]), id: z.string().uuid(), format: z.enum(["pdf", "xlsx", "doc", "docx"]) });
@@ -246,14 +246,28 @@ function fmeaItemsForOutput(data: FmeaReportData) {
 
 export type RulaSideResultData = Pick<RulaSideResults["LEFT"], "score" | "actionLevel" | "explanation" | "groupA" | "groupB" | "adjustment" | "trace">;
 export type RulaSideFactorData = Pick<RulaReportFactor, "key" | "angle" | "detected" | "score" | "impactPercent" | "impactLevel" | "source" | "reviewed">;
-export type RulaReportData = { title: string; project: { name: string }; score: number; actionLevel: number; explanation: string; status?: string; bodySide?: "LEFT" | "RIGHT" | "BOTH"; postureReviewComplete?: boolean; sideResults?: Partial<Record<"LEFT" | "RIGHT", RulaSideResultData>>; sideFactors?: Partial<Record<"LEFT" | "RIGHT", RulaSideFactorData[]>> };
+export type RulaActivityInfoData = {
+  jobTitle?: string;
+  taskDescription?: string;
+  postureDescription?: string | null;
+  durationPerOccurrence?: number;
+  durationUnit?: "SECOND" | "MINUTE" | "HOUR";
+  repetitionsPerShift?: number;
+  postureHoldDuration?: number;
+  postureHoldUnit?: "SECOND" | "MINUTE" | "HOUR";
+  loadWeight?: number | null;
+  loadUnit?: "KG" | "LB";
+};
+export type RulaReportData = { title: string; project: { name: string }; score: number; actionLevel: number; explanation: string; status?: string; bodySide?: "LEFT" | "RIGHT" | "BOTH"; postureReviewComplete?: boolean; activityInfo?: RulaActivityInfoData | null; postureAnalysis?: RulaPostureAnalysis | null; sideResults?: Partial<Record<"LEFT" | "RIGHT", RulaSideResultData>>; sideFactors?: Partial<Record<"LEFT" | "RIGHT", RulaSideFactorData[]>> };
 export type RulaReportExport = {
-  assessment: { title: string; project: { name: string }; score: number; actionLevel: number; explanation: string; status?: string; bodySide?: "LEFT" | "RIGHT" | "BOTH"; postureReviewComplete?: boolean };
+  assessment: { title: string; project: { name: string }; score: number; actionLevel: number; explanation: string; status?: string; bodySide?: "LEFT" | "RIGHT" | "BOTH"; postureReviewComplete?: boolean; activityInfo?: RulaActivityInfoData | null; postureAnalysis?: RulaPostureAnalysis | null };
   factors: Array<{ key: string; angle: number | null; detected?: boolean; score: number; impactPercent: number; impactLevel: string; source?: string; reviewed?: boolean }>;
   sideResults?: Partial<Record<"LEFT" | "RIGHT", RulaSideResultData>>;
   sideFactors?: Partial<Record<"LEFT" | "RIGHT", RulaSideFactorData[]>>;
-  actions: Array<{ title: string; description: string; priority: string; status?: string; bodySide?: "LEFT" | "RIGHT" | "BOTH" | null; rulaImpact?: { scoreReduction: number; affectedParts?: string[] } | null }>;
+  suggestedActions?: Array<{ id: string; titleFa: string; titleEn: string; descriptionFa: string; descriptionEn: string; priority: string; scoreReduction: number; affectedParts: RulaPosturePart[]; bodySide?: "LEFT" | "RIGHT" | "BOTH"; source?: string }>;
+  actions: Array<{ title: string; description: string; priority: string; status?: string; bodySide?: "LEFT" | "RIGHT" | "BOTH" | null; rulaImpact?: { suggestionId?: string; scoreReduction: number; affectedParts?: string[] } | null }>;
   predictedScore: number;
+  predictedSideScores?: Partial<Record<"LEFT" | "RIGHT", number>>;
   predictedNote?: string;
 };
 
@@ -312,6 +326,26 @@ function fmeaActionMetrics(actions: FmeaReportData["actions"]) {
 
 function fmeaSuggestedActions(data: FmeaReportData) {
   return fmeaItemsForOutput(data).filter((item) => Boolean(item.recommendation?.trim()) && !data.actions.some((action) => action.fmeaItem?.rowNumber === item.rowNumber && action.title.trim().toLocaleLowerCase() === item.recommendation!.trim().toLocaleLowerCase()));
+}
+
+function parseRulaActivityInfo(value: unknown): RulaActivityInfoData | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const source = value as Record<string, unknown>;
+  const text = (key: string) => typeof source[key] === "string" ? source[key] as string : undefined;
+  const number = (key: string) => typeof source[key] === "number" && Number.isFinite(source[key]) ? source[key] as number : undefined;
+  const unit = <T extends string>(key: string, allowed: readonly T[]) => typeof source[key] === "string" && allowed.includes(source[key] as T) ? source[key] as T : undefined;
+  return {
+    jobTitle: text("jobTitle"),
+    taskDescription: text("taskDescription"),
+    postureDescription: text("postureDescription") ?? null,
+    durationPerOccurrence: number("durationPerOccurrence"),
+    durationUnit: unit("durationUnit", ["SECOND", "MINUTE", "HOUR"] as const),
+    repetitionsPerShift: number("repetitionsPerShift"),
+    postureHoldDuration: number("postureHoldDuration"),
+    postureHoldUnit: unit("postureHoldUnit", ["SECOND", "MINUTE", "HOUR"] as const),
+    loadWeight: source.loadWeight === null ? null : number("loadWeight"),
+    loadUnit: unit("loadUnit", ["KG", "LB"] as const),
+  };
 }
 
 export function buildFmeaPdfLines(data: FmeaReportPdfData) {
@@ -407,13 +441,16 @@ async function loadRulaReport(id: string, organizationId: string) {
   const impacts = rula.actions.map((action) => actionRulaImpact(action, rula.score));
   const activeImpacts = rula.actions.flatMap((action, index) => isActiveRulaAction(action.status) ? [impacts[index]] : []);
   const activeActions = rula.actions.flatMap((action, index) => isActiveRulaAction(action.status) && impacts[index] ? [{ action, impact: impacts[index] }] : []);
-  const predictedScore = sideResults
-    ? Math.max(...(["RIGHT", "LEFT"] as const).map((side) => predictedRulaScore(
+  const predictedSideScores = sideResults
+    ? (Object.fromEntries((['RIGHT', 'LEFT'] as const).map((side) => [side, predictedRulaScore(
       sideResults[side].score,
       activeActions
-        .filter(({ action }) => !action.bodySide || action.bodySide === "BOTH" || action.bodySide === side)
+        .filter(({ action }) => !action.bodySide || action.bodySide === 'BOTH' || action.bodySide === side)
         .map(({ impact }) => impact),
-    )))
+    )])) as Partial<Record<'LEFT' | 'RIGHT', number>>)
+    : undefined;
+  const predictedScore = sideResults
+    ? Math.max(...(["RIGHT", "LEFT"] as const).map((side) => predictedSideScores?.[side] ?? sideResults[side].score))
     : predictedRulaScore(rula.score, activeImpacts);
   return {
     assessment: {
@@ -425,7 +462,7 @@ async function loadRulaReport(id: string, organizationId: string) {
       explanation: rula.explanation,
       status: rula.status,
       updatedAt: rula.updatedAt,
-      activityInfo: rula.activityInfo,
+      activityInfo: parseRulaActivityInfo(rula.activityInfo),
       bodySide,
       postureReviewComplete: isRulaPostureAnalysisReviewed(bodySide, postureAnalysis),
       postureAnalysis,
@@ -449,6 +486,7 @@ async function loadRulaReport(id: string, organizationId: string) {
       rulaImpact: impacts[index],
     })),
     predictedScore,
+    predictedSideScores,
   };
 }
 
@@ -707,7 +745,11 @@ type RulaExportModel = {
   assessment: RulaReportData | RulaReportExport["assessment"];
   reviewComplete: boolean;
   summaryRows: ExportRow[];
+  processRows: ExportRow[];
+  impactRows: ExportRow[];
   factorRows: ExportRow[];
+  dataRows: ExportRow[];
+  suggestionRows: ExportRow[];
   actionRows: ExportRow[];
 };
 
@@ -715,10 +757,95 @@ function isRulaActionSelected(status?: string) {
   return status ? !["CANCELLED", "REJECTED"].includes(status) : true;
 }
 
+const RULA_POSTURE_EXPORT_ROWS: Array<{ key: RulaPosturePart; group: "A" | "B"; label: string }> = [
+  { key: "upperArm", group: "A", label: "Upper arm" },
+  { key: "lowerArm", group: "A", label: "Lower arm" },
+  { key: "wrist", group: "A", label: "Wrist" },
+  { key: "wristTwist", group: "A", label: "Wrist twist" },
+  { key: "neck", group: "B", label: "Neck" },
+  { key: "trunk", group: "B", label: "Trunk" },
+  { key: "legs", group: "B", label: "Legs" },
+];
+
+function rulaBodySides(bodySide: RulaReportData["bodySide"]): Array<"RIGHT" | "LEFT"> {
+  return bodySide === "BOTH" ? ["RIGHT", "LEFT"] : [bodySide === "LEFT" ? "LEFT" : "RIGHT"];
+}
+
+function rulaAnalysisForSide(analysis: RulaPostureAnalysis | null | undefined, bodySide: RulaReportData["bodySide"], side: "RIGHT" | "LEFT") {
+  if (!analysis) return null;
+  return bodySide === "BOTH" ? analysis.sideAnalyses?.[side] ?? analysis : analysis;
+}
+
+function rulaFactorsForSide(factors: RulaReportExport["factors"], sideFactors: RulaReportExport["sideFactors"], bodySide: RulaReportData["bodySide"], side: "RIGHT" | "LEFT") {
+  return bodySide === "BOTH" ? sideFactors?.[side] ?? factors : factors;
+}
+
+function rulaSourceLabel(source: string | undefined) {
+  return source === "AI" ? "AI suggested" : source === "USER" ? "User edited" : "Default value";
+}
+
+function rulaPostureStatus(key: RulaPosturePart, row: RulaPostureResult) {
+  if (key === "wristTwist") return row.detected ? "Present" : "Not present";
+  if (row.detected) return "Detected";
+  return row.source === "DEFAULT" ? "Pending detection" : "Not detected";
+}
+
+function rulaScoreShare(row: RulaPostureResult, key: RulaPosturePart, factors: RulaReportExport["factors"], totalScore: number) {
+  if (!isRulaPostureResultReviewed(row)) return null;
+  const factor = factors.find((item) => item.key === key);
+  return factor?.impactPercent ?? Math.round((row.score / totalScore) * 100);
+}
+
+function rulaActivityUnit(value: string | undefined, units: Record<string, string>) {
+  return value ? ` ${units[value] ?? value}` : "";
+}
+
+function rulaActivityRows(activityInfo?: RulaActivityInfoData | null): ExportRow[] {
+  if (!activityInfo) return [];
+  const number = (value: number | undefined, unit: string | undefined, units: Record<string, string>) => value === undefined ? "-" : `${value}${rulaActivityUnit(unit, units)}`;
+  return [
+    ["Job / process", activityInfo.jobTitle?.trim() || "-"],
+    ["Activity / task", activityInfo.taskDescription?.trim() || "-"],
+    ["Duration per occurrence", number(activityInfo.durationPerOccurrence, activityInfo.durationUnit, { SECOND: "seconds", MINUTE: "minutes", HOUR: "hours" })],
+    ["Repetitions per shift", activityInfo.repetitionsPerShift ?? "-"],
+    ["Posture hold duration", number(activityInfo.postureHoldDuration, activityInfo.postureHoldUnit, { SECOND: "seconds", MINUTE: "minutes", HOUR: "hours" })],
+    ["Load weight", activityInfo.loadWeight === null || activityInfo.loadWeight === undefined ? "-" : `${activityInfo.loadWeight}${rulaActivityUnit(activityInfo.loadUnit, { KG: "kg", LB: "lb" })}`],
+    ["Posture description", activityInfo.postureDescription?.trim() || "-"],
+  ];
+}
+
+function rulaActionAffectedParts(action: { rulaImpact?: { affectedParts?: string[] } | null }) {
+  return action.rulaImpact?.affectedParts?.join(", ") || "-";
+}
+
+function rulaActionMatchesSuggestion(action: RulaReportExport["actions"][number], suggestion: NonNullable<RulaReportExport["suggestedActions"]>[number], suggestedSide: "LEFT" | "RIGHT" | "BOTH") {
+  if (!isRulaActionSelected(action.status)) return false;
+  const actionSide = action.bodySide ?? "BOTH";
+  const sideMatches = actionSide === "BOTH" || suggestedSide === "BOTH" || actionSide === suggestedSide;
+  const suggestionTitle = suggestion.titleEn || suggestion.titleFa;
+  return sideMatches && (action.rulaImpact?.suggestionId === suggestion.id || action.title === suggestionTitle || action.title === suggestion.titleFa);
+}
+
+function rulaActionLevelForScore(score: number) {
+  if (score <= 2) return 1;
+  if (score <= 4) return 2;
+  if (score <= 6) return 3;
+  return 4;
+}
+
 function buildRulaExportModel(data: RulaReportData, report?: RulaReportExport): RulaExportModel {
   const assessment = report?.assessment ?? data;
   const reviewComplete = assessment.postureReviewComplete ?? report?.factors.every((factor) => factor.reviewed !== false) ?? true;
   const predictionNote = report?.predictedNote ?? DEFAULT_RULA_PREDICTION_NOTE;
+  const bodySide = assessment.bodySide === "LEFT" ? "LEFT" : assessment.bodySide === "BOTH" ? "BOTH" : "RIGHT";
+  const postureAnalysis = assessment.postureAnalysis ?? data.postureAnalysis ?? null;
+  const activeActions = report?.actions.filter((action) => isRulaActionSelected(action.status)) ?? [];
+  const hasIndependentSides = bodySide === "BOTH" && Boolean(
+    (postureAnalysis?.sideAnalyses?.LEFT && postureAnalysis.sideAnalyses.RIGHT)
+      || (report?.sideFactors?.LEFT && report.sideFactors.RIGHT)
+      || (report?.sideResults?.LEFT && report.sideResults.RIGHT),
+  );
+  const sides = hasIndependentSides ? ["RIGHT", "LEFT"] as const : rulaBodySides(bodySide === "BOTH" ? "RIGHT" : bodySide);
   const summaryRows: ExportRow[] = [
     ["Title", assessment.title],
     ["Project", assessment.project.name],
@@ -730,42 +857,72 @@ function buildRulaExportModel(data: RulaReportData, report?: RulaReportExport): 
 
   if (report && reviewComplete) {
     summaryRows.push(["Predicted score (estimate)", report.predictedScore], ["Prediction note", predictionNote]);
-    if (assessment.bodySide === "BOTH" && report.sideResults) {
+    if (bodySide === "BOTH" && report.sideResults) {
       for (const side of ["RIGHT", "LEFT"] as const) {
         const sideResult = report.sideResults[side];
-        if (sideResult) summaryRows.push([side + " score", sideResult.score], [side + " action level", sideResult.actionLevel]);
+        if (sideResult) summaryRows.push([side + " score", sideResult.score], [side + " action level", sideResult.actionLevel], [side + " predicted score (estimate)", report.predictedSideScores?.[side] ?? "-"]);
       }
+    }
+  }
+  summaryRows.push(["Body side", bodySide], ["Posture review", reviewComplete ? "Completed" : "Manual review required"]);
+
+  const factorRows: ExportRow[] = [];
+  const dataRows: ExportRow[] = [];
+  for (const side of sides) {
+    const sideFactors = rulaFactorsForSide(report?.factors ?? [], report?.sideFactors, bodySide, side);
+    for (const factor of sideFactors) {
+      factorRows.push([
+        hasIndependentSides ? `${side} / ${factor.key}` : factor.key,
+        hasIndependentSides ? side : "-",
+        factor.angle === null ? "-" : String(factor.angle) + "°",
+        factor.detected === undefined ? "-" : factor.detected ? "Yes" : "No",
+        factor.reviewed === false ? "-" : factor.score,
+        factor.reviewed === false ? "-" : String(factor.impactPercent) + "%",
+        factor.reviewed === false ? "Manual review required" : factor.impactLevel,
+        rulaSourceLabel(factor.source),
+      ]);
+    }
+    const sideAnalysis = rulaAnalysisForSide(postureAnalysis, bodySide, side);
+    if (!sideAnalysis) continue;
+    const totalScore = Math.max(1, RULA_POSTURE_EXPORT_ROWS.reduce((sum, item) => sum + (isRulaPostureResultReviewed(sideAnalysis[item.key]) ? sideAnalysis[item.key].score : 0), 0));
+    const sideFactorForRows = report?.factors ?? [];
+    for (const [index, item] of RULA_POSTURE_EXPORT_ROWS.entries()) {
+      const row = sideAnalysis[item.key];
+      const reviewed = isRulaPostureResultReviewed(row);
+      const scoreShare = rulaScoreShare(row, item.key, hasIndependentSides ? report?.sideFactors?.[side] ?? [] : sideFactorForRows, totalScore);
+      const relatedActions = activeActions.filter((action) => action.rulaImpact?.affectedParts?.includes(item.key));
+      dataRows.push([
+        hasIndependentSides ? side : "-",
+        index + 1,
+        item.group,
+        item.label,
+        row.angle === null ? "-" : String(row.angle) + "°",
+        rulaPostureStatus(item.key, row),
+        reviewed ? row.score : "-",
+        scoreShare === null ? "-" : String(scoreShare) + "%",
+        relatedActions.length ? relatedActions.map((action) => action.title).join(" | ") : "No selected corrective action",
+      ]);
     }
   }
 
-  const factorRows: ExportRow[] = report?.factors.map((factor) => [
-    factor.key,
-    factor.angle === null ? "-" : String(factor.angle) + "°",
-    factor.detected === undefined ? "-" : factor.detected ? "Yes" : "No",
-    factor.reviewed === false ? "-" : factor.score,
-    factor.reviewed === false ? "-" : String(factor.impactPercent) + "%",
-    factor.reviewed === false ? "Manual review required" : factor.impactLevel,
-    factor.source ?? "-",
-  ]) ?? [];
-  if (report?.sideFactors) {
-    for (const side of ["RIGHT", "LEFT"] as const) {
-      for (const factor of report.sideFactors[side] ?? []) {
-        factorRows.push([
-          side + " / " + factor.key,
-          factor.angle === null ? "-" : String(factor.angle) + "°",
-          factor.detected ? "Yes" : "No",
-          factor.reviewed === false ? "-" : factor.score,
-          factor.reviewed === false ? "-" : String(factor.impactPercent) + "%",
-          factor.reviewed === false ? "Manual review required" : factor.impactLevel,
-          factor.source ?? "-",
-        ]);
-      }
-    }
-  }
+  const suggestionRows: ExportRow[] = (report?.suggestedActions ?? []).slice(0, 6).map((suggestion) => {
+    const suggestedSide = suggestion.bodySide ?? (bodySide === "BOTH" ? "BOTH" : bodySide);
+    const selected = report?.actions.some((action) => rulaActionMatchesSuggestion(action, suggestion, suggestedSide)) ?? false;
+    return [
+      suggestedSide,
+      suggestion.affectedParts.join(", ") || "-",
+      suggestion.titleEn || suggestion.titleFa,
+      suggestion.descriptionEn || suggestion.descriptionFa,
+      suggestion.priority,
+      suggestion.scoreReduction,
+      selected ? "Selected" : "Not selected",
+    ];
+  });
+
   const actionRows: ExportRow[] = report?.actions.map((action) => [
     action.title,
     action.description,
-    action.rulaImpact?.affectedParts?.join(", ") || "-",
+    rulaActionAffectedParts(action),
     action.bodySide ?? "-",
     action.priority,
     action.status ?? "-",
@@ -773,7 +930,19 @@ function buildRulaExportModel(data: RulaReportData, report?: RulaReportExport): 
     action.rulaImpact?.scoreReduction ?? 0,
   ]) ?? [];
 
-  return { assessment, reviewComplete, summaryRows, factorRows, actionRows };
+  const processRows = rulaActivityRows(assessment.activityInfo ?? data.activityInfo);
+  const impactRows: ExportRow[] = [];
+  if (report) {
+    for (const side of sides) {
+      const currentScore = hasIndependentSides ? report.sideResults?.[side]?.score ?? assessment.score : assessment.score;
+      const predictedScore = hasIndependentSides
+        ? report.predictedSideScores?.[side] ?? predictedRulaScore(currentScore, activeActions.filter((action) => !action.bodySide || action.bodySide === "BOTH" || action.bodySide === side).map((action) => action.rulaImpact))
+        : report.predictedScore;
+      impactRows.push([hasIndependentSides ? side : "-", "Current score", reviewComplete ? currentScore : "-"], [hasIndependentSides ? side : "-", "Current action level", reviewComplete ? (report.sideResults?.[side]?.actionLevel ?? assessment.actionLevel) : "-"], [hasIndependentSides ? side : "-", "Predicted score (estimate)", reviewComplete ? predictedScore : "-"], [hasIndependentSides ? side : "-", "Predicted action level", reviewComplete ? rulaActionLevelForScore(predictedScore) : "-"], [hasIndependentSides ? side : "-", "Prediction note", reviewComplete ? predictionNote : INCOMPLETE_RULA_EXPLANATION]);
+    }
+  }
+
+  return { assessment, reviewComplete, summaryRows, processRows, impactRows, factorRows, dataRows, suggestionRows, actionRows };
 }
 
 export async function buildFmeaWorkbook(data: FmeaReportData) {
@@ -829,7 +998,11 @@ export async function buildRulaWorkbook(data: RulaReportData, report?: RulaRepor
   const workbook = new ExcelJS.Workbook();
   const model = buildRulaExportModel(data, report);
   addExportSheet(workbook, "RULA", ["Field", "Value"], model.summaryRows, [34, 100]);
-  addExportSheet(workbook, "FACTORS", ["Main factor", "Angle", "Detected", "Score", "Contribution", "Effect", "Source"], model.factorRows, [28, 16, 12, 12, 18, 28, 18]);
+  addExportSheet(workbook, "PROCESS", ["Field", "Value"], model.processRows, [34, 100]);
+  addExportSheet(workbook, "IMPACT", ["Body side", "Metric", "Value"], model.impactRows, [16, 34, 80]);
+  addExportSheet(workbook, "FACTORS", ["Body side", "Main factor", "Angle", "Detected", "Score", "Contribution", "Effect", "Source"], model.factorRows, [16, 28, 16, 12, 12, 18, 28, 18]);
+  addExportSheet(workbook, "RULA DATA", ["Body side", "Row", "Group", "Body part", "Detected angle", "Detected status", "Suggested score", "Score share", "Selected corrective actions"], model.dataRows, [16, 8, 8, 24, 18, 22, 18, 16, 48]);
+  addExportSheet(workbook, "CORRECTIONS", ["Body side", "Related factors", "Suggested action", "Description", "Priority", "Estimated reduction", "Selection"], model.suggestionRows, [16, 28, 34, 60, 14, 20, 16]);
   addExportSheet(workbook, "ACTIONS", ["Corrective action", "Description", "Related factors", "Body side", "Priority", "Status", "Selection", "Estimated reduction"], model.actionRows, [32, 52, 28, 16, 16, 18, 18, 22]);
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
@@ -897,7 +1070,14 @@ export async function buildRulaWordDocument(data: RulaReportData, report?: RulaR
   const model = buildRulaExportModel(data, report);
   return buildDocx("NIVASafe — RULA assessment", `Title: ${model.assessment.title} · Project: ${model.assessment.project.name}`, [
     { heading: "Assessment summary", headers: ["Field", "Value"], rows: model.summaryRows },
-    ...(report ? [{ heading: "Main factors", headers: ["Factor", "Angle", "Detected", "Score", "Contribution", "Effect", "Source"], rows: model.factorRows }, { heading: "Corrective actions", headers: ["Action", "Description", "Related factors", "Body side", "Priority", "Status", "Selection", "Estimated reduction"], rows: model.actionRows }] : []),
+    ...(model.processRows.length ? [{ heading: "Process information", headers: ["Field", "Value"], rows: model.processRows }] : []),
+    ...(model.impactRows.length ? [{ heading: "Predicted effect", headers: ["Body side", "Metric", "Value"], rows: model.impactRows }] : []),
+    ...(report ? [
+      { heading: "Main factors", headers: ["Body side", "Factor", "Angle", "Detected", "Score", "Contribution", "Effect", "Source"], rows: model.factorRows },
+      { heading: "RULA assessment data", headers: ["Body side", "Row", "Group", "Body part", "Detected angle", "Detected status", "Suggested score", "Score share", "Selected corrective actions"], rows: model.dataRows },
+      { heading: "Proposed corrective actions", headers: ["Body side", "Related factors", "Suggested action", "Description", "Priority", "Estimated reduction", "Selection"], rows: model.suggestionRows },
+      { heading: "Selected corrective actions", headers: ["Action", "Description", "Related factors", "Body side", "Priority", "Status", "Selection", "Estimated reduction"], rows: model.actionRows },
+    ] : []),
   ]);
 }
 
