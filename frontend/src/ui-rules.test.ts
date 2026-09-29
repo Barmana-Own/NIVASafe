@@ -736,12 +736,15 @@ describe("RULA assessment results view", () => {
     expect(assessmentPagesSource).toContain('const resultsView = searchParams.get("view") === "results";');
     expect(assessmentPagesSource).toContain('navigate("/rula?view=results")');
     expect(assessmentPagesSource).toContain('t("assessment.rulaResults")');
+    expect(assessmentPagesSource).toContain('t("assessment.rulaRegistered")');
     expect(assessmentPagesSource).toContain('t("assessment.backToNewRula")');
     expect(assessmentPagesSource).toContain('{resultsView && <SectionCard title={t("assessment.rulaResults")}');
     expect(assessmentPagesSource).toContain('{!resultsView && canEdit() && <SectionCard');
     expect(assessmentPagesSource).toContain('editingExistingAssessment ? t("assessment.editRula") : t("assessment.evaluateNew", { type: assessmentLabel })');
     expect(i18nSource).toContain('"assessment.backToNewRula": "بازگشت به ارزیابی جدید RULA"');
     expect(i18nSource).toContain('"assessment.backToNewRula": "Back to new RULA assessment"');
+    expect(i18nSource).toContain('"assessment.rulaRegistered": "ارزیابی‌های ثبت‌شده"');
+    expect(i18nSource).toContain('"assessment.rulaRegistered": "Registered assessments"');
   });
   it("renders RULA results as FMEA-style clickable cards and keeps report actions", () => {
     expect(assessmentPagesSource).toContain('className="assessment-list rula-assessment-list"');
@@ -801,8 +804,9 @@ describe("RULA process information", () => {
     expect(assessmentPagesSource).toContain('<option value="2">{t("assessment.mediumForce")} — {t("assessment.mediumForcePoints")} — {t("assessment.mediumForceRange")}</option>');
     expect(assessmentPagesSource).toContain('<option value="3">{t("assessment.highForce")} — {t("assessment.highForcePoints")} — {t("assessment.highForceRange")}</option>');
     expect(assessmentPagesSource).toContain('<RulaMuscleUseSelector value={rulaMuscleUse} onChange={setRulaMuscleUse}/>');
+    expect(assessmentPagesSource).toContain('<label className="rula-muscle-use-field"><span className="field-label-line"><span>{t("assessment.repetitiveMuscle")}</span><span className="required-label">{t("common.required")}</span></span>');
     expect(assessmentPagesSource).toContain('name="muscleUse" value={rulaMuscleUse ? "1" : "0"}');
-    expect(assessmentPagesSource).toContain('<StyledSelect name="muscleUseOption" value={value ? "1" : "0"}');
+    expect(assessmentPagesSource).toContain('<StyledSelect name="muscleUseOption" value={value ? "1" : "0"} required');
     expect(assessmentPagesSource).toContain('<option value="1">{t("assessment.repetitiveMuscleCriterionOne")} — {t("assessment.repetitiveMuscleCriterionOneScore")}</option>');
     expect(assessmentPagesSource).toContain('<option value="0">{t("assessment.repetitiveMuscleCriterionZero")} — {t("assessment.repetitiveMuscleCriterionZeroScore")}</option>');
     expect(assessmentPagesSource).not.toContain('type="radio" name="muscleUseOption"');
@@ -846,7 +850,7 @@ describe("RULA process information", () => {
 
   it("keeps the RULA task description compact while giving it enough writing space", () => {
     expect(assessmentPagesSource).toContain('id="rula-task-description"');
-    expect(stylesSource).toContain(".rula-process-form-grid #rula-task-description { min-height: 132px; font-size: .72rem; line-height: 1.45; }");
+    expect(stylesSource).toContain(".rula-process-form-grid #rula-task-description { min-height: 148px; font-size: .7rem; line-height: 1.35; padding: .68rem .78rem; }");
   });
 
   it("reuses the FMEA searchable job catalog control for RULA", () => {
@@ -936,7 +940,10 @@ describe("mobile page action controls", () => {
     expect(stylesSource).toContain(".page-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));");
     expect(stylesSource).toContain(".page-actions > .page-actions-inline { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr));");
     expect(stylesSource).toContain(".page-actions-inline > .fmea-assistant-toggle { grid-column: 1 / -1; width: 100%;");
-    expect(stylesSource).toContain(".page-action-label { min-width: 0; text-align: center; text-wrap: balance;");
+    expect(stylesSource).toContain(".page-actions-inline > * { width: 100%; min-width: 0; min-height: 4rem; padding: .78rem .65rem; gap: .5rem; font-size: .75rem;");
+    expect(stylesSource).toContain(".page-actions, .page-actions > .page-actions-inline { grid-template-columns: 1fr; }");
+    expect(stylesSource).toContain(".page-actions > *, .page-actions-inline > * { grid-column: 1 / -1; white-space: nowrap;");
+    expect(stylesSource).toContain(".page-action-label { min-width: 0; text-align: center; text-wrap: nowrap; white-space: nowrap;");
     expect(stylesSource).toContain("@media (max-width: 380px)");
   });
 
@@ -1773,6 +1780,11 @@ describe("form auto-save contract", () => {
     expect(stylesSource).toContain(".rula-correction-table thead { position: static;");
     expect(stylesSource).toContain(".rula-correction-table tbody { display: table-row-group; }");
     expect(stylesSource).toContain(".rula-correction-table tbody tr { display: table-row;");
+    expect(stylesSource).toContain(".table-wrap.report-data-table-wrap.rula-correction-table-wrap { overflow-x: hidden;");
+    expect(stylesSource).toContain(".rula-correction-table { display: table; width: 100%; min-width: 0 !important; table-layout: fixed; }");
+    expect(stylesSource).toContain(".rula-correction-table .rula-correction-toggle { width: 100%; max-width: 100%; min-width: 0;");
+    expect(assessmentPagesSource).toContain("const generalActions = selectedActions.filter");
+    expect(assessmentPagesSource).toContain('t("assessment.rulaGeneralCorrectiveActions")');
     expect(stylesSource).toContain(".rula-manual-action-scope-note");
     expect(stylesSource).toContain(".rula-assessment-register-table");
     expect(stylesSource).toContain(".rula-report-data-table");
@@ -1788,6 +1800,7 @@ describe("form auto-save contract", () => {
     expect(stylesSource).toContain("grid-template-columns: repeat(3, 27px)");
     expect(stylesSource).toContain("overflow-wrap: anywhere");
     expect(assessmentPagesSource).toContain("function RulaReportStepper");
+    expect(stylesSource).toContain(".wizard-stepper.rula-report-stepper { gap: 0; padding-bottom: 0; border-bottom: 0; }");
     expect(assessmentPagesSource).toContain("function goToPreviousStep()");
     expect(assessmentPagesSource).toContain('navigate(`/rula?edit=${encodeURIComponent(id)}&step=2`)');
     expect(assessmentPagesSource).toContain('onEdit={reportPostureEditHandler}');
@@ -1826,6 +1839,12 @@ describe("global admin panel", () => {
     expect(stylesSource).toContain(".admin-ai-usage-table table");
     expect(stylesSource).toContain(".admin-ai-usage-table th, .admin-ai-usage-table td { text-align: center; vertical-align: middle; }");
     expect(stylesSource).toContain(".admin-ai-usage-table .admin-user-identity { display: flex; flex-direction: column; align-items: center; text-align: center; }");
+    expect(adminPageSource).toContain('data-label={t("admin.aiUsageUser")}');
+    expect(adminPageSource).toContain('data-label={t("admin.organizationsColumn")}');
+    expect(stylesSource).toContain(".table-wrap.admin-ai-usage-table,");
+    expect(stylesSource).toContain(".table-wrap.admin-user-table { overflow-x: hidden; }");
+    expect(stylesSource).toContain(".admin-ai-usage-table tbody,");
+    expect(stylesSource).toContain(".admin-user-table tbody > tr:not(.admin-edit-row) > td::before { content: attr(data-label);");
     expect(stylesSource).toContain(".admin-shell");
     expect(appLayoutSource).toContain('const adminVariant = role === "SUPER_ADMIN" ? "global-admin-shell" : role === "ORG_ADMIN" ? "organization-admin-shell" : "";');
     expect(stylesSource).toContain(".global-admin-shell");
@@ -1870,6 +1889,12 @@ describe("activity log migration", () => {
     expect(generalPagesSource).toContain('item.tokenUsage.totalTokens');
     expect(generalPagesSource).toContain('activityLog.teamDescription');
     expect(generalPagesSource).toContain('item.metadata ? JSON.stringify(item.metadata, null, 2)');
+    expect(generalPagesSource).toContain('data-label={t("activityLog.time")}');
+    expect(generalPagesSource).toContain('data-label={t("activityLog.details")}');
+    expect(stylesSource).toContain('@media (max-width: 1100px) {\n  .table-wrap.activity-log-table { overflow-x: hidden; }');
+    expect(stylesSource).toContain('.table-wrap.activity-log-table { overflow-x: hidden; }');
+    expect(stylesSource).toContain('.activity-log-table tbody { display: grid; gap: .65rem; padding: .65rem; }');
+    expect(stylesSource).toContain('.activity-log-table tbody > tr:not(.activity-log-detail-row) td::before { content: attr(data-label);');
     expect(i18nSource).toContain('"nav.activityLog": "لاگ فعالیت"');
     expect(appLayoutSource).toContain('path: "/activity-log", labelKey: "nav.activityLog", icon: "audit", scope: "all"');
   });

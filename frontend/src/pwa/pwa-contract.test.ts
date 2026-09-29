@@ -34,8 +34,8 @@ describe("PWA release contract", () => {
   });
 
   it("keeps service-worker updates bounded and isolated from private API data", () => {
-    expect(serviceWorker).toContain("const VERSION = \"v15\";");
-    expect(serviceWorker).toContain("const FORCE_MIGRATION = VERSION === \"v15\";");
+    expect(serviceWorker).toContain("const VERSION = \"v16\";");
+    expect(serviceWorker).toContain("const FORCE_MIGRATION = VERSION === \"v16\";");
     expect(serviceWorker).toContain("if (FORCE_MIGRATION) self.skipWaiting();");
     expect(serviceWorker).toContain('self.clients.matchAll({ type: "window", includeUncontrolled: true })');
     expect(serviceWorker).toContain("client.navigate(client.url)");
