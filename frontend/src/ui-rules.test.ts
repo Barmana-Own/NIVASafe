@@ -40,6 +40,11 @@ describe("FMEA live preview", () => {
     expect(assessmentPagesSource).toContain("function fmeaRiskValues");
     expect(assessmentPagesSource).toContain("const previewRiskLevel = preview.riskLevel");
     expect(assessmentPagesSource).toContain("riskLevel(rpn, thresholds)");
+    expect(assessmentPagesSource).toContain("const fmeaRiskThresholds = DEFAULT_THRESHOLDS");
+    expect(assessmentPagesSource).not.toContain("fmeaRiskThresholdsFromSettings");
+    expect(fmeaApiSource).toContain("riskLevel(rpn, DEFAULT_THRESHOLDS)");
+    expect(reportsSource).toContain("function fmeaReferenceRiskThresholds(): RiskThresholds");
+    expect(reportsSource).toContain("return normaliseFmeaItems(data.items, DEFAULT_THRESHOLDS)");
     expect(assessmentPagesSource).toContain('<StatusBadge value={previewRiskLevel}/>');
     expect(assessmentPagesSource).toContain('<option value="VERY_LOW">{t("status.veryLow")}</option>');
     expect(uiSource).toContain('VERY_LOW: { key: "status.veryLow"');
@@ -1750,6 +1755,8 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain("RulaReportDataTable");
     expect(assessmentPagesSource).toContain("RulaAssessmentTable");
     expect(assessmentPagesSource).toContain("assessment-report-table rula-report-data-table");
+    expect(assessmentPagesSource).toContain('className="report-details-card rula-report-data-section"');
+    expect(assessmentPagesSource).toContain('<summary>{t("report.expandDetails")}</summary>');
     expect(assessmentPagesSource).toContain("report.assessment.postureAnalysis");
     expect(assessmentPagesSource).toContain('t("assessment.rulaReportDataTable")');
     expect(assessmentPagesSource).toContain("rulaReportFactorKeys");
@@ -1765,6 +1772,9 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain('t("assessment.rulaActionPriority")');
     expect(assessmentPagesSource).toContain('t("assessment.rulaManualActionBodySide")');
     expect(assessmentPagesSource).toContain('rulaManualActionBodySideHint');
+    expect(assessmentPagesSource).toContain("function rulaActionForDataTable");
+    expect(assessmentPagesSource).toContain("const tableSelectedActions = visibleSelectedActions.map");
+    expect(assessmentPagesSource).toContain("selectedActions={tableSelectedActions}");
     expect(assessmentPagesSource).toContain("busyActionId");
     expect(assessmentPagesSource).toContain("rulaActionLevelForScore");
     expect(assessmentPagesSource).toContain("rulaPredictionEstimate");
@@ -1792,11 +1802,15 @@ describe("form auto-save contract", () => {
     expect(stylesSource).toContain(".table-wrap.report-data-table-wrap.rula-correction-table-wrap { overflow-x: hidden;");
     expect(stylesSource).toContain(".rula-correction-table { display: table; width: 100%; min-width: 0 !important; table-layout: fixed; }");
     expect(stylesSource).toContain(".rula-correction-table .rula-correction-toggle { width: 100%; max-width: 100%; min-width: 0;");
+    expect(stylesSource).toContain("white-space: nowrap; overflow-wrap: normal; word-break: keep-all;");
+    expect(i18nSource).toContain('"assessment.rulaSelectAction": "انتخاب"');
     expect(assessmentPagesSource).toContain("const generalActions = selectedActions.filter");
     expect(assessmentPagesSource).toContain('t("assessment.rulaGeneralCorrectiveActions")');
     expect(stylesSource).toContain(".rula-manual-action-scope-note");
     expect(stylesSource).toContain(".rula-assessment-register-table");
     expect(stylesSource).toContain(".rula-report-data-table");
+    expect(stylesSource).toContain(".rula-report-table-wrap");
+    expect(stylesSource).toContain(".rula-report-data-section .surface-head");
     expect(stylesSource).toContain(".rula-report-context");
     expect(stylesSource).toContain(".rula-report-section-heading p:empty");
     expect(i18nSource).not.toContain("پیشنهادهای GPT-5-Mini را با داده‌های وضعیت بدن تطبیق دهید");
@@ -1809,7 +1823,9 @@ describe("form auto-save contract", () => {
     expect(stylesSource).toContain("grid-template-columns: repeat(3, 27px)");
     expect(stylesSource).toContain("overflow-wrap: anywhere");
     expect(assessmentPagesSource).toContain("function RulaReportStepper");
-    expect(stylesSource).toContain(".wizard-stepper.rula-report-stepper { gap: 0; padding-bottom: 0; border-bottom: 0; }");
+    expect(assessmentPagesSource).toContain('return <div className="wizard-stepper" aria-label={t("assessment.stepsLabel", { type: "RULA" })}');
+    expect(assessmentPagesSource).not.toContain('className="wizard-stepper rula-report-stepper"');
+    expect(stylesSource).not.toContain(".rula-report-stepper");
     expect(assessmentPagesSource).toContain("function goToPreviousStep()");
     expect(assessmentPagesSource).toContain('navigate(`/rula?edit=${encodeURIComponent(id)}&step=2`)');
     expect(assessmentPagesSource).toContain('onEdit={reportPostureEditHandler}');

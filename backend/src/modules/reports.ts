@@ -423,11 +423,11 @@ export type FmeaReportPdfData = FmeaReportData & {
   evaluationTeam: Array<{ displayName: string; email: string; role: string }>;
 };
 
-function fmeaRiskThresholdsForOrganization(organization: { riskMedium: number; riskHigh: number; riskCritical: number }): RiskThresholds {
-  return { medium: organization.riskMedium, high: organization.riskHigh, critical: organization.riskCritical };
+function fmeaReferenceRiskThresholds(): RiskThresholds {
+  return DEFAULT_THRESHOLDS;
 }
 
-function normaliseFmeaItems<T extends FmeaReportData["items"][number]>(items: T[], thresholds: ReturnType<typeof fmeaRiskThresholdsForOrganization>) {
+function normaliseFmeaItems<T extends FmeaReportData["items"][number]>(items: T[], thresholds: ReturnType<typeof fmeaReferenceRiskThresholds>) {
   return items.map((item) => {
     const rpn = calculateRpn(item.severity, item.occurrence, item.detection);
     return { ...item, rpn, riskLevel: riskLevel(rpn, thresholds) };
@@ -435,7 +435,7 @@ function normaliseFmeaItems<T extends FmeaReportData["items"][number]>(items: T[
 }
 
 function fmeaItemsForOutput(data: FmeaReportData) {
-  return normaliseFmeaItems(data.items, data.riskThresholds ?? DEFAULT_THRESHOLDS);
+  return normaliseFmeaItems(data.items, DEFAULT_THRESHOLDS);
 }
 
 export type RulaSideResultData = Pick<RulaSideResults["LEFT"], "score" | "actionLevel" | "explanation" | "groupA" | "groupB" | "adjustment" | "trace">;
@@ -699,7 +699,7 @@ async function loadFmeaReport(id: string, organizationId: string): Promise<FmeaR
     where: { id, organizationId, deletedAt: null },
     include: {
       project: { select: { id: true, name: true, code: true } },
-      organization: { select: { nameFa: true, nameEn: true, riskMedium: true, riskHigh: true, riskCritical: true } },
+      organization: { select: { nameFa: true, nameEn: true } },
       jobCatalog: { select: { titleFa: true, titleEn: true } },
       items: { orderBy: { rowNumber: "asc" } },
     },
@@ -708,7 +708,7 @@ async function loadFmeaReport(id: string, organizationId: string): Promise<FmeaR
   const detailAutoSeed = await prisma.auditLog.findFirst({ where: { organizationId, action: "FMEA_REPORT_DETAIL_AUTOCREATE", entityType: "FmeaAssessment", entityId: id }, select: { id: true } });
   const actions = await prisma.correctiveAction.findMany({ where: { organizationId, OR: [{ fmeaId: id }, { fmeaItem: { assessmentId: id } }] }, include: { fmeaItem: { select: { rowNumber: true, failureMode: true } } }, orderBy: { updatedAt: "desc" } });
   const members = await prisma.organizationMember.findMany({ where: { organizationId, active: true }, select: { role: true, user: { select: { id: true, displayName: true, email: true } } } });
-  const thresholds = fmeaRiskThresholdsForOrganization(fmea.organization);
+  const thresholds = fmeaReferenceRiskThresholds();
   const items = fmea.items.map((item) => {
     const rpn = calculateRpn(item.severity, item.occurrence, item.detection);
     return {
@@ -1492,7 +1492,6 @@ export async function registerReportRoutes(app: FastifyInstance) {
         department: true,
         activityDescription: true,
         specialConditions: true,
-        organization: { select: { riskMedium: true, riskHigh: true, riskCritical: true } },
         project: { select: { name: true } },
         jobCatalog: { select: { titleFa: true, titleEn: true } },
         items: { select: { rowNumber: true, processStep: true, failureMode: true, effect: true, cause: true }, orderBy: { rowNumber: "asc" }, take: 20 },
@@ -1547,7 +1546,7 @@ export async function registerReportRoutes(app: FastifyInstance) {
           fallbackSuggestions: fallback,
           existingRows: currentRows,
           additionalCount: FMEA_REPORT_DETAIL_SUGGESTION_MIN,
-          thresholds: { medium: fmea.organization.riskMedium, high: fmea.organization.riskHigh, critical: fmea.organization.riskCritical },
+          thresholds: DEFAULT_THRESHOLDS,
         });
         if (!seedRows.length) return 0;
         const created = (await tx.fmeaItem.createMany({ data: seedRows })).count;
@@ -1621,13 +1620,12 @@ export async function registerReportRoutes(app: FastifyInstance) {
   });
   app.get("/api/v1/reports/:type/:id.:format", { preHandler: authenticate }, async (request, reply) => {
     const organizationId = requireOrg(request); requirePermission(request, "reports.generate"); const { type, id, format } = parse(paramsSchema, request.params); const { view, locale } = parse(reportQuerySchema, request.query); const finalFmeaTable = type === "fmea" && view === "final-table";
-    const data = type === "fmea" ? await prisma.fmeaAssessment.findFirst({ where: { id, organizationId, deletedAt: null }, include: { project: true, organization: { select: { nameFa: true, nameEn: true, riskMedium: true, riskHigh: true, riskCritical: true } }, jobCatalog: { select: { titleFa: true, titleEn: true } }, items: { orderBy: { rowNumber: "asc" } } } }) : await prisma.rulaAssessment.findFirst({ where: { id, organizationId }, include: { project: true } });
+    const data = type === "fmea" ? await prisma.fmeaAssessment.findFirst({ where: { id, organizationId, deletedAt: null }, include: { project: true, organization: { select: { nameFa: true, nameEn: true } }, jobCatalog: { select: { titleFa: true, titleEn: true } }, items: { orderBy: { rowNumber: "asc" } } } }) : await prisma.rulaAssessment.findFirst({ where: { id, organizationId }, include: { project: true } });
     if (!data) throw Object.assign(new Error("Assessment not found"), { statusCode: 404, code: "NOT_FOUND" });
     const rulaReport = type === "rula" ? await loadRulaReport(id, organizationId) : null;
     if (type === "fmea") {
       const fmea = data as unknown as FmeaReportData;
-      const organization = fmea.organization as typeof fmea.organization & { riskMedium: number; riskHigh: number; riskCritical: number };
-      fmea.riskThresholds = fmeaRiskThresholdsForOrganization(organization);
+      fmea.riskThresholds = fmeaReferenceRiskThresholds();
       fmea.items = normaliseFmeaItems(fmea.items, fmea.riskThresholds);
       const linkedActions = await prisma.correctiveAction.findMany({ where: { organizationId, OR: [{ fmeaId: id }, { fmeaItem: { assessmentId: id } }] }, include: { fmeaItem: { select: { rowNumber: true, failureMode: true } } }, orderBy: { updatedAt: "desc" } });
       fmea.actions = linkedActions;

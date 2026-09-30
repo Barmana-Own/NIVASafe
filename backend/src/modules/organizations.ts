@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@nivasafe/domain";
+import { DEFAULT_THRESHOLDS, SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@nivasafe/domain";
 import { authenticate } from "../auth-guard.js";
 import { audit, envelope, parse, prisma, requireOrg, requirePermission } from "../core.js";
 import { defaultProjectForLocale } from "../onboarding.js";
@@ -32,7 +32,7 @@ export async function registerOrganizationRoutes(app: FastifyInstance) {
   app.post("/api/v1/organizations", { preHandler: authenticate, config: { allowUnsubscribed: true } }, async (request, reply) => {
     const body = parse(organizationCreateSchema, request.body);
     const { subscriptionPlan, ...organizationData } = body;
-    const org = await prisma.organization.create({ data: { ...organizationData, ...createSubscriptionFields(subscriptionPlan, new Date(), process.env.NODE_ENV === "production"), members: { create: { userId: request.actor!.userId, role: "ORG_ADMIN" } }, projects: { create: defaultProjectForLocale(body.defaultLocale ?? "fa") } } });
+    const org = await prisma.organization.create({ data: { ...organizationData, riskMedium: DEFAULT_THRESHOLDS.medium, riskHigh: DEFAULT_THRESHOLDS.high, riskCritical: DEFAULT_THRESHOLDS.critical, ...createSubscriptionFields(subscriptionPlan, new Date(), process.env.NODE_ENV === "production"), members: { create: { userId: request.actor!.userId, role: "ORG_ADMIN" } }, projects: { create: defaultProjectForLocale(body.defaultLocale ?? "fa") } } });
     request.actor!.organizationId = org.id;
     request.actor!.role = "ORG_ADMIN";
     await audit(request, "ORGANIZATION_CREATE", "Organization", org.id);
@@ -44,13 +44,9 @@ export async function registerOrganizationRoutes(app: FastifyInstance) {
   app.patch("/api/v1/organizations/current", { preHandler: authenticate }, async (request) => {
     const id = requireOrg(request); requirePermission(request, "organizations.manage");
     const body = parse(organizationUpdateSchema.partial(), request.body);
-    const current = await prisma.organization.findUniqueOrThrow({ where: { id } });
-    const medium = body.riskMedium ?? current.riskMedium;
-    const high = body.riskHigh ?? current.riskHigh;
-    const critical = body.riskCritical ?? current.riskCritical;
-    if (!(medium < high && high < critical)) throw Object.assign(new Error("Risk thresholds must satisfy medium < high < critical"), { statusCode: 400, code: "RISK_THRESHOLD_ORDER" });
-    const org = await prisma.organization.update({ where: { id }, data: body });
-    await audit(request, "ORGANIZATION_UPDATE", "Organization", id, body);
+    const { riskMedium: _riskMedium, riskHigh: _riskHigh, riskCritical: _riskCritical, ...organizationData } = body;
+    const org = await prisma.organization.update({ where: { id }, data: { ...organizationData, riskMedium: DEFAULT_THRESHOLDS.medium, riskHigh: DEFAULT_THRESHOLDS.high, riskCritical: DEFAULT_THRESHOLDS.critical } });
+    await audit(request, "ORGANIZATION_UPDATE", "Organization", id, organizationData);
     return envelope(org);
   });
 

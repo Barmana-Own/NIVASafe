@@ -1038,5 +1038,12 @@
     "validation": "PASS — focused backend RULA posture AI tests (8 tests), focused frontend UI suite (104 tests across 5 files), frontend/backend typechecks, frontend/backend lint, frontend/backend production builds, project-state JSON validation and git diff check passed. The full backend suite had 141 passed and one unrelated pre-existing failure in organization-rules.test.ts (subscriptionIsUsable trial expectation); the frontend build emitted only the existing large-chunk warning. Authenticated browser smoke, clean migration execution and deployment were NOT_RUN.",
     "migration": "NOT_APPLICABLE — existing RULA activityInfo/postureAnalysis JSON fields, authentication, AI usage tracking and assessment routes were reused; no database migration required.",
     "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestFmeaFixedRiskBandsChange": {
+    "status": "PASS_LOCAL",
+    "scope": "سطح ریسک FMEA در جدول جزئیات کامل، جدول‌های مرحله ارزیابی، گزارش‌ها و خروجی‌ها اکنون از باند ثابت مرجع استفاده می‌کند: RPN از ۱ تا ۵۰ خیلی کم، ۵۱ تا ۱۰۰ کم، ۱۰۱ تا ۲۰۰ متوسط، ۲۰۱ تا ۴۰۰ بالا و ۴۰۱ به بالا بحرانی. ثبت، ویرایش، تکثیر و محاسبه گزارش دیگر از آستانه‌های سفارشی سازمان استفاده نمی‌کنند و داده‌های قدیمی با migration جدید بازطبقه‌بندی می‌شوند.",
+    "validation": "PASS — focused backend FMEA tests (12 tests), frontend UI suite (105 tests across 5 files), shared-domain tests (12 tests), frontend/backend/shared typechecks, frontend lint, frontend production build, backend Prisma validation, project-state JSON validation, and git diff check passed. The frontend build emitted only the existing large-chunk warning. The complete backend suite still has unrelated pre-existing failures in organization-rules.test.ts and an AI-provider availability timeout; authenticated browser smoke, migration deployment, and production deployment were NOT_RUN.",
+    "migration": "backend/prisma/migrations/202609300001_fmea_fixed_risk_bands/migration.sql — normalizes organization threshold columns, recalculates stored RPN values from S×O×D, and reclassifies existing FmeaItem rows using the fixed bands.",
+    "deployment": "NOT_PERFORMED — source/local scope"
   }
 }
