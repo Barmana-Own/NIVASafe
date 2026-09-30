@@ -1684,6 +1684,12 @@ td strong, td small { display: block; } td small { color: var(--muted); margin-t
   max-width: 100%;
   box-sizing: border-box;
 }
+.rula-report-secondary-sections > .rula-report-manual-action-form {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
 .rula-manual-action-form {
   min-width: 0;
   display: grid;

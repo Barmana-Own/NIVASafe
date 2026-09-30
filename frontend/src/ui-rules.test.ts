@@ -529,6 +529,9 @@ describe("FMEA risk register", () => {
 
   it("puts the final-table exports above the FMEA results table", () => {
     const fmeaReportSource = assessmentPagesSource.slice(assessmentPagesSource.indexOf("export function FmeaReportPage"), assessmentPagesSource.indexOf("export function RulaReportPage"));
+    expect(fmeaReportSource).toContain('downloadFmeaFullReport("pdf")');
+    expect(fmeaReportSource).toContain('downloadFmeaFullReport("docx")');
+    expect(fmeaReportSource).toContain("locale=${locale}");
     expect(assessmentPagesSource).toContain("function FmeaFinalTableExportBar");
     expect(assessmentPagesSource).toContain('onDownload("xlsx")');
     expect(assessmentPagesSource).toContain('onDownload("pdf")');
@@ -546,10 +549,10 @@ describe("FMEA risk register", () => {
     expect(reportsSource).toContain('z.enum(["final-table"])');
     expect(reportsSource).toContain("fmeaExportRows");
     expect(reportsSource).toContain("fmeaRecommendedAction");
-    expect(reportsSource).toContain('heading: "Risk-level distribution"');
-    expect(reportsSource).toContain('heading: "Top failure modes"');
-    expect(reportsSource).toContain('heading: "Proposed corrective actions / controls"');
-    expect(reportsSource).toContain('heading: "Full FMEA details"');
+    expect(reportsSource).toContain("labels.riskDistribution");
+    expect(reportsSource).toContain("labels.topFailureModes");
+    expect(reportsSource).toContain("labels.proposedActions");
+    expect(reportsSource).toContain("labels.fullDetails");
   });
 
   it("shows three FMEA AI suggestions per field before the reversible remainder toggle", () => {
@@ -762,16 +765,21 @@ describe("RULA assessment results view", () => {
     expect(stylesSource).toContain(".rula-assessment-card");
     expect(stylesSource).toContain(".rula-assessment-card:focus-visible");
   });
-  it("keeps the manual RULA action form below the two-column suggestions area", () => {
-    const manualFormIndex = assessmentPagesSource.indexOf('className="rula-manual-action-form"');
+  it("keeps the manual RULA action form below the final data table", () => {
+    const finalTableIndex = assessmentPagesSource.lastIndexOf("<RulaReportDataTable");
+    const manualFormRenderIndex = assessmentPagesSource.lastIndexOf("{manualActionForm}</div>");
+    expect(manualFormRenderIndex).toBeGreaterThan(finalTableIndex);
     const impactPanelIndex = assessmentPagesSource.indexOf('<aside className="rula-report-impact-panel"');
-    expect(manualFormIndex).toBeGreaterThan(impactPanelIndex);
-    expect(assessmentPagesSource).toContain('</aside></div>{onAddAction && <div className="rula-manual-action-form"');
+    expect(manualFormRenderIndex).toBeGreaterThan(impactPanelIndex);
+    expect(assessmentPagesSource).toContain("const manualActionForm = onAddAction ? <RulaManualActionForm");
+    expect(assessmentPagesSource).toContain("<RulaReportDataTable analysis={visibleAnalysis}");
+    expect(assessmentPagesSource).toContain("{manualActionForm}</div>");
     expect(assessmentPagesSource).toContain('type="submit" formNoValidate');
     expect(assessmentPagesSource).toContain("manualValidationError");
     expect(assessmentPagesSource).toContain('t("assessment.rulaManualActionTitleRequired")');
     expect(assessmentPagesSource).toContain('aria-describedby={manualValidationError ? "rula-manual-action-title-error" : undefined}');
     expect(stylesSource).toContain(".rula-corrections-section > .rula-manual-action-form {");
+    expect(stylesSource).toContain(".rula-report-secondary-sections > .rula-report-manual-action-form {");
     expect(stylesSource).toContain("max-width: 100%;");
   });
   it("keeps manual RULA action controls grouped into aligned responsive rows", () => {
@@ -1747,6 +1755,7 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain("rulaReportFactorKeys");
     expect(assessmentPagesSource).toContain("rankRulaReportFactors");
     expect(assessmentPagesSource).toContain("rulaMainFactors");
+    expect(assessmentPagesSource).toContain('factor.source !== "AI" && <small>{t(rulaSourceLabelKey(factor.source))}</small>');
     expect(assessmentPagesSource).toContain("rulaRelatedFactor");
     expect(assessmentPagesSource).toContain("RulaCorrectionSuggestionsTable");
     expect(assessmentPagesSource).toContain("assessment-report-table rula-correction-table");

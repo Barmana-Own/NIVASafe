@@ -218,4 +218,36 @@ describe("assessment report exports", () => {
     expect(pdfSource).toContain("/FontFile");
     expect(pdfSource).toContain("/Type0");
   });
+
+  it("localizes FMEA exports and includes assessment details in Persian output", async () => {
+    const localizedLines = buildFmeaPdfLines({ ...fmea, evaluationTeam: [{ displayName: "Safety lead", email: "lead@example.com", role: "HSE_MANAGER" }] }, "fa");
+    expect(localizedLines.join("\n")).toContain("جدول نهایی ارزیابی FMEA");
+    expect(localizedLines.join("\n")).toContain("نام فرآیند / شغل");
+    expect(localizedLines.join("\n")).toContain("تاریخ ارزیابی");
+
+    const wordBuffer = await buildFmeaWordDocument(fmea, "fa");
+    const wordArchive = await JSZip.loadAsync(wordBuffer);
+    const wordDocument = await wordArchive.file("word/document.xml")!.async("string");
+    expect(wordDocument).toContain("NIVASafe — ارزیابی ریسک FMEA");
+    expect(wordDocument).toContain("جزئیات ارزیابی");
+    expect(wordDocument).toContain("تاریخ ارزیابی");
+    expect(wordDocument).toContain("حالت خرابی");
+
+    const finalWordBuffer = await buildFmeaFinalTableWordDocument(fmea, "fa");
+    const finalWordArchive = await JSZip.loadAsync(finalWordBuffer);
+    const finalWordDocument = await finalWordArchive.file("word/document.xml")!.async("string");
+    expect(finalWordDocument).toContain("جدول نهایی ارزیابی FMEA");
+    expect(finalWordDocument).toContain("جزئیات ارزیابی");
+    expect(finalWordDocument).toContain("نام فرآیند / شغل");
+
+    const workbookBuffer = await buildFmeaFinalTableWorkbook(fmea, "fa");
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(workbookBuffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["FMEA", "DETAILS"]);
+    expect(workbook.getWorksheet("FMEA")?.getRow(1).values).toContain("حالت خرابی");
+    expect(workbook.getWorksheet("DETAILS")?.getColumn(1).values).toContain("تاریخ ارزیابی");
+
+    const pdfBuffer = await buildFmeaFinalTablePdfDocument(fmea, "fa");
+    expect(pdfBuffer.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+  });
 });

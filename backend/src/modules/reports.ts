@@ -17,7 +17,189 @@ import { isRulaPostureAnalysisReviewed, isRulaPostureResultReviewed, rulaPosture
 import { buildFmeaActionSuggestionsPrompt, buildRulaActionSuggestionsPrompt, fallbackFmeaActionSuggestions, fallbackRulaActionSuggestions, mergeFmeaActionSuggestions, mergeRulaActionSuggestions, parseFmeaActionSuggestions, parseRulaActionSuggestions, type FmeaActionCandidate } from "../assessment-action-suggestions.js";
 
 const paramsSchema = z.object({ type: z.enum(["fmea", "rula"]), id: z.string().uuid(), format: z.enum(["pdf", "xlsx", "doc", "docx"]) });
-const reportQuerySchema = z.object({ view: z.enum(["final-table"]).optional() });
+const reportQuerySchema = z.object({ view: z.enum(["final-table"]).optional(), locale: z.enum(["fa", "en"]).default("fa") });
+
+type ReportLocale = "fa" | "en";
+
+const fmeaExportLabels = {
+  en: {
+    reportTitle: "NIVASafe — FMEA risk assessment",
+    finalTableTitle: "NIVASafe — FMEA final assessment table",
+    finalTableHeading: "Final FMEA assessment table",
+    header: "Assessment header",
+    process: "Process / job name",
+    company: "Company",
+    date: "Assessment date",
+    method: "Assessment method",
+    team: "Evaluation team",
+    teamMembers: "member(s)",
+    code: "Assessment code",
+    project: "Project",
+    status: "Assessment status",
+    version: "Version",
+    processInformation: "Process information",
+    department: "Department / unit",
+    activity: "Activity description",
+    equipment: "Equipment / machinery",
+    materials: "Materials",
+    existingControls: "Existing controls",
+    specialConditions: "Special conditions",
+    summary: "Executive risk summary",
+    totalFailureModes: "Total failure modes",
+    highPriorityRisks: "High-priority risks",
+    correctiveActionsNeeded: "Corrective actions needed",
+    immediateActions: "Immediate actions",
+    registeredActions: "Registered corrective actions",
+    completedActions: "Completed corrective actions",
+    activeActions: "Active corrective actions",
+    progress: "Average corrective-action progress",
+    riskDistribution: "Risk-level distribution",
+    count: "Count",
+    share: "Share",
+    topFailureModes: "Top failure modes",
+    proposedActions: "Proposed corrective actions / controls",
+    actionRegister: "Corrective-action register",
+    fullDetails: "Full FMEA details",
+    assessmentDetails: "Assessment details",
+    field: "Field",
+    value: "Value",
+    row: "Row",
+    processActivity: "Process / activity",
+    failureMode: "Failure mode",
+    effect: "Failure effect",
+    cause: "Failure cause",
+    currentControls: "Current controls",
+    severity: "Severity (S)",
+    occurrence: "Occurrence (O)",
+    detection: "Detection (D)",
+    actionPriority: "Action priority (AP)",
+    rpn: "RPN",
+    riskLevel: "Risk level",
+    recommendedAction: "Recommended corrective action",
+    relatedRisk: "Related risk",
+    title: "Title",
+    description: "Description",
+    priority: "Priority",
+    actionStatus: "Status",
+    assignee: "Assignee",
+    actionProgress: "Progress",
+    dueDate: "Due date",
+    noRows: "No failure modes registered",
+    noRecommendations: "No unregistered recommendations",
+    noActions: "No corrective action registered",
+    registered: "Registered",
+    unregistered: "Unregistered recommendation",
+    selection: "Selection",
+    selected: "Selected",
+    notSelected: "Not selected",
+    footer: "NIVASafe - FMEA report",
+  },
+  fa: {
+    reportTitle: "NIVASafe — ارزیابی ریسک FMEA",
+    finalTableTitle: "NIVASafe — جدول نهایی ارزیابی FMEA",
+    finalTableHeading: "جدول نهایی ارزیابی FMEA",
+    header: "مشخصات ارزیابی",
+    process: "نام فرآیند / شغل",
+    company: "شرکت",
+    date: "تاریخ ارزیابی",
+    method: "روش ارزیابی",
+    team: "تیم ارزیابی",
+    teamMembers: "عضو",
+    code: "کد ارزیابی",
+    project: "پروژه",
+    status: "وضعیت ارزیابی",
+    version: "نسخه",
+    processInformation: "اطلاعات فرآیند",
+    department: "واحد / بخش",
+    activity: "شرح فعالیت",
+    equipment: "تجهیزات / ماشین‌آلات",
+    materials: "مواد و ملزومات",
+    existingControls: "کنترل‌های موجود",
+    specialConditions: "شرایط خاص",
+    summary: "خلاصه مدیریتی ریسک",
+    totalFailureModes: "کل حالات خرابی",
+    highPriorityRisks: "ریسک‌های با اولویت بالا",
+    correctiveActionsNeeded: "اقدامات اصلاحی موردنیاز",
+    immediateActions: "اقدامات فوری",
+    registeredActions: "اقدامات اصلاحی ثبت‌شده",
+    completedActions: "اقدامات تکمیل‌شده",
+    activeActions: "اقدامات فعال",
+    progress: "میانگین پیشرفت اقدامات اصلاحی",
+    riskDistribution: "توزیع سطح ریسک",
+    count: "تعداد",
+    share: "سهم",
+    topFailureModes: "مهم‌ترین حالات خرابی",
+    proposedActions: "اقدامات / کنترل‌های اصلاحی پیشنهادی",
+    actionRegister: "فهرست اقدامات اصلاحی",
+    fullDetails: "جزئیات کامل FMEA",
+    assessmentDetails: "جزئیات ارزیابی",
+    field: "عنوان",
+    value: "مقدار",
+    row: "ردیف",
+    processActivity: "فرآیند / فعالیت",
+    failureMode: "حالت خرابی",
+    effect: "اثر خرابی",
+    cause: "علت خرابی",
+    currentControls: "کنترل‌های موجود",
+    severity: "شدت (S)",
+    occurrence: "وقوع (O)",
+    detection: "کشف (D)",
+    actionPriority: "اولویت اقدام (AP)",
+    rpn: "RPN",
+    riskLevel: "سطح ریسک",
+    recommendedAction: "اقدام اصلاحی پیشنهادی",
+    relatedRisk: "ریسک مرتبط",
+    title: "عنوان",
+    description: "شرح",
+    priority: "اولویت",
+    actionStatus: "وضعیت",
+    assignee: "مسئول",
+    actionProgress: "پیشرفت",
+    dueDate: "موعد انجام",
+    noRows: "هیچ حالت خرابی ثبت نشده است",
+    noRecommendations: "پیشنهاد ثبت‌نشده‌ای وجود ندارد",
+    noActions: "اقدام اصلاحی ثبت نشده است",
+    registered: "ثبت‌شده",
+    unregistered: "پیشنهاد ثبت‌نشده",
+    selection: "انتخاب",
+    selected: "انتخاب‌شده",
+    notSelected: "انتخاب‌نشده",
+    footer: "NIVASafe - گزارش FMEA",
+  },
+} as const satisfies Record<ReportLocale, Record<string, string>>;
+
+function fmeaLabels(locale: ReportLocale) {
+  return fmeaExportLabels[locale];
+}
+
+function fmeaProcessTitle(data: Pick<FmeaReportData, "title" | "jobCatalog">, locale: ReportLocale) {
+  return (locale === "fa" ? data.jobCatalog?.titleFa : data.jobCatalog?.titleEn) || data.title;
+}
+
+function fmeaCompanyName(data: Pick<FmeaReportData, "organization">, locale: ReportLocale) {
+  return (locale === "fa" ? data.organization.nameFa : data.organization.nameEn) || data.organization.nameFa || data.organization.nameEn || "-";
+}
+
+function reportDate(value: Date | null | undefined, locale: ReportLocale) {
+  if (!value) return "-";
+  if (locale === "en") return value.toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(value);
+}
+
+function localizedFmeaRiskLevel(value: string, locale: ReportLocale) {
+  if (locale === "en") return value;
+  return ({ CRITICAL: "بحرانی", HIGH: "زیاد", MEDIUM: "متوسط", LOW: "کم", VERY_LOW: "خیلی کم" } as Record<string, string>)[value] ?? value;
+}
+
+function localizedFmeaStatus(value: string, locale: ReportLocale) {
+  if (locale === "en") return value;
+  return ({ DRAFT: "پیش‌نویس", IN_REVIEW: "در حال بازبینی", COMPLETED: "تکمیل‌شده", APPROVED: "تأییدشده", OPEN: "باز", ASSIGNED: "تخصیص‌یافته", IN_PROGRESS: "در حال انجام", WAITING_FOR_REVIEW: "در انتظار بازبینی", REJECTED: "ردشده", OVERDUE: "سررسیدگذشته", CANCELLED: "لغوشده" } as Record<string, string>)[value] ?? value;
+}
+
+function localizedFmeaActionPriority(value: string, locale: ReportLocale) {
+  if (locale === "en") return value;
+  return ({ CRITICAL: "بحرانی", HIGH: "زیاد", MEDIUM: "متوسط", LOW: "کم" } as Record<string, string>)[value] ?? value;
+}
 
 const pdfRtlCharacter = /[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]/u;
 const pdfLtrCharacter = /[A-Za-z\u00c0-\u024f\u1e00-\u1eff0-9]/u;
@@ -28,7 +210,18 @@ const pdfSectionHeadings = new Set([
   "RISK-LEVEL DISTRIBUTION",
   "TOP FAILURE MODES",
   "CORRECTIVE ACTIONS / CONTROLS",
+  "CORRECTIVE-ACTION REGISTER",
+  "FINAL FMEA ASSESSMENT TABLE",
   "FULL FMEA DETAILS",
+  "سربرگ گزارش",
+  "اطلاعات فرآیند",
+  "خلاصه مدیریتی ریسک",
+  "توزیع سطح ریسک",
+  "مهم‌ترین حالات خرابی",
+  "اقدامات / کنترل‌های اصلاحی پیشنهادی",
+  "فهرست اقدامات اصلاحی",
+  "جدول نهایی ارزیابی FMEA",
+  "جزئیات کامل FMEA",
 ]);
 
 type PdfFontPaths = { regular: string; bold: string };
@@ -133,16 +326,16 @@ function drawPdfSectionHeading(doc: PDFKit.PDFDocument, heading: string, fonts: 
   doc.fillColor("#253746");
 }
 
-function drawPdfFooter(doc: PDFKit.PDFDocument, fonts: PdfFontPaths, margin: number, pageNumber: number, pageCount: number) {
+function drawPdfFooter(doc: PDFKit.PDFDocument, fonts: PdfFontPaths, margin: number, pageNumber: number, pageCount: number, label = "NIVASafe - FMEA report") {
   const lineY = doc.page.height - margin - 20;
   const textY = doc.page.height - margin - 12;
   doc.save();
   doc.strokeColor("#d9e5ee").lineWidth(0.6).moveTo(margin, lineY).lineTo(doc.page.width - margin, lineY).stroke();
-  doc.fillColor("#6d7e8b").font(fonts.regular).fontSize(8).text(`NIVASafe - FMEA report | ${pageNumber} / ${pageCount}`, margin, textY, { width: doc.page.width - margin * 2, align: "center", lineBreak: false });
+  doc.fillColor("#6d7e8b").font(fonts.regular).fontSize(8).text(`${label} | ${pageNumber} / ${pageCount}`, margin, textY, { width: doc.page.width - margin * 2, align: "center", lineBreak: false });
   doc.restore();
 }
 
-export async function buildPdfDocument(title: string, lines: string[]) {
+export async function buildPdfDocument(title: string, lines: string[], footerLabel = "NIVASafe - FMEA report") {
   const fonts = resolvePdfFontPaths();
   const rtlPresent = hasPdfRtlText(title) || lines.some((line) => hasPdfRtlText(line));
   if (rtlPresent && !fonts) throw new Error("A Unicode PDF font is required for Persian or Arabic report content");
@@ -187,14 +380,14 @@ export async function buildPdfDocument(title: string, lines: string[]) {
   const pageRange = doc.bufferedPageRange();
   for (let index = pageRange.start; index < pageRange.start + pageRange.count; index += 1) {
     doc.switchToPage(index);
-    drawPdfFooter(doc, resolvedFonts, margin, index - pageRange.start + 1, pageRange.count);
+    drawPdfFooter(doc, resolvedFonts, margin, index - pageRange.start + 1, pageRange.count, footerLabel);
   }
   doc.end();
   return complete;
 }
 
-function sendPdf(reply: FastifyReply, title: string, lines: string[]) {
-  return buildPdfDocument(title, lines).then((buffer) => reply.header("content-type", "application/pdf").header("content-disposition", `attachment; filename=${reportFilename(title, "pdf")}`).send(buffer));
+function sendPdf(reply: FastifyReply, title: string, lines: string[], options?: { documentTitle?: string; footerLabel?: string }) {
+  return buildPdfDocument(options?.documentTitle ?? title, lines, options?.footerLabel).then((buffer) => reply.header("content-type", "application/pdf").header("content-disposition", `attachment; filename=${reportFilename(title, "pdf")}`).send(buffer));
 }
 
 function sendPdfBuffer(reply: FastifyReply, title: string, buffer: Buffer) {
@@ -207,6 +400,7 @@ export type FmeaReportData = {
   title: string;
   code: string;
   status: string;
+  version?: number | null;
   createdAt: Date;
   updatedAt: Date;
   approvedAt: Date | null;
@@ -348,7 +542,8 @@ function parseRulaActivityInfo(value: unknown): RulaActivityInfoData | null {
   };
 }
 
-export function buildFmeaPdfLines(data: FmeaReportPdfData) {
+export function buildFmeaPdfLines(data: FmeaReportPdfData, locale: ReportLocale = "en") {
+  const labels = fmeaLabels(locale);
   const items = fmeaItemsForOutput(data);
   const summary = summariseFmea(items);
   const itemRows = items.map((item) => ({ ...item, actionPriority: actionPriority(item.riskLevel) }));
@@ -356,72 +551,81 @@ export function buildFmeaPdfLines(data: FmeaReportPdfData) {
   const suggestedActions = fmeaSuggestedActions(data);
   const actionMetrics = fmeaActionMetrics(data.actions);
   const team = data.evaluationTeam.map((member) => `${member.displayName || member.email} (${member.role})`).filter(Boolean).join(" | ") || "-";
-  const processTitle = data.jobCatalog?.titleEn || data.title;
+  const processTitle = fmeaProcessTitle(data, locale);
   const controls = (item: FmeaReportData["items"][number]) => [item.preventiveControls, item.detectionControls].filter(Boolean).join(" | ") || "-";
-  const relatedRisk = (action: FmeaReportData["actions"][number]) => action.fmeaItem ? `#${action.fmeaItem.rowNumber} · ${action.fmeaItem.failureMode}` : "Unlinked";
+  const relatedRisk = (action: FmeaReportData["actions"][number]) => action.fmeaItem ? `#${action.fmeaItem.rowNumber} · ${action.fmeaItem.failureMode}` : locale === "fa" ? "بدون ریسک مرتبط" : "Unlinked";
+  const rowTable = fmeaFinalTableRows(data, locale);
 
   return [
-    "REPORT HEADER",
-    `Assessment status: ${data.status}`,
-    `Process / job: ${processTitle}`,
-    `Company: ${data.organization.nameEn || data.organization.nameFa}`,
-    `Assessment date: ${pdfDate(data.approvedAt ?? data.updatedAt)}`,
-    "Assessment method: FMEA",
-    `Evaluation team (${data.evaluationTeam.length}): ${team}`,
-    `Assessment code: ${data.code}`,
-    `Project: ${data.project.name}`,
+    labels.header === "Assessment header" ? "REPORT HEADER" : labels.header,
+    `${labels.status}: ${localizedFmeaStatus(data.status, locale)}`,
+    `${labels.process}: ${processTitle}`,
+    `${labels.company}: ${locale === "fa" ? data.organization.nameFa || data.organization.nameEn : data.organization.nameEn || data.organization.nameFa}`,
+    `${labels.date}: ${reportDate(data.approvedAt ?? data.updatedAt, locale)}`,
+    `${labels.method}: FMEA`,
+    `${labels.team} (${data.evaluationTeam.length}): ${team}`,
+    `${labels.code}: ${data.code}`,
+    `${labels.project}: ${data.project.name}`,
+    `${labels.version}: ${data.version ?? "-"}`,
     "",
-    "PROCESS INFORMATION",
-    `Department / unit: ${data.department ?? "-"}`,
-    `Activity description: ${data.activityDescription ?? "-"}`,
-    `Equipment / machinery: ${reportList(data.equipment)}`,
-    `Materials: ${reportList(data.materials)}`,
-    `Existing controls: ${reportList(data.existingControls)}`,
-    `Special conditions: ${data.specialConditions ?? "-"}`,
+    labels.processInformation === "Process information" ? "PROCESS INFORMATION" : labels.processInformation,
+    `${labels.department}: ${data.department ?? "-"}`,
+    `${labels.activity}: ${data.activityDescription ?? "-"}`,
+    `${labels.equipment}: ${reportList(data.equipment)}`,
+    `${labels.materials}: ${reportList(data.materials)}`,
+    `${labels.existingControls}: ${reportList(data.existingControls)}`,
+    `${labels.specialConditions}: ${data.specialConditions ?? "-"}`,
     "",
-    "EXECUTIVE RISK SUMMARY",
-    `Total failure modes: ${summary.totalFailureModes}`,
-    `High-priority risks: ${summary.highPriorityRisks}`,
-    `Corrective actions needed: ${summary.correctiveActionsNeeded}`,
-    `Immediate actions: ${summary.immediateActions}`,
-    `Registered corrective actions: ${data.actions.length}`,
-    `Completed corrective actions: ${actionMetrics.completed}`,
-    `Active corrective actions: ${actionMetrics.active}`,
-    `Average corrective-action progress: ${actionMetrics.progress}%`,
+    labels.summary === "Executive risk summary" ? "EXECUTIVE RISK SUMMARY" : labels.summary,
+    `${labels.totalFailureModes}: ${summary.totalFailureModes}`,
+    `${labels.highPriorityRisks}: ${summary.highPriorityRisks}`,
+    `${labels.correctiveActionsNeeded}: ${summary.correctiveActionsNeeded}`,
+    `${labels.immediateActions}: ${summary.immediateActions}`,
+    `${labels.registeredActions}: ${data.actions.length}`,
+    `${labels.completedActions}: ${actionMetrics.completed}`,
+    `${labels.activeActions}: ${actionMetrics.active}`,
+    `${labels.progress}: ${actionMetrics.progress}%`,
     "",
-    "RISK-LEVEL DISTRIBUTION",
-    `Critical: ${summary.distribution.CRITICAL}`,
-    `High: ${summary.distribution.HIGH}`,
-    `Medium: ${summary.distribution.MEDIUM}`,
-    `Low: ${summary.distribution.LOW}`,
-    `Very low: ${summary.distribution.VERY_LOW}`,
+    labels.riskDistribution === "Risk-level distribution" ? "RISK-LEVEL DISTRIBUTION" : labels.riskDistribution,
+    `${localizedFmeaRiskLevel("CRITICAL", locale)}: ${summary.distribution.CRITICAL}`,
+    `${localizedFmeaRiskLevel("HIGH", locale)}: ${summary.distribution.HIGH}`,
+    `${localizedFmeaRiskLevel("MEDIUM", locale)}: ${summary.distribution.MEDIUM}`,
+    `${localizedFmeaRiskLevel("LOW", locale)}: ${summary.distribution.LOW}`,
+    `${localizedFmeaRiskLevel("VERY_LOW", locale)}: ${summary.distribution.VERY_LOW}`,
     "",
-    "TOP FAILURE MODES",
+    labels.topFailureModes === "Top failure modes" ? "TOP FAILURE MODES" : labels.topFailureModes,
     ...(topItems.length ? topItems.flatMap((item) => [
       `#${item.rowNumber} · ${item.processStep} · ${item.failureMode}`,
-      `Effect: ${item.effect} | S ${item.severity} | O ${item.occurrence} | D ${item.detection} | AP ${item.actionPriority} | RPN ${item.rpn}`,
-    ]) : ["-"]),
+      `${labels.effect}: ${item.effect} | S ${item.severity} | O ${item.occurrence} | D ${item.detection} | AP ${localizedFmeaActionPriority(item.actionPriority, locale)} | RPN ${item.rpn}`,
+    ]) : [labels.noRows]),
     "",
-    "CORRECTIVE ACTIONS / CONTROLS",
+    labels.proposedActions === "Proposed corrective actions / controls" ? "CORRECTIVE ACTIONS / CONTROLS" : labels.proposedActions,
     ...(data.actions.length ? data.actions.flatMap((action) => [
-      `Registered | ${relatedRisk(action)} | ${action.title}`,
-      `Description: ${action.description} | Priority: ${action.priority} | Status: ${action.status} | Responsible: ${action.assigneeName ?? "-"} | Progress: ${action.progress}% | Due: ${pdfDate(action.dueDate)}`,
-    ]) : ["Registered actions: -"]),
-    ...(suggestedActions.length ? ["NIVASafe suggestions (not registered):", ...suggestedActions.map((item) => `#${item.rowNumber} · ${item.failureMode} | ${item.recommendation!.trim()} | Priority: ${actionPriority(item.riskLevel)}`)] : ["NIVASafe suggestions (not registered): -"]),
+      `${labels.registered} | ${relatedRisk(action)} | ${action.title}`,
+      `${labels.description}: ${action.description} | ${labels.priority}: ${localizedFmeaActionPriority(action.priority, locale)} | ${labels.actionStatus}: ${localizedFmeaStatus(action.status, locale)} | ${labels.assignee}: ${action.assigneeName ?? "-"} | ${labels.actionProgress}: ${action.progress}% | ${labels.dueDate}: ${reportDate(action.dueDate, locale)}`,
+    ]) : [`${labels.registeredActions}: -`]),
+    ...(suggestedActions.length ? [locale === "fa" ? "پیشنهادهای NIVASafe (ثبت‌نشده):" : "NIVASafe suggestions (not registered):", ...suggestedActions.map((item) => `#${item.rowNumber} · ${item.failureMode} | ${item.recommendation!.trim()} | ${labels.priority}: ${localizedFmeaActionPriority(actionPriority(item.riskLevel), locale)}`)] : [locale === "fa" ? "پیشنهادهای NIVASafe (ثبت‌نشده): -" : "NIVASafe suggestions (not registered): -"]),
     "",
-    "FULL FMEA DETAILS",
+    labels.actionRegister === "Corrective-action register" ? "CORRECTIVE-ACTION REGISTER" : labels.actionRegister,
+    ...(data.actions.length ? data.actions.map((action) => `${relatedRisk(action)} | ${action.title} | ${labels.actionStatus}: ${localizedFmeaStatus(action.status, locale)} | ${labels.actionProgress}: ${action.progress}%`) : [labels.noActions]),
+    "",
+    labels.fullDetails === "Full FMEA details" ? "FULL FMEA DETAILS" : labels.fullDetails,
     ...(data.items.length ? data.items.flatMap((item) => {
-      const actionText = fmeaRecommendedAction(data, item);
+      const actionText = fmeaRecommendedAction(data, item, locale);
       return [
-        `#${item.rowNumber} · Process / activity: ${item.processStep}`,
-        `Failure mode: ${item.failureMode}`,
-        `Failure effect: ${item.effect}`,
-        `Failure cause: ${item.cause}`,
-        `Current controls: ${controls(item)}`,
-        `S ${item.severity} | O ${item.occurrence} | D ${item.detection} | AP ${actionPriority(item.riskLevel)} | RPN ${item.rpn} | Risk level: ${item.riskLevel}`,
-        `Corrective actions: ${actionText}`,
+        `#${item.rowNumber} · ${labels.processActivity}: ${item.processStep}`,
+        `${labels.failureMode}: ${item.failureMode}`,
+        `${labels.effect}: ${item.effect}`,
+        `${labels.cause}: ${item.cause}`,
+        `${labels.currentControls}: ${controls(item)}`,
+        `S ${item.severity} | O ${item.occurrence} | D ${item.detection} | AP ${localizedFmeaActionPriority(actionPriority(item.riskLevel), locale)} | RPN ${item.rpn} | ${labels.riskLevel}: ${localizedFmeaRiskLevel(item.riskLevel, locale)}`,
+        `${labels.recommendedAction}: ${actionText}`,
       ];
-    }) : ["-"]),
+    }) : [labels.noRows]),
+    "",
+    labels.finalTableHeading === "Final FMEA assessment table" ? "FINAL FMEA ASSESSMENT TABLE" : labels.finalTableHeading,
+    [...fmeaFinalTableHeaders(locale)].join(" | "),
+    ...(rowTable.length ? rowTable.map((row) => row.map((value) => String(value ?? "-")).join(" | ")) : [labels.noRows]),
   ];
 }
 
@@ -567,20 +771,27 @@ type ExportRow = ExportCell[];
 export const FMEA_FINAL_TABLE_HEADERS = ["Row", "Failure mode", "Effect", "Cause", "Current controls", "S", "O", "D", "RPN", "Risk level", "Recommended corrective action"] as const;
 const FMEA_FINAL_TABLE_WIDTHS = [8, 28, 32, 32, 42, 7, 7, 7, 10, 16, 48];
 
+function fmeaFinalTableHeaders(locale: ReportLocale = "en") {
+  const labels = fmeaLabels(locale);
+  return locale === "en"
+    ? [...FMEA_FINAL_TABLE_HEADERS]
+    : [labels.row, labels.failureMode, labels.effect, labels.cause, labels.currentControls, labels.severity, labels.occurrence, labels.detection, labels.rpn, labels.riskLevel, labels.recommendedAction];
+}
+
 function fmeaCorrectiveActions(data: FmeaReportData, item: FmeaReportData["items"][number]) {
   return data.actions.filter((action) => (item.id && action.fmeaItemId === item.id) || action.fmeaItem?.rowNumber === item.rowNumber);
 }
 
-function fmeaRecommendedAction(data: FmeaReportData, item: FmeaReportData["items"][number]) {
+function fmeaRecommendedAction(data: FmeaReportData, item: FmeaReportData["items"][number], locale: ReportLocale = "en") {
   const values = item.recommendation?.trim() ? [item.recommendation.trim()] : [];
   for (const action of fmeaCorrectiveActions(data, item)) {
     const title = action.title.trim();
-    if (title && !values.some((value) => value.toLocaleLowerCase() === title.toLocaleLowerCase())) values.push(`${title} (${action.status}, ${action.priority})`);
+    if (title && !values.some((value) => value.toLocaleLowerCase() === title.toLocaleLowerCase())) values.push(`${title} (${localizedFmeaStatus(action.status, locale)}, ${localizedFmeaActionPriority(action.priority, locale)})`);
   }
   return values.join(" | ") || "-";
 }
 
-function fmeaExportRows(data: FmeaReportData): ExportRow[] {
+function fmeaExportRows(data: FmeaReportData, locale: ReportLocale = "en"): ExportRow[] {
   return fmeaItemsForOutput(data).map((item) => [
     item.rowNumber,
     item.processStep,
@@ -591,14 +802,14 @@ function fmeaExportRows(data: FmeaReportData): ExportRow[] {
     item.severity,
     item.occurrence,
     item.detection,
-    actionPriority(item.riskLevel),
+    localizedFmeaActionPriority(actionPriority(item.riskLevel), locale),
     item.rpn,
-    item.riskLevel,
-    fmeaRecommendedAction(data, item),
+    localizedFmeaRiskLevel(item.riskLevel, locale),
+    fmeaRecommendedAction(data, item, locale),
   ]);
 }
 
-export function fmeaFinalTableRows(data: FmeaReportData): ExportRow[] {
+export function fmeaFinalTableRows(data: FmeaReportData, locale: ReportLocale = "en"): ExportRow[] {
   return fmeaItemsForOutput(data).map((item) => [
     item.rowNumber,
     item.failureMode,
@@ -609,8 +820,8 @@ export function fmeaFinalTableRows(data: FmeaReportData): ExportRow[] {
     item.occurrence,
     item.detection,
     item.rpn,
-    item.riskLevel,
-    fmeaRecommendedAction(data, item),
+    localizedFmeaRiskLevel(item.riskLevel, locale),
+    fmeaRecommendedAction(data, item, locale),
   ]);
 }
 
@@ -647,14 +858,34 @@ function drawFmeaFinalTableRow(doc: PDFKit.PDFDocument, row: ExportRow, widths: 
   return height;
 }
 
-export async function buildFmeaFinalTablePdfDocument(data: FmeaReportData) {
+export async function buildFmeaFinalTablePdfDocument(data: FmeaReportData, locale: ReportLocale = "en") {
+  const labels = fmeaLabels(locale);
   const fonts = resolvePdfFontPaths();
-  const rows = fmeaFinalTableRows(data);
-  const allValues = [...FMEA_FINAL_TABLE_HEADERS, ...rows.flat()];
+  const headers = fmeaFinalTableHeaders(locale);
+  const rows = fmeaFinalTableRows(data, locale);
+  const processTitle = fmeaProcessTitle(data, locale);
+  const allValues = [
+    labels.finalTableTitle,
+    labels.assessmentDetails,
+    labels.process,
+    processTitle,
+    labels.company,
+    fmeaCompanyName(data, locale),
+    labels.date,
+    reportDate(data.approvedAt ?? data.updatedAt, locale),
+    labels.code,
+    data.code,
+    labels.project,
+    data.project.name,
+    labels.status,
+    localizedFmeaStatus(data.status, locale),
+    ...headers,
+    ...rows.flat(),
+  ];
   if (allValues.some((value) => hasPdfRtlText(String(value ?? ""))) && !fonts) throw new Error("A Unicode PDF font is required for Persian or Arabic report content");
   const resolvedFonts = fonts ?? { regular: "Helvetica", bold: "Helvetica-Bold" };
   const margin = 24;
-  const doc = new PDFDocument({ size: "A4", layout: "landscape", margin, bufferPages: true, info: { Title: "NIVASafe — FMEA final assessment table", Author: "NIVASafe" } });
+  const doc = new PDFDocument({ size: "A4", layout: "landscape", margin, bufferPages: true, info: { Title: labels.finalTableTitle, Author: "NIVASafe" } });
   const chunks: Buffer[] = [];
   const complete = new Promise<Buffer>((resolve, reject) => {
     doc.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
@@ -670,16 +901,22 @@ export async function buildFmeaFinalTablePdfDocument(data: FmeaReportData) {
   doc.restore();
   doc.fillColor("#ffffff");
   doc.font(resolvedFonts.bold).fontSize(15).text("NIVASafe", margin, 13, { width: tableWidth, lineBreak: false });
-  doc.font(resolvedFonts.regular).fontSize(9).text("FMEA final assessment table", margin, 35, { width: tableWidth, lineBreak: false });
+  doc.font(resolvedFonts.regular).fontSize(9);
+  doc.y = 35;
+  drawPdfText(doc, labels.finalTableTitle, resolvedFonts, tableWidth, 9);
   doc.y = 74;
   doc.fillColor("#253746");
-  drawPdfText(doc, `Process / job: ${data.jobCatalog?.titleEn || data.title}`, resolvedFonts, tableWidth, 8.5, true);
-  doc.moveDown(0.2);
-  drawPdfText(doc, `Assessment code: ${data.code} | Assessment date: ${pdfDate(data.approvedAt ?? data.updatedAt)}`, resolvedFonts, tableWidth, 8.5);
-  doc.moveDown(0.8);
-  const drawHeader = () => drawFmeaFinalTableRow(doc, [...FMEA_FINAL_TABLE_HEADERS], widths, resolvedFonts, true);
+  drawPdfSectionHeading(doc, labels.assessmentDetails, resolvedFonts, margin, tableWidth);
+  drawPdfText(doc, `${labels.process}: ${processTitle}`, resolvedFonts, tableWidth, 8.5, true);
+  doc.moveDown(0.15);
+  drawPdfText(doc, `${labels.company}: ${fmeaCompanyName(data, locale)} | ${labels.date}: ${reportDate(data.approvedAt ?? data.updatedAt, locale)}`, resolvedFonts, tableWidth, 8.5);
+  doc.moveDown(0.15);
+  drawPdfText(doc, `${labels.code}: ${data.code} | ${labels.project}: ${data.project.name} | ${labels.status}: ${localizedFmeaStatus(data.status, locale)}`, resolvedFonts, tableWidth, 8.5);
+  doc.moveDown(0.6);
+  drawPdfSectionHeading(doc, labels.finalTableHeading, resolvedFonts, margin, tableWidth);
+  const drawHeader = () => drawFmeaFinalTableRow(doc, [...headers], widths, resolvedFonts, true);
   drawHeader();
-  for (const row of rows.length ? rows : [Array.from({ length: FMEA_FINAL_TABLE_HEADERS.length }, () => "-")]) {
+  for (const row of rows.length ? rows : [Array.from({ length: headers.length }, () => "-")]) {
     const rowHeight = pdfFinalTableRowHeight(doc, row, widths, resolvedFonts);
     if (doc.y + rowHeight > doc.page.height - margin - 28) {
       doc.addPage();
@@ -690,7 +927,7 @@ export async function buildFmeaFinalTablePdfDocument(data: FmeaReportData) {
   const pageRange = doc.bufferedPageRange();
   for (let index = pageRange.start; index < pageRange.start + pageRange.count; index += 1) {
     doc.switchToPage(index);
-    drawPdfFooter(doc, resolvedFonts, margin, index - pageRange.start + 1, pageRange.count);
+    drawPdfFooter(doc, resolvedFonts, margin, index - pageRange.start + 1, pageRange.count, labels.footer);
   }
   doc.end();
   return complete;
@@ -945,52 +1182,73 @@ function buildRulaExportModel(data: RulaReportData, report?: RulaReportExport): 
   return { assessment, reviewComplete, summaryRows, processRows, impactRows, factorRows, dataRows, suggestionRows, actionRows };
 }
 
-export async function buildFmeaWorkbook(data: FmeaReportData) {
+export async function buildFmeaWorkbook(data: FmeaReportData, locale: ReportLocale = "en") {
+  const labels = fmeaLabels(locale);
   const workbook = new ExcelJS.Workbook();
   const summary = summariseFmea(fmeaItemsForOutput(data));
-  addExportSheet(workbook, "FMEA", ["Row", "Process / activity", "Failure mode", "Failure effect", "Failure cause", "Current controls", "S", "O", "D", "AP", "RPN", "Risk level", "Recommended action"], fmeaExportRows(data), [8, 24, 26, 28, 28, 34, 7, 7, 7, 10, 10, 14, 44]);
-  addExportSheet(workbook, "SUMMARY", ["Metric", "Value"], [
-    ["Assessment title", data.title],
-    ["Assessment code", data.code],
-    ["Project", data.project.name],
-    ["Company", data.organization.nameEn],
-    ["Assessment status", data.status],
-    ["Assessment date", (data.approvedAt ?? data.updatedAt).toISOString().slice(0, 10)],
-    ["Total failure modes", summary.totalFailureModes],
-    ["High-priority risks", summary.highPriorityRisks],
-    ["Corrective actions needed", summary.correctiveActionsNeeded],
-    ["Immediate actions", summary.immediateActions],
-    ["CRITICAL", summary.distribution.CRITICAL],
-    ["HIGH", summary.distribution.HIGH],
-    ["MEDIUM", summary.distribution.MEDIUM],
-    ["LOW", summary.distribution.LOW],
-    ["VERY_LOW", summary.distribution.VERY_LOW],
+  const fmeaHeaders = locale === "en"
+    ? ["Row", "Process / activity", "Failure mode", "Failure effect", "Failure cause", "Current controls", "S", "O", "D", "AP", "RPN", "Risk level", "Recommended action"]
+    : [labels.row, labels.processActivity, labels.failureMode, labels.effect, labels.cause, labels.currentControls, labels.severity, labels.occurrence, labels.detection, labels.actionPriority, labels.rpn, labels.riskLevel, labels.recommendedAction];
+  addExportSheet(workbook, "FMEA", fmeaHeaders, fmeaExportRows(data, locale), [8, 24, 26, 28, 28, 34, 7, 7, 7, 10, 10, 14, 44]);
+  const summaryHeaders = locale === "en" ? ["Metric", "Value"] : [labels.field, labels.value];
+  addExportSheet(workbook, "SUMMARY", summaryHeaders, [
+    [locale === "en" ? "Assessment title" : labels.title, data.title],
+    [labels.code, data.code],
+    [labels.project, data.project.name],
+    [labels.company, fmeaCompanyName(data, locale)],
+    [labels.status, localizedFmeaStatus(data.status, locale)],
+    [labels.date, reportDate(data.approvedAt ?? data.updatedAt, locale)],
+    [labels.totalFailureModes, summary.totalFailureModes],
+    [labels.highPriorityRisks, summary.highPriorityRisks],
+    [labels.correctiveActionsNeeded, summary.correctiveActionsNeeded],
+    [labels.immediateActions, summary.immediateActions],
+    [localizedFmeaRiskLevel("CRITICAL", locale), summary.distribution.CRITICAL],
+    [localizedFmeaRiskLevel("HIGH", locale), summary.distribution.HIGH],
+    [localizedFmeaRiskLevel("MEDIUM", locale), summary.distribution.MEDIUM],
+    [localizedFmeaRiskLevel("LOW", locale), summary.distribution.LOW],
+    [localizedFmeaRiskLevel("VERY_LOW", locale), summary.distribution.VERY_LOW],
   ], [34, 90]);
-  addExportSheet(workbook, "PROCESS", ["Field", "Value"], [
-    ["Job/process", data.jobCatalog?.titleEn ?? data.title],
-    ["Department/unit", data.department ?? "-"],
-    ["Activity description", data.activityDescription ?? "-"],
-    ["Equipment/machinery", reportList(data.equipment)],
-    ["Materials", reportList(data.materials)],
-    ["Existing controls", reportList(data.existingControls)],
-    ["Special conditions", data.specialConditions ?? "-"],
+  addExportSheet(workbook, "PROCESS", summaryHeaders, [
+    [locale === "en" ? "Job/process" : labels.process, fmeaProcessTitle(data, locale)],
+    [labels.department, data.department ?? "-"],
+    [labels.activity, data.activityDescription ?? "-"],
+    [labels.equipment, reportList(data.equipment)],
+    [labels.materials, reportList(data.materials)],
+    [labels.existingControls, reportList(data.existingControls)],
+    [labels.specialConditions, data.specialConditions ?? "-"],
   ], [34, 90]);
-  addExportSheet(workbook, "ACTIONS", ["Related risk", "Title", "Description", "Priority", "Status", "Assignee", "Progress", "Due date"], data.actions.map((action) => [
+  const actionHeaders = locale === "en"
+    ? ["Related risk", "Title", "Description", "Priority", "Status", "Assignee", "Progress", "Due date"]
+    : [labels.relatedRisk, labels.title, labels.description, labels.priority, labels.actionStatus, labels.assignee, labels.actionProgress, labels.dueDate];
+  addExportSheet(workbook, "ACTIONS", actionHeaders, data.actions.map((action) => [
     action.fmeaItem ? `#${action.fmeaItem.rowNumber} · ${action.fmeaItem.failureMode}` : "-",
     action.title,
     action.description,
-    action.priority,
-    action.status,
+    localizedFmeaActionPriority(action.priority, locale),
+    localizedFmeaStatus(action.status, locale),
     action.assigneeName ?? "-",
     action.progress,
-    action.dueDate?.toISOString().slice(0, 10) ?? "-",
+    reportDate(action.dueDate, locale),
   ]), [28, 28, 40, 14, 18, 24, 12, 16]);
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
-export async function buildFmeaFinalTableWorkbook(data: FmeaReportData) {
+export async function buildFmeaFinalTableWorkbook(data: FmeaReportData, locale: ReportLocale = "en") {
+  const labels = fmeaLabels(locale);
   const workbook = new ExcelJS.Workbook();
-  addExportSheet(workbook, "FMEA", [...FMEA_FINAL_TABLE_HEADERS], fmeaFinalTableRows(data), FMEA_FINAL_TABLE_WIDTHS);
+  addExportSheet(workbook, "FMEA", fmeaFinalTableHeaders(locale), fmeaFinalTableRows(data, locale), FMEA_FINAL_TABLE_WIDTHS);
+  if (locale === "fa") {
+    addExportSheet(workbook, "DETAILS", [labels.field, labels.value], [
+      [labels.process, fmeaProcessTitle(data, locale)],
+      [labels.company, fmeaCompanyName(data, locale)],
+      [labels.date, reportDate(data.approvedAt ?? data.updatedAt, locale)],
+      [labels.code, data.code],
+      [labels.project, data.project.name],
+      [labels.status, localizedFmeaStatus(data.status, locale)],
+      [labels.method, "FMEA"],
+      [labels.version, data.version ?? "-"],
+    ], [34, 110]);
+  }
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
@@ -1007,18 +1265,20 @@ export async function buildRulaWorkbook(data: RulaReportData, report?: RulaRepor
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
-function docxRuns(value: unknown, bold = false) {
-  return String(value ?? "-").split(/\r?\n/).map((line, index) => `${index ? "<w:r><w:br/></w:r>" : ""}<w:r>${bold ? "<w:rPr><w:b/></w:rPr>" : ""}<w:t xml:space="preserve">${xmlEscape(line)}</w:t></w:r>`).join("");
+function docxRuns(value: unknown, bold = false, rtl = false) {
+  const runProperties = bold || rtl ? `<w:rPr>${bold ? "<w:b/>" : ""}${rtl ? "<w:rtl/>" : ""}</w:rPr>` : "";
+  return String(value ?? "-").split(/\r?\n/).map((line, index) => `${index ? "<w:r><w:br/></w:r>" : ""}<w:r>${runProperties}<w:t xml:space="preserve">${xmlEscape(line)}</w:t></w:r>`).join("");
 }
 
-function docxParagraph(value: unknown, style?: "Title" | "Heading1" | "Heading2") {
-  return `<w:p>${style ? `<w:pPr><w:pStyle w:val="${style}"/></w:pPr>` : ""}${docxRuns(value)}</w:p>`;
+function docxParagraph(value: unknown, style?: "Title" | "Heading1" | "Heading2", locale: ReportLocale = "en") {
+  const paragraphProperties = style || locale === "fa" ? `<w:pPr>${style ? `<w:pStyle w:val="${style}"/>` : ""}${locale === "fa" ? "<w:bidi/><w:jc w:val=\"right\"/>" : ""}</w:pPr>` : "";
+  return `<w:p>${paragraphProperties}${docxRuns(value, false, locale === "fa")}</w:p>`;
 }
 
-function docxTable(headers: string[], rows: ExportRow[]) {
+function docxTable(headers: string[], rows: ExportRow[], locale: ReportLocale = "en") {
   const widths = headers.map((_, index) => index === headers.length - 1 ? 15400 - Math.floor(15400 / headers.length) * (headers.length - 1) : Math.floor(15400 / headers.length));
   const grid = widths.map((width) => `<w:gridCol w:w="${width}"/>`).join("");
-  const renderRow = (row: ExportRow, header = false) => `<w:tr>${header ? "<w:trPr><w:tblHeader/></w:trPr>" : ""}${headers.map((_, index) => `<w:tc><w:tcPr><w:tcW w:w="${widths[index] ?? 1000}" w:type="dxa"/>${header ? "<w:shd w:fill=\"1E5B8F\"/>" : ""}</w:tcPr><w:p><w:pPr><w:spacing w:after="0"/><w:jc w:val="left"/></w:pPr>${docxRuns(row[index] ?? "-", header)}</w:p></w:tc>`).join("")}</w:tr>`;
+  const renderRow = (row: ExportRow, header = false) => `<w:tr>${header ? "<w:trPr><w:tblHeader/></w:trPr>" : ""}${headers.map((_, index) => `<w:tc><w:tcPr><w:tcW w:w="${widths[index] ?? 1000}" w:type="dxa"/>${header ? "<w:shd w:fill=\"1E5B8F\"/>" : ""}</w:tcPr><w:p><w:pPr><w:spacing w:after="0"/>${locale === "fa" ? "<w:bidi/><w:jc w:val=\"right\"/>" : "<w:jc w:val=\"left\"/>"}</w:pPr>${docxRuns(row[index] ?? "-", header, locale === "fa")}</w:p></w:tc>`).join("")}</w:tr>`;
   return `<w:tbl><w:tblPr><w:tblW w:w="15400" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="single" w:sz="4" w:color="C9D9E5"/><w:left w:val="single" w:sz="4" w:color="C9D9E5"/><w:bottom w:val="single" w:sz="4" w:color="C9D9E5"/><w:right w:val="single" w:sz="4" w:color="C9D9E5"/><w:insideH w:val="single" w:sz="4" w:color="C9D9E5"/><w:insideV w:val="single" w:sz="4" w:color="C9D9E5"/></w:tblBorders><w:tblCellMar><w:top w:w="80" w:type="dxa"/><w:left w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${grid}</w:tblGrid>${renderRow(headers, true)}${rows.map((row) => renderRow(row)).join("")}</w:tbl>`;
 }
 
@@ -1026,9 +1286,9 @@ type DocxSection = { heading: string; headers: string[]; rows: ExportRow[] };
 
 const docxStyles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/><w:sz w:val="20"/></w:rPr></w:rPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:rPr><w:b/><w:color w:val="174E86"/><w:sz w:val="32"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:rPr><w:b/><w:color w:val="255B88"/><w:sz w:val="26"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:rPr><w:b/><w:color w:val="255B88"/><w:sz w:val="22"/></w:rPr></w:style></w:styles>`;
 
-async function buildDocx(title: string, subtitle: string, sections: DocxSection[]) {
+async function buildDocx(title: string, subtitle: string, sections: DocxSection[], locale: ReportLocale = "en") {
   const generatedAt = new Date().toISOString();
-  const body = `${docxParagraph(title, "Title")}${docxParagraph(subtitle)}${sections.map((section) => `${docxParagraph(section.heading, "Heading1")}${docxTable(section.headers, section.rows)}`).join("")}<w:sectPr><w:pgSz w:w="16840" w:h="11900" w:orient="landscape"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="360" w:footer="360" w:gutter="0"/></w:sectPr>`;
+  const body = `${docxParagraph(title, "Title", locale)}${docxParagraph(subtitle, undefined, locale)}${sections.map((section) => `${docxParagraph(section.heading, "Heading1", locale)}${docxTable(section.headers, section.rows, locale)}`).join("")}<w:sectPr><w:pgSz w:w="16840" w:h="11900" w:orient="landscape"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="360" w:footer="360" w:gutter="0"/></w:sectPr>`;
   const zip = new JSZip();
   zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`);
   zip.file("_rels/.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>`);
@@ -1040,7 +1300,8 @@ async function buildDocx(title: string, subtitle: string, sections: DocxSection[
   return Buffer.from(await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" }));
 }
 
-export async function buildFmeaWordDocument(data: FmeaReportData) {
+export async function buildFmeaWordDocument(data: FmeaReportData, locale: ReportLocale = "en") {
+  const labels = fmeaLabels(locale);
   const items = fmeaItemsForOutput(data);
   const summary = summariseFmea(items);
   const actionMetrics = fmeaActionMetrics(data.actions);
@@ -1049,21 +1310,43 @@ export async function buildFmeaWordDocument(data: FmeaReportData) {
   const topItems = topFailureModes(itemRows);
   const suggestedActions = fmeaSuggestedActions(data);
   const evaluationTeam = data.evaluationTeam?.map((member) => `${member.displayName || member.email} (${member.role})`).filter(Boolean).join(" | ") || "-";
-  return buildDocx("NIVASafe — FMEA risk assessment", `Code: ${data.code} · Project: ${data.project.name}`, [
-    { heading: "Executive summary", headers: ["Metric", "Value"], rows: [["Total failure modes", summary.totalFailureModes], ["High-priority risks", summary.highPriorityRisks], ["Corrective actions needed", summary.correctiveActionsNeeded], ["Immediate actions", summary.immediateActions], ["Registered corrective actions", data.actions.length], ["Completed corrective actions", actionMetrics.completed], ["Active corrective actions", actionMetrics.active], ["Average corrective-action progress", `${actionMetrics.progress}%`]] },
-    { heading: "Process information", headers: ["Field", "Value"], rows: [["Job/process", data.jobCatalog?.titleEn ?? data.title], ["Company", data.organization.nameEn || data.organization.nameFa], ["Assessment status", data.status], ["Assessment date", (data.approvedAt ?? data.updatedAt).toISOString().slice(0, 10)], ["Assessment method", "FMEA"], ["Evaluation team", evaluationTeam], ["Department/unit", data.department ?? "-"], ["Activity description", data.activityDescription ?? "-"], ["Equipment/machinery", reportList(data.equipment)], ["Materials", reportList(data.materials)], ["Existing process controls", reportList(data.existingControls)], ["Special conditions", data.specialConditions ?? "-"]] },
-    { heading: "Risk-level distribution", headers: ["Risk level", "Count", "Share"], rows: Object.entries(summary.distribution).map(([level, count]) => [level, count, `${Math.round((count / totalFailureModes) * 100)}%`]) },
-    { heading: "Top failure modes", headers: ["Row", "Process / activity", "Failure mode", "Effect", "S", "O", "D", "AP", "RPN", "Risk level"], rows: topItems.map((item) => [item.rowNumber, item.processStep, item.failureMode, item.effect, item.severity, item.occurrence, item.detection, item.actionPriority, item.rpn, item.riskLevel]) },
-    { heading: "Proposed corrective actions / controls", headers: ["Related risk", "Failure mode", "Proposed action", "Priority"], rows: suggestedActions.length ? suggestedActions.map((item) => [`#${item.rowNumber}`, item.failureMode, item.recommendation?.trim() ?? "-", actionPriority(item.riskLevel)]) : [["-", "-", "No unregistered recommendations", "-"]] },
-    { heading: "Full FMEA details", headers: ["Row", "Process / activity", "Failure mode", "Failure effect", "Failure cause", "Current controls", "S", "O", "D", "AP", "RPN", "Risk level", "Recommended action"], rows: fmeaExportRows(data) },
-    { heading: "Corrective actions", headers: ["Related risk", "Title", "Description", "Priority", "Status", "Assignee", "Progress", "Due date"], rows: data.actions.map((action) => [action.fmeaItem ? `#${action.fmeaItem.rowNumber} · ${action.fmeaItem.failureMode}` : "-", action.title, action.description, action.priority, action.status, action.assigneeName ?? "-", action.progress, action.dueDate?.toISOString().slice(0, 10) ?? "-"]) },
+  const processTitle = fmeaProcessTitle(data, locale);
+  const actionHeaders = locale === "en"
+    ? ["Related risk", "Title", "Description", "Priority", "Status", "Assignee", "Progress", "Due date"]
+    : [labels.relatedRisk, labels.title, labels.description, labels.priority, labels.actionStatus, labels.assignee, labels.actionProgress, labels.dueDate];
+  const fullDetailsHeaders = locale === "en"
+    ? ["Row", "Process / activity", "Failure mode", "Failure effect", "Failure cause", "Current controls", "S", "O", "D", "AP", "RPN", "Risk level", "Recommended action"]
+    : [labels.row, labels.processActivity, labels.failureMode, labels.effect, labels.cause, labels.currentControls, labels.severity, labels.occurrence, labels.detection, labels.actionPriority, labels.rpn, labels.riskLevel, labels.recommendedAction];
+  const actionRows = data.actions.map((action) => [
+    action.fmeaItem ? `#${action.fmeaItem.rowNumber} · ${action.fmeaItem.failureMode}` : "-",
+    action.title,
+    action.description,
+    localizedFmeaActionPriority(action.priority, locale),
+    localizedFmeaStatus(action.status, locale),
+    action.assigneeName ?? "-",
+    action.progress,
+    reportDate(action.dueDate, locale),
   ]);
+  return buildDocx(labels.reportTitle, `${labels.code}: ${data.code} · ${labels.project}: ${data.project.name}`, [
+    { heading: labels.assessmentDetails, headers: [labels.field, labels.value], rows: [[labels.process, processTitle], [labels.company, fmeaCompanyName(data, locale)], [labels.date, reportDate(data.approvedAt ?? data.updatedAt, locale)], [labels.code, data.code], [labels.project, data.project.name], [labels.status, localizedFmeaStatus(data.status, locale)], [labels.method, "FMEA"], [labels.version, data.version ?? "-"]] },
+    { heading: labels.summary, headers: [labels.field, labels.value], rows: [[labels.totalFailureModes, summary.totalFailureModes], [labels.highPriorityRisks, summary.highPriorityRisks], [labels.correctiveActionsNeeded, summary.correctiveActionsNeeded], [labels.immediateActions, summary.immediateActions], [labels.registeredActions, data.actions.length], [labels.completedActions, actionMetrics.completed], [labels.activeActions, actionMetrics.active], [labels.progress, `${actionMetrics.progress}%`]] },
+    { heading: labels.processInformation, headers: [labels.field, labels.value], rows: [[labels.process, processTitle], [labels.company, fmeaCompanyName(data, locale)], [labels.status, localizedFmeaStatus(data.status, locale)], [labels.date, reportDate(data.approvedAt ?? data.updatedAt, locale)], [labels.method, "FMEA"], [labels.team, evaluationTeam], [labels.department, data.department ?? "-"], [labels.activity, data.activityDescription ?? "-"], [labels.equipment, reportList(data.equipment)], [labels.materials, reportList(data.materials)], [labels.existingControls, reportList(data.existingControls)], [labels.specialConditions, data.specialConditions ?? "-"]] },
+    { heading: locale === "en" ? "Risk-level distribution" : labels.riskDistribution, headers: [labels.riskLevel, labels.count, labels.share], rows: Object.entries(summary.distribution).map(([level, count]) => [localizedFmeaRiskLevel(level, locale), count, `${Math.round((count / totalFailureModes) * 100)}%`]) },
+    { heading: locale === "en" ? "Top failure modes" : labels.topFailureModes, headers: locale === "en" ? ["Row", "Process / activity", "Failure mode", "Effect", "S", "O", "D", "AP", "RPN", "Risk level"] : [labels.row, labels.processActivity, labels.failureMode, labels.effect, labels.severity, labels.occurrence, labels.detection, labels.actionPriority, labels.rpn, labels.riskLevel], rows: topItems.map((item) => [item.rowNumber, item.processStep, item.failureMode, item.effect, item.severity, item.occurrence, item.detection, localizedFmeaActionPriority(item.actionPriority, locale), item.rpn, localizedFmeaRiskLevel(item.riskLevel, locale)]) },
+    { heading: locale === "en" ? "Proposed corrective actions / controls" : labels.proposedActions, headers: locale === "en" ? ["Related risk", "Failure mode", "Proposed action", "Priority"] : [labels.relatedRisk, labels.failureMode, labels.recommendedAction, labels.priority], rows: suggestedActions.length ? suggestedActions.map((item) => [`#${item.rowNumber}`, item.failureMode, item.recommendation?.trim() ?? "-", localizedFmeaActionPriority(actionPriority(item.riskLevel), locale)]) : [["-", "-", labels.noRecommendations, "-"]] },
+    { heading: locale === "en" ? "Corrective actions" : labels.actionRegister, headers: actionHeaders, rows: actionRows.length ? actionRows : [["-", "-", labels.noActions, "-", "-", "-", 0, "-"]] },
+    { heading: locale === "en" ? "Full FMEA details" : labels.fullDetails, headers: fullDetailsHeaders, rows: fmeaExportRows(data, locale) },
+    { heading: labels.finalTableHeading, headers: fmeaFinalTableHeaders(locale), rows: fmeaFinalTableRows(data, locale) },
+  ], locale);
 }
 
-export async function buildFmeaFinalTableWordDocument(data: FmeaReportData) {
-  return buildDocx("NIVASafe — FMEA final assessment table", `Process / job: ${data.jobCatalog?.titleEn ?? data.title} · Assessment date: ${(data.approvedAt ?? data.updatedAt).toISOString().slice(0, 10)}`, [
-    { heading: "Final FMEA assessment table", headers: [...FMEA_FINAL_TABLE_HEADERS], rows: fmeaFinalTableRows(data) },
-  ]);
+export async function buildFmeaFinalTableWordDocument(data: FmeaReportData, locale: ReportLocale = "en") {
+  const labels = fmeaLabels(locale);
+  const processTitle = fmeaProcessTitle(data, locale);
+  return buildDocx(labels.finalTableTitle, `${labels.process}: ${processTitle} · ${labels.date}: ${reportDate(data.approvedAt ?? data.updatedAt, locale)}`, [
+    { heading: labels.assessmentDetails, headers: [labels.field, labels.value], rows: [[labels.process, processTitle], [labels.company, fmeaCompanyName(data, locale)], [labels.date, reportDate(data.approvedAt ?? data.updatedAt, locale)], [labels.code, data.code], [labels.project, data.project.name], [labels.status, localizedFmeaStatus(data.status, locale)], [labels.method, "FMEA"], [labels.version, data.version ?? "-"]] },
+    { heading: labels.finalTableHeading, headers: fmeaFinalTableHeaders(locale), rows: fmeaFinalTableRows(data, locale) },
+  ], locale);
 }
 
 export async function buildRulaWordDocument(data: RulaReportData, report?: RulaReportExport) {
@@ -1337,7 +1620,7 @@ export async function registerReportRoutes(app: FastifyInstance) {
     return envelope(await loadRulaReport(id, organizationId));
   });
   app.get("/api/v1/reports/:type/:id.:format", { preHandler: authenticate }, async (request, reply) => {
-    const organizationId = requireOrg(request); requirePermission(request, "reports.generate"); const { type, id, format } = parse(paramsSchema, request.params); const { view } = parse(reportQuerySchema, request.query); const finalFmeaTable = type === "fmea" && view === "final-table";
+    const organizationId = requireOrg(request); requirePermission(request, "reports.generate"); const { type, id, format } = parse(paramsSchema, request.params); const { view, locale } = parse(reportQuerySchema, request.query); const finalFmeaTable = type === "fmea" && view === "final-table";
     const data = type === "fmea" ? await prisma.fmeaAssessment.findFirst({ where: { id, organizationId, deletedAt: null }, include: { project: true, organization: { select: { nameFa: true, nameEn: true, riskMedium: true, riskHigh: true, riskCritical: true } }, jobCatalog: { select: { titleFa: true, titleEn: true } }, items: { orderBy: { rowNumber: "asc" } } } }) : await prisma.rulaAssessment.findFirst({ where: { id, organizationId }, include: { project: true } });
     if (!data) throw Object.assign(new Error("Assessment not found"), { statusCode: 404, code: "NOT_FOUND" });
     const rulaReport = type === "rula" ? await loadRulaReport(id, organizationId) : null;
@@ -1355,15 +1638,15 @@ export async function registerReportRoutes(app: FastifyInstance) {
     }
     if (finalFmeaTable) {
       const fmea = data as unknown as FmeaReportData;
-      if (format === "pdf") return sendPdfBuffer(reply, "NIVASafe-FMEA-final-table", await buildFmeaFinalTablePdfDocument(fmea));
-      if (format === "doc" || format === "docx") return sendWord(reply, "NIVASafe-FMEA-final-table", await buildFmeaFinalTableWordDocument(fmea));
-      const document = await buildFmeaFinalTableWorkbook(fmea);
+      if (format === "pdf") return sendPdfBuffer(reply, "NIVASafe-FMEA-final-table", await buildFmeaFinalTablePdfDocument(fmea, locale));
+      if (format === "doc" || format === "docx") return sendWord(reply, "NIVASafe-FMEA-final-table", await buildFmeaFinalTableWordDocument(fmea, locale));
+      const document = await buildFmeaFinalTableWorkbook(fmea, locale);
       return reply.header("content-type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet").header("content-disposition", `attachment; filename="${reportFilename("NIVASafe-FMEA-final-table", "xlsx")}"`).send(document);
     }
     if (format === "pdf") {
       if (type === "fmea") {
         const fmea = data as unknown as FmeaReportData;
-        return sendPdf(reply, `NIVASafe-${type.toUpperCase()}`, buildFmeaPdfLines({ ...fmea, evaluationTeam: fmea.evaluationTeam ?? [] }));
+        return sendPdf(reply, `NIVASafe-${type.toUpperCase()}`, buildFmeaPdfLines({ ...fmea, evaluationTeam: fmea.evaluationTeam ?? [] }, locale), { documentTitle: fmeaLabels(locale).reportTitle, footerLabel: fmeaLabels(locale).footer });
       }
       const rula = data as RulaReportData;
       const reviewComplete = rulaReport?.assessment.postureReviewComplete ?? true;
@@ -1394,9 +1677,9 @@ export async function registerReportRoutes(app: FastifyInstance) {
         ] : []),
       ]);
     }
-    if (format === "doc" || format === "docx") return sendWord(reply, `NIVASafe-${type.toUpperCase()}`, type === "fmea" ? await buildFmeaWordDocument(data as unknown as FmeaReportData) : await buildRulaWordDocument(data as RulaReportData, rulaReport ?? undefined));
+    if (format === "doc" || format === "docx") return sendWord(reply, `NIVASafe-${type.toUpperCase()}`, type === "fmea" ? await buildFmeaWordDocument(data as unknown as FmeaReportData, locale) : await buildRulaWordDocument(data as RulaReportData, rulaReport ?? undefined));
     const document = type === "fmea" && "items" in data
-      ? await buildFmeaWorkbook(data as unknown as FmeaReportData)
+      ? await buildFmeaWorkbook(data as unknown as FmeaReportData, locale)
       : await buildRulaWorkbook(data as RulaReportData, rulaReport ?? undefined);
     return reply.header("content-type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet").header("content-disposition", `attachment; filename="${reportFilename(`NIVASafe-${type.toUpperCase()}`, "xlsx")}"`).send(document);
   });
