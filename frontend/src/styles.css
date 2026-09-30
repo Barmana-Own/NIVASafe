@@ -2837,6 +2837,43 @@ details.optional-fields > :not(summary),
 .rula-report-data-table :is(th, td):nth-child(8) { width: 18%; }
 .rula-report-data-table :is(th, td):nth-child(9) { width: 8%; }
 
+/* Keep the RULA operations column usable when the report table is narrow. */
+.rula-report-data-table :is(th, td):last-child {
+  width: 96px;
+  min-width: 96px;
+  text-align: center;
+}
+.rula-report-data-table th:last-child { white-space: nowrap; }
+.rula-report-data-table td:last-child .report-table-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: .3rem;
+  width: auto;
+  min-width: 0;
+  white-space: nowrap;
+}
+.rula-report-data-table td:last-child .report-table-actions > .report-inline-details {
+  display: inline-flex;
+  flex: 0 0 25px;
+  width: 25px;
+  height: 25px;
+}
+.rula-report-data-table td:last-child .report-inline-details > summary.icon-button,
+.rula-report-data-table td:last-child .report-table-actions > .icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  flex: 0 0 25px;
+  width: 25px;
+  height: 25px;
+  margin: 0;
+}
+.rula-report-data-table .report-inline-details > summary.icon-button::marker { content: ""; }
+.rula-report-data-table .report-inline-details[open] { z-index: 20; }
+
 .rula-assessment-register-table :is(th, td):nth-child(1) { width: 4%; }
 .rula-assessment-register-table :is(th, td):nth-child(2) { width: 14%; }
 .rula-assessment-register-table :is(th, td):nth-child(3) { width: 10%; }

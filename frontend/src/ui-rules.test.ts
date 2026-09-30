@@ -1820,6 +1820,9 @@ describe("form auto-save contract", () => {
     expect(stylesSource).toContain("@media (max-width: 1400px)");
     expect(stylesSource).toContain(".rula-assessment-register-table .report-table-actions");
     expect(stylesSource).toContain(".rula-report-data-table td:last-child .report-table-actions");
+    expect(stylesSource).toContain(".rula-report-data-table :is(th, td):last-child");
+    expect(stylesSource).toContain("flex-wrap: nowrap");
+    expect(stylesSource).toContain(".rula-report-data-table .report-inline-details > summary.icon-button::marker");
     expect(stylesSource).toContain("grid-template-columns: repeat(3, 27px)");
     expect(stylesSource).toContain("overflow-wrap: anywhere");
     expect(assessmentPagesSource).toContain("function RulaReportStepper");
