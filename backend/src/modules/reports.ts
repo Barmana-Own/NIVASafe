@@ -172,6 +172,169 @@ function fmeaLabels(locale: ReportLocale) {
   return fmeaExportLabels[locale];
 }
 
+const rulaExportLabels = {
+  en: {
+    reportTitle: "NIVASafe — RULA assessment",
+    header: "Assessment header",
+    assessmentDetails: "Assessment details",
+    field: "Field",
+    value: "Value",
+    title: "Title",
+    project: "Project",
+    code: "Assessment code",
+    date: "Assessment date",
+    status: "Status",
+    method: "Assessment method",
+    version: "Version",
+    process: "Process / job name",
+    processInformation: "Process information",
+    jobTitle: "Job / process",
+    activity: "Activity / task",
+    duration: "Duration per occurrence",
+    repetitions: "Repetitions per shift",
+    postureHold: "Posture hold duration",
+    loadWeight: "Load weight",
+    postureDescription: "Posture description",
+    bodySide: "Body side",
+    right: "RIGHT",
+    left: "LEFT",
+    both: "BOTH",
+    score: "Score",
+    actionLevel: "Action level",
+    explanation: "Explanation",
+    postureReview: "Posture review",
+    completed: "Completed",
+    manualReview: "Manual review required",
+    summary: "Assessment summary",
+    predictedEffect: "Predicted effect",
+    currentScore: "Current score",
+    currentActionLevel: "Current action level",
+    predictedScore: "Predicted score (estimate)",
+    predictedActionLevel: "Predicted action level",
+    predictionNote: "Prediction note",
+    mainFactors: "Main factors",
+    factor: "Factor",
+    angle: "Angle",
+    detected: "Detected",
+    contribution: "Contribution",
+    effect: "Effect",
+    source: "Source",
+    assessmentData: "RULA assessment data",
+    row: "Row",
+    group: "Group",
+    bodyPart: "Body part",
+    detectedAngle: "Detected angle",
+    detectedStatus: "Detected status",
+    suggestedScore: "Suggested score",
+    scoreShare: "Score share",
+    selectedActions: "Selected corrective actions",
+    proposedActions: "Proposed corrective actions",
+    relatedFactors: "Related factors",
+    suggestedAction: "Suggested action",
+    description: "Description",
+    priority: "Priority",
+    estimatedReduction: "Estimated reduction",
+    selection: "Selection",
+    selected: "Selected",
+    notSelected: "Not selected",
+    action: "Action",
+    footer: "NIVASafe - RULA report",
+    noData: "No data",
+  },
+  fa: {
+    reportTitle: "NIVASafe — ارزیابی ارگونومی RULA",
+    header: "سربرگ ارزیابی",
+    assessmentDetails: "جزئیات ارزیابی",
+    field: "عنوان",
+    value: "مقدار",
+    title: "عنوان ارزیابی",
+    project: "پروژه",
+    code: "کد ارزیابی",
+    date: "تاریخ انجام ارزیابی",
+    status: "وضعیت ارزیابی",
+    method: "روش ارزیابی",
+    version: "نسخه",
+    process: "نام فرآیند / شغل",
+    processInformation: "اطلاعات فرآیند",
+    jobTitle: "شغل / فرآیند",
+    activity: "فعالیت / وظیفه",
+    duration: "مدت هر بار انجام",
+    repetitions: "تعداد تکرار در شیفت",
+    postureHold: "مدت حفظ پوسچر",
+    loadWeight: "وزن بار",
+    postureDescription: "شرح پوسچر",
+    bodySide: "سمت بدن",
+    right: "سمت راست",
+    left: "سمت چپ",
+    both: "هر دو سمت",
+    score: "امتیاز",
+    actionLevel: "سطح اقدام",
+    explanation: "توضیح",
+    postureReview: "بازبینی پوسچر",
+    completed: "تکمیل‌شده",
+    manualReview: "نیازمند بازبینی دستی",
+    summary: "خلاصه ارزیابی RULA",
+    predictedEffect: "اثر پیش‌بینی‌شده",
+    currentScore: "امتیاز فعلی",
+    currentActionLevel: "سطح اقدام فعلی",
+    predictedScore: "امتیاز پیش‌بینی‌شده (تخمینی)",
+    predictedActionLevel: "سطح اقدام پیش‌بینی‌شده",
+    predictionNote: "یادداشت پیش‌بینی",
+    mainFactors: "عوامل اصلی مؤثر",
+    factor: "عامل اصلی",
+    angle: "زاویه",
+    detected: "تشخیص داده‌شده",
+    contribution: "سهم امتیاز",
+    effect: "اثر",
+    source: "منبع",
+    assessmentData: "جدول داده‌های ارزیابی RULA",
+    row: "ردیف",
+    group: "گروه",
+    bodyPart: "عضو بدن",
+    detectedAngle: "زاویه شناسایی‌شده",
+    detectedStatus: "وضعیت تشخیص",
+    suggestedScore: "امتیاز پیشنهادی",
+    scoreShare: "سهم امتیاز",
+    selectedActions: "اقدامات اصلاحی انتخاب‌شده",
+    proposedActions: "اقدامات اصلاحی پیشنهادی",
+    relatedFactors: "عوامل مرتبط",
+    suggestedAction: "اقدام پیشنهادی",
+    description: "شرح",
+    priority: "اولویت",
+    estimatedReduction: "کاهش تخمینی",
+    selection: "انتخاب",
+    selected: "انتخاب‌شده",
+    notSelected: "انتخاب‌نشده",
+    action: "اقدام",
+    footer: "NIVASafe - گزارش RULA",
+    noData: "اطلاعاتی ثبت نشده است",
+  },
+} as const satisfies Record<ReportLocale, Record<string, string>>;
+
+function rulaLabels(locale: ReportLocale) {
+  return rulaExportLabels[locale];
+}
+
+function localizedRulaBodySide(value: string | undefined, locale: ReportLocale) {
+  if (locale === "en") return value ?? "-";
+  return ({ RIGHT: rulaExportLabels.fa.right, LEFT: rulaExportLabels.fa.left, BOTH: rulaExportLabels.fa.both } as Record<string, string>)[value ?? ""] ?? value ?? "-";
+}
+
+function localizedRulaPriority(value: string | undefined, locale: ReportLocale) {
+  if (!value || locale === "en") return value ?? "-";
+  return ({ CRITICAL: "بحرانی", HIGH: "زیاد", MEDIUM: "متوسط", LOW: "کم" } as Record<string, string>)[value] ?? value;
+}
+
+function localizedRulaStatus(value: string | undefined, locale: ReportLocale) {
+  if (!value || locale === "en") return value ?? "-";
+  return ({ DRAFT: "پیش‌نویس", IN_PROGRESS: "در حال انجام", IN_REVIEW: "در حال بازبینی", COMPLETED: "تکمیل‌شده", APPROVED: "تأییدشده", OPEN: "باز", ASSIGNED: "تخصیص‌یافته", WAITING_FOR_REVIEW: "در انتظار بازبینی", REJECTED: "ردشده", CANCELLED: "لغوشده" } as Record<string, string>)[value] ?? value;
+}
+
+function localizedRulaSelection(selected: boolean, locale: ReportLocale) {
+  const labels = rulaLabels(locale);
+  return selected ? labels.selected : labels.notSelected;
+}
+
 function fmeaProcessTitle(data: Pick<FmeaReportData, "title" | "jobCatalog">, locale: ReportLocale) {
   return (locale === "fa" ? data.jobCatalog?.titleFa : data.jobCatalog?.titleEn) || data.title;
 }
@@ -222,6 +385,20 @@ const pdfSectionHeadings = new Set([
   "فهرست اقدامات اصلاحی",
   "جدول نهایی ارزیابی FMEA",
   "جزئیات کامل FMEA",
+  "ASSESSMENT DETAILS",
+  "RULA ASSESSMENT SUMMARY",
+  "PREDICTED EFFECT",
+  "MAIN FACTORS",
+  "RULA ASSESSMENT DATA",
+  "PROPOSED CORRECTIVE ACTIONS",
+  "SELECTED CORRECTIVE ACTIONS",
+  "جزئیات ارزیابی",
+  "خلاصه ارزیابی RULA",
+  "اثر پیش‌بینی‌شده",
+  "عوامل اصلی مؤثر",
+  "جدول داده‌های ارزیابی RULA",
+  "اقدامات اصلاحی پیشنهادی",
+  "اقدامات اصلاحی انتخاب‌شده",
 ]);
 
 type PdfFontPaths = { regular: string; bold: string };
@@ -452,9 +629,9 @@ export type RulaActivityInfoData = {
   loadWeight?: number | null;
   loadUnit?: "KG" | "LB";
 };
-export type RulaReportData = { title: string; project: { name: string }; score: number; actionLevel: number; explanation: string; status?: string; bodySide?: "LEFT" | "RIGHT" | "BOTH"; postureReviewComplete?: boolean; activityInfo?: RulaActivityInfoData | null; postureAnalysis?: RulaPostureAnalysis | null; sideResults?: Partial<Record<"LEFT" | "RIGHT", RulaSideResultData>>; sideFactors?: Partial<Record<"LEFT" | "RIGHT", RulaSideFactorData[]>> };
+export type RulaReportData = { id?: string; title: string; subjectCode?: string | null; version?: number | null; createdAt?: Date; updatedAt?: Date; project: { name: string }; score: number; actionLevel: number; explanation: string; status?: string; bodySide?: "LEFT" | "RIGHT" | "BOTH"; postureReviewComplete?: boolean; activityInfo?: RulaActivityInfoData | null; postureAnalysis?: RulaPostureAnalysis | null; sideResults?: Partial<Record<"LEFT" | "RIGHT", RulaSideResultData>>; sideFactors?: Partial<Record<"LEFT" | "RIGHT", RulaSideFactorData[]>> };
 export type RulaReportExport = {
-  assessment: { title: string; project: { name: string }; score: number; actionLevel: number; explanation: string; status?: string; bodySide?: "LEFT" | "RIGHT" | "BOTH"; postureReviewComplete?: boolean; activityInfo?: RulaActivityInfoData | null; postureAnalysis?: RulaPostureAnalysis | null };
+  assessment: { id?: string; title: string; subjectCode?: string | null; version?: number | null; createdAt?: Date; updatedAt?: Date; project: { name: string }; score: number; actionLevel: number; explanation: string; status?: string; bodySide?: "LEFT" | "RIGHT" | "BOTH"; postureReviewComplete?: boolean; activityInfo?: RulaActivityInfoData | null; postureAnalysis?: RulaPostureAnalysis | null };
   factors: Array<{ key: string; angle: number | null; detected?: boolean; score: number; impactPercent: number; impactLevel: string; source?: string; reviewed?: boolean }>;
   sideResults?: Partial<Record<"LEFT" | "RIGHT", RulaSideResultData>>;
   sideFactors?: Partial<Record<"LEFT" | "RIGHT", RulaSideFactorData[]>>;
@@ -660,12 +837,15 @@ async function loadRulaReport(id: string, organizationId: string) {
     assessment: {
       id: rula.id,
       title: rula.title,
+      subjectCode: rula.subjectCode,
+      version: rula.version,
+      createdAt: rula.createdAt,
+      updatedAt: rula.updatedAt,
       project: rula.project,
       score: rula.score,
       actionLevel: rula.actionLevel,
       explanation: rula.explanation,
       status: rula.status,
-      updatedAt: rula.updatedAt,
       activityInfo: parseRulaActivityInfo(rula.activityInfo),
       bodySide,
       postureReviewComplete: isRulaPostureAnalysisReviewed(bodySide, postureAnalysis),
@@ -981,6 +1161,7 @@ const INCOMPLETE_RULA_EXPLANATION = "Posture review is incomplete; the final RUL
 type RulaExportModel = {
   assessment: RulaReportData | RulaReportExport["assessment"];
   reviewComplete: boolean;
+  detailsRows: ExportRow[];
   summaryRows: ExportRow[];
   processRows: ExportRow[];
   impactRows: ExportRow[];
@@ -1017,11 +1198,31 @@ function rulaFactorsForSide(factors: RulaReportExport["factors"], sideFactors: R
   return bodySide === "BOTH" ? sideFactors?.[side] ?? factors : factors;
 }
 
-function rulaSourceLabel(source: string | undefined) {
+const rulaPostureExportLabels: Record<RulaPosturePart, { en: string; fa: string }> = {
+  upperArm: { en: "Upper arm", fa: "بازو" },
+  lowerArm: { en: "Lower arm", fa: "ساعد" },
+  wrist: { en: "Wrist", fa: "مچ دست" },
+  wristTwist: { en: "Wrist twist", fa: "چرخش مچ" },
+  neck: { en: "Neck", fa: "گردن" },
+  trunk: { en: "Trunk", fa: "تنه" },
+  legs: { en: "Legs", fa: "پاها" },
+};
+
+function rulaPostureLabel(key: RulaPosturePart | string, locale: ReportLocale) {
+  return rulaPostureExportLabels[key as RulaPosturePart]?.[locale] ?? key;
+}
+
+function rulaSourceLabel(source: string | undefined, locale: ReportLocale = "en") {
+  if (locale === "fa") return source === "AI" ? "پیشنهاد هوش مصنوعی" : source === "USER" ? "ویرایش کاربر" : "مقدار پیش‌فرض";
   return source === "AI" ? "AI suggested" : source === "USER" ? "User edited" : "Default value";
 }
 
-function rulaPostureStatus(key: RulaPosturePart, row: RulaPostureResult) {
+function rulaPostureStatus(key: RulaPosturePart, row: RulaPostureResult, locale: ReportLocale = "en") {
+  if (locale === "fa") {
+    if (key === "wristTwist") return row.detected ? "وجود دارد" : "وجود ندارد";
+    if (row.detected) return "تشخیص داده شد";
+    return row.source === "DEFAULT" ? "در انتظار تشخیص" : "تشخیص داده نشد";
+  }
   if (key === "wristTwist") return row.detected ? "Present" : "Not present";
   if (row.detected) return "Detected";
   return row.source === "DEFAULT" ? "Pending detection" : "Not detected";
@@ -1037,22 +1238,29 @@ function rulaActivityUnit(value: string | undefined, units: Record<string, strin
   return value ? ` ${units[value] ?? value}` : "";
 }
 
-function rulaActivityRows(activityInfo?: RulaActivityInfoData | null): ExportRow[] {
+function rulaActivityRows(activityInfo: RulaActivityInfoData | null | undefined, locale: ReportLocale = "en"): ExportRow[] {
   if (!activityInfo) return [];
+  const labels = rulaLabels(locale);
+  const units = locale === "fa"
+    ? { SECOND: "ثانیه", MINUTE: "دقیقه", HOUR: "ساعت", KG: "کیلوگرم", LB: "پوند" }
+    : { SECOND: "seconds", MINUTE: "minutes", HOUR: "hours", KG: "kg", LB: "lb" };
   const number = (value: number | undefined, unit: string | undefined, units: Record<string, string>) => value === undefined ? "-" : `${value}${rulaActivityUnit(unit, units)}`;
   return [
-    ["Job / process", activityInfo.jobTitle?.trim() || "-"],
-    ["Activity / task", activityInfo.taskDescription?.trim() || "-"],
-    ["Duration per occurrence", number(activityInfo.durationPerOccurrence, activityInfo.durationUnit, { SECOND: "seconds", MINUTE: "minutes", HOUR: "hours" })],
-    ["Repetitions per shift", activityInfo.repetitionsPerShift ?? "-"],
-    ["Posture hold duration", number(activityInfo.postureHoldDuration, activityInfo.postureHoldUnit, { SECOND: "seconds", MINUTE: "minutes", HOUR: "hours" })],
-    ["Load weight", activityInfo.loadWeight === null || activityInfo.loadWeight === undefined ? "-" : `${activityInfo.loadWeight}${rulaActivityUnit(activityInfo.loadUnit, { KG: "kg", LB: "lb" })}`],
-    ["Posture description", activityInfo.postureDescription?.trim() || "-"],
+    [labels.jobTitle, activityInfo.jobTitle?.trim() || "-"],
+    [labels.activity, activityInfo.taskDescription?.trim() || "-"],
+    [labels.duration, number(activityInfo.durationPerOccurrence, activityInfo.durationUnit, units)],
+    [labels.repetitions, activityInfo.repetitionsPerShift ?? "-"],
+    [labels.postureHold, number(activityInfo.postureHoldDuration, activityInfo.postureHoldUnit, units)],
+    [labels.loadWeight, activityInfo.loadWeight === null || activityInfo.loadWeight === undefined ? "-" : `${activityInfo.loadWeight}${rulaActivityUnit(activityInfo.loadUnit, units)}`],
+    [labels.postureDescription, activityInfo.postureDescription?.trim() || "-"],
   ];
 }
 
-function rulaActionAffectedParts(action: { rulaImpact?: { affectedParts?: string[] } | null }) {
-  return action.rulaImpact?.affectedParts?.join(", ") || "-";
+function rulaActionAffectedParts(action: { rulaImpact?: { affectedParts?: string[] } | null }, locale: ReportLocale = "en") {
+  const affectedParts = action.rulaImpact?.affectedParts ?? [];
+  return affectedParts.length
+    ? affectedParts.map((part) => locale === "en" ? part : rulaPostureExportLabels[part as RulaPosturePart]?.[locale] ?? part).join(", ")
+    : "-";
 }
 
 function rulaActionMatchesSuggestion(action: RulaReportExport["actions"][number], suggestion: NonNullable<RulaReportExport["suggestedActions"]>[number], suggestedSide: "LEFT" | "RIGHT" | "BOTH") {
@@ -1070,10 +1278,11 @@ function rulaActionLevelForScore(score: number) {
   return 4;
 }
 
-function buildRulaExportModel(data: RulaReportData, report?: RulaReportExport): RulaExportModel {
+function buildRulaExportModel(data: RulaReportData, report?: RulaReportExport, locale: ReportLocale = "en"): RulaExportModel {
+  const labels = rulaLabels(locale);
   const assessment = report?.assessment ?? data;
   const reviewComplete = assessment.postureReviewComplete ?? report?.factors.every((factor) => factor.reviewed !== false) ?? true;
-  const predictionNote = report?.predictedNote ?? DEFAULT_RULA_PREDICTION_NOTE;
+  const predictionNote = report?.predictedNote ?? (locale === "fa" ? "برای نتیجه نهایی پس از اجرای اقدامات، ارزیابی را تکرار کنید." : DEFAULT_RULA_PREDICTION_NOTE);
   const bodySide = assessment.bodySide === "LEFT" ? "LEFT" : assessment.bodySide === "BOTH" ? "BOTH" : "RIGHT";
   const postureAnalysis = assessment.postureAnalysis ?? data.postureAnalysis ?? null;
   const activeActions = report?.actions.filter((action) => isRulaActionSelected(action.status)) ?? [];
@@ -1084,24 +1293,40 @@ function buildRulaExportModel(data: RulaReportData, report?: RulaReportExport): 
   );
   const sides = hasIndependentSides ? ["RIGHT", "LEFT"] as const : rulaBodySides(bodySide === "BOTH" ? "RIGHT" : bodySide);
   const summaryRows: ExportRow[] = [
-    ["Title", assessment.title],
-    ["Project", assessment.project.name],
-    ["Score", reviewComplete ? assessment.score : "-"],
-    ["Action level", reviewComplete ? assessment.actionLevel : "-"],
-    ["Status", assessment.status ?? "-"],
-    ["Explanation", reviewComplete ? assessment.explanation : INCOMPLETE_RULA_EXPLANATION],
+    [labels.title, assessment.title],
+    [labels.project, assessment.project.name],
+    [labels.score, reviewComplete ? assessment.score : "-"],
+    [labels.actionLevel, reviewComplete ? assessment.actionLevel : "-"],
+    [labels.status, localizedRulaStatus(assessment.status, locale)],
+    [labels.explanation, reviewComplete ? assessment.explanation : labels.manualReview],
   ];
 
   if (report && reviewComplete) {
-    summaryRows.push(["Predicted score (estimate)", report.predictedScore], ["Prediction note", predictionNote]);
+    summaryRows.push([labels.predictedScore, report.predictedScore], [labels.predictionNote, predictionNote]);
     if (bodySide === "BOTH" && report.sideResults) {
       for (const side of ["RIGHT", "LEFT"] as const) {
         const sideResult = report.sideResults[side];
-        if (sideResult) summaryRows.push([side + " score", sideResult.score], [side + " action level", sideResult.actionLevel], [side + " predicted score (estimate)", report.predictedSideScores?.[side] ?? "-"]);
+        if (sideResult) summaryRows.push(
+          [locale === "en" ? side + " score" : `${localizedRulaBodySide(side, locale)} ${labels.score}`, sideResult.score],
+          [locale === "en" ? side + " action level" : `${localizedRulaBodySide(side, locale)} ${labels.actionLevel}`, sideResult.actionLevel],
+          [locale === "en" ? side + " predicted score (estimate)" : `${localizedRulaBodySide(side, locale)} ${labels.predictedScore}`, report.predictedSideScores?.[side] ?? "-"],
+        );
       }
     }
   }
-  summaryRows.push(["Body side", bodySide], ["Posture review", reviewComplete ? "Completed" : "Manual review required"]);
+  summaryRows.push([labels.bodySide, localizedRulaBodySide(bodySide, locale)], [labels.postureReview, reviewComplete ? labels.completed : labels.manualReview]);
+
+  const detailsRows: ExportRow[] = [
+    [labels.title, assessment.title],
+    [labels.code, assessment.subjectCode?.trim() || "-"],
+    [labels.project, assessment.project.name],
+    [labels.date, reportDate(assessment.updatedAt ?? assessment.createdAt, locale)],
+    [labels.status, localizedRulaStatus(assessment.status, locale)],
+    [labels.method, "RULA"],
+    [labels.version, assessment.version ?? "-"],
+    [labels.bodySide, localizedRulaBodySide(bodySide, locale)],
+    [labels.postureReview, reviewComplete ? labels.completed : labels.manualReview],
+  ];
 
   const factorRows: ExportRow[] = [];
   const dataRows: ExportRow[] = [];
@@ -1109,14 +1334,14 @@ function buildRulaExportModel(data: RulaReportData, report?: RulaReportExport): 
     const sideFactors = rulaFactorsForSide(report?.factors ?? [], report?.sideFactors, bodySide, side);
     for (const factor of sideFactors) {
       factorRows.push([
-        hasIndependentSides ? `${side} / ${factor.key}` : factor.key,
-        hasIndependentSides ? side : "-",
+        hasIndependentSides ? `${localizedRulaBodySide(side, locale)} / ${locale === "en" ? factor.key : rulaPostureLabel(factor.key as RulaPosturePart, locale)}` : (locale === "en" ? factor.key : rulaPostureLabel(factor.key as RulaPosturePart, locale)),
+        hasIndependentSides ? localizedRulaBodySide(side, locale) : "-",
         factor.angle === null ? "-" : String(factor.angle) + "°",
         factor.detected === undefined ? "-" : factor.detected ? "Yes" : "No",
         factor.reviewed === false ? "-" : factor.score,
         factor.reviewed === false ? "-" : String(factor.impactPercent) + "%",
-        factor.reviewed === false ? "Manual review required" : factor.impactLevel,
-        rulaSourceLabel(factor.source),
+        factor.reviewed === false ? labels.manualReview : factor.impactLevel,
+        rulaSourceLabel(factor.source, locale),
       ]);
     }
     const sideAnalysis = rulaAnalysisForSide(postureAnalysis, bodySide, side);
@@ -1129,15 +1354,15 @@ function buildRulaExportModel(data: RulaReportData, report?: RulaReportExport): 
       const scoreShare = rulaScoreShare(row, item.key, hasIndependentSides ? report?.sideFactors?.[side] ?? [] : sideFactorForRows, totalScore);
       const relatedActions = activeActions.filter((action) => action.rulaImpact?.affectedParts?.includes(item.key));
       dataRows.push([
-        hasIndependentSides ? side : "-",
+        hasIndependentSides ? localizedRulaBodySide(side, locale) : "-",
         index + 1,
         item.group,
-        item.label,
+        locale === "en" ? item.label : rulaPostureLabel(item.key, locale),
         row.angle === null ? "-" : String(row.angle) + "°",
-        rulaPostureStatus(item.key, row),
+        rulaPostureStatus(item.key, row, locale),
         reviewed ? row.score : "-",
         scoreShare === null ? "-" : String(scoreShare) + "%",
-        relatedActions.length ? relatedActions.map((action) => action.title).join(" | ") : "No selected corrective action",
+        relatedActions.length ? relatedActions.map((action) => action.title).join(" | ") : (locale === "fa" ? "اقدام اصلاحی انتخاب نشده است" : "No selected corrective action"),
       ]);
     }
   }
@@ -1146,28 +1371,28 @@ function buildRulaExportModel(data: RulaReportData, report?: RulaReportExport): 
     const suggestedSide = suggestion.bodySide ?? (bodySide === "BOTH" ? "BOTH" : bodySide);
     const selected = report?.actions.some((action) => rulaActionMatchesSuggestion(action, suggestion, suggestedSide)) ?? false;
     return [
-      suggestedSide,
-      suggestion.affectedParts.join(", ") || "-",
-      suggestion.titleEn || suggestion.titleFa,
-      suggestion.descriptionEn || suggestion.descriptionFa,
-      suggestion.priority,
+      localizedRulaBodySide(suggestedSide, locale),
+      suggestion.affectedParts.map((part) => locale === "en" ? part : rulaPostureExportLabels[part]?.[locale] ?? part).join(", ") || "-",
+      locale === "fa" ? suggestion.titleFa || suggestion.titleEn : suggestion.titleEn || suggestion.titleFa,
+      locale === "fa" ? suggestion.descriptionFa || suggestion.descriptionEn : suggestion.descriptionEn || suggestion.descriptionFa,
+      localizedRulaPriority(suggestion.priority, locale),
       suggestion.scoreReduction,
-      selected ? "Selected" : "Not selected",
+      localizedRulaSelection(selected, locale),
     ];
   });
 
   const actionRows: ExportRow[] = report?.actions.map((action) => [
     action.title,
     action.description,
-    rulaActionAffectedParts(action),
-    action.bodySide ?? "-",
-    action.priority,
-    action.status ?? "-",
-    isRulaActionSelected(action.status) ? "Selected" : "Not selected",
+    rulaActionAffectedParts(action, locale),
+    localizedRulaBodySide(action.bodySide ?? undefined, locale),
+    localizedRulaPriority(action.priority, locale),
+    localizedRulaStatus(action.status, locale),
+    localizedRulaSelection(isRulaActionSelected(action.status), locale),
     action.rulaImpact?.scoreReduction ?? 0,
   ]) ?? [];
 
-  const processRows = rulaActivityRows(assessment.activityInfo ?? data.activityInfo);
+  const processRows = rulaActivityRows(assessment.activityInfo ?? data.activityInfo, locale);
   const impactRows: ExportRow[] = [];
   if (report) {
     for (const side of sides) {
@@ -1175,11 +1400,63 @@ function buildRulaExportModel(data: RulaReportData, report?: RulaReportExport): 
       const predictedScore = hasIndependentSides
         ? report.predictedSideScores?.[side] ?? predictedRulaScore(currentScore, activeActions.filter((action) => !action.bodySide || action.bodySide === "BOTH" || action.bodySide === side).map((action) => action.rulaImpact))
         : report.predictedScore;
-      impactRows.push([hasIndependentSides ? side : "-", "Current score", reviewComplete ? currentScore : "-"], [hasIndependentSides ? side : "-", "Current action level", reviewComplete ? (report.sideResults?.[side]?.actionLevel ?? assessment.actionLevel) : "-"], [hasIndependentSides ? side : "-", "Predicted score (estimate)", reviewComplete ? predictedScore : "-"], [hasIndependentSides ? side : "-", "Predicted action level", reviewComplete ? rulaActionLevelForScore(predictedScore) : "-"], [hasIndependentSides ? side : "-", "Prediction note", reviewComplete ? predictionNote : INCOMPLETE_RULA_EXPLANATION]);
+      impactRows.push(
+        [hasIndependentSides ? localizedRulaBodySide(side, locale) : "-", labels.currentScore, reviewComplete ? currentScore : "-"],
+        [hasIndependentSides ? localizedRulaBodySide(side, locale) : "-", labels.currentActionLevel, reviewComplete ? (report.sideResults?.[side]?.actionLevel ?? assessment.actionLevel) : "-"],
+        [hasIndependentSides ? localizedRulaBodySide(side, locale) : "-", labels.predictedScore, reviewComplete ? predictedScore : "-"],
+        [hasIndependentSides ? localizedRulaBodySide(side, locale) : "-", labels.predictedActionLevel, reviewComplete ? rulaActionLevelForScore(predictedScore) : "-"],
+        [hasIndependentSides ? localizedRulaBodySide(side, locale) : "-", labels.predictionNote, reviewComplete ? predictionNote : labels.manualReview],
+      );
     }
   }
 
-  return { assessment, reviewComplete, summaryRows, processRows, impactRows, factorRows, dataRows, suggestionRows, actionRows };
+  return { assessment, reviewComplete, detailsRows, summaryRows, processRows, impactRows, factorRows, dataRows, suggestionRows, actionRows };
+}
+
+function rulaPdfRows(headers: string[], rows: ExportRow[], emptyLabel: string) {
+  return [headers.join(" | "), ...(rows.length ? rows : [headers.map(() => emptyLabel)]).map((row) => row.map((value) => String(value ?? "-")).join(" | "))];
+}
+
+export function buildRulaPdfLines(data: RulaReportData, report?: RulaReportExport, locale: ReportLocale = "en") {
+  const labels = rulaLabels(locale);
+  const model = buildRulaExportModel(data, report, locale);
+  const factorHeaders = locale === "en"
+    ? ["Body side", "Main factor", "Angle", "Detected", "Score", "Contribution", "Effect", "Source"]
+    : [labels.bodySide, labels.factor, labels.angle, labels.detected, labels.score, labels.contribution, labels.effect, labels.source];
+  const dataHeaders = [labels.bodySide, labels.row, labels.group, labels.bodyPart, labels.detectedAngle, labels.detectedStatus, labels.suggestedScore, labels.scoreShare, labels.selectedActions];
+  const correctionHeaders = [labels.bodySide, labels.relatedFactors, labels.suggestedAction, labels.description, labels.priority, labels.estimatedReduction, labels.selection];
+  const actionHeaders = locale === "en"
+    ? ["Action", "Description", "Related factors", "Body side", "Priority", "Status", "Selection", "Estimated reduction"]
+    : [labels.action, labels.description, labels.relatedFactors, labels.bodySide, labels.priority, labels.status, labels.selection, labels.estimatedReduction];
+  const assessmentDetailsHeading = locale === "en" ? "ASSESSMENT DETAILS" : labels.assessmentDetails;
+  const summaryHeading = locale === "en" ? "RULA ASSESSMENT SUMMARY" : labels.summary;
+  const processHeading = locale === "en" ? "PROCESS INFORMATION" : labels.processInformation;
+  const impactHeading = locale === "en" ? "PREDICTED EFFECT" : labels.predictedEffect;
+  const factorsHeading = locale === "en" ? "MAIN FACTORS" : labels.mainFactors;
+  const dataHeading = locale === "en" ? "RULA ASSESSMENT DATA" : labels.assessmentData;
+  const correctionsHeading = locale === "en" ? "PROPOSED CORRECTIVE ACTIONS" : labels.proposedActions;
+  const actionsHeading = locale === "en" ? "SELECTED CORRECTIVE ACTIONS" : labels.selectedActions;
+  const keyValueLines = (rows: ExportRow[]) => rows.map(([key, value]) => `${key}: ${value ?? "-"}`);
+  const tableSection = (heading: string, headers: string[], rows: ExportRow[]) => [heading, ...rulaPdfRows(headers, rows, labels.noData), ""];
+
+  return [
+    assessmentDetailsHeading,
+    ...keyValueLines(model.detailsRows),
+    "",
+    summaryHeading,
+    ...keyValueLines(model.summaryRows),
+    "",
+    processHeading,
+    ...keyValueLines(model.processRows),
+    "",
+    ...(model.impactRows.length ? tableSection(impactHeading, [labels.bodySide, labels.field, labels.value], model.impactRows) : []),
+    ...(report ? [
+      ...tableSection(factorsHeading, factorHeaders, model.factorRows),
+      ...tableSection(dataHeading, dataHeaders, model.dataRows),
+      ...tableSection(correctionsHeading, correctionHeaders, model.suggestionRows),
+      ...tableSection(actionsHeading, actionHeaders, model.actionRows),
+    ] : []),
+  ];
 }
 
 export async function buildFmeaWorkbook(data: FmeaReportData, locale: ReportLocale = "en") {
@@ -1252,16 +1529,27 @@ export async function buildFmeaFinalTableWorkbook(data: FmeaReportData, locale: 
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
-export async function buildRulaWorkbook(data: RulaReportData, report?: RulaReportExport) {
+export async function buildRulaWorkbook(data: RulaReportData, report?: RulaReportExport, locale: ReportLocale = "en") {
+  const labels = rulaLabels(locale);
   const workbook = new ExcelJS.Workbook();
-  const model = buildRulaExportModel(data, report);
-  addExportSheet(workbook, "RULA", ["Field", "Value"], model.summaryRows, [34, 100]);
-  addExportSheet(workbook, "PROCESS", ["Field", "Value"], model.processRows, [34, 100]);
-  addExportSheet(workbook, "IMPACT", ["Body side", "Metric", "Value"], model.impactRows, [16, 34, 80]);
-  addExportSheet(workbook, "FACTORS", ["Body side", "Main factor", "Angle", "Detected", "Score", "Contribution", "Effect", "Source"], model.factorRows, [16, 28, 16, 12, 12, 18, 28, 18]);
-  addExportSheet(workbook, "RULA DATA", ["Body side", "Row", "Group", "Body part", "Detected angle", "Detected status", "Suggested score", "Score share", "Selected corrective actions"], model.dataRows, [16, 8, 8, 24, 18, 22, 18, 16, 48]);
-  addExportSheet(workbook, "CORRECTIONS", ["Body side", "Related factors", "Suggested action", "Description", "Priority", "Estimated reduction", "Selection"], model.suggestionRows, [16, 28, 34, 60, 14, 20, 16]);
-  addExportSheet(workbook, "ACTIONS", ["Corrective action", "Description", "Related factors", "Body side", "Priority", "Status", "Selection", "Estimated reduction"], model.actionRows, [32, 52, 28, 16, 16, 18, 18, 22]);
+  const model = buildRulaExportModel(data, report, locale);
+  const fieldValueHeaders = [labels.field, labels.value];
+  const factorHeaders = locale === "en"
+    ? ["Body side", "Main factor", "Angle", "Detected", "Score", "Contribution", "Effect", "Source"]
+    : [labels.bodySide, labels.factor, labels.angle, labels.detected, labels.score, labels.contribution, labels.effect, labels.source];
+  const dataHeaders = [labels.bodySide, labels.row, labels.group, labels.bodyPart, labels.detectedAngle, labels.detectedStatus, labels.suggestedScore, labels.scoreShare, labels.selectedActions];
+  const correctionHeaders = [labels.bodySide, labels.relatedFactors, labels.suggestedAction, labels.description, labels.priority, labels.estimatedReduction, labels.selection];
+  const actionHeaders = locale === "en"
+    ? ["Action", "Description", "Related factors", "Body side", "Priority", "Status", "Selection", "Estimated reduction"]
+    : [labels.action, labels.description, labels.relatedFactors, labels.bodySide, labels.priority, labels.status, labels.selection, labels.estimatedReduction];
+  addExportSheet(workbook, "RULA", fieldValueHeaders, model.summaryRows, [34, 100]);
+  addExportSheet(workbook, "SUMMARY", fieldValueHeaders, model.detailsRows, [34, 100]);
+  addExportSheet(workbook, "PROCESS", fieldValueHeaders, model.processRows, [34, 100]);
+  addExportSheet(workbook, "IMPACT", [labels.bodySide, labels.field, labels.value], model.impactRows, [16, 34, 80]);
+  addExportSheet(workbook, "FACTORS", factorHeaders, model.factorRows, [16, 28, 16, 12, 12, 18, 28, 18]);
+  addExportSheet(workbook, "RULA DATA", dataHeaders, model.dataRows, [16, 8, 8, 24, 18, 22, 18, 16, 48]);
+  addExportSheet(workbook, "CORRECTIONS", correctionHeaders, model.suggestionRows, [16, 28, 34, 60, 14, 20, 16]);
+  addExportSheet(workbook, "ACTIONS", actionHeaders, model.actionRows, [32, 52, 28, 16, 16, 18, 18, 22]);
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
@@ -1349,19 +1637,29 @@ export async function buildFmeaFinalTableWordDocument(data: FmeaReportData, loca
   ], locale);
 }
 
-export async function buildRulaWordDocument(data: RulaReportData, report?: RulaReportExport) {
-  const model = buildRulaExportModel(data, report);
-  return buildDocx("NIVASafe — RULA assessment", `Title: ${model.assessment.title} · Project: ${model.assessment.project.name}`, [
-    { heading: "Assessment summary", headers: ["Field", "Value"], rows: model.summaryRows },
-    ...(model.processRows.length ? [{ heading: "Process information", headers: ["Field", "Value"], rows: model.processRows }] : []),
-    ...(model.impactRows.length ? [{ heading: "Predicted effect", headers: ["Body side", "Metric", "Value"], rows: model.impactRows }] : []),
+export async function buildRulaWordDocument(data: RulaReportData, report?: RulaReportExport, locale: ReportLocale = "en") {
+  const labels = rulaLabels(locale);
+  const model = buildRulaExportModel(data, report, locale);
+  const factorHeaders = locale === "en"
+    ? ["Body side", "Factor", "Angle", "Detected", "Score", "Contribution", "Effect", "Source"]
+    : [labels.bodySide, labels.factor, labels.angle, labels.detected, labels.score, labels.contribution, labels.effect, labels.source];
+  const dataHeaders = [labels.bodySide, labels.row, labels.group, labels.bodyPart, labels.detectedAngle, labels.detectedStatus, labels.suggestedScore, labels.scoreShare, labels.selectedActions];
+  const correctionHeaders = [labels.bodySide, labels.relatedFactors, labels.suggestedAction, labels.description, labels.priority, labels.estimatedReduction, labels.selection];
+  const actionHeaders = locale === "en"
+    ? ["Action", "Description", "Related factors", "Body side", "Priority", "Status", "Selection", "Estimated reduction"]
+    : [labels.action, labels.description, labels.relatedFactors, labels.bodySide, labels.priority, labels.status, labels.selection, labels.estimatedReduction];
+  return buildDocx(labels.reportTitle, `${labels.code}: ${model.assessment.subjectCode?.trim() || "-"} · ${labels.project}: ${model.assessment.project.name}`, [
+    { heading: labels.assessmentDetails, headers: [labels.field, labels.value], rows: model.detailsRows },
+    { heading: labels.summary, headers: [labels.field, labels.value], rows: model.summaryRows },
+    ...(model.processRows.length ? [{ heading: labels.processInformation, headers: [labels.field, labels.value], rows: model.processRows }] : []),
+    ...(model.impactRows.length ? [{ heading: labels.predictedEffect, headers: [labels.bodySide, labels.field, labels.value], rows: model.impactRows }] : []),
     ...(report ? [
-      { heading: "Main factors", headers: ["Body side", "Factor", "Angle", "Detected", "Score", "Contribution", "Effect", "Source"], rows: model.factorRows },
-      { heading: "RULA assessment data", headers: ["Body side", "Row", "Group", "Body part", "Detected angle", "Detected status", "Suggested score", "Score share", "Selected corrective actions"], rows: model.dataRows },
-      { heading: "Proposed corrective actions", headers: ["Body side", "Related factors", "Suggested action", "Description", "Priority", "Estimated reduction", "Selection"], rows: model.suggestionRows },
-      { heading: "Selected corrective actions", headers: ["Action", "Description", "Related factors", "Body side", "Priority", "Status", "Selection", "Estimated reduction"], rows: model.actionRows },
+      { heading: labels.mainFactors, headers: factorHeaders, rows: model.factorRows },
+      { heading: labels.assessmentData, headers: dataHeaders, rows: model.dataRows },
+      { heading: labels.proposedActions, headers: correctionHeaders, rows: model.suggestionRows },
+      { heading: labels.selectedActions, headers: actionHeaders, rows: model.actionRows },
     ] : []),
-  ]);
+  ], locale);
 }
 
 function reportFilename(value: string, extension: "docx" | "xlsx" | "pdf") {
@@ -1647,38 +1945,12 @@ export async function registerReportRoutes(app: FastifyInstance) {
         return sendPdf(reply, `NIVASafe-${type.toUpperCase()}`, buildFmeaPdfLines({ ...fmea, evaluationTeam: fmea.evaluationTeam ?? [] }, locale), { documentTitle: fmeaLabels(locale).reportTitle, footerLabel: fmeaLabels(locale).footer });
       }
       const rula = data as RulaReportData;
-      const reviewComplete = rulaReport?.assessment.postureReviewComplete ?? true;
-      return sendPdf(reply, `NIVASafe-${type.toUpperCase()}`, [
-        `Project: ${rula.project.name}`,
-        `Score: ${reviewComplete ? rula.score : "-"}`,
-        `Action level: ${reviewComplete ? rula.actionLevel : "-"}`,
-        `Status: ${rula.status ?? "-"}`,
-        `Explanation: ${reviewComplete ? rula.explanation : "Posture review is incomplete; the final RULA score is unavailable."}`,
-        ...(rulaReport && reviewComplete ? [
-           ...(rulaReport.sideResults && rula.bodySide === "BOTH" ? [
-            "Independent side results:",
-            ...(["RIGHT", "LEFT"] as const).flatMap((side) => {
-              const sideResult = rulaReport.sideResults?.[side];
-              return sideResult ? [side + " score: " + sideResult.score, side + " action level: " + sideResult.actionLevel] : [];
-            }),
-          ] : []),
-          ...(rulaReport.sideFactors && rula.bodySide === "BOTH" ? [
-            "Independent side factors:",
-            ...(["RIGHT", "LEFT"] as const).flatMap((side) => (rulaReport.sideFactors?.[side] ?? []).map((factor) => side + " / " + factor.key + " | Angle: " + (factor.angle ?? "-") + " | Score: " + (factor.reviewed === false ? "-" : factor.score) + " | Contribution: " + (factor.reviewed === false ? "-" : factor.impactPercent + "%") + " | Effect: " + (factor.reviewed === false ? "Manual review required" : factor.impactLevel))),
-          ] : []),
-          `Predicted score (estimate): ${rulaReport.predictedScore}`,
-          "Prediction note: Estimated from selected corrective actions; reassessment is required for the final RULA result.",
-          "Main factors:",
-          ...rulaReport.factors.map((factor) => `${factor.key} | Angle: ${factor.angle ?? "-"} | Detected: ${factor.detected === undefined ? "-" : factor.detected ? "Yes" : "No"} | Score: ${factor.reviewed === false ? "-" : factor.score} | Contribution: ${factor.reviewed === false ? "-" : `${factor.impactPercent}%`} | Effect: ${factor.reviewed === false ? "Manual review required" : factor.impactLevel} | Source: ${factor.source ?? "-"}`),
-          "Corrective actions:",
-          ...rulaReport.actions.map((action) => `${action.title} | Body side: ${action.bodySide ?? "-"} | Related factors: ${action.rulaImpact?.affectedParts?.join(", ") || "-"} | Priority: ${action.priority} | Status: ${action.status ?? "-"} | Selection: ${action.status && ["CANCELLED", "REJECTED"].includes(action.status) ? "Not selected" : "Selected"} | Estimated reduction: ${action.rulaImpact?.scoreReduction ?? 0}`),
-        ] : []),
-      ]);
+      return sendPdf(reply, `NIVASafe-${type.toUpperCase()}`, buildRulaPdfLines(rula, rulaReport ?? undefined, locale), { documentTitle: rulaLabels(locale).reportTitle, footerLabel: rulaLabels(locale).footer });
     }
-    if (format === "doc" || format === "docx") return sendWord(reply, `NIVASafe-${type.toUpperCase()}`, type === "fmea" ? await buildFmeaWordDocument(data as unknown as FmeaReportData, locale) : await buildRulaWordDocument(data as RulaReportData, rulaReport ?? undefined));
+    if (format === "doc" || format === "docx") return sendWord(reply, `NIVASafe-${type.toUpperCase()}`, type === "fmea" ? await buildFmeaWordDocument(data as unknown as FmeaReportData, locale) : await buildRulaWordDocument(data as RulaReportData, rulaReport ?? undefined, locale));
     const document = type === "fmea" && "items" in data
       ? await buildFmeaWorkbook(data as unknown as FmeaReportData, locale)
-      : await buildRulaWorkbook(data as RulaReportData, rulaReport ?? undefined);
+      : await buildRulaWorkbook(data as RulaReportData, rulaReport ?? undefined, locale);
     return reply.header("content-type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet").header("content-disposition", `attachment; filename="${reportFilename(`NIVASafe-${type.toUpperCase()}`, "xlsx")}"`).send(document);
   });
 }

@@ -190,7 +190,7 @@ describe("corrective-action body-side scope", () => {
     expect(assessmentPagesSource).toContain("const RULA_CORRECTIVE_SUGGESTION_MAX = 6;");
     expect(assessmentPagesSource).toContain("suggestions.slice(0, RULA_CORRECTIVE_SUGGESTION_MAX)");
     expect(assessmentPagesSource).toContain('t("assessment.rulaActionBodySide")');
-    expect(reportsSource).toContain('Body side: ${action.bodySide ?? "-"}');
+    expect(reportsSource).toContain('localizedRulaBodySide(action.bodySide ?? undefined, locale)');
   });
 });
 
@@ -749,6 +749,10 @@ describe("RULA assessment results view", () => {
     expect(assessmentPagesSource).toContain('{resultsView && <SectionCard title={t("assessment.rulaResults")}');
     expect(assessmentPagesSource).toContain('{!resultsView && canEdit() && <SectionCard');
     expect(assessmentPagesSource).toContain('editingExistingAssessment ? t("assessment.editRula") : t("assessment.evaluateNew", { type: assessmentLabel })');
+    expect(assessmentPagesSource).toContain("function resetRulaEntryForm()");
+    expect(assessmentPagesSource).toContain("setSelectedProjectId(\"\")");
+    expect(assessmentPagesSource).toContain("setJobQuery(\"\")");
+    expect(assessmentPagesSource).toContain("await clearAutoSaveDraft(draftKey)");
     expect(i18nSource).toContain('"assessment.backToNewRula": "بازگشت به ارزیابی جدید RULA"');
     expect(i18nSource).toContain('"assessment.backToNewRula": "Back to new RULA assessment"');
     expect(i18nSource).toContain('"assessment.rulaRegistered": "ارزیابی‌های ثبت‌شده"');
@@ -1825,6 +1829,12 @@ describe("form auto-save contract", () => {
     expect(stylesSource).toContain(".rula-report-data-table .report-inline-details > summary.icon-button::marker");
     expect(stylesSource).toContain("grid-template-columns: repeat(3, 27px)");
     expect(stylesSource).toContain("overflow-wrap: anywhere");
+    expect(assessmentPagesSource).toContain('data-label={t("assessment.bodyPart")}');
+    expect(assessmentPagesSource).toContain('data-label={t("assessment.rulaSuggestedAction")}');
+    expect(stylesSource).toContain(".rula-smart-analysis .rula-analysis-table-card .table-wrap,");
+    expect(stylesSource).toContain(".rula-report-page .rula-report-data-table tbody > tr > td::before");
+    expect(stylesSource).toContain("content: attr(data-label);");
+    expect(stylesSource).toContain("min-width: 0;");
     expect(assessmentPagesSource).toContain("function RulaReportStepper");
     expect(assessmentPagesSource).toContain('return <div className="wizard-stepper" aria-label={t("assessment.stepsLabel", { type: "RULA" })}');
     expect(assessmentPagesSource).not.toContain('className="wizard-stepper rula-report-stepper"');
@@ -1919,6 +1929,10 @@ describe("activity log migration", () => {
     expect(generalPagesSource).toContain('item.metadata ? JSON.stringify(item.metadata, null, 2)');
     expect(generalPagesSource).toContain('data-label={t("activityLog.time")}');
     expect(generalPagesSource).toContain('data-label={t("activityLog.details")}');
+    expect(stylesSource).toContain('.activity-log-filters { display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr)) minmax(0, auto);');
+    expect(stylesSource).toContain('.activity-log-filters input { width: 100%; max-width: 100%; min-width: 0; }');
+    expect(stylesSource).toContain('  .activity-log-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }');
+    expect(stylesSource).toContain('  .activity-log-filter-actions { grid-column: 1 / -1; justify-content: flex-start; }');
     expect(stylesSource).toContain('@media (max-width: 1100px) {\n  .table-wrap.activity-log-table { overflow-x: hidden; }');
     expect(stylesSource).toContain('.table-wrap.activity-log-table { overflow-x: hidden; }');
     expect(stylesSource).toContain('.activity-log-table tbody { display: grid; gap: .65rem; padding: .65rem; }');

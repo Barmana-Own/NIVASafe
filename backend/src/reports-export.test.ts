@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
-import { buildFmeaFinalTablePdfDocument, buildFmeaFinalTableWorkbook, buildFmeaFinalTableWordDocument, buildFmeaPdfLines, buildFmeaWorkbook, buildFmeaWordDocument, buildPdfDocument, buildRegisteredReportSummaries, buildRulaWorkbook, buildRulaWordDocument, FMEA_FINAL_TABLE_HEADERS, type FmeaReportData, type RulaReportData, type RulaReportExport } from "./modules/reports.js";
+import { buildFmeaFinalTablePdfDocument, buildFmeaFinalTableWorkbook, buildFmeaFinalTableWordDocument, buildFmeaPdfLines, buildFmeaWorkbook, buildFmeaWordDocument, buildPdfDocument, buildRegisteredReportSummaries, buildRulaPdfLines, buildRulaWorkbook, buildRulaWordDocument, FMEA_FINAL_TABLE_HEADERS, type FmeaReportData, type RulaReportData, type RulaReportExport } from "./modules/reports.js";
 
 const fmea: FmeaReportData = {
   title: "Production line FMEA",
@@ -101,7 +101,7 @@ describe("assessment report exports", () => {
     const buffer = await buildRulaWorkbook(rula, rulaReport);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
-    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["RULA", "PROCESS", "IMPACT", "FACTORS", "RULA DATA", "CORRECTIONS", "ACTIONS"]);
+    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["RULA", "SUMMARY", "PROCESS", "IMPACT", "FACTORS", "RULA DATA", "CORRECTIONS", "ACTIONS"]);
     expect(workbook.getWorksheet("RULA")?.getColumn(2).values).toContain(4);
     expect(workbook.getWorksheet("FACTORS")?.getRow(2).values).toContain("neck");
     expect(workbook.getWorksheet("ACTIONS")?.getRow(2).values).toContain("Adjust work surface");
@@ -178,6 +178,32 @@ describe("assessment report exports", () => {
     for (const value of ["Status", "IN_REVIEW", "Predicted score (estimate)", "Reassess after controls", "neck", "43%", "Adjust work surface", "neck, trunk", "Selected", "Process information", "RULA assessment data", "Proposed corrective actions", "Packing operator"]) {
       expect(document).toContain(value);
     }
+  });
+
+  it("renders complete Persian RULA exports with FMEA-style report sections", async () => {
+    const localizedRula = { ...rula, id: "rula-001", subjectCode: "RULA-001", version: 2, createdAt: new Date("2026-09-01T10:00:00.000Z"), updatedAt: new Date("2026-09-02T10:00:00.000Z") };
+    const lines = buildRulaPdfLines(localizedRula, rulaReport, "fa");
+    expect(lines.join("\n")).toContain("جزئیات ارزیابی");
+    expect(lines.join("\n")).toContain("تاریخ انجام ارزیابی");
+    expect(lines.join("\n")).toContain("اطلاعات فرآیند");
+    expect(lines.join("\n")).toContain("جدول داده‌های ارزیابی RULA");
+    const pdfBuffer = await buildPdfDocument("NIVASafe — ارزیابی ارگونومی RULA", lines, "NIVASafe - گزارش RULA");
+    expect(pdfBuffer.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+
+    const wordBuffer = await buildRulaWordDocument(localizedRula, { ...rulaReport, assessment: localizedRula }, "fa");
+    const wordArchive = await JSZip.loadAsync(wordBuffer);
+    const wordDocument = await wordArchive.file("word/document.xml")!.async("string");
+    expect(wordDocument).toContain("NIVASafe — ارزیابی ارگونومی RULA");
+    expect(wordDocument).toContain("جدول داده‌های ارزیابی RULA");
+    expect(wordDocument).toContain("تاریخ انجام ارزیابی");
+
+    const workbookBuffer = await buildRulaWorkbook(localizedRula, { ...rulaReport, assessment: localizedRula }, "fa");
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(workbookBuffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["RULA", "SUMMARY", "PROCESS", "IMPACT", "FACTORS", "RULA DATA", "CORRECTIONS", "ACTIONS"]);
+    expect(workbook.getWorksheet("SUMMARY")?.getColumn(1).values).toContain("تاریخ انجام ارزیابی");
+    expect(workbook.getWorksheet("RULA DATA")?.getRow(1).values).toContain("عضو بدن");
+    expect(workbook.getWorksheet("ACTIONS")?.getRow(2).values).toContain("گردن, تنه");
   });
 
   it("creates valid Office Open XML Word documents instead of mislabeled HTML files", async () => {
