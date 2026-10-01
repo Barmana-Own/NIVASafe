@@ -1,0 +1,333 @@
+/* Form and surface UI polish: shared visual rules only */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]):not(.fmea-search-control input),
+select,
+textarea,
+ .dialog-input {
+  min-height: var(--control-height);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--control-radius);
+  padding: .72rem .9rem;
+  background: var(--surface);
+  color: var(--ink);
+  line-height: 1.55;
+  transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease, transform .18s ease;
+}
+textarea {
+  min-height: 104px;
+  line-height: 1.8;
+}
+input[type="file"] {
+  min-height: var(--control-height);
+  padding: .42rem .55rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--control-radius);
+  background: var(--surface);
+  color: var(--muted);
+}
+input[type="file"]::file-selector-button {
+  min-height: 32px;
+  margin-inline-end: .55rem;
+  padding: .35rem .65rem;
+  border: 1px solid #b8d4ec;
+  border-radius: 9px;
+  background: #f1f8fe;
+  color: #245f8e;
+  font: inherit;
+  font-size: .7rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+input[type="file"]:hover::file-selector-button {
+  border-color: #76a9d0;
+  background: #eaf5fc;
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]):not(.fmea-search-control input):hover:not(:disabled),
+select:hover:not(:disabled),
+textarea:hover:not(:disabled),
+ .dialog-input:hover:not(:disabled),
+input[type="file"]:hover:not(:disabled) {
+  border-color: #9fc5e5;
+  background: #fff;
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]):not(.fmea-search-control input):focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+ .dialog-input:focus-visible,
+input[type="file"]:focus-visible {
+  border-color: var(--blue);
+  outline: 0;
+  background: #fff;
+  box-shadow: var(--focus-ring);
+}
+/* Keep native select menus visually consistent across the application. Browser
+   support for option styling varies, so these rules provide the strongest
+   portable baseline without replacing the accessible native select behavior. */
+select {
+  accent-color: var(--blue);
+  color-scheme: light;
+}
+select option {
+  min-height: 2.25rem;
+  padding: .55rem .75rem;
+  border: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 650;
+  line-height: 1.55;
+}
+select option:hover,
+select option:focus {
+  background: #eef7ff;
+  color: #174e86;
+}
+select option:checked,
+select option[aria-selected="true"] {
+  background: #eaf5fc;
+  color: #174e86;
+  font-weight: 800;
+}
+select option:disabled {
+  background: #f1f5f4;
+  color: var(--muted-2);
+}
+select option[value=""] {
+  color: var(--muted);
+  font-weight: 600;
+}
+select[multiple],
+select[size]:not([size="1"]) {
+  padding-block: .35rem;
+}
+select[multiple] option,
+select[size]:not([size="1"]) option {
+  min-height: 2.3rem;
+  padding-block: .58rem;
+}
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+  outline: 3px solid rgba(57, 134, 200, .2);
+  outline-offset: 3px;
+}
+input[aria-invalid="true"],
+input[data-required-error="true"],
+select[aria-invalid="true"],
+select[data-required-error="true"],
+textarea[aria-invalid="true"],
+textarea[data-required-error="true"],
+.fmea-search-control:has(input[aria-invalid="true"]),
+ .styled-select:has(select[aria-invalid="true"]) .styled-select-trigger,
+.styled-select:has(select[data-required-error="true"]) .styled-select-trigger {
+  border-color: var(--red);
+  background: #fffafa;
+  box-shadow: 0 0 0 3px rgba(217, 79, 79, .1);
+}
+input[aria-invalid="true"]:focus-visible,
+input[data-required-error="true"]:focus-visible,
+select[aria-invalid="true"]:focus-visible,
+select[data-required-error="true"]:focus-visible,
+textarea[aria-invalid="true"]:focus-visible,
+textarea[data-required-error="true"]:focus-visible {
+  border-color: var(--red);
+  box-shadow: 0 0 0 4px rgba(217, 79, 79, .15);
+}
+input.is-valid,
+select.is-valid,
+textarea.is-valid,
+input[data-validation-state="success"],
+select[data-validation-state="success"],
+textarea[data-validation-state="success"] {
+  border-color: #62ad98;
+  background: #f8fcfa;
+}
+input:disabled,
+select:disabled,
+textarea:disabled,
+input[type="file"]:disabled,
+ .dialog-input:disabled {
+  border-color: #e0e9e6;
+  background: #f1f5f4;
+  color: #78908c;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+label {
+  gap: .45rem;
+  color: #315a78;
+  line-height: 1.55;
+}
+.form-field { min-width: 0; display: grid; align-content: start; gap: .45rem; }
+.form-field-label { display: flex; align-items: baseline; justify-content: space-between; gap: .45rem; min-width: 0; color: #315a78; font-weight: 700; }
+.form-field-label > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.form-field.has-error input,
+.form-field.has-error select,
+.form-field.has-error textarea { border-color: var(--red); background: #fffafa; }
+.form-field .field-hint,
+.form-field .field-error { margin-inline: .1rem; }
+.field-label-line {
+  min-height: 1.35rem;
+  line-height: 1.5;
+  white-space: normal;
+}
+.field-hint,
+.field-error,
+.contact-detection {
+  margin-inline: .1rem;
+}
+.field-error {
+  line-height: 1.7;
+}
+.field-hint {
+  line-height: 1.75;
+}
+.surface,
+.dashboard-customizer,
+.project-card,
+.assessment-card,
+.knowledge-card,
+.notification-card,
+.knowledge-options > label:not(.checkbox-card):not(.knowledge-file),
+.knowledge-options .checkbox-card,
+.knowledge-file,
+.fmea-item-form,
+.rula-edit-form,
+.rula-posture-panel {
+  border-radius: var(--surface-radius);
+}
+.surface-head {
+  min-height: 68px;
+  padding: 1rem 1.25rem;
+}
+.surface-body {
+  padding: 1.25rem;
+}
+.form-grid,
+.form-panels,
+.knowledge-form,
+.knowledge-form-top,
+.fmea-process-grid,
+.rula-process-form-grid,
+.rula-basic,
+.body-score-grid,
+.upload-form,
+.inline-form,
+.assessment-create,
+.action-form,
+.analysis-form,
+.invite-form,
+.report-action-form,
+.rula-manual-action-form {
+  gap: var(--form-gap);
+}
+.form-actions,
+.wizard-actions,
+.dialog-actions,
+.knowledge-form-footer,
+.surface-actions {
+  gap: .65rem;
+}
+.surface-actions {
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.surface-actions > .primary,
+.surface-actions > .ghost,
+.surface-actions > .button-link {
+  min-height: var(--control-height-compact);
+  padding: .55rem .78rem;
+  font-size: .7rem;
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+details.form-optional,
+details.optional-fields,
+.optional-fields details {
+  border: 1px solid var(--line);
+  border-radius: var(--control-radius);
+  background: #fbfdfc;
+  overflow: hidden;
+}
+details.form-optional > summary,
+details.optional-fields > summary,
+.optional-fields details > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  min-height: 44px;
+  padding: .65rem .85rem;
+  color: #315a78;
+  font-size: .75rem;
+  font-weight: 800;
+  cursor: pointer;
+  list-style: none;
+}
+details.form-optional > summary::-webkit-details-marker,
+details.optional-fields > summary::-webkit-details-marker,
+.optional-fields details > summary::-webkit-details-marker {
+  display: none;
+}
+details.form-optional > summary::after,
+details.optional-fields > summary::after,
+.optional-fields details > summary::after {
+  content: "＋";
+  color: var(--blue);
+  font-size: 1rem;
+}
+details.form-optional[open] > summary::after,
+details.optional-fields[open] > summary::after,
+.optional-fields details[open] > summary::after {
+  content: "−";
+}
+details.form-optional > :not(summary),
+details.optional-fields > :not(summary),
+.optional-fields details > :not(summary) {
+  padding-inline: .85rem;
+}
+@media (max-width: 760px) {
+  .surface-head {
+    min-height: 62px;
+    padding: .85rem 1rem;
+  }
+  .surface-body {
+    padding: 1rem;
+  }
+  .form-grid,
+  .form-panels,
+  .knowledge-form,
+  .knowledge-form-top,
+  .fmea-process-grid,
+  .rula-process-form-grid,
+  .rula-basic,
+  .body-score-grid,
+  .upload-form,
+  .inline-form,
+  .assessment-create,
+  .action-form,
+  .analysis-form,
+  .invite-form,
+  .report-action-form,
+  .rula-manual-action-form {
+    gap: .75rem;
+  }
+  .field-label-line {
+    align-items: flex-start;
+  }
+  .form-actions,
+  .dialog-actions,
+  .knowledge-form-footer,
+  .surface-actions {
+    flex-wrap: wrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  input,
+  select,
+  textarea,
+   .dialog-input {
+    transition: none;
+  }
+}

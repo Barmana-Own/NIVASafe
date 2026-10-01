@@ -1,0 +1,519 @@
+/* Keep the complete RULA report inside the mobile viewport. */
+@media (max-width: 767px) {
+  .rula-report-page,
+  .rula-report-surface,
+  .rula-report-surface > .surface-body,
+  .rula-report-view,
+  .rula-report-view > *,
+  .rula-report-view section,
+  .rula-report-view article,
+  .rula-report-view aside,
+  .rula-report-view .rula-report-secondary-sections {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .rula-report-page,
+  .rula-report-view {
+    overflow-x: hidden;
+  }
+
+  .rula-report-surface > .surface-body,
+  .rula-report-view {
+    min-inline-size: 0;
+  }
+
+  .rula-report-view {
+    gap: .75rem;
+    padding: .7rem;
+  }
+
+  .rula-report-view * {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .rula-result-hero,
+  .rula-result-hero-copy,
+  .rula-report-section-heading,
+  .rula-factor-card-head,
+  .rula-factor-title,
+  .rula-factor-value,
+  .rula-factor-status,
+  .rula-suggested-actions-heading,
+  .rula-impact-panel-heading,
+  .rula-manual-action-title-row,
+  .rula-manual-action-form-actions {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .rula-result-hero,
+  .rula-result-hero-copy,
+  .rula-report-section-heading,
+  .rula-factor-card-head,
+  .rula-factor-value,
+  .rula-factor-status,
+  .rula-suggested-actions-heading,
+  .rula-impact-panel-heading,
+  .rula-manual-action-title-row {
+    flex-wrap: wrap;
+  }
+
+  .rula-result-hero-copy,
+  .rula-result-hero-copy > div,
+  .rula-report-section-heading > div,
+  .rula-factor-title > div,
+  .rula-factor-status > small,
+  .rula-suggested-actions-heading > div,
+  .rula-impact-panel-heading > div,
+  .rula-report-risk p,
+  .rula-report-status-line {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .rula-result-hero p,
+  .rula-report-section-heading p,
+  .rula-suggested-actions-heading small,
+  .rula-impact-panel-heading small,
+  .rula-report-risk p,
+  .rula-report-context-description p,
+  .rula-report-impact-panel > p {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .rula-result-complete {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .rula-report-score-card,
+  .rula-corrections-layout,
+  .rula-factor-grid,
+  .rula-report-context-grid {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rula-report-score-card {
+    gap: 0;
+    padding: .55rem;
+  }
+
+  .rula-report-score,
+  .rula-report-risk {
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    padding: .7rem .55rem;
+  }
+
+  .rula-report-score {
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--rula-result-line);
+  }
+
+  .rula-report-score strong {
+    font-size: 2.25rem;
+  }
+
+  .rula-report-score > span:last-child {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .rula-report-risk-head {
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .rula-report-status-line {
+    flex-wrap: wrap;
+  }
+
+  .rula-factor-card,
+  .rula-suggested-actions-panel,
+  .rula-report-impact-panel,
+  .rula-report-context,
+  .rula-report-data-section,
+  .rula-report-manual-action-form,
+  .rula-manual-action-form,
+  .rula-manual-action,
+  .rula-action-scope,
+  .rula-ai-suggestions-status,
+  .rula-manual-actions {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .rula-factor-value > div,
+  .rula-factor-status > *,
+  .rula-selected-actions-preview > div,
+  .rula-manual-action > div {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .rula-factor-card-head > span,
+  .rula-factor-impact-label,
+  .rula-factor-status small,
+  .rula-correction-priority,
+  .rula-correction-side,
+  .rula-manual-action > span,
+  .rula-selected-actions-preview > div small {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .rula-corrections-layout {
+    direction: rtl;
+  }
+
+  .rula-corrections-layout > * {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    direction: rtl;
+  }
+
+  .rula-report-context-grid > div,
+  .rula-report-context-description,
+  .rula-report-data-section .surface-head,
+  .rula-report-data-section .surface-body {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .rula-report-data-section .surface-head {
+    flex-wrap: wrap;
+  }
+
+  .rula-report-data-section .surface-head > *,
+  .rula-report-data-section .surface-title,
+  .rula-report-data-section .surface-title > div,
+  .rula-report-data-section .surface-head p {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .rula-report-view .table-wrap,
+  .rula-report-view .report-data-table-wrap,
+  .rula-report-view .rula-report-table-wrap,
+  .rula-report-view .rula-correction-table-wrap {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+}
+
+@media (max-width: 480px) {
+  .rula-report-view {
+    gap: .6rem;
+    padding: .55rem;
+  }
+
+  .rula-report-view .rula-report-section,
+  .rula-report-view .rula-report-context,
+  .rula-report-view .rula-report-data-section,
+  .rula-report-view .rula-report-manual-action-form {
+    padding: .65rem;
+  }
+
+  .rula-report-view .rula-report-section-heading {
+    align-items: flex-start;
+  }
+}
+
+/* Shared interactive sizing: legacy feature selectors inherit the same
+   accessible target without changing their domain-specific appearance. */
+:is(button.password-toggle, button.fmea-search-clear, button.rula-confirm-button,
+    button.rula-edit-button, button.widget-visibility-toggle.icon-only,
+    button.widget-remove-toggle.icon-only) {
+  inline-size: var(--touch-target);
+  min-inline-size: var(--touch-target);
+  block-size: var(--touch-target);
+  min-block-size: var(--touch-target);
+}
+:is(button.fmea-risk-ai-toggle, button.fmea-risk-ai-suggestion,
+    button.rula-correction-toggle, button.rula-side-tabs button,
+    button.report-list-toggle, button.report-collapse-toggle) {
+  min-block-size: var(--control-height-compact);
+}
+
+/* Responsive data contract: tables remain semantic on larger viewports and
+   become labelled, readable cards on phones. */
+.responsive-table-container {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.responsive-table-container[data-responsive="cards"] > table {
+  max-width: 100%;
+}
+.responsive-table-container[data-responsive="cards"] > table :is(th, td) {
+  min-width: 0;
+  max-width: none;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+.responsive-table-container[data-responsive="cards"] > table :is(td, td strong, td small) {
+  white-space: normal;
+}
+.responsive-table-container[data-responsive="cards"] > table .report-table-number,
+.responsive-table-container[data-responsive="cards"] > table .admin-token-number,
+.responsive-table-container[data-responsive="cards"] > table .rula-angle-value {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 768px) {
+  .responsive-table-container[data-responsive="cards"] {
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .responsive-table-container[data-responsive="cards"] > table > thead th {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 1;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  /* Dense registers keep their readable desktop column model on tablets, but
+     the scroll remains bounded by the shared container rather than the page. */
+  .responsive-table-container[data-responsive="cards"] > table.fmea-risk-table { min-width: 1060px; }
+  .responsive-table-container[data-responsive="cards"] > table.fmea-report-data-table { min-width: 1080px; }
+  .responsive-table-container[data-responsive="cards"] > table.rula-analysis-table { min-width: 610px; }
+  .responsive-table-container[data-responsive="cards"] > table.rula-report-data-table { min-width: 900px; }
+  .responsive-table-container[data-responsive="cards"] > table.rula-correction-table { min-width: 820px !important; }
+  .responsive-table-container[data-responsive="cards"] > table.report-action-table,
+  .responsive-table-container[data-responsive="cards"] > table.actions-data-table { min-width: 900px; }
+  .responsive-table-container[data-responsive="cards"].activity-log-table > table { min-width: 1040px; }
+  .responsive-table-container[data-responsive="cards"].rula-correction-table-wrap { overflow-x: auto; overscroll-behavior-inline: contain; }
+  .responsive-table-container[data-responsive="cards"] > table .admin-token-number { white-space: nowrap; }
+}
+
+@media (max-width: 767px) {
+  .responsive-table-container[data-responsive="cards"] {
+    overflow: visible;
+    overscroll-behavior-inline: auto;
+  }
+
+  .responsive-table-container[data-responsive="cards"] > table {
+    display: block;
+    width: 100%;
+    min-width: 0 !important;
+    table-layout: auto;
+    border-collapse: separate;
+    border-spacing: 0;
+    white-space: normal;
+  }
+
+  .responsive-table-container[data-responsive="cards"] > table > thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .responsive-table-container[data-responsive="cards"] > table > tbody {
+    display: grid;
+    gap: .65rem;
+    padding: .6rem;
+  }
+
+  .responsive-table-container[data-responsive="cards"] > table > tbody > tr:not(.activity-log-detail-row):not(.admin-edit-row) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .6rem .7rem;
+    min-width: 0;
+    padding: .75rem;
+    border: 1px solid #dce8ef;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 4px 14px rgba(27, 81, 111, .045);
+  }
+
+  .responsive-table-container[data-responsive="cards"] > table > tbody > tr:not(.activity-log-detail-row):not(.admin-edit-row):hover {
+    background: #fff;
+  }
+
+  .responsive-table-container[data-responsive="cards"] > table > tbody > tr:not(.activity-log-detail-row):not(.admin-edit-row) > td {
+    display: grid;
+    align-content: start;
+    gap: .2rem;
+    width: auto !important;
+    min-width: 0;
+    max-width: none;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    text-align: start;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  .responsive-table-container[data-responsive="cards"] > table > tbody > tr:not(.activity-log-detail-row):not(.admin-edit-row) > td::before {
+    content: attr(data-label);
+    color: #6c879a;
+    font-size: .57rem;
+    font-weight: 800;
+    line-height: 1.5;
+  }
+
+  .responsive-table-container[data-responsive="cards"] > table > tbody > tr:not(.activity-log-detail-row):not(.admin-edit-row) > td > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .responsive-table-container[data-responsive="cards"] > table > tbody > tr:not(.activity-log-detail-row):not(.admin-edit-row) > td:last-child {
+    grid-column: 1 / -1;
+    padding-top: .55rem;
+    border-top: 1px solid #e8f0f4;
+  }
+
+  .responsive-table-container[data-responsive="cards"] > table > tbody > tr.admin-edit-row,
+  .responsive-table-container[data-responsive="cards"] > table > tbody > tr.activity-log-detail-row {
+    min-width: 0;
+  }
+
+  .responsive-table-container[data-responsive="cards"] > table > tbody > tr.admin-edit-row > td,
+  .responsive-table-container[data-responsive="cards"] > table > tbody > tr.activity-log-detail-row > td {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .responsive-table-container[data-responsive="cards"] .table-progress {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .responsive-table-container[data-responsive="cards"] .table-progress > div {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 4rem;
+  }
+
+  .responsive-table-container[data-responsive="cards"] .compact-select,
+  .responsive-table-container[data-responsive="cards"] .styled-select,
+  .responsive-table-container[data-responsive="cards"] .admin-role-select,
+  .responsive-table-container[data-responsive="cards"] .status-toggle {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .responsive-table-container[data-responsive="cards"] .status-badge {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
+    line-height: 1.45;
+  }
+
+  .responsive-table-container[data-responsive="cards"] .report-table-stack,
+  .responsive-table-container[data-responsive="cards"] .report-table-actions,
+  .responsive-table-container[data-responsive="cards"] .risk-row-actions,
+  .responsive-table-container[data-responsive="cards"] .admin-user-actions {
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+
+  /* FMEA: keep the risk narrative and action data full-width, while the
+     compact score tuple remains easy to scan. */
+  .responsive-table-container[data-responsive="cards"] > table.fmea-risk-table > tbody > tr > td:nth-child(-n+6),
+  .responsive-table-container[data-responsive="cards"] > table.fmea-risk-table > tbody > tr > td:nth-child(12),
+  .responsive-table-container[data-responsive="cards"] > table.fmea-risk-table > tbody > tr > td:nth-child(13),
+  .responsive-table-container[data-responsive="cards"] > table.fmea-report-data-table > tbody > tr > td:nth-child(-n+5),
+  .responsive-table-container[data-responsive="cards"] > table.fmea-report-data-table > tbody > tr > td:nth-child(11),
+  .responsive-table-container[data-responsive="cards"] > table.fmea-report-data-table > tbody > tr > td:nth-child(12),
+  .responsive-table-container[data-responsive="cards"] > table.report-action-table > tbody > tr > td:first-child,
+  .responsive-table-container[data-responsive="cards"] > table.report-action-table > tbody > tr > td:nth-child(2),
+  .responsive-table-container[data-responsive="cards"] > table.report-action-table > tbody > tr > td:last-child,
+  .responsive-table-container[data-responsive="cards"] > table.score-guide-table > tbody > tr > td,
+  .responsive-table-container[data-responsive="cards"] > table.actions-data-table > tbody > tr > td:first-child,
+  .responsive-table-container[data-responsive="cards"] > table.actions-data-table > tbody > tr > td:nth-child(4),
+  .responsive-table-container[data-responsive="cards"] > table.actions-data-table > tbody > tr > td:nth-child(5),
+  .responsive-table-container[data-responsive="cards"] > table.actions-data-table > tbody > tr > td:nth-child(6),
+  .responsive-table-container[data-responsive="cards"] > table.actions-data-table > tbody > tr > td:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .responsive-table-container[data-responsive="cards"] > table.fmea-risk-table > tbody > tr > td:nth-child(13),
+  .responsive-table-container[data-responsive="cards"] > table.fmea-report-data-table > tbody > tr > td:nth-child(12),
+  .responsive-table-container[data-responsive="cards"] > table.report-action-table > tbody > tr > td:last-child,
+  .responsive-table-container[data-responsive="cards"] > table.actions-data-table > tbody > tr > td:last-child {
+    padding-top: .55rem;
+    border-top: 1px solid #e8f0f4;
+  }
+
+  .responsive-table-container[data-responsive="cards"] > table.fmea-risk-table > tbody > tr > td:nth-child(7),
+  .responsive-table-container[data-responsive="cards"] > table.fmea-risk-table > tbody > tr > td:nth-child(8),
+  .responsive-table-container[data-responsive="cards"] > table.fmea-risk-table > tbody > tr > td:nth-child(9),
+  .responsive-table-container[data-responsive="cards"] > table.fmea-risk-table > tbody > tr > td:nth-child(10),
+  .responsive-table-container[data-responsive="cards"] > table.fmea-risk-table > tbody > tr > td:nth-child(11),
+  .responsive-table-container[data-responsive="cards"] > table.fmea-report-data-table > tbody > tr > td:nth-child(6),
+  .responsive-table-container[data-responsive="cards"] > table.fmea-report-data-table > tbody > tr > td:nth-child(7),
+  .responsive-table-container[data-responsive="cards"] > table.fmea-report-data-table > tbody > tr > td:nth-child(8),
+  .responsive-table-container[data-responsive="cards"] > table.fmea-report-data-table > tbody > tr > td:nth-child(9),
+  .responsive-table-container[data-responsive="cards"] > table.fmea-report-data-table > tbody > tr > td:nth-child(10) {
+    align-items: center;
+    text-align: center;
+  }
+
+  /* RULA: keep posture identity, source/review state and corrective text
+     readable as cards instead of asking users to pan across a dense matrix. */
+  .responsive-table-container[data-responsive="cards"] > table.rula-analysis-table > tbody > tr > td:first-child,
+  .responsive-table-container[data-responsive="cards"] > table.rula-analysis-table > tbody > tr > td:nth-child(4),
+  .responsive-table-container[data-responsive="cards"] > table.rula-analysis-table > tbody > tr > td:last-child,
+  .responsive-table-container[data-responsive="cards"] > table.rula-report-data-table > tbody > tr > td:nth-child(3),
+  .responsive-table-container[data-responsive="cards"] > table.rula-report-data-table > tbody > tr > td:nth-child(8),
+  .responsive-table-container[data-responsive="cards"] > table.rula-report-data-table > tbody > tr > td:last-child,
+  .responsive-table-container[data-responsive="cards"] > table.rula-correction-table > tbody > tr > td:nth-child(2),
+  .responsive-table-container[data-responsive="cards"] > table.rula-correction-table > tbody > tr > td:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .responsive-table-container[data-responsive="cards"] > table.rula-analysis-table > tbody > tr > td:last-child,
+  .responsive-table-container[data-responsive="cards"] > table.rula-report-data-table > tbody > tr > td:last-child,
+  .responsive-table-container[data-responsive="cards"] > table.rula-correction-table > tbody > tr > td:last-child {
+    padding-top: .55rem;
+    border-top: 1px solid #e8f0f4;
+  }
+
+  .responsive-table-container[data-responsive="cards"] > table.rula-report-data-table .report-table-actions,
+  .responsive-table-container[data-responsive="cards"] > table.rula-analysis-table .rula-row-actions,
+  .responsive-table-container[data-responsive="cards"] > table.rula-correction-table .rula-correction-toggle {
+    width: 100%;
+    max-width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}

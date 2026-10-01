@@ -2,7 +2,7 @@ import { Fragment, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { isForbiddenDisplayName, isStrongPassword, isValidDisplayName, isValidEmail, isValidPhone, isValidUsername, normalizePhone, normalizeUsername, PASSWORD_MIN_LENGTH } from "@nivasafe/domain";
 import { api, getSession, useLoad } from "../../api/client";
-import { EmptyState, Icon, SectionCard, StyledSelect, roleLabel, useDialog, formatDate } from "../../components/UI";
+import { Button, EmptyState, Icon, LoadingState as UiLoadingState, SectionCard, StyledSelect, TableContainer, roleLabel, useDialog, formatDate } from "../../components/UI";
 import { useI18n } from "../../i18n";
 
 type UserRole = "USER" | "SUPER_ADMIN";
@@ -24,22 +24,18 @@ type AdminMemberRequest = { id: string; username: string; email: string; display
 type AdminAIUsageRow = { userId: string; displayName: string; username: string | null; email: string; active: boolean; requestCount: number; inputTokens: number; outputTokens: number; totalTokens: number };
 type AdminAIUsage = { users: AdminAIUsageRow[]; totals: Pick<AdminAIUsageRow, "requestCount" | "inputTokens" | "outputTokens" | "totalTokens"> };
 
-function LoadingState() {
-  return <div className="state compact"><div className="spinner"/></div>;
-}
-
 function AIUsageSection({ data, loading }: { data: AdminAIUsage | null; loading: boolean }) {
   const { locale, t } = useI18n();
   const numberLocale = locale === "en" ? "en-US" : "fa-IR";
   return <SectionCard className="admin-ai-usage" title={t("admin.aiUsageTitle")} description={t("admin.aiUsageDescription")} icon="activity">
-    {loading && !data ? <LoadingState/> : data ? <>
+    {loading && !data ? <UiLoadingState compact/> : data ? <>
       <div className="admin-ai-usage-summary">
         <article><small>{t("admin.aiUsageTotalTokens")}</small><strong className="admin-token-number" dir="ltr">{data.totals.totalTokens.toLocaleString(numberLocale)}</strong></article>
         <article><small>{t("admin.aiUsageRequests")}</small><strong className="admin-token-number" dir="ltr">{data.totals.requestCount.toLocaleString(numberLocale)}</strong></article>
         <article><small>{t("admin.aiUsageInputTokens")}</small><strong className="admin-token-number" dir="ltr">{data.totals.inputTokens.toLocaleString(numberLocale)}</strong></article>
         <article><small>{t("admin.aiUsageOutputTokens")}</small><strong className="admin-token-number" dir="ltr">{data.totals.outputTokens.toLocaleString(numberLocale)}</strong></article>
       </div>
-      {data.users.length ? <div className="table-wrap admin-ai-usage-table"><table><thead><tr><th>{t("admin.aiUsageUser")}</th><th>{t("admin.aiUsageRequests")}</th><th>{t("admin.aiUsageInputTokens")}</th><th>{t("admin.aiUsageOutputTokens")}</th><th>{t("admin.aiUsageTotalTokens")}</th></tr></thead><tbody>{data.users.map((user) => <tr key={user.userId}><td data-label={t("admin.aiUsageUser")}><div className="admin-user-identity"><strong>{user.displayName}</strong>{user.username && <small dir="ltr">@{user.username}</small>}<small dir="ltr">{user.email}</small>{!user.active && <span className="admin-account-warning">{t("admin.inactive")}</span>}</div></td><td data-label={t("admin.aiUsageRequests")} className="admin-token-number" dir="ltr">{user.requestCount.toLocaleString(numberLocale)}</td><td data-label={t("admin.aiUsageInputTokens")} className="admin-token-number" dir="ltr">{user.inputTokens.toLocaleString(numberLocale)}</td><td data-label={t("admin.aiUsageOutputTokens")} className="admin-token-number" dir="ltr">{user.outputTokens.toLocaleString(numberLocale)}</td><td data-label={t("admin.aiUsageTotalTokens")} className="admin-token-number" dir="ltr"><strong>{user.totalTokens.toLocaleString(numberLocale)}</strong></td></tr>)}</tbody></table></div> : <EmptyState icon="activity" title={t("admin.aiUsageNoData")} description={t("admin.aiUsageNoDataDescription")}/>}
+      {data.users.length ? <TableContainer className="admin-ai-usage-table"><table><thead><tr><th>{t("admin.aiUsageUser")}</th><th>{t("admin.aiUsageRequests")}</th><th>{t("admin.aiUsageInputTokens")}</th><th>{t("admin.aiUsageOutputTokens")}</th><th>{t("admin.aiUsageTotalTokens")}</th></tr></thead><tbody>{data.users.map((user) => <tr key={user.userId}><td data-label={t("admin.aiUsageUser")}><div className="admin-user-identity"><strong>{user.displayName}</strong>{user.username && <small dir="ltr">@{user.username}</small>}<small dir="ltr">{user.email}</small>{!user.active && <span className="admin-account-warning">{t("admin.inactive")}</span>}</div></td><td data-label={t("admin.aiUsageRequests")} className="admin-token-number" dir="ltr">{user.requestCount.toLocaleString(numberLocale)}</td><td data-label={t("admin.aiUsageInputTokens")} className="admin-token-number" dir="ltr">{user.inputTokens.toLocaleString(numberLocale)}</td><td data-label={t("admin.aiUsageOutputTokens")} className="admin-token-number" dir="ltr">{user.outputTokens.toLocaleString(numberLocale)}</td><td data-label={t("admin.aiUsageTotalTokens")} className="admin-token-number" dir="ltr"><strong>{user.totalTokens.toLocaleString(numberLocale)}</strong></td></tr>)}</tbody></table></TableContainer> : <EmptyState icon="activity" title={t("admin.aiUsageNoData")} description={t("admin.aiUsageNoDataDescription")}/>}
     </> : null}
   </SectionCard>;
 }
@@ -52,6 +48,7 @@ function MemberRequestsSection({ data, loading, onChanged }: { data: AdminMember
   const [confirmation, setConfirmation] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
 
   function openApproval(request: AdminMemberRequest) {
     setActiveId(request.id);
@@ -63,10 +60,12 @@ function MemberRequestsSection({ data, loading, onChanged }: { data: AdminMember
 
   async function approve(request: AdminMemberRequest, event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submittingId === request.id) return;
     if (password !== confirmation) { setError(t("admin.passwordMismatch")); return; }
     if (!isStrongPassword(password, { email: request.email, displayName: request.displayName })) { setError(t("admin.invalidPassword", { min: PASSWORD_MIN_LENGTH })); return; }
     setError("");
     setMessage("");
+    setSubmittingId(request.id);
     try {
       const result = await api<{ credentialsReady: boolean; user: { username: string } }>(`/admin/member-requests/${request.id}/approve`, { method: "POST", body: JSON.stringify({ password }) });
       setActiveId(null);
@@ -76,6 +75,8 @@ function MemberRequestsSection({ data, loading, onChanged }: { data: AdminMember
       onChanged();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t("admin.updateFailed"));
+    } finally {
+      setSubmittingId(null);
     }
   }
 
@@ -95,10 +96,10 @@ function MemberRequestsSection({ data, loading, onChanged }: { data: AdminMember
   return <SectionCard className="admin-member-requests" title={t("admin.memberRequestsTitle")} description={t("admin.memberRequestsDescription")} icon="members">
     {error && <div className="alert error" role="alert"><Icon name="warning"/>{error}</div>}
     {message && <div className="alert success" role="status"><Icon name="check"/>{message}</div>}
-    {loading && !data ? <LoadingState/> : data?.length ? <div className="admin-request-list">{data.map((request) => <article className="admin-request-card" key={request.id}>
+    {loading && !data ? <UiLoadingState compact/> : data?.length ? <div className="admin-request-list">{data.map((request) => <article className="admin-request-card" key={request.id}>
       <div className="admin-request-copy"><strong>{request.displayName}</strong><small dir="ltr">{request.username} · {request.email}</small>{request.jobTitle && <small>{request.jobTitle}</small>}<small>{t("admin.requestedForOrganization")}: {locale === "en" ? request.organization.nameEn : request.organization.nameFa}</small><small>{t("admin.requestedBy")}: {request.requestedBy.displayName} · {formatDate(request.createdAt, true)}</small></div>
       <div className="admin-request-role"><span className="status-badge neutral">{roleLabel(request.role)}</span><span className="status-badge warning">{t("admin.pendingApproval")}</span></div>
-      {activeId === request.id ? <form className="admin-request-approval form-grid" onSubmit={(event) => void approve(request, event)}><p className="field-hint full">{t("admin.approveMemberRequestDescription")}</p><label>{t("admin.initialPassword")}<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} required/></label><label>{t("admin.initialPasswordConfirm")}<input type="password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} required/></label><div className="admin-edit-actions full"><button className="primary" type="submit"><Icon name="check" size={16}/>{t("admin.approveMemberRequest")}</button><button className="ghost" type="button" onClick={() => setActiveId(null)}>{t("common.cancel")}</button></div></form> : <div className="admin-request-actions"><button className="primary" type="button" onClick={() => openApproval(request)}>{t("admin.approveMemberRequest")}</button><button className="ghost danger-link" type="button" onClick={() => void reject(request)}>{t("admin.rejectMemberRequest")}</button></div>}
+      {activeId === request.id ? <form className="admin-request-approval form-grid" onSubmit={(event) => void approve(request, event)} aria-busy={submittingId === request.id}><p className="field-hint full">{t("admin.approveMemberRequestDescription")}</p><label>{t("admin.initialPassword")}<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} required/></label><label>{t("admin.initialPasswordConfirm")}<input type="password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} required/></label><div className="admin-edit-actions full"><button className="primary" type="submit" disabled={submittingId === request.id} aria-busy={submittingId === request.id}><Icon name="check" size={16}/>{t("admin.approveMemberRequest")}</button><button className="ghost" type="button" disabled={submittingId === request.id} onClick={() => setActiveId(null)}>{t("common.cancel")}</button></div></form> : <div className="admin-request-actions"><button className="primary" type="button" onClick={() => openApproval(request)}>{t("admin.approveMemberRequest")}</button><button className="ghost danger-link" type="button" onClick={() => void reject(request)}>{t("admin.rejectMemberRequest")}</button></div>}
     </article>)}</div> : <EmptyState icon="members" title={t("admin.noPendingMemberRequests")}/>}
   </SectionCard>;
 }
@@ -261,15 +262,15 @@ export function AdminPanelPage() {
           <div className="admin-summary-list"><div><span>{t("admin.activeMemberships")}</span><strong>{overview.data.activeMemberships.toLocaleString(numberLocale)}</strong></div><div><span>{t("admin.pendingInvitations")}</span><strong>{overview.data.pendingInvitations.toLocaleString(numberLocale)}</strong></div><div><span>{t("admin.inactiveUsers")}</span><strong>{overview.data.users.inactive.toLocaleString(numberLocale)}</strong></div><div><span>{t("admin.activeOrganizations")}</span><strong>{overview.data.organizations.active.toLocaleString(numberLocale)}</strong></div></div>
         </SectionCard>
       </div>
-    </> : overview.loading ? <LoadingState/> : null}
+    </> : overview.loading ? <UiLoadingState/> : null}
     <MemberRequestsSection data={memberRequests.data} loading={memberRequests.loading} onChanged={() => { memberRequests.reload(); overview.reload(); users.reload(); }}/>
     <AIUsageSection data={aiUsage.data} loading={aiUsage.loading}/>
     <SectionCard className="admin-user-control" title={t("admin.userControl")} description={t("admin.userControlDescription")} icon="members">
       <form className="admin-user-toolbar" onSubmit={submitSearch}>
         <div className="search-box"><Icon name="search"/><input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder={t("admin.searchPlaceholder")} aria-label={t("admin.searchPlaceholder")}/></div>
-        <div className="admin-toolbar-actions"><button className="primary" type="submit"><Icon name="search" size={16}/>{t("admin.search")}</button>{search && <button className="ghost" type="button" onClick={resetSearch}>{t("admin.reset")}</button>}</div>
+        <div className="admin-toolbar-actions"><Button type="submit"><Icon name="search" size={16}/>{t("admin.search")}</Button>{search && <Button variant="ghost" onClick={resetSearch}>{t("admin.reset")}</Button>}</div>
       </form>
-      {users.loading && !users.data ? <LoadingState/> : users.data?.length ? <div className="table-wrap admin-user-table"><table><thead><tr><th>{t("admin.user")}</th><th>{t("admin.level")}</th><th>{t("admin.status")}</th><th>{t("admin.organizationsColumn")}</th><th>{t("admin.lastLogin")}</th><th>{t("admin.actions")}</th></tr></thead><tbody>{users.data.map((user) => { const isSelf = user.id === currentUserId; const busy = busyUserId === user.id; return <Fragment key={user.id}>
+      {users.loading && !users.data ? <UiLoadingState/> : users.data?.length ? <TableContainer className="admin-user-table"><table><thead><tr><th>{t("admin.user")}</th><th>{t("admin.level")}</th><th>{t("admin.status")}</th><th>{t("admin.organizationsColumn")}</th><th>{t("admin.lastLogin")}</th><th>{t("admin.actions")}</th></tr></thead><tbody>{users.data.map((user) => { const isSelf = user.id === currentUserId; const busy = busyUserId === user.id; return <Fragment key={user.id}>
         <tr>
           <td data-label={t("admin.user")}><div className="admin-user-identity"><strong>{user.displayName}</strong>{user.username && <small dir="ltr">@{user.username}</small>}<small dir="ltr">{user.email}</small>{user.jobTitle && <small>{user.jobTitle}</small>}</div></td>
           <td data-label={t("admin.level")}><StyledSelect className="admin-role-select" value={user.globalRole} disabled={busy || isSelf} onChange={(event) => void changeRole(user, event.target.value as UserRole)} aria-label={`${t("admin.changeLevel")}: ${user.displayName}`}><option value="USER">{t("admin.standardUser")}</option><option value="SUPER_ADMIN">{t("admin.superAdmin")}</option></StyledSelect></td>
@@ -280,7 +281,7 @@ export function AdminPanelPage() {
         </tr>
          {editingId === user.id && <tr id={`admin-user-edit-${user.id}`} className="admin-edit-row"><td colSpan={6}><form className="form-grid admin-edit-form" onSubmit={saveProfile}><label>{t("profile.displayName")}<input value={editForm.displayName} onChange={(event) => setEditForm((value) => ({ ...value, displayName: event.target.value }))} required/></label><label>{t("admin.username")}<input value={editForm.username} onChange={(event) => setEditForm((value) => ({ ...value, username: normalizeUsername(event.target.value) }))} dir="ltr" autoComplete="username" maxLength={64}/></label><label>{t("auth.email")}<input value={editForm.email} onChange={(event) => setEditForm((value) => ({ ...value, email: event.target.value }))} type="email" dir="ltr" required/></label><label>{t("profile.phone")}<input value={editForm.phone} onChange={(event) => setEditForm((value) => ({ ...value, phone: normalizePhone(event.target.value) }))} inputMode="numeric" dir="ltr" maxLength={11}/></label><label>{t("profile.jobTitle")}<input value={editForm.jobTitle} onChange={(event) => setEditForm((value) => ({ ...value, jobTitle: event.target.value }))}/></label><div className="admin-edit-actions"><button className="primary" type="submit" disabled={busy}><Icon name="check" size={16}/>{t("admin.saveUser")}</button><button className="ghost" type="button" onClick={() => setEditingId(null)}>{t("common.cancel")}</button></div></form></td></tr>}
          {passwordEditingId === user.id && <tr id={`admin-user-password-${user.id}`} className="admin-edit-row admin-password-row"><td colSpan={6}><form className="form-grid admin-edit-form" onSubmit={savePassword}><div className="admin-password-intro"><strong>{t("admin.setPassword")}</strong><small>{t("admin.setPasswordDescription")}</small><small>{t("admin.passwordNeverShown")}</small></div><label>{t("admin.newPassword")}<input type="password" value={passwordForm.password} onChange={(event) => setPasswordForm((value) => ({ ...value, password: event.target.value }))} autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} required/></label><label>{t("admin.confirmPassword")}<input type="password" value={passwordForm.confirmation} onChange={(event) => setPasswordForm((value) => ({ ...value, confirmation: event.target.value }))} autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} required/></label><div className="admin-edit-actions"><button className="primary" type="submit" disabled={busy}><Icon name="check" size={16}/>{t("common.save")}</button><button className="ghost" type="button" onClick={() => { setPasswordEditingId(null); setPasswordForm({ password: "", confirmation: "" }); }}>{t("common.cancel")}</button></div></form></td></tr>}
-      </Fragment>; })}</tbody></table></div> : users.error ? null : <EmptyState icon="members" title={t("admin.noUsers")} description={t("admin.noUsersDescription")}/>}
+      </Fragment>; })}</tbody></table></TableContainer> : users.error ? null : <EmptyState icon="members" title={t("admin.noUsers")} description={t("admin.noUsersDescription")}/>}
     </SectionCard>
   </section>;
 }
@@ -331,7 +332,7 @@ export function OrganizationAdminPanelPage() {
     {error && <div className="alert error" role="alert"><Icon name="warning"/>{error}</div>}
     {aiUsage.error && <div className="alert error" role="alert"><Icon name="warning"/>{aiUsage.error}</div>}
     {message && <div className="alert success" role="status"><Icon name="check"/>{message}</div>}
-    {state.loading && !state.data ? <LoadingState/> : <>
+    {state.loading && !state.data ? <UiLoadingState/> : <>
       <div className="admin-stat-grid">
         <article className="admin-stat-card"><Icon name="members" size={23}/><div><small>{t("admin.organizationUsers")}</small><strong>{members.length.toLocaleString(numberLocale)}</strong></div></article>
         <article className="admin-stat-card"><Icon name="check" size={23}/><div><small>{t("admin.activeUsers")}</small><strong>{activeMembers.toLocaleString(numberLocale)}</strong></div></article>
@@ -340,7 +341,7 @@ export function OrganizationAdminPanelPage() {
       </div>
       <AIUsageSection data={aiUsage.data} loading={aiUsage.loading}/>
       <SectionCard title={t("admin.organizationUserControl")} description={t("admin.organizationUserControlDescription")} icon="members">
-        {members.length ? <div className="table-wrap admin-user-table"><table><thead><tr><th>{t("admin.user")}</th><th>{t("members.role")}</th><th>{t("admin.status")}</th><th>{t("admin.actions")}</th></tr></thead><tbody>{members.map((member) => { const roleIsAssignable = organizationAssignableRoles.includes(member.role); return <tr key={member.id}><td data-label={t("admin.user")}><div className="admin-user-identity"><strong>{member.user.displayName}</strong>{member.user.username && <small dir="ltr">@{member.user.username}</small>}<small dir="ltr">{member.user.email}</small>{member.user.jobTitle && <small>{member.user.jobTitle}</small>}{member.user.active === false && <span className="admin-account-warning">{t("admin.accountInactive")}</span>}</div></td><td data-label={t("members.role")}>{roleIsAssignable ? <StyledSelect className="admin-role-select" value={member.role} disabled={busyId === member.id} onChange={(event) => void updateMember(member, { role: event.target.value })} aria-label={`${t("members.role")}: ${member.user.displayName}`}>{organizationAssignableRoles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</StyledSelect> : <span className="status-badge neutral member-legacy-role">{roleLabel(member.role)}</span>}</td><td data-label={t("admin.status")}><button type="button" className={`status-toggle ${member.active ? "active" : "inactive"}`} disabled={busyId === member.id} onClick={() => void toggleMember(member)}><span/>{member.active ? t("admin.active") : t("admin.activate")}</button></td><td data-label={t("admin.actions")}><Link className="ghost button-link admin-manage-link" to="/members">{t("admin.editUser")}</Link></td></tr>; })}</tbody></table></div> : <EmptyState icon="members" title={t("members.noMembers")}/>}
+        {members.length ? <TableContainer className="admin-user-table"><table><thead><tr><th>{t("admin.user")}</th><th>{t("members.role")}</th><th>{t("admin.status")}</th><th>{t("admin.actions")}</th></tr></thead><tbody>{members.map((member) => { const roleIsAssignable = organizationAssignableRoles.includes(member.role); return <tr key={member.id}><td data-label={t("admin.user")}><div className="admin-user-identity"><strong>{member.user.displayName}</strong>{member.user.username && <small dir="ltr">@{member.user.username}</small>}<small dir="ltr">{member.user.email}</small>{member.user.jobTitle && <small>{member.user.jobTitle}</small>}{member.user.active === false && <span className="admin-account-warning">{t("admin.accountInactive")}</span>}</div></td><td data-label={t("members.role")}>{roleIsAssignable ? <StyledSelect className="admin-role-select" value={member.role} disabled={busyId === member.id} onChange={(event) => void updateMember(member, { role: event.target.value })} aria-label={`${t("members.role")}: ${member.user.displayName}`}>{organizationAssignableRoles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</StyledSelect> : <span className="status-badge neutral member-legacy-role">{roleLabel(member.role)}</span>}</td><td data-label={t("admin.status")}><button type="button" className={`status-toggle ${member.active ? "active" : "inactive"}`} disabled={busyId === member.id} onClick={() => void toggleMember(member)}><span/>{member.active ? t("admin.active") : t("admin.activate")}</button></td><td data-label={t("admin.actions")}><Link className="ghost button-link admin-manage-link" to="/members">{t("admin.editUser")}</Link></td></tr>; })}</tbody></table></TableContainer> : <EmptyState icon="members" title={t("members.noMembers")}/>}
       </SectionCard>
     </>}
   </section>;

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { directionForLocale, getCurrentLocale, type Locale } from "./api/client";
+import { OverlayPortal, useFloatingPosition } from "./components/Overlay";
 
 type TranslationValues = Record<string, string | number>;
 type TranslationDictionary = Record<string, string>;
@@ -247,6 +248,8 @@ const fa: TranslationDictionary = {
   "shell.openSidebar": "باز کردن نوار کناری",
   "shell.collapseSidebar": "جمع کردن نوار کناری",
   "shell.closeMenu": "بستن منو",
+  "shell.skipToContent": "رفتن به محتوای اصلی",
+  "shell.utilities": "ابزارهای سامانه",
   "shell.online": "آنلاین",
   "shell.offline": "آفلاین",
   "shell.inactiveOrganization": "شرکت غیرفعال است",
@@ -718,6 +721,7 @@ const fa: TranslationDictionary = {
   "files.noReportsDescription": "پس از تأیید گزارش ارزیابی، گزارش آن در این بخش نمایش داده می‌شود.",
   "files.reportFinalizedAt": "تاریخ گزارش",
   "files.openReport": "مشاهده گزارش",
+  "files.previewUnavailable": "پیش‌نمایش این نوع فایل در مرورگر در دسترس نیست؛ از دکمه دانلود استفاده کنید.",
   "knowledge.eyebrow": "دانش سازمانی",
   "knowledge.title": "پایگاه دانش",
   "knowledge.description": "دانش، فایل‌های تصویری و اسناد Word را با سطح نمایش و دسترسی هوش مصنوعی مدیریت کنید.",
@@ -1752,6 +1756,8 @@ const en: TranslationDictionary = {
   "shell.openSidebar": "Open sidebar",
   "shell.collapseSidebar": "Collapse sidebar",
   "shell.closeMenu": "Close menu",
+  "shell.skipToContent": "Skip to main content",
+  "shell.utilities": "Application utilities",
   "shell.online": "Online",
   "shell.offline": "Offline",
   "shell.inactiveOrganization": "Company is inactive",
@@ -2223,6 +2229,7 @@ const en: TranslationDictionary = {
   "files.noReportsDescription": "An assessment appears here after its final report is approved.",
   "files.reportFinalizedAt": "Report date",
   "files.openReport": "View report",
+  "files.previewUnavailable": "This file type cannot be previewed in the browser. Use the download action instead.",
   "knowledge.eyebrow": "Organizational knowledge",
   "knowledge.title": "Knowledge base",
   "knowledge.description": "Manage knowledge, images, and Word documents with visibility and AI access controls.",
@@ -3052,12 +3059,15 @@ export function LanguageSwitcher({ className = "", onChange }: { className?: str
   const menuRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const menuId = `language-menu-${useId().replace(/:/g, "")}`;
+  const menuPosition = useFloatingPosition(pickerRef, open, { minWidth: 174, maxHeight: 320 });
   const options: Locale[] = ["fa", "en"];
 
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (event: PointerEvent) => {
-      if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (pickerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -3067,10 +3077,11 @@ export function LanguageSwitcher({ className = "", onChange }: { className?: str
     };
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
-    optionRefs.current[options.indexOf(locale)]?.focus();
+    const focusTimer = window.setTimeout(() => optionRefs.current[options.indexOf(locale)]?.focus(), 0);
     return () => {
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
+      window.clearTimeout(focusTimer);
     };
   }, [open]);
 
@@ -3090,11 +3101,19 @@ export function LanguageSwitcher({ className = "", onChange }: { className?: str
     optionRefs.current[nextIndex]?.focus();
   }
 
+  const menuStyle = {
+    top: menuPosition?.top ?? -10000,
+    left: menuPosition?.left ?? -10000,
+    width: menuPosition?.width ?? 174,
+    maxHeight: menuPosition?.maxHeight ?? 320,
+    direction: menuPosition?.direction,
+    visibility: menuPosition ? "visible" : "hidden",
+  } as const;
   return <div ref={pickerRef} className="language-picker">
     <button ref={triggerRef} type="button" className={`language-switch ${className}`.trim()} onClick={() => setOpen((value) => !value)} aria-label={t("language.choose")} aria-haspopup="menu" aria-expanded={open} aria-controls={menuId} title={t("language.choose")} data-testid="language-switcher">
       <span>{t(locale === "en" ? "language.english" : "language.persian")}</span><span className={`language-switch-chevron ${open ? "open" : ""}`} aria-hidden="true">⌄</span>
     </button>
-    {open && <div ref={menuRef} id={menuId} className="language-menu" role="menu" aria-label={t("language.choose")}>
+    {open && <OverlayPortal><div ref={menuRef} id={menuId} className="language-menu" role="menu" aria-label={t("language.choose")} style={menuStyle}>
       <div className="language-menu-title">{t("language.choose")}</div>
       {options.map((option, index) => {
         const selected = option === locale;
@@ -3103,7 +3122,7 @@ export function LanguageSwitcher({ className = "", onChange }: { className?: str
           <span>{label}</span>{selected && <span className="language-option-check" aria-hidden="true">✓</span>}
         </button>;
       })}
-    </div>}
+    </div></OverlayPortal>}
   </div>;
 }
 

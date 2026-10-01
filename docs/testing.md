@@ -22,3 +22,39 @@ With the API running and an organization-scoped test account, verify that `GET /
 فرم‌های عملیاتی سازمان، پروژه، فرایند، فعالیت، اقدام اصلاحی، پایگاه دانش، فایل، پروفایل، اعضا، دعوت، گفت‌وگو و تحلیل هوش مصنوعی با `AutoSaveForm` روی هر رویداد `input` و `change` در فضای محلی کاربر ذخیره و با بازگشت به صفحه بازیابی می‌شوند. فرم‌های ثبت ارزیابی FMEA و RULA نیز با هر تغییر، snapshot کامل فرم را به‌صورت هم‌زمان در localStorage و با صف ترتیبی در IndexedDB ذخیره می‌کنند تا قطع برق، refresh یا قطع موقت شبکه باعث از دست رفتن حتی یک نویسه نشود؛ draft آفلاین پس از اتصال قابل همگام‌سازی است.
 
 رمزهای عبور، توکن‌های بازیابی و فایل‌های باینری عمداً هرگز در پیش‌نویس ذخیره نمی‌شوند و پس از ثبت موفق، پیش‌نویس همان فرم پاک می‌شود.
+
+## Playwright browser tests
+
+مرورگرهای Playwright برای آزمون‌های مرورگری نصب می‌شوند و داده‌های آزمون از طریق route interception در `frontend/tests/e2e/fixtures.ts` پاسخ داده می‌شوند. نشست و داده‌های موجود در `frontend/tests/e2e/testData.ts` کاملاً ساختگی هستند؛ هیچ رمز عبور واقعی، کلید دسترسی یا حالت آزمون در مسیر production استفاده نمی‌شود.
+
+From the repository root, install Chromium once with `pnpm --dir frontend exec playwright install chromium`. Run interaction E2E tests with `pnpm --dir frontend test:e2e`. Run the visual suite with `pnpm --dir frontend test:visual`; create or intentionally update local snapshots with `pnpm --dir frontend test:visual:update`, then inspect a failed run with `pnpm --dir frontend exec playwright show-report`.
+
+The visual matrix covers login/register, the authenticated shell, FMEA and RULA reports, administration, actions, files and activity log at phone, tablet and desktop widths, with representative Persian/RTL, English/LTR and theme variants. Animations, caret rendering, dates, service-worker state and API responses are stabilized by the test fixture. Chromium screenshot baselines are host/platform-sensitive and are never updated automatically in CI. CI installs Chromium after the normal build and runs `test:e2e`; snapshot updates remain an explicit local action.
+
+## Automated overflow and viewport-escape checks
+
+`pnpm --dir frontend test:overflow` runs the Playwright `@overflow` suite. The suite checks both document-level invariants (`documentElement.scrollWidth` and `body.scrollWidth`) and a visible-element scan that reports the selector/path, bounding rectangle, computed overflow/position/white-space/min/max width and a short text sample for every escape. The tolerance is two CSS pixels for browser rounding only.
+
+The route matrix covers login, registration, dashboard, projects, choose-path, FMEA list/register/report, RULA list/analysis/report, actions, files, knowledge, assistant, notifications, members, administrator, organizations, activity log, profile and health. All routes are exercised at 390px and 1280px; critical shell/report/register surfaces additionally cover 320, 360, 390, 430, 480, 768, 1024, 1280, 1440 and 1920px, including 360x640 and tablet landscape dimensions.
+
+Dynamic checks reopen the mobile drawer, portalized theme/language menus, StyledSelect, confirmation/detail dialogs, login validation, expanded activity/report details, file preview, English/LTR and white-theme states. Long synthetic Persian/English values, identifiers and filenames are served from `frontend/tests/e2e/testData.ts`.
+
+The explicit allowlist is intentionally narrow: the closed off-canvas `#app-sidebar` and descendants of a bounded `.table-wrap`/`[data-overflow-container="horizontal"]` scroller at widths of at least 768px. The scroller itself must fit the viewport, and any horizontal scroller below 768px fails the test; table scrolling therefore remains local to dense tablet/desktop data surfaces and is not used to mask phone overflow. CI runs `test:overflow` after the ordinary interaction E2E suite and retains Playwright failure artifacts without updating snapshots.
+
+## CSS architecture and release verification
+
+The source stylesheet is a compatibility entry point only. The ordered modules under `frontend/src/styles/` are imported by `styles/index.css`; feature-specific FMEA/RULA rules are under `styles/features/`, and shared tokens, layout, controls, forms, tables, overlays, themes and print behavior have explicit ownership. The architecture contract in `frontend/src/ui-rules.test.ts` checks that the entry point and import order remain intact and that removed overflow workarounds and universal table `nowrap` rules do not return.
+
+The final CSS cleanup gate is run without updating visual baselines:
+
+```text
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm --dir frontend test:e2e
+pnpm --dir frontend test:visual
+pnpm --dir frontend test:overflow
+```
+
+On Windows hosts where the repository `pnpm` wrapper cannot create its temporary files, use the equivalent direct workspace binaries and record the wrapper failure as an environment limitation. Visual snapshot updates remain an explicit local command and are never part of CI.

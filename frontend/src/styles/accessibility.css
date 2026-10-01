@@ -1,0 +1,102 @@
+/* Accessibility contract: keyboard-visible focus and touch-safe legacy controls. */
+.skip-link {
+  position: fixed;
+  inset-block-start: .75rem;
+  inset-inline-start: .75rem;
+  z-index: var(--z-overlay-dialog);
+  transform: translateY(-180%);
+  padding: .65rem .85rem;
+  border: 2px solid var(--focus-color);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-md);
+  font-size: .75rem;
+  font-weight: 850;
+  transition: transform .15s ease;
+}
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 3px solid var(--focus-color);
+  outline-offset: 3px;
+}
+#main-content {
+  scroll-margin-block-start: 1rem;
+}
+
+.assessment-card-main {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.assessment-card-main:focus-visible {
+  outline: 3px solid var(--focus-color);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+.assessment-card-main > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: .7rem;
+}
+.rula-assessment-card {
+  cursor: default;
+}
+.card-actions button {
+  min-block-size: var(--control-height-compact);
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.card-actions button:focus-visible,
+.fmea-selected-items button:focus-visible,
+.widget-visibility-toggle:focus-visible,
+.widget-remove-toggle:focus-visible,
+.widget-restore-toggle:focus-visible,
+.fmea-description-ai:focus-visible,
+.fmea-risk-ai-toggle:focus-visible,
+.fmea-risk-ai-suggestion:focus-visible,
+.fmea-add-item > .ghost:focus-visible,
+.status-toggle:focus-visible {
+  outline: 3px solid var(--focus-color);
+  outline-offset: 2px;
+}
+
+:is(.fmea-selected-items button, .widget-visibility-toggle:not(.icon-only),
+    .widget-remove-toggle:not(.icon-only), .widget-restore-toggle,
+    .fmea-description-ai, .fmea-risk-ai-toggle, .fmea-risk-ai-suggestion,
+    .fmea-add-item > .ghost, .status-toggle) {
+  min-block-size: var(--control-height-compact);
+}
+.fmea-selected-items button {
+  min-inline-size: var(--touch-target);
+  min-block-size: var(--touch-target);
+}
+.fmea-selected-items button,
+.widget-visibility-toggle,
+.widget-remove-toggle,
+.widget-restore-toggle,
+.fmea-description-ai,
+.fmea-risk-ai-toggle,
+.fmea-risk-ai-suggestion,
+.fmea-add-item > .ghost,
+.status-toggle {
+  touch-action: manipulation;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skip-link,
+  .assessment-card,
+  .assessment-card-main {
+    transition: none;
+  }
+}

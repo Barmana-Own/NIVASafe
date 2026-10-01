@@ -1,0 +1,8 @@
+/* RULA review refinements */
+.rula-group-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+.rula-group-summary > div { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .65rem .75rem; border: 1px solid #d8e6f0; border-radius: 11px; background: #f8fbfd; }
+.rula-group-summary span { color: #6d8799; font-size: .62rem; }
+.rula-group-summary strong { min-width: 28px; padding: .2rem .4rem; border-radius: 7px; background: #eaf4fb; color: #2b79b3; font-size: .82rem; text-align: center; }
+.rula-source-badge { display: inline-flex; align-items: center; border-radius: 999px; padding: .22rem .38rem; font-size: .54rem; font-weight: 800; white-space: nowrap; }
+.rula-source-badge.source-ai { background: #eef5ff; color: #397bb4; }
+.rula-source-badge.source-user { background: #e8f7ef; color: #1b8058; }

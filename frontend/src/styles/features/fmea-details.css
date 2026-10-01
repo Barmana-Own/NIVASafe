@@ -1,0 +1,4 @@
+/* FMEA registered stage-two details */
+.fmea-process-form > .report-details-card { margin-block: .85rem; }
+.fmea-process-form > .report-details-card .surface-body { padding: .75rem; }
+.fmea-process-form > .report-details-card .report-data-table-wrap { margin-top: .65rem; }

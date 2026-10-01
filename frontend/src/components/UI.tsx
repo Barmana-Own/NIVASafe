@@ -1,7 +1,8 @@
-import { Children, createContext, isValidElement, useContext, useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { Children, cloneElement, createContext, forwardRef, isValidElement, useContext, useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type HTMLAttributes, type KeyboardEvent as ReactKeyboardEvent, type ReactElement, type ReactNode } from "react";
 import { getCurrentLocale } from "../api/client";
 import { translate, useI18n } from "../i18n";
 import type { AppTheme } from "../theme";
+import { OverlayPortal, useFloatingPosition, useOverlayDialog } from "./Overlay";
 
 export type IconName =
   | "dashboard" | "projects" | "fmea" | "rula" | "actions" | "files"
@@ -51,6 +52,77 @@ export function Icon({ name, size = 20, className = "" }: { name: IconName; size
   return <svg className={`icon ${className}`} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
 
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "text";
+export type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "disabled"> & {
+  disabled?: boolean;
+  variant?: ButtonVariant;
+  loading?: boolean;
+  loadingLabel?: ReactNode;
+};
+
+export function Button({ variant = "primary", loading = false, loadingLabel, className = "", type = "button", disabled, children, ...props }: ButtonProps) {
+  return <button {...props} type={type} className={`ui-button ui-button-${variant} ${className}`.trim()} disabled={disabled || loading} aria-busy={loading || undefined}>
+    {loading && <span className="button-spinner" aria-hidden="true"/>}
+    {loading && loadingLabel ? loadingLabel : children}
+  </button>;
+}
+
+export type IconButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children" | "aria-label"> & {
+  icon: IconName;
+  label: string;
+  iconSize?: number;
+  tone?: "default" | "accent" | "danger";
+  loading?: boolean;
+};
+
+export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton({ icon, label, iconSize = 20, tone = "default", loading = false, className = "", type = "button", disabled, title, ...props }, ref) {
+  return <button ref={ref} {...props} type={type} className={`ui-icon-button icon-button${tone === "default" ? "" : ` ${tone}`}${loading ? " is-loading" : ""} ${className}`.trim()} disabled={disabled || loading} aria-label={label} aria-busy={loading || undefined} title={title ?? label}>
+    {loading ? <span className="button-spinner" aria-hidden="true"/> : <Icon name={icon} size={iconSize}/>}
+  </button>;
+});
+
+export function FormField({ label, htmlFor, hint, error, required = false, className = "", children }: { label: ReactNode; htmlFor?: string; hint?: ReactNode; error?: ReactNode; required?: boolean; className?: string; children: ReactNode }) {
+  const hintId = hint && htmlFor ? `${htmlFor}-hint` : undefined;
+  const errorId = error && htmlFor ? `${htmlFor}-error` : undefined;
+  const child = isValidElement(children) ? children as ReactElement<Record<string, unknown>> : null;
+  const childProps = child?.props ?? {};
+  const describedBy = [childProps["aria-describedby"], hintId, errorId].filter((value): value is string => typeof value === "string" && value.length > 0).join(" ");
+  const control = child ? cloneElement(child, {
+    ...(required ? { required: true } : {}),
+    ...(error ? { "aria-invalid": true } : {}),
+    ...(describedBy ? { "aria-describedby": describedBy } : {}),
+  }) : children;
+  return <div className={`form-field${error ? " has-error" : ""} ${className}`.trim()}>
+    <label className="form-field-label" htmlFor={htmlFor}><span>{label}</span>{required && <span className="required-label" aria-hidden="true">*</span>}</label>
+    {control}
+    {hint && <small id={hintId} className="field-hint">{hint}</small>}
+    {error && <small id={errorId} className="field-error" role="alert">{error}</small>}
+  </div>;
+}
+
+export type AlertTone = "error" | "success" | "warning" | "info";
+const alertIcons: Record<AlertTone, IconName> = { error: "warning", success: "check", warning: "warning", info: "activity" };
+
+export function Alert({ tone = "info", icon, role, className = "", children, ...props }: HTMLAttributes<HTMLDivElement> & { tone?: AlertTone; icon?: IconName }) {
+  return <div {...props} className={`ui-alert alert ${tone} ${className}`.trim()} role={role ?? (tone === "error" ? "alert" : "status")}>
+    <Icon name={icon ?? alertIcons[tone]}/><span>{children}</span>
+  </div>;
+}
+
+export function LoadingState({ label, compact = false, className = "" }: { label?: ReactNode; compact?: boolean; className?: string }) {
+  const { t } = useI18n();
+  return <div className={`loading-state state${compact ? " compact" : ""} ${className}`.trim()} role="status" aria-live="polite"><div className="spinner"/><span>{label ?? t("common.loading")}</span></div>;
+}
+
+export type BadgeTone = "neutral" | "info" | "success" | "warning" | "danger" | "orange";
+export function Badge({ tone = "neutral", className = "", children }: { tone?: BadgeTone; className?: string; children: ReactNode }) {
+  return <span className={`ui-badge badge-${tone} ${className}`.trim()}>{children}</span>;
+}
+
+export function TableContainer({ children, className = "", mobileCards = true }: { children: ReactNode; className?: string; mobileCards?: boolean }) {
+  return <div className={`table-wrap responsive-table-container ${className}`.trim()} data-responsive={mobileCards ? "cards" : "scroll"}>{children}</div>;
+}
+
 type StyledOptionProps = { value?: string | number; disabled?: boolean; children?: ReactNode };
 export type StyledSelectChangeEvent = { target: { value: string }; currentTarget: { value: string } };
 export type StyledSelectProps = {
@@ -80,8 +152,10 @@ export function StyledSelect({ children, className = "", id, name, value, defaul
   const [highlightedIndex, setHighlightedIndex] = useState(() => Math.max(0, options.findIndex((option) => option.value === initialValue)));
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const nativeSelectRef = useRef<HTMLSelectElement>(null);
   const menuId = `styled-select-menu-${useId().replace(/:/g, "")}`;
+  const menuPosition = useFloatingPosition(triggerRef, open, { minWidth: 180, maxHeight: 320 });
   const selectedValue = String(value ?? internalValue);
   const selectedIndex = options.findIndex((option) => option.value === selectedValue);
   const selectedOption = selectedIndex >= 0 ? options[selectedIndex] : undefined;
@@ -108,7 +182,9 @@ export function StyledSelect({ children, className = "", id, name, value, defaul
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (event: PointerEvent) => {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (rootRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -176,7 +252,15 @@ export function StyledSelect({ children, className = "", id, name, value, defaul
   }
 
   const wrapperClass = `styled-select${open ? " is-open" : ""}${disabled ? " is-disabled" : ""} ${className}`.trim();
-  return <div ref={rootRef} className={wrapperClass} onBlur={(event) => { if (!rootRef.current?.contains(event.relatedTarget as Node | null)) setOpen(false); }}>
+  const menuStyle = {
+    top: menuPosition?.top ?? -10000,
+    left: menuPosition?.left ?? -10000,
+    width: menuPosition?.width ?? 180,
+    maxHeight: menuPosition?.maxHeight ?? 320,
+    direction: menuPosition?.direction,
+    visibility: menuPosition ? "visible" : "hidden",
+  } as const;
+  return <div ref={rootRef} className={wrapperClass} onBlur={(event) => { const nextTarget = event.relatedTarget as Node | null; if (!rootRef.current?.contains(nextTarget) && !menuRef.current?.contains(nextTarget)) setOpen(false); }}>
     <select ref={nativeSelectRef} className="styled-select-native" name={name} value={selectedValue} onChange={() => undefined} required={required} disabled={disabled} tabIndex={-1} aria-hidden="true" {...ariaProps}>
       {children}
     </select>
@@ -184,9 +268,9 @@ export function StyledSelect({ children, className = "", id, name, value, defaul
       <span className={`styled-select-value${selectedOption ? "" : " is-placeholder"}`}>{selectedOption?.label ?? "—"}</span>
       <span className={`styled-select-chevron${open ? " is-open" : ""}`} aria-hidden="true">⌄</span>
     </button>
-    {open && <div id={menuId} className="styled-select-menu" role="listbox" aria-label={ariaProps["aria-label"]}>
+    {open && <OverlayPortal><div ref={menuRef} id={menuId} className="styled-select-menu" role="listbox" aria-label={ariaProps["aria-label"]} style={menuStyle}>
       {options.map((option, index) => <button id={`${menuId}-option-${index}`} key={`${option.value}-${index}`} type="button" role="option" aria-selected={option.value === selectedValue} className={`styled-select-option${option.value === selectedValue ? " is-selected" : ""}${index === highlightedIndex ? " is-highlighted" : ""}`} disabled={option.disabled} onMouseEnter={() => setHighlightedIndex(index)} onMouseDown={(event) => event.preventDefault()} onClick={() => choose(index)}><span>{option.label}</span>{option.value === selectedValue && <span className="styled-select-check" aria-hidden="true">✓</span>}</button>)}
-    </div>}
+    </div></OverlayPortal>}
   </div>;
 }
 
@@ -194,7 +278,10 @@ export function ThemeSwitcher({ theme, onChange, className = "" }: { theme: AppT
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const menuId = `theme-menu-${useId().replace(/:/g, "")}`;
+  const menuPosition = useFloatingPosition(pickerRef, open, { minWidth: 174, maxHeight: 320 });
   const options: Array<{ value: AppTheme; labelKey: string }> = [
     { value: "blue", labelKey: "shell.themeBlue" },
     { value: "white", labelKey: "shell.themeWhite" },
@@ -205,10 +292,15 @@ export function ThemeSwitcher({ theme, onChange, className = "" }: { theme: AppT
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (event: PointerEvent) => {
-      if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (pickerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
     };
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
@@ -221,34 +313,52 @@ export function ThemeSwitcher({ theme, onChange, className = "" }: { theme: AppT
   function chooseTheme(next: AppTheme) {
     onChange(next);
     setOpen(false);
+    triggerRef.current?.focus();
   }
 
   const selectedLabel = t(selectedOption.labelKey);
   const alternateLabel = t(alternateOption.labelKey);
+  const menuStyle = {
+    top: menuPosition?.top ?? -10000,
+    left: menuPosition?.left ?? -10000,
+    width: menuPosition?.width ?? 174,
+    maxHeight: menuPosition?.maxHeight ?? 320,
+    direction: menuPosition?.direction,
+    visibility: menuPosition ? "visible" : "hidden",
+  } as const;
   return <div ref={pickerRef} className={`theme-switcher ${open ? "open" : ""} ${className}`.trim()} role="group" aria-label={t("shell.chooseTheme")} data-testid="theme-switcher">
-    <button type="button" className="theme-option theme-trigger selected" data-theme-option={selectedOption.value} aria-pressed="true" aria-haspopup="menu" aria-expanded={open} aria-controls={menuId} aria-label={`${selectedLabel}، ${t("shell.chooseTheme")}`} title={t("shell.chooseTheme")} onClick={() => setOpen((value) => !value)}>
+    <button ref={triggerRef} type="button" className="theme-option theme-trigger selected" data-theme-option={selectedOption.value} aria-pressed="true" aria-haspopup="menu" aria-expanded={open} aria-controls={menuId} aria-label={`${selectedLabel}، ${t("shell.chooseTheme")}`} title={t("shell.chooseTheme")} onClick={() => setOpen((value) => !value)}>
       <span className="theme-swatch" aria-hidden="true"/><span className="theme-option-label">{selectedLabel}</span><span className={`theme-switch-chevron ${open ? "open" : ""}`} aria-hidden="true">⌄</span>
     </button>
-    {open && <div id={menuId} className="theme-options-menu" role="menu" aria-label={t("shell.chooseTheme")}>
+    {open && <OverlayPortal><div ref={menuRef} id={menuId} className="theme-options-menu" role="menu" aria-label={t("shell.chooseTheme")} style={menuStyle}>
       <button type="button" className="theme-option theme-menu-option" data-theme-option={alternateOption.value} role="menuitem" aria-label={alternateLabel} title={alternateLabel} onClick={() => chooseTheme(alternateOption.value)}>
         <span className="theme-swatch" aria-hidden="true"/><span className="theme-option-label">{alternateLabel}</span>
       </button>
-    </div>}
+    </div></OverlayPortal>}
   </div>;
+}
+
+export function PageActions({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <div className={`page-actions ${className}`.trim()}>{children}</div>;
 }
 
 export function PageHeader({ eyebrow, title, description, actions }: { eyebrow?: string; title: string; description?: string; actions?: ReactNode }) {
   return <div className="page-header">
     <div className="page-title-block">{eyebrow && <div className="eyebrow">{eyebrow}</div>}<h2>{title}</h2>{description && <p>{description}</p>}</div>
-    {actions && <div className="page-actions">{actions}</div>}
+    {actions && <PageActions>{actions}</PageActions>}
   </div>;
 }
 
-export function SectionCard({ title, description, icon, actions, className = "", children }: { title?: string; description?: string; icon?: IconName; actions?: ReactNode; className?: string; children: ReactNode }) {
-  return <section className={`surface ${className}`}>
+export type SectionCardProps = { title?: string; description?: string; icon?: IconName; actions?: ReactNode; className?: string; children: ReactNode };
+export function SectionCard({ title, description, icon, actions, className = "", children }: SectionCardProps) {
+  return <section className={`surface ${className}`.trim()}>
     {(title || actions) && <div className="surface-head"><div className="surface-title">{icon && <span className="surface-icon"><Icon name={icon}/></span>}<div>{title && <h3>{title}</h3>}{description && <p>{description}</p>}</div></div>{actions && <div className="surface-actions">{actions}</div>}</div>}
     <div className="surface-body">{children}</div>
   </section>;
+}
+
+export function Surface(props: SectionCardProps) {
+  return <SectionCard {...props}/>;
 }
 
 export function EmptyState({ icon = "folder", title, description, action }: { icon?: IconName; title: string; description?: string; action?: ReactNode }) {
@@ -342,6 +452,21 @@ export function PageLoadingScreen() {
   </div>;
 }
 
+export function Modal({ open, title, children, actions, onClose, closeLabel = "Close", describedBy, size = "medium", className = "" }: { open: boolean; title: ReactNode; children?: ReactNode; actions?: ReactNode; onClose?: () => void; closeLabel?: string; describedBy?: string; size?: "small" | "medium" | "large"; className?: string }) {
+  const titleId = useId().replace(/:/g, "");
+  const dialogRef = useRef<HTMLElement>(null);
+  useOverlayDialog(open, onClose, dialogRef);
+
+  if (!open) return null;
+  return <OverlayPortal><div className="modal-backdrop dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose?.(); }}>
+    <section ref={dialogRef} className={`modal app-dialog modal-${size} ${className}`.trim()} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={describedBy} tabIndex={-1}>
+      <div className="modal-head"><h2 id={titleId}>{title}</h2>{onClose && <button type="button" className="modal-close" aria-label={closeLabel} title={closeLabel} onClick={onClose}>×</button>}</div>
+      {children && <div className="modal-body">{children}</div>}
+      {actions && <div className="modal-actions dialog-actions">{actions}</div>}
+    </section>
+  </div></OverlayPortal>;
+}
+
 type DialogState = { kind: "confirm"; message: string; resolve: (value: boolean) => void } | { kind: "prompt"; message: string; resolve: (value: string | null) => void } | null;
 type DialogApi = { confirm: (message: string) => Promise<boolean>; prompt: (message: string, initialValue?: string) => Promise<string | null>; view: ReactNode };
 const DialogContext = createContext<DialogApi | null>(null);
@@ -350,10 +475,22 @@ export function DialogProvider({ children }: { children: ReactNode }) {
   const { t } = useI18n();
   const [state, setState] = useState<DialogState>(null);
   const [inputValue, setInputValue] = useState("");
-  function confirm(message: string) { return new Promise<boolean>((resolve) => { setInputValue(""); setState({ kind: "confirm", message, resolve }); }); }
-  function prompt(message: string, initialValue = "") { return new Promise<string | null>((resolve) => { setInputValue(initialValue); setState({ kind: "prompt", message, resolve }); }); }
-  function close(value: boolean | string | null) { if (state?.kind === "confirm") state.resolve(value === true); else if (state?.kind === "prompt") state.resolve(typeof value === "string" ? value : null); setState(null); }
-  const view = state ? <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) close(state.kind === "confirm" ? false : null); }}><section className="app-dialog" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title"><h2 id="app-dialog-title">{t("dialog.confirmOperation")}</h2><p>{state.message}</p>{state.kind === "prompt" && <input className="dialog-input" autoFocus value={inputValue} aria-label={t("dialog.newValue")} onChange={(event) => setInputValue(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") close(inputValue.trim()); if (event.key === "Escape") close(null); }}/>}<div className="dialog-actions"><button className="ghost" type="button" onClick={() => close(state.kind === "confirm" ? false : null)}>{t("dialog.cancel")}</button><button className="primary" type="button" onClick={() => close(state.kind === "prompt" ? inputValue.trim() : true)}>{state.kind === "prompt" ? t("dialog.save") : t("dialog.confirm")}</button></div></section></div> : null;
+  const stateRef = useRef<DialogState>(null);
+  function settleCurrent(value: boolean | string | null, clearView = true) {
+    const current = stateRef.current;
+    if (!current) return;
+    if (current.kind === "confirm") current.resolve(value === true);
+    else current.resolve(typeof value === "string" ? value : null);
+    stateRef.current = null;
+    if (clearView) setState(null);
+  }
+  function confirm(message: string) { return new Promise<boolean>((resolve) => { settleCurrent(false); setInputValue(""); const next: DialogState = { kind: "confirm", message, resolve }; stateRef.current = next; setState(next); }); }
+  function prompt(message: string, initialValue = "") { return new Promise<string | null>((resolve) => { settleCurrent(null); setInputValue(initialValue); const next: DialogState = { kind: "prompt", message, resolve }; stateRef.current = next; setState(next); }); }
+  function close(value: boolean | string | null) { settleCurrent(value); }
+  useEffect(() => () => { settleCurrent(null, false); }, []);
+  const view = <Modal open={Boolean(state)} title={t("dialog.confirmOperation")} closeLabel={t("common.close")} describedBy="dialog-message" onClose={() => close(false)}>
+    {state && <><p id="dialog-message">{state.message}</p>{state.kind === "prompt" && <input className="dialog-input" autoFocus value={inputValue} aria-label={t("dialog.newValue")} onChange={(event) => setInputValue(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); close(inputValue.trim()); } if (event.key === "Escape") { event.preventDefault(); close(null); } }}/>}<div className="dialog-actions"><Button variant="ghost" onClick={() => close(state.kind === "confirm" ? false : null)}>{t("dialog.cancel")}</Button><Button onClick={() => close(state.kind === "prompt" ? inputValue.trim() : true)}>{state.kind === "prompt" ? t("dialog.save") : t("dialog.confirm")}</Button></div></>}
+  </Modal>;
   return <DialogContext.Provider value={{ confirm, prompt, view }}>{children}{view}</DialogContext.Provider>;
 }
 
@@ -370,7 +507,7 @@ const statusMap: Record<string, { key: string; tone: string }> = {
   PENDING: { key: "status.pending", tone: "warning" }, PROCESSING: { key: "status.processing", tone: "info" }, SUCCEEDED: { key: "status.succeeded", tone: "success" }, FAILED: { key: "status.failed", tone: "danger" }, WAITING_FOR_PROVIDER: { key: "status.waitingForProvider", tone: "warning" },
 };
 
-export function StatusBadge({ value }: { value: string }) { const { t } = useI18n(); const item = statusMap[value]; return <span className={`status-badge ${item?.tone ?? "neutral"}`}>{item ? t(item.key) : value}</span>; }
+export function StatusBadge({ value }: { value: string }) { const { t } = useI18n(); const item = statusMap[value]; return <Badge className="status-badge" tone={(item?.tone as BadgeTone | undefined) ?? "neutral"}>{item ? t(item.key) : value}</Badge>; }
 export function roleLabel(role: string) { const key = ({ SUPER_ADMIN: "role.superAdmin", ORG_ADMIN: "role.orgAdmin", HSE_MANAGER: "role.hseManager", HSE_SPECIALIST: "role.hseSpecialist", HSE_OFFICER: "role.hseOfficer", EXTERNAL_AUDITOR: "role.externalAuditor", PERSONNEL: "role.personnel", ASSISTANT: "role.assistant", ASSESSOR: "role.assessor", VIEWER: "role.viewer" } as Record<string, string>)[role]; return key ? translate(key) : role; }
 export function priorityLabel(value: string) { const item = statusMap[value]; return item ? translate(item.key) : value; }
 export function formatDate(value?: string, withTime = false) { if (!value) return "—"; const date = new Date(value); const locale = getCurrentLocale() === "en" ? "en-US" : "fa-IR-u-ca-persian"; return Number.isNaN(date.getTime()) ? "—" : withTime ? date.toLocaleString(locale) : date.toLocaleDateString(locale); }
@@ -450,7 +587,9 @@ export function LocalizedDateInput({ name, defaultValue = "", disabled = false, 
   const rootRef = useRef<HTMLDivElement>(null);
   const hiddenInputRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
   const pickerId = `localized-date-picker-${useId().replace(/:/g, "")}`;
+  const pickerPosition = useFloatingPosition(triggerRef, open, { minWidth: 318, maxHeight: 480 });
 
   useEffect(() => {
     const syncFromHiddenInput = () => {
@@ -470,7 +609,9 @@ export function LocalizedDateInput({ name, defaultValue = "", disabled = false, 
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (event: PointerEvent) => {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (rootRef.current?.contains(target) || pickerRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") { setOpen(false); triggerRef.current?.focus(); }
@@ -514,6 +655,14 @@ export function LocalizedDateInput({ name, defaultValue = "", disabled = false, 
     const parts = calendarParts(date, dateLocale);
     return { date, inMonth: parts.year === currentParts.year && parts.month === currentParts.month };
   });
+  const pickerStyle = {
+    top: pickerPosition?.top ?? -10000,
+    left: pickerPosition?.left ?? -10000,
+    width: pickerPosition?.width ?? 318,
+    maxHeight: pickerPosition?.maxHeight ?? 480,
+    direction: pickerPosition?.direction,
+    visibility: pickerPosition ? "visible" : "hidden",
+  } as const;
 
   return <div ref={rootRef} className={`localized-date-input${open ? " is-open" : ""}`}>
     <input ref={hiddenInputRef} type="hidden" name={name} defaultValue={defaultValue.slice(0, 10)} disabled={disabled} required={required}/>
@@ -521,11 +670,11 @@ export function LocalizedDateInput({ name, defaultValue = "", disabled = false, 
       <span className={selectedDate ? "" : "is-placeholder"}>{selectedDate ? localizedDateLabel(selectedDate, dateLocale) : t("actions.chooseDate")}</span>
       <Icon name="calendar" size={17}/>
     </button>
-    {open && <div id={pickerId} className="localized-date-popover" role="dialog" aria-label={t("actions.dueDate")}>
+    {open && <OverlayPortal><div ref={pickerRef} id={pickerId} className="localized-date-popover" role="dialog" aria-label={t("actions.dueDate")} style={pickerStyle}>
       <div className="localized-date-header"><button type="button" className="localized-date-nav" aria-label={t("actions.previousMonth")} onClick={() => setViewDate((date) => shiftCalendarMonth(date, -1, dateLocale))}>‹</button><strong>{calendarMonthLabel(viewDate, dateLocale)}</strong><button type="button" className="localized-date-nav" aria-label={t("actions.nextMonth")} onClick={() => setViewDate((date) => shiftCalendarMonth(date, 1, dateLocale))}>›</button></div>
       <div className="localized-date-weekdays" aria-hidden="true">{weekdays.map((weekday) => <span key={weekday}>{weekday}</span>)}</div>
       <div className="localized-date-grid">{cells.map(({ date, inMonth }) => { const value = isoDate(date); const isSelected = value === selectedIso; const isToday = value === today; return <button key={value} type="button" className={`localized-date-day${inMonth ? "" : " is-outside"}${isSelected ? " is-selected" : ""}${isToday ? " is-today" : ""}`} disabled={!inMonth} aria-current={isToday ? "date" : undefined} aria-pressed={isSelected} aria-label={localizedDateLabel(date, dateLocale)} onClick={() => chooseDate(date)}>{new Intl.DateTimeFormat(calendarLocale(dateLocale), { day: "numeric", timeZone: "UTC" }).format(date)}</button>; })}</div>
       {selectedDate && <button type="button" className="localized-date-clear" onClick={clearDate}>{t("actions.clearDate")}</button>}
-    </div>}
+    </div></OverlayPortal>}
   </div>;
 }

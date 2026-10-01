@@ -4,6 +4,13 @@
   "task": "Bilingual interface with explicit language selection, locale-aware brand alignment, preserved form auto-save, reliable registration account-type selection, secure registration contact and username validation, direct login with a server-assigned workspace, multi-company workspace management with independent subscriptions and tenant isolation, dedicated administrator workspaces, role-specific ArvanCloud AI integration with per-user token accounting, complete FMEA reporting, structured RULA process-information capture, editable RULA posture analysis, RULA results/corrective-action prediction reporting, a three-stage FMEA creation stepper with explicit process-information to review/register transition and report/results labels, a production-ready installable PWA with controlled updates, selectable blue/dark and white/light authenticated shell themes, removal of PDF download controls from authenticated assessment panels, automatic FMEA risk-row numbering/process context, three-visible expandable FMEA risk-row AI suggestions, PDF-reference aligned FMEA score panels, automatic editable FMEA risk-row text and S/O/D autofill for empty/untouched fields, database-backed job/process title suggestions with explicit user selection and expanded organization/global catalog search, project-scoped editable FMEA process-information autofill with a local assistant toggle, FMEA report manual-action form scroll-to-entry behavior, separate FMEA report view/edit operations with AI-generated editable detail drafts, requested RULA creation-step labels, optional RULA assessment title and both-body-side selection, a blue-theme sidebar logo with a white surround preserving original logo colors, site-wide styled native select controls and option states, and a consolidated project creation form with atomic initial process/activity bootstrap, global Enter-to-next-field navigation and automatic inline add/edit panel scroll/focus behavior, and a database-backed fast FMEA job-title catalog with local filtering and expanded industrial roles",
   "classification": "focused-cross-cutting-change",
   "status": "complete",
+  "latestSharedUiDesignSystemChange": {
+    "status": "PASS_LOCAL",
+    "scope": "Prompt 02 adds reusable Button, IconButton, FormField, Alert, LoadingState, Badge, Modal, PageActions and Surface primitives; consolidates control, focus, feedback and layering tokens; and migrates representative shell, file, generic and admin controls without changing assessment or API behavior.",
+    "validation": "PASS_LOCAL — frontend tests (107 tests), workspace typecheck, workspace lint, workspace production build, project-state JSON parse and git diff check passed. The full workspace test suite passed for frontend (107) and shared domain (12) but retains one unrelated pre-existing backend subscription expectation failure (143 passed, 1 failed). Browser visual smoke is NOT_RUN because browser automation is unavailable.",
+    "migration": "NOT_APPLICABLE — frontend components, styles, tests and documentation only.",
+    "deployment": "NOT_PERFORMED — local-only scope"
+  },
   "latestCorrectiveActionsLayoutChange": {
     "status": "PASS_LOCAL",
     "scope": "صفحه اقدامات اصلاحی اکنون فرم ثبت اقدام جدید را با شبکه‌بندی روشن و واکنش‌گرا نمایش می‌دهد: پروژه، ارزیابی RULA و سمت بدن در ردیف اول؛ عنوان و شرح در ردیف دوم؛ اولویت، مسئول و موعد در ردیف بعدی و دکمه ثبت در جایگاه مستقل و هم‌تراز. در موبایل همه کنترل‌ها به یک ستون قابل استفاده تبدیل می‌شوند.",
@@ -1045,5 +1052,81 @@
     "validation": "PASS — focused backend FMEA tests (12 tests), frontend UI suite (105 tests across 5 files), shared-domain tests (12 tests), frontend/backend/shared typechecks, frontend lint, frontend production build, backend Prisma validation, project-state JSON validation, and git diff check passed. The frontend build emitted only the existing large-chunk warning. The complete backend suite still has unrelated pre-existing failures in organization-rules.test.ts and an AI-provider availability timeout; authenticated browser smoke, migration deployment, and production deployment were NOT_RUN.",
     "migration": "backend/prisma/migrations/202609300001_fmea_fixed_risk_bands/migration.sql — normalizes organization threshold columns, recalculates stored RPN values from S×O×D, and reclassifies existing FmeaItem rows using the fixed bands.",
     "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestResponsiveTablesChange": {
+    "status": "PASS_LOCAL",
+    "scope": "The shared TableContainer now covers FMEA/RULA assessment, report, score-guide and action tables plus Actions, Activity Log, AI token usage and administrator user/member registers. Desktop and tablet keep semantic tables with bounded container scrolling for dense columns; phone widths use data-label card rows with wrapped narrative content and preserved row operations.",
+    "validation": "PASS — frontend tests (109 tests across 5 files), workspace typecheck, workspace lint, workspace production build, project-state JSON validation and git diff check passed. The full workspace suite passed for frontend (109) and shared domain (12); backend has two unrelated pre-existing failures: the subscription trial expectation and an AI-provider availability timeout (142 passed, 2 failed). The production build emitted only the existing large-chunk warning. Authenticated browser visual smoke is NOT_RUN because browser automation is unavailable.",
+    "migration": "NOT_APPLICABLE — frontend table markup, responsive CSS, tests and documentation only.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestShellResponsiveChange": {
+    "status": "PASS_LOCAL",
+    "scope": "The authenticated shell now keeps mobile topbar hierarchy focused on the drawer trigger, current route title and notifications. Theme, locale and subscription controls remain reachable in the mobile drawer; the drawer is viewport-bounded, safe-area aware, vertically scrollable, backdrop-dismissable and focus-safe. Opening it locks document scrolling with scrollbar compensation, Escape and route changes close it, and desktop/tablet expanded-collapsed sidebar behavior remains preference-driven.",
+    "validation": "PASS — frontend tests (109 tests across 5 files), frontend typecheck, frontend lint, production build, project-state JSON validation and git diff check passed. The production build emitted only the existing large-chunk warning. Authenticated browser visual smoke is NOT_RUN because browser automation and local database-backed authentication were unavailable; no backend, database, API, authentication or authorization code changed.",
+    "migration": "NOT_APPLICABLE — authenticated shell JSX, shared IconButton ref forwarding, responsive CSS, localization keys, documentation and regression coverage only.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestFormsResponsiveChange": {
+    "status": "PASS_LOCAL",
+    "scope": "Form controls now use fluid min/max sizing and collapse to a single mobile column below 768px. Login and registration validation focus the first invalid control and scroll it into view; mobile text-entry controls use a 16px size to avoid keyboard zoom. File upload names wrap safely, upload submission is guarded against duplicates, and FormField associates hints/errors with controls. Browser drafts now always exclude passwords, tokens, confirmation credentials and files across localStorage and IndexedDB, including legacy stored values.",
+    "validation": "PASS — frontend tests (112 tests across 5 files), frontend typecheck, frontend lint, production build, and git diff check passed. The production build emitted only the existing large-chunk warning. Authenticated browser visual smoke is NOT_RUN because browser automation and local database-backed authentication were unavailable; backend, database, API, authentication, and authorization code were unchanged.",
+    "migration": "NOT_APPLICABLE — form markup, shared validation, autosave sanitization, responsive CSS, and regression coverage only.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestOverlayInteractionChange": {
+    "status": "PASS_LOCAL",
+    "scope": "All shared floating menus and dialogs now render through a viewport-level overlay portal. StyledSelect, localized dates, theme and language menus reposition within the viewport and no longer require overflow-visible surfaces. Dialogs trap focus, restore focus, lock background scrolling and settle replaced promises. File previews for images, video and PDF are shown in-app with a download fallback and object-URL cleanup.",
+    "validation": "PASS — frontend tests (115 tests across 5 files), workspace lint, workspace typecheck/build, project-state JSON validation and git diff check passed. The workspace test run passed for frontend (115 tests) and shared domain (12 tests); backend had 143 passed and one unrelated pre-existing subscription trial expectation failure in organization-rules.test.ts. The production build emitted only the existing large-chunk warning. Authenticated browser visual smoke is NOT_RUN because browser automation and local database-backed authentication were unavailable; backend, database, API, authentication and authorization code were unchanged.",
+    "migration": "NOT_APPLICABLE — frontend overlay components, CSS, localization, file-preview lifecycle and regression coverage only.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestAccessibilityChange": {
+    "status": "PASS_LOCAL",
+    "scope": "Touch-sized legacy controls, semantic assessment-card actions, skip navigation, mobile drawer document scroll locking, contextual accessible names, password visibility state semantics, focus-visible styling, reduced-motion behavior, and accessible report/chart status semantics.",
+    "validation": "PASS — frontend tests (119 tests across 5 files), frontend/workspace lint, frontend/workspace production builds, project-state JSON validation and git diff check passed. The workspace test run passed for frontend (119 tests) and shared domain (12 tests); backend had 143 passed and one unrelated pre-existing subscription trial expectation failure in organization-rules.test.ts. The production build emitted only the existing large-chunk warning. Authenticated browser visual smoke is NOT_RUN because browser automation and local database-backed authentication were unavailable.",
+    "securityReview": "PASS — no new trust boundary, credential flow, file handling or authorization path was introduced; semantic controls, contextual labels, focus handling and live status semantics were reviewed for unsafe exposure or bypass.",
+    "migration": "NOT_APPLICABLE — frontend accessibility markup, shared CSS, localization and regression coverage only.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestFmeaRefactorChange": {
+    "status": "PASS_LOCAL",
+    "scope": "FMEA frontend orchestration was split from AssessmentPages.tsx into a focused fmea feature module, shared assessment utilities, and report-specific components. Route exports, API contracts, FMEA calculations, permissions, draft/autosave behavior, AI advisory acceptance, row operations and report/export behavior remain compatible. Existing responsive table/card conventions are reused for risk/register/report views so narrative safety text wraps on phone widths without page-level horizontal scrolling.",
+    "validation": "PASS — frontend tests (120 tests across 5 files), frontend typecheck, frontend lint, production build, project-state JSON validation and git diff check passed after the refactor. The production build emitted only the existing large-chunk warning. Full workspace backend validation retains the unrelated pre-existing organization trial-subscription assertion failure; authenticated browser visual smoke, clean migration execution and deployment were NOT_RUN.",
+    "securityReview": "PASS — the refactor introduced no new trust boundary, API surface, credential flow, file handling path or authorization decision. Existing request-ID guards, explicit AI acceptance, permission checks, draft sanitization and download cleanup were preserved and reviewed.",
+    "migration": "NOT_APPLICABLE — frontend component/module boundaries and regression coverage only.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestRulaRefactorChange": {
+    "status": "PASS_LOCAL",
+    "scope": "RULA frontend implementation was moved out of the AssessmentPages compatibility barrel into rula/RulaFeature.tsx. The extracted feature keeps posture image/text analysis, left/right/both side state, manual review, group A/B scoring, final action level, corrective actions, registration, history, reports and exports in one domain-focused module while reusing the shared responsive table/card and overlay foundations.",
+    "validation": "PASS — frontend tests (122 tests across 5 files), frontend typecheck, frontend lint, production build, project-state JSON validation and git diff check passed after the RULA refactor and shared phone-card update. The production build emitted only the existing large-chunk warning. Full workspace validation passed for frontend (122) and shared domain (12); backend had 143 passed and the unrelated pre-existing organization trial-subscription assertion failure. Authenticated browser visual smoke, clean migration execution and deployment were NOT_RUN.",
+    "securityReview": "PASS — the refactor introduced no new trust boundary, API surface, credential flow, file handling path or authorization decision. Existing stale-response request IDs, side-specific state isolation, explicit posture review, draft sanitization, permission checks and report download cleanup were preserved and reviewed.",
+    "migration": "NOT_APPLICABLE — frontend module boundaries and regression coverage only.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestBrowserE2eChange": {
+    "status": "PASS_LOCAL",
+    "scope": "Prompt 10 adds a Chromium Playwright harness with deterministic route-intercepted synthetic sessions and fixture data, interaction coverage for the authenticated shell, forms, overlays, FMEA/RULA reports, administration and file preview, plus responsive visual baselines for login/register, shell, reports, admin, actions, files and activity log across phone, tablet and desktop widths. CI installs and caches Chromium after the normal quality/build gates; snapshot updates remain explicit and are not run automatically.",
+    "validation": "PASS — frontend interaction E2E (9 tests), Chromium visual regression (36 tests), frontend tests (122 tests across 5 files), frontend typecheck/lint and production build passed. Browser fixtures use no production credentials or test backdoor. Full backend, clean migration and external deployment remain outside this frontend browser-test change.",
+    "securityReview": "PASS — browser tests use synthetic tokens/data, route interception is test-only, no production authentication bypass or API behavior was introduced, and generated test artifacts are ignored.",
+    "migration": "NOT_APPLICABLE — browser tests, fixtures, snapshots, CI and documentation only.",
+    "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestOverflowDetectionChange": {
+    "status": "PASS_LOCAL",
+    "scope": "Prompt 11 adds a Playwright overflow invariant suite covering document/body scroll widths, visible element viewport escapes, bounded tablet data scrollers, phone scroller rejection, diagnostic output and dynamic shell, overlay, validation, details, report, file-preview, locale and theme states. The suite uses the existing synthetic route-interception fixtures and a narrow allowlist for the closed mobile drawer and bounded table descendants only at widths of at least 768px.",
+    "validation": "PASS — direct Chromium Playwright overflow run: 108 passed with 2 workers; frontend TypeScript typecheck passed; frontend Vitest passed 122/122; production Vite build passed; git diff --check passed. The pnpm wrapper was not used because this Windows environment currently fails its temporary-file setup with EPERM.",
+    "securityReview": "PASS — test-only synthetic data and route interception are reused; no production authentication, API, authorization or file-handling behavior is changed. The viewport allowlist is limited to intentional closed drawers and bounded data-scroller descendants on tablet/desktop.",
+    "migration": "NOT_APPLICABLE — browser diagnostics, fixtures, Playwright tests, CI and documentation only.",
+    "deployment": "NOT_PERFORMED — source/local test scope"
+  },
+  "latestCssArchitectureCleanup": {
+    "status": "PASS_LOCAL",
+    "scope": "The monolithic frontend stylesheet is now a one-line compatibility entry point backed by an ordered styles/index.css cascade and modular shared, responsive, overlay, print, and FMEA/RULA feature files. Duplicate page-action mobile rules were consolidated into responsive.css; the RULA mobile-card rules were separated from the FMEA detail module; the portal overflow-visible workaround and universal table nowrap contract remain absent.",
+    "validation": "PASS_LOCAL — direct workspace lint/typecheck/build succeeded; frontend Vitest passed 124/124; Chromium Playwright interaction passed 9/9, reviewed visual baselines passed 36/36, and overflow invariants passed 108/108; API contract verification passed (68 frontend paths / 121 backend routes), release verification passed 28 checks, and git diff --check passed. The workspace test gate has one unrelated pre-existing backend subscription expectation failure (143 passed, 1 failed). The root pnpm wrapper remains environment-limited by Windows cache/temp permission, while the direct Turbo equivalents pass.",
+    "securityReview": "PASS — CSS, documentation, source-contract tests and test-only browser console checks introduced no trust boundary, credential flow, API behavior, authorization decision or data-handling path. Existing responsive overflow allowlists remain narrow and portal overlays continue to be isolated from data containers.",
+    "migration": "NOT_APPLICABLE — stylesheet organization, test contracts, visual baselines and documentation only.",
+    "deployment": "NOT_PERFORMED — source/local scope; no commit, push or deployment performed."
   }
 }

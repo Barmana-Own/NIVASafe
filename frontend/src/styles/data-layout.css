@@ -1,0 +1,12 @@
+/* Stats and projects */
+.mini-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .85rem; }
+.mini-stats > div { background: #fff; border: 1px solid #e2ebe9; border-radius: 15px; padding: .9rem 1rem; display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: .65rem; box-shadow: var(--shadow-sm); }
+.mini-stats .icon { color: var(--green-700); }.mini-stats strong { font-size: 1.35rem; }.mini-stats span { color: var(--muted); font-size: .73rem; }
+.project-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .85rem; }
+.project-card { border: 1px solid var(--line); border-radius: 15px; padding: 1rem; transition: .18s; }
+.project-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); border-color: #bfd7d2; }
+.project-card-target { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(57, 134, 200, .18), var(--shadow-sm); }
+.project-card-target:focus { outline: 3px solid rgba(57, 134, 200, .28); outline-offset: 3px; }
+.project-top { display: flex; align-items: center; justify-content: space-between; }.project-code { color: var(--green-700); font-size: .68rem; font-weight: 900; letter-spacing: .04em; }
+.project-card h3 { margin: .8rem 0 .35rem; font-size: .95rem; }.project-card p { color: var(--muted); font-size: .74rem; line-height: 1.8; min-height: 2.7rem; margin: 0; }
+.project-meta { display: flex; gap: 1rem; margin-top: .85rem; padding-top: .75rem; border-top: 1px solid #edf2f1; color: #617772; font-size: .68rem; }.project-meta span { display: flex; align-items: center; gap: .35rem; }

@@ -1,0 +1,48 @@
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}
+html, body, #root { width: 100%; max-width: 100%; min-height: 100%; }
+body { margin: 0; min-width: 320px; min-height: 100vh; overflow-x: visible; overflow-y: auto; background: var(--canvas); font-family: "Vazirmatn", "Vazir", Tahoma, "Segoe UI", sans-serif; }
+#root { min-height: 100vh; min-width: 0; }
+#nivasafe-overlay-root { position: fixed; inset: 0; z-index: var(--z-overlay-root); pointer-events: none; }
+#nivasafe-overlay-root > * { pointer-events: auto; }
+#nivasafe-overlay-root .language-menu,
+#nivasafe-overlay-root .theme-options-menu { position: fixed; inset-block-start: auto; inset-block-end: auto; inset-inline-start: auto; inset-inline-end: auto; z-index: var(--z-overlay-menu); max-inline-size: calc(100vw - 1rem); max-block-size: min(70dvh, 22rem); overflow-y: auto; overscroll-behavior: contain; }
+
+/* Responsive foundation: layout children own their overflow.  Keep the
+   viewport free of blanket clipping so an offending child remains observable
+   and can be fixed at its source. */
+img, svg, video, canvas { max-inline-size: 100%; }
+.app, .content, .workspace, .page-shell, .page-header, .page-title-block,
+.page-actions, .surface, .surface-head, .surface-title, .surface-body,
+.form-grid, .form-panels { min-width: 0; max-inline-size: 100%; }
+.app > *, .content > *, .workspace > *, .page-shell > *, .page-header > *,
+.page-actions > *, .surface-head > *, .surface-title > *, .surface-actions > *,
+.form-grid > *, .form-panels > * { min-width: 0; max-inline-size: 100%; }
+
+html:has(.login) { block-size: auto; min-block-size: 100%; overflow: auto; }
+body:has(.login) { block-size: auto; min-block-size: 100%; overflow: auto; }
+body:has(.login) #root { block-size: auto; min-block-size: 100%; }
+html:has(.register-page), body:has(.register-page) { block-size: auto; min-block-size: 100%; overflow: auto; }
+body:has(.register-page) #root { block-size: auto; min-block-size: 100%; }
+html:has(.assistant-page), body:has(.assistant-page) { block-size: 100%; min-block-size: 0; overflow: hidden; }
+body:has(.assistant-page) #root { block-size: 100%; min-block-size: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button, a { transition: .18s ease; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .62; }
+:where(.ui-button, .ui-icon-button, .primary, .ghost, .icon-button, .text-button, .button-link, .styled-select-trigger, .language-switch, .theme-option, .modal-close):focus-visible {
+  outline: 3px solid var(--focus-color);
+  outline-offset: 2px;
+  box-shadow: var(--focus-ring);
+}
+a { color: inherit; }
+.icon { flex: 0 0 auto; }

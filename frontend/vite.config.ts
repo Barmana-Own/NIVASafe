@@ -1,6 +1,6 @@
 import { fileURLToPath, URL } from "node:url";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 
 // Vite resolves its production flag before the config callback runs. The
 // repository-level `.env` is intentionally configured for local development,
@@ -19,6 +19,10 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    // Keep Vite's mutable dependency cache out of node_modules so browser
+    // test servers can re-optimize dependencies without colliding with a
+    // package-manager-owned directory on Windows/CI.
+    cacheDir: ".vite-cache",
     define: {
       // React's package exports can still see the repository's loaded `.env`
       // value during dependency resolution; define the same value for the
@@ -44,6 +48,9 @@ export default defineConfig(({ mode }) => {
       host: "0.0.0.0",
       port: 5043,
       strictPort: true,
+    },
+    test: {
+      exclude: ["**/node_modules/**", "**/dist/**", "**/tests/e2e/**"],
     },
   };
 });

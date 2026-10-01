@@ -5,6 +5,7 @@ import { api, ASSESSMENT_PATH_KEY, getCurrentLocale, getSession, type ApiError }
 import { Icon, PageHeader, StyledSelect } from "../../components/UI";
 import { AutoSaveStatus, clearAutoSaveDraft } from "../../forms/AutoSaveForm";
 import { assessmentDraftKey, clearAssessmentWizardStep } from "../../forms/autoSave";
+import { focusAndScrollToFirstInvalid } from "../../forms/requiredFieldValidation";
 import { LanguageSwitcher, brandAltForLocale, brandLogoForLocale, translate, useI18n } from "../../i18n";
 
 type RegistrationKind = "personal" | "organization";
@@ -136,7 +137,7 @@ function readDraft(): RegistrationDraft {
     if (!value) return emptyDraft;
     const draft = { ...emptyDraft, ...(JSON.parse(value) as Partial<RegistrationDraft>) };
     const legacyName = !draft.firstName && !draft.lastName ? splitDisplayName(typeof draft.displayName === "string" ? draft.displayName : "") : { firstName: draft.firstName ?? "", lastName: draft.lastName ?? "" };
-    return { ...draft, ...legacyName, displayName: composeDisplayName(legacyName.firstName, legacyName.lastName), kind: isRegistrationKind(draft.kind) ? draft.kind : null, phone: typeof draft.phone === "string" ? normalizePhone(draft.phone) : "" };
+    return { ...draft, ...legacyName, displayName: composeDisplayName(legacyName.firstName, legacyName.lastName), kind: isRegistrationKind(draft.kind) ? draft.kind : null, phone: typeof draft.phone === "string" ? normalizePhone(draft.phone) : "", password: "", confirmPassword: "" };
   } catch {
     return emptyDraft;
   }
@@ -161,7 +162,11 @@ export function RegisterPage() {
   useEffect(() => {
     // Never persist credentials in a browser draft; all other registration fields remain recoverable.
     if (registrationPending) return;
-    try { localStorage.setItem(draftKey, JSON.stringify({ ...draft, password: "", confirmPassword: "" })); setLastSaved(new Date()); } catch { setLastSaved(null); }
+    try {
+      const { password: _password, confirmPassword: _confirmPassword, ...safeDraft } = draft;
+      localStorage.setItem(draftKey, JSON.stringify(safeDraft));
+      setLastSaved(new Date());
+    } catch { setLastSaved(null); }
   }, [draft, registrationPending]);
 
   const progress = useMemo(() => `${Math.round((step / 4) * 100)}%`, [step]);
@@ -264,12 +269,11 @@ export function RegisterPage() {
       setError("");
       return true;
     }
-    const [firstField] = entries[0] as [RegistrationField, string];
     setFieldErrors(issues);
     setError(t("registration.validation"));
     window.setTimeout(() => {
-      const target = document.getElementById(`registration-${firstField}-error`)?.closest("label")?.querySelector("input,select");
-      if (target instanceof HTMLElement) target.focus();
+      const form = document.querySelector<HTMLFormElement>(".register-page form");
+      focusAndScrollToFirstInvalid(form);
     }, 0);
     return false;
   }
@@ -315,6 +319,7 @@ export function RegisterPage() {
       if (field) {
         setFieldErrors((current) => ({ ...current, [field]: message }));
         setError(t("registration.validation"));
+        window.setTimeout(() => focusAndScrollToFirstInvalid(document.querySelector<HTMLFormElement>(".register-page form")), 0);
       } else setError(message);
     } finally {
       setLoading(false);
@@ -340,8 +345,8 @@ export function RegisterPage() {
     <label htmlFor="registration-last-name"><span className="field-label-line">{t("registration.lastName")}</span><input id="registration-last-name" value={draft.lastName} onChange={(event) => updateNamePart("lastName", event.target.value)} onBlur={() => { updateNamePart("lastName", normalizeDisplayName(draft.lastName)); onFieldBlur("lastName"); }} autoComplete="family-name" maxLength={40} aria-invalid={Boolean(fieldErrors.lastName)} aria-describedby={fieldErrors.lastName ? "registration-lastName-error" : undefined} required/>{errorFor("lastName")}</label>
   </>;
   const renderPasswordFields = () => <>
-    <label htmlFor="registration-password"><span className="field-label-line">{t("auth.password")}</span><div className="password-field"><input id="registration-password" value={draft.password} onChange={(event) => update("password", event.target.value)} onBlur={() => onFieldBlur("password")} type={showPassword ? "text" : "password"} dir="ltr" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} aria-describedby={fieldErrors.password ? "registration-password-error" : "registration-password-hint"} aria-invalid={Boolean(fieldErrors.password)} required/><button type="button" className="password-toggle" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")} title={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}><Icon name={showPassword ? "eyeOff" : "eye"} size={19}/></button></div>{errorFor("password")}{!fieldErrors.password && <small id="registration-password-hint" className="field-hint">{t("registration.passwordHint", { min: PASSWORD_MIN_LENGTH })}</small>}</label>
-    <label htmlFor="registration-confirm-password"><span className="field-label-line">{t("registration.confirmPassword")}</span><div className="password-field"><input id="registration-confirm-password" value={draft.confirmPassword} onChange={(event) => update("confirmPassword", event.target.value)} onBlur={() => onFieldBlur("confirmPassword")} type={showConfirmPassword ? "text" : "password"} dir="ltr" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} aria-describedby={fieldErrors.confirmPassword ? "registration-confirmPassword-error" : undefined} aria-invalid={Boolean(fieldErrors.confirmPassword)} required/><button type="button" className="password-toggle" onClick={() => setShowConfirmPassword((value) => !value)} aria-label={showConfirmPassword ? t("auth.hidePassword") : t("auth.showPassword")} title={showConfirmPassword ? t("auth.hidePassword") : t("auth.showPassword")}><Icon name={showConfirmPassword ? "eyeOff" : "eye"} size={19}/></button></div>{errorFor("confirmPassword")}</label>
+    <label htmlFor="registration-password"><span className="field-label-line">{t("auth.password")}</span><div className="password-field"><input id="registration-password" value={draft.password} onChange={(event) => update("password", event.target.value)} onBlur={() => onFieldBlur("password")} type={showPassword ? "text" : "password"} dir="ltr" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} aria-describedby={fieldErrors.password ? "registration-password-error" : "registration-password-hint"} aria-invalid={Boolean(fieldErrors.password)} required/><button type="button" className="password-toggle" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")} title={showPassword ? t("auth.hidePassword") : t("auth.showPassword")} aria-controls="registration-password" aria-pressed={showPassword}><Icon name={showPassword ? "eyeOff" : "eye"} size={19}/></button></div>{errorFor("password")}{!fieldErrors.password && <small id="registration-password-hint" className="field-hint">{t("registration.passwordHint", { min: PASSWORD_MIN_LENGTH })}</small>}</label>
+    <label htmlFor="registration-confirm-password"><span className="field-label-line">{t("registration.confirmPassword")}</span><div className="password-field"><input id="registration-confirm-password" value={draft.confirmPassword} onChange={(event) => update("confirmPassword", event.target.value)} onBlur={() => onFieldBlur("confirmPassword")} type={showConfirmPassword ? "text" : "password"} dir="ltr" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} aria-describedby={fieldErrors.confirmPassword ? "registration-confirmPassword-error" : undefined} aria-invalid={Boolean(fieldErrors.confirmPassword)} required/><button type="button" className="password-toggle" onClick={() => setShowConfirmPassword((value) => !value)} aria-label={showConfirmPassword ? t("auth.hidePassword") : t("auth.showPassword")} title={showConfirmPassword ? t("auth.hidePassword") : t("auth.showPassword")} aria-controls="registration-confirm-password" aria-pressed={showConfirmPassword}><Icon name={showConfirmPassword ? "eyeOff" : "eye"} size={19}/></button></div>{errorFor("confirmPassword")}</label>
   </>;
 
   return <main className="login simple register-page" dir={direction} lang={locale}>
@@ -354,7 +359,7 @@ export function RegisterPage() {
       <div className="wizard-steps">{stepLabels.map((label, index) => <span className={step >= index + 1 ? "active" : ""} key={label}>{label}</span>)}</div>
       {step > 1 && <button type="button" className="text-button registration-type-change" onClick={() => { setStep(1); setError(""); }}>{t("registration.changeType")}</button>}
       <AutoSaveStatus lastSaved={lastSaved}/>
-      {error && <div className="alert error"><Icon name="warning"/>{error}</div>}
+      {error && <div className="alert error" role="alert" aria-live="assertive"><Icon name="warning"/>{error}</div>}
       {step === 1 && <>
         <div className="choice-grid" role="radiogroup" aria-label={t("registration.accountType")}>
         <button className={`choice-card ${draft.kind === "organization" ? "selected" : ""}`} onClick={() => chooseKind("organization")} role="radio" aria-checked={draft.kind === "organization"} type="button"><span className="choice-card-top"><span className="choice-icon"><Icon name="projects"/></span><span className="choice-radio" aria-hidden="true">{draft.kind === "organization" ? "●" : "○"}</span></span><strong>{t("registration.organization")}</strong><small>{t("registration.organizationDescription")}</small></button>

@@ -1,0 +1,11 @@
+/* Tables and lists */
+.table-wrap { max-inline-size: 100%; min-inline-size: 0; overflow-x: auto; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; border: 1px solid #e5eeec; border-radius: 13px; }
+table { width: 100%; border-collapse: collapse; white-space: normal; }
+th, td { text-align: start; border-bottom: 1px solid #e8efed; padding: .88rem .9rem; font-size: .76rem; }
+th { background: #f7faf9; color: #738681; font-size: .67rem; font-weight: 850; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: #fbfdfc; }
+td strong, td small { display: block; } td small { color: var(--muted); margin-top: .22rem; max-width: 350px; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
+.compact-select { padding: .5rem .6rem; min-width: 150px; }
+.table-progress { min-width: 130px; display: flex; align-items: center; gap: .55rem; }.table-progress > div { width: 90px; height: 6px; overflow: hidden; background: #e9f0ee; border-radius: 99px; }.table-progress span { display: block; height: 100%; background: var(--green-600); }.table-progress b { font-size: .65rem; }
+.event-code { background: #eef4f3; color: #46635e; border-radius: 7px; padding: .25rem .45rem; font-size: .68rem; }

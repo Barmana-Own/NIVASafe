@@ -1,0 +1,6 @@
+/* Notifications */
+.notification-list { display: grid; gap: .7rem; }
+.notification-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .85rem; align-items: start; padding: 1rem 1.1rem; background: #fff; border: 1px solid var(--line); border-radius: 15px; }
+.notification-card.unread { border-color: #b9dbd5; box-shadow: inset -3px 0 var(--green-600); }.notification-card.read { opacity: .72; }
+.notification-icon { width: 41px; height: 41px; display: grid; place-items: center; border-radius: 12px; background: #fff3df; color: #bc7720; }.notification-title { display: flex; align-items: center; gap: .55rem; }.notification-title h3 { margin: 0; font-size: .9rem; }.notification-title span { border-radius: 99px; padding: .2rem .45rem; background: var(--green-100); color: var(--green-700); font-size: .58rem; font-weight: 900; }.notification-card p { margin: .35rem 0; color: #536b67; font-size: .78rem; }.notification-card small { color: var(--muted); }
+.preference-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; }.preference-grid .checkbox-card { height: 100%; }

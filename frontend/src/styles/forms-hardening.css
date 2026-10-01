@@ -1,0 +1,157 @@
+/* Form contract: fluid controls, safe text wrapping and a single mobile flow. */
+form,
+fieldset,
+:where(.form-grid, .form-panels, .knowledge-form, .knowledge-form-top,
+  .fmea-process-grid, .rula-process-form-grid, .rula-basic, .body-score-grid,
+  .upload-form, .inline-form, .assessment-create, .action-form, .analysis-form,
+  .invite-form, .report-action-form, .rula-manual-action-form,
+  .login-card, .register-card) {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+:where(.form-grid, .form-panels, .knowledge-form, .knowledge-form-top,
+  .fmea-process-grid, .rula-process-form-grid, .rula-basic, .body-score-grid,
+  .upload-form, .inline-form, .assessment-create, .action-form, .analysis-form,
+  .invite-form, .report-action-form, .rula-manual-action-form,
+  .login-card, .register-card) > * {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+:where(form, .form-field, .form-grid, .form-panels, .upload-form, .action-form,
+  .analysis-form, .report-action-form, .rula-manual-action-form) :is(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]),
+    select,
+    textarea,
+    .styled-select,
+    .styled-select-trigger,
+    .localized-date-input,
+    .localized-date-trigger) {
+  inline-size: 100%;
+  max-inline-size: 100%;
+  min-inline-size: 0;
+  box-sizing: border-box;
+}
+
+:where(form, .form-field, .form-grid, .form-panels, .upload-form, .action-form,
+  .analysis-form, .report-action-form, .rula-manual-action-form) textarea {
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
+  resize: vertical;
+  white-space: pre-wrap;
+}
+
+:where(form, .form-grid, .form-panels, .upload-form, .action-form,
+  .analysis-form, .report-action-form, .rula-manual-action-form) button {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.password-field,
+.dropzone,
+.upload-form,
+.form-actions,
+.wizard-actions,
+.admin-edit-actions {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.password-field input { min-inline-size: 0; }
+.dropzone { overflow: hidden; }
+.dropzone strong {
+  display: block;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+  line-height: 1.6;
+}
+.file-copy h3,
+.file-copy p,
+.file-copy small {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 767px) {
+  :where(.form-grid, .form-grid.three, .form-panels, .knowledge-form,
+    .knowledge-form-top, .fmea-process-grid, .rula-process-form-grid,
+    .rula-basic, .body-score-grid, .upload-form, .inline-form,
+    .assessment-create, .action-form, .analysis-form, .invite-form,
+    .report-action-form, .rula-manual-action-form) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  :where(.form-grid, .form-grid.three, .form-panels, .knowledge-form,
+    .knowledge-form-top, .fmea-process-grid, .rula-process-form-grid,
+    .rula-basic, .body-score-grid, .upload-form, .inline-form,
+    .assessment-create, .action-form, .analysis-form, .invite-form,
+    .report-action-form, .rula-manual-action-form) > :is(.full, .span-two) {
+    grid-column: auto;
+  }
+
+  form :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]), select, textarea),
+  form :is(.styled-select-trigger, .localized-date-trigger) {
+    /* Prevent mobile browser zoom while keeping the control fluid. */
+    font-size: 16px;
+  }
+
+  .login-card {
+    width: min(520px, calc(100% - 1rem));
+    max-width: calc(100% - 1rem);
+    padding-inline-start: max(1rem, env(safe-area-inset-left));
+    padding-inline-end: max(1rem, env(safe-area-inset-right));
+  }
+  .login-options {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .login-options .login-link {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  :is(.password-toggle, button.password-toggle) {
+    inline-size: var(--touch-target);
+    min-inline-size: var(--touch-target);
+    block-size: var(--touch-target);
+    min-block-size: var(--touch-target);
+  }
+  .upload-form > button,
+  .upload-form > .ui-button {
+    inline-size: 100%;
+  }
+  .form-actions,
+  .wizard-actions,
+  .admin-edit-actions {
+    flex-wrap: wrap;
+  }
+  .form-actions > *,
+  .wizard-actions > *,
+  .admin-edit-actions > * {
+    min-inline-size: 0;
+    max-inline-size: 100%;
+  }
+
+  .dialog-backdrop {
+    place-items: stretch;
+    padding: max(.5rem, env(safe-area-inset-top)) max(.5rem, env(safe-area-inset-right)) max(.5rem, env(safe-area-inset-bottom)) max(.5rem, env(safe-area-inset-left));
+  }
+  .modal,
+  .app-dialog,
+  .file-preview-dialog {
+    width: 100%;
+    max-width: none;
+    max-height: calc(100dvh - 1rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    border-radius: 14px;
+    padding: 1rem;
+  }
+  .file-preview-content img,
+  .file-preview-content video { max-height: min(58dvh, 480px); }
+  .file-preview-content object { min-height: min(62dvh, 520px); }
+}

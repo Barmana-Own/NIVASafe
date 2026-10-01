@@ -1,0 +1,162 @@
+/* Keep the two-column authentication experience legible on wide desktop screens. */
+@media (min-width: 1440px) {
+  .login-art { --login-art-inline-pad: clamp(2.5rem, 5vw, 5.5rem); padding: clamp(5rem, 6vw, 6.5rem) var(--login-art-inline-pad) 0; }
+  .login-toolbar { min-height: 72px; padding-inline: clamp(1.5rem, 3vw, 3.5rem); font-size: .74rem; }
+  .login-toolbar-brand { font-size: .86rem; }
+  .login-toolbar-brand > img { width: 32px; height: 32px; }
+  .login-card { width: min(500px, 88%); padding: clamp(2.15rem, 2.5vw, 3rem); gap: .95rem; }
+  .login-card h2 { font-size: 2.05rem; }
+  .login-card > p { font-size: .95rem; }
+  .login-card label { font-size: .88rem; }
+  .login-card input { min-height: 49px; padding-block: .78rem; }
+  .login-button { min-height: 52px; }
+  .login-options .login-link, .remember-me { font-size: .75rem; }
+  .login-art h1 { font-size: clamp(2.1rem, 2.4vw, 2.95rem); line-height: 1.2; }
+  .login-features span { font-size: .82rem; }
+  .login-approvals { font-size: .7rem; }
+}
+
+@media (min-width: 761px) and (max-height: 760px) {
+  .login-art { --login-art-inline-pad: clamp(1.5rem, 5vw, 4.5rem); padding: 4.2rem var(--login-art-inline-pad) 0; }
+  .login-hero-content .login-brand-panel { min-width: 250px; padding: .55rem .75rem; }
+  .login-logo-wordmark, .login-logo-en { height: 42px; }
+  .login-hero-content { gap: clamp(1.25rem, 2vh, 1.75rem); }
+  .login-art h1 { font-size: clamp(1.55rem, 2.45vw, 2.4rem); line-height: 1.2; }
+  .login-cta-row .primary, .login-secondary-cta { min-height: 42px; padding-block: .55rem; }
+  .login-hero-visual { min-height: 132px; }
+  .visual-screen { transform: scale(.96) rotate(-4deg); transform-origin: right top; }
+  .visual-shield { transform: scale(.94) rotate(-8deg); transform-origin: left top; }
+  .visual-hardhat { transform: scale(.94) rotate(5deg); transform-origin: right bottom; }
+  .login-features { gap: .65rem .9rem; }
+  .login-features span { font-size: .68rem; }
+  .login-support-bar { margin-block-start: auto; font-size: .6rem; }
+  .login-card { padding: clamp(1.35rem, 3vw, 2rem); gap: .75rem; }
+  .login-card-logo { width: 56px; height: 56px; }
+  .login-card h2 { font-size: 1.75rem; }
+  .login-card > p { margin: -.1rem 0 .3rem; font-size: .85rem; }
+  .login-card label { gap: .35rem; font-size: .78rem; }
+  .login-card input { min-height: 44px; padding-block: .65rem; }
+  .login-button { min-height: 46px; }
+}
+
+@media (max-width: 1320px) {
+  .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+  .project-cards, .assessment-list { grid-template-columns: repeat(2, 1fr); }
+  .inline-form { grid-template-columns: repeat(2, 1fr); }.inline-form button { min-height: 47px; }
+  .assessment-create { grid-template-columns: repeat(2, 1fr); }.assessment-create button { min-height: 47px; }
+  .action-form { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .action-form .action-project,
+  .action-form .action-rula,
+  .action-form .action-body-side { grid-column: span 2; }
+  .action-form .action-title { grid-column: span 2; }
+  .action-form .action-description { grid-column: span 4; }
+  .action-form .action-priority,
+  .action-form .action-assignee,
+  .action-form .action-due-date { grid-column: span 2; }
+  .action-form .action-submit { grid-column: 1 / -1; justify-self: start; width: min(100%, 15rem); }
+  .body-score-grid { grid-template-columns: repeat(3, 1fr); }
+  .knowledge-form-top { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 1020px) {
+  .app-sidebar { width: 86px; padding-inline: .7rem; }.side-brand { justify-content: center; }.side-brand > div:last-child, .side-user > div:last-child, .nav-label, .side-nav a span { display: none; }.sidebar-toggle { display: none; }.side-nav a { justify-content: center; padding: .75rem; }.side-user { justify-content: center; }.side-logout { justify-content: center; padding: .72rem; font-size: 0; }.side-logout .icon { margin: 0; }.content { width: calc(100% - 86px); max-width: calc(100% - 86px); margin-inline-start: 86px; }
+  .dashboard-grid, .form-panels { grid-template-columns: 1fr; }.rula-basic { grid-template-columns: repeat(2, 1fr); }.body-score-grid { grid-template-columns: repeat(2, 1fr); }.rula-extra { grid-template-columns: 1fr; }.rula-analysis-layout { grid-template-columns: 1fr; }.upload-form { grid-template-columns: 1fr 1fr; }.upload-form .dropzone { grid-column: 1 / -1; }.assistant-layout { grid-template-columns: 240px minmax(0, 1fr); }.file-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .login { grid-template-columns: 1fr; grid-template-rows: auto; align-items: stretch; }
+  .login.simple { grid-template-rows: auto; }
+  .login:not(.mobile-login-form-visible) { display: block; }
+  .login:not(.mobile-login-form-visible):not(.register-page) .login-card { display: none; }
+  .login.mobile-login-form-visible { display: grid; place-items: center; }
+  .login.mobile-login-form-visible .login-art { display: none; }
+  .login.mobile-login-form-visible .login-card { display: flex; }
+  .login-art { display: flex; --login-art-inline-pad: clamp(.75rem, 4vw, 1.25rem); padding: clamp(4.1rem, 11vw, 5rem) var(--login-art-inline-pad) .65rem; background-position: center bottom; }
+  .login-hero-content { display: flex; gap: clamp(.45rem, 1.4vh, .9rem); margin-top: .25rem; justify-content: space-evenly; }
+  .login-mobile-brand { order: 1; display: grid; justify-items: center; gap: .25rem; width: min(100%, 320px); min-width: 0; padding: .35rem .75rem .2rem; text-align: center; }
+  .login-mobile-brand-icon { width: clamp(52px, 16vw, 76px); height: clamp(52px, 16vw, 76px); object-fit: contain; padding: .22rem; border-radius: 18px; background: rgba(255, 255, 255, .88); box-shadow: 0 10px 24px rgba(25, 76, 122, .16); }
+  .login-mobile-brand-wordmark { width: min(82vw, 300px); height: clamp(38px, 11vw, 58px); object-fit: contain; direction: ltr; }
+  .login-mobile-brand > span { color: #214f79; font-size: clamp(.66rem, 2.4vw, .82rem); font-weight: 800; line-height: 1.7; }
+  .login-toolbar { position: absolute; min-height: 58px; padding: .55rem .75rem; }
+  .login-toolbar-links { display: none; }
+  .login-toolbar-brand .login-logo-wordmark, .login-toolbar-brand .login-logo-en { width: min(210px, 58vw); height: 30px; }
+  .login-hero-visual { order: 5; min-height: clamp(96px, 19vh, 150px); }
+  .login-hero-visual .visual-screen { inset-block-start: 18px; width: min(210px, 54vw); height: min(112px, 28vw); padding: .45rem; border-width: 4px; border-bottom-width: 7px; }
+  .login-hero-visual .visual-chart { height: clamp(32px, 12vw, 55px); margin-top: .3rem; }
+  .login-hero-visual .visual-screen-foot { margin-top: .3rem; }
+  .login-hero-visual .visual-shield { inset-block-start: 26px; width: clamp(54px, 16vw, 78px); height: clamp(62px, 19vw, 88px); transform: scale(.82) rotate(-8deg); transform-origin: left top; }
+  .login-hero-visual .visual-hardhat { inset-block-end: 8px; width: clamp(52px, 17vw, 66px); transform: scale(.82) rotate(5deg); transform-origin: right bottom; }
+  .login-hero-visual .visual-spark { inset-block-start: 15px; }
+  .login-art h1 { order: 2; position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+  .login-cta-row { order: 3; gap: .5rem; transform: none; }
+  .login-cta-row .primary, .login-secondary-cta { min-width: min(128px, 42vw); min-height: 42px; padding: .6rem .7rem; }
+  .login-features { order: 4; gap: .45rem .7rem; margin-bottom: 0; transform: none; }
+  .login-features span { gap: .35rem; font-size: .61rem; line-height: 1.55; }
+  .login-support-bar { padding: .35rem .5rem calc(.45rem + env(safe-area-inset-bottom)); font-size: .55rem; }
+  .login-support-logo { width: 36px; height: 36px; }
+  .login-card { align-self: center; width: min(94%, 520px); max-height: none; overflow: visible; padding: 1.35rem; margin: .6rem auto; gap: .75rem; border-radius: 22px; }
+  .login-card-logo { width: 56px; height: 56px; }
+  .login-card h2 { font-size: 1.7rem; }
+  .login-card > p { margin: -.15rem 0 .25rem; font-size: .82rem; }
+  .login-card label { gap: .35rem; font-size: .78rem; }
+  .login-card input { min-height: 44px; padding-block: .62rem; }
+  .login-button { min-height: 46px; }
+}
+@media (min-width: 480px) and (max-width: 900px) {
+  .login:not(.mobile-login-form-visible) .login-art { padding-top: clamp(5rem, 12vw, 5.75rem); }
+  .login-toolbar { min-height: 78px; flex-wrap: wrap; row-gap: .15rem; }
+  .login-toolbar-links { display: flex; order: 3; width: 100%; justify-content: space-around; gap: .4rem; margin-inline: 0; font-size: .58rem; }
+  .login-toolbar-links a, .login-toolbar-link { min-width: 0; padding-block: .1rem; white-space: nowrap; }
+}
+@media (max-width: 900px) {
+  .knowledge-form-top, .knowledge-options { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .login-toolbar { padding: .65rem .75rem; gap: .75rem; }
+  .login-art { padding-bottom: 0; }
+  .login-card { padding: 1.25rem; }
+  .app { display: block; }.content { width: 100%; max-width: 100%; margin-inline-start: 0; }.app-sidebar { width: min(300px, 86vw); transform: translateX(-110%); transition: .25s ease; padding-inline: 1rem; }.app-sidebar.open { transform: translateX(0); }[dir="rtl"] .app-sidebar { transform: translateX(110%); }[dir="rtl"] .app-sidebar.open { transform: translateX(0); }.side-brand { justify-content: flex-start; }.side-brand > div:last-child, .side-user > div:last-child, .nav-label, .side-nav a span { display: flex; }.side-nav a { justify-content: flex-start; }.side-user { justify-content: flex-start; }.side-logout { justify-content: flex-start; padding: .65rem .55rem; font-size: .76rem; }.sidebar-backdrop { display: block; position: fixed; inset: 0; border: 0; background: rgba(6,35,31,.5); backdrop-filter: blur(3px); z-index: var(--z-sidebar-backdrop); }.mobile-menu { display: grid; }
+  .choice-grid, .path-grid { grid-template-columns: 1fr; }.register-card, .path-card { width: min(94%, 520px); }.wizard-actions { flex-direction: column-reverse; }.wizard-actions > * { width: 100%; }.registration-review-summary { grid-template-columns: 1fr; }
+  .topbar { height: auto; min-height: 70px; padding: .75rem 1rem; }.topbar-title .eyebrow { display: none; }.workspace { padding: 1rem; }.page-header { align-items: flex-start; flex-direction: column; }.page-title-block h2 { font-size: 1.45rem; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }.kpi-card { min-height: 118px; }.kpi-copy strong { font-size: 1.5rem; }.dashboard-grid, .form-panels, .project-cards, .assessment-list, .knowledge-grid, .health-grid, .preference-grid { grid-template-columns: 1fr; }.mini-stats { grid-template-columns: 1fr; }
+  .surface-head { align-items: flex-start; }.surface-body { padding: 1rem; }.form-grid, .form-grid.three, .rula-basic, .body-score-grid, .rula-process-form-grid { grid-template-columns: 1fr; }.rula-process-layout { grid-template-columns: 1fr; }.form-grid .span-two, .rula-process-form-grid > label.span-two { grid-column: auto; }.inline-form, .assessment-create, .action-form, .analysis-form, .invite-form, .knowledge-form, .upload-form { grid-template-columns: 1fr; }.action-form .action-project, .action-form .action-rula, .action-form .action-body-side, .action-form .action-title, .action-form .action-description, .action-form .action-priority, .action-form .action-assignee, .action-form .action-due-date, .action-form .action-submit, .upload-form .dropzone { grid-column: auto; }.action-form .action-submit { width: 100%; }.knowledge-form-top, .knowledge-options { grid-template-columns: 1fr; }.knowledge-form-footer { align-items: stretch; flex-direction: column; }.knowledge-submit { width: 100%; }
+  .score-panel { grid-template-columns: 1fr; align-items: stretch; }.score-panel-fields { grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr) 20px minmax(0, 1fr); }.score-panel-actions { grid-template-columns: minmax(0, 1fr) minmax(160px, auto); }.rula-result { grid-template-columns: auto 1fr; }.rula-result .download-actions { grid-column: 1 / -1; }.rula-result-copy > div:first-child { align-items: flex-start; flex-direction: column; }.rula-analysis-summary { grid-template-columns: 1fr; align-items: start; }.rula-analysis-summary .rula-summary-badge { justify-self: start; }.rula-review-summary { align-items: flex-start; flex-direction: column; }.rula-analysis-visual, .rula-analysis-canvas { min-height: 280px; }.rula-analysis-canvas > img { height: 280px; }.rula-analysis-table { min-width: 600px; }.rula-analysis-table-card .table-wrap { overflow-x: auto; }.assistant-layout { grid-template-columns: 1fr; grid-template-rows: minmax(112px, 24dvh) minmax(0, 1fr); }.conversation-panel { max-height: none; }.chat-log { min-height: 0; }.message-bubble { max-width: 86%; }.request-list article { grid-template-columns: auto minmax(0, 1fr); }.request-list article > .status-badge, .request-list article > button { grid-column: 2; justify-self: start; }.member-card { grid-template-columns: auto minmax(0, 1fr); }.member-card select, .member-card .styled-select, .member-card .status-toggle { grid-column: 2; }.search-box { min-width: 100%; width: 100%; }.notification-card { grid-template-columns: auto minmax(0, 1fr); }.notification-card > .icon-button { grid-column: 2; justify-self: start; }
+}
+@media (max-width: 480px) {
+  .kpi-grid { grid-template-columns: 1fr; }.quick-actions { grid-template-columns: 1fr; }.assessment-metrics { grid-template-columns: 1fr; }.score-panel-fields { grid-template-columns: 1fr; }.score-panel-fields > span { display: none; }.score-panel-actions { grid-template-columns: 1fr; }.score-panel-actions > .primary { width: 100%; }.measure-control { grid-template-columns: 1fr; }.file-card { grid-template-columns: auto minmax(0, 1fr); }.file-actions { grid-column: 2; }.registered-report-card { grid-template-columns: auto minmax(0, 1fr); }.registered-report-open { grid-column: 2; justify-content: flex-start; }.topbar-title strong { font-size: .82rem; }
+}
+@media (max-width: 760px) {
+  .fmea-report-table-context { grid-template-columns: 1fr; }
+  .fmea-report-table-context > div { grid-template-columns: 1fr; gap: .12rem; }
+  .assessment-image-lightbox-body { grid-template-columns: 1fr; }
+  .assessment-image-lightbox-canvas > img { max-height: 58vh; }
+  .assessment-image-lightbox-details { max-height: none; }
+}
+
+@media print {
+  .app-sidebar, .topbar, .primary, .ghost, .icon-button, .page-actions { display: none !important; }.app, .content { display: block; }.workspace { padding: 0; }.surface { box-shadow: none; break-inside: avoid; }
+}
+
+@media (max-width: 720px) {
+  .login-card-logo { width: 60px; height: 60px; }
+}
+
+@media (max-width: 390px), (max-height: 700px) and (max-width: 900px) {
+  .login:not(.mobile-login-form-visible) .login-art { padding-top: 3.65rem; padding-bottom: 0; }
+  .login:not(.mobile-login-form-visible) .login-hero-content { gap: .35rem; }
+  .login:not(.mobile-login-form-visible) .login-hero-visual { min-height: 92px; }
+  .login:not(.mobile-login-form-visible) .login-hero-visual .visual-screen { inset-block-start: 9px; width: min(164px, 52vw); height: 78px; }
+  .login:not(.mobile-login-form-visible) .login-hero-visual .visual-shield { inset-block-start: 17px; transform: scale(.68) rotate(-8deg); }
+  .login:not(.mobile-login-form-visible) .login-hero-visual .visual-hardhat { inset-block-end: 4px; transform: scale(.68) rotate(5deg); }
+  .login:not(.mobile-login-form-visible) .login-features { gap: .3rem .45rem; }
+  .login:not(.mobile-login-form-visible) .login-features span { font-size: .56rem; }
+  .login:not(.mobile-login-form-visible) .login-support-bar { font-size: .5rem; }
+}
+
+@media (max-width: 480px) and (max-height: 700px) {
+  .login:not(.mobile-login-form-visible) .login-hero-content { gap: .25rem; }
+  .login:not(.mobile-login-form-visible) .login-mobile-brand { gap: .12rem; padding-block: 0; }
+  .login:not(.mobile-login-form-visible) .login-mobile-brand-icon { width: 52px; height: 52px; border-radius: 15px; }
+  .login:not(.mobile-login-form-visible) .login-mobile-brand-wordmark { height: 38px; }
+  .login:not(.mobile-login-form-visible) .login-mobile-brand > span { font-size: .58rem; }
+  .login:not(.mobile-login-form-visible) .login-hero-visual { min-height: 86px; }
+  .login:not(.mobile-login-form-visible) .login-support-logo { width: 30px; height: 30px; }
+}

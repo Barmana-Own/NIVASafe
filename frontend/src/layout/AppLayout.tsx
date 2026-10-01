@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { isSubscriptionActive } from "@nivasafe/domain";
 import { api, clearSession, getCurrentRole, getSession, isSessionRemembered, saveSession, useLoad, type Locale } from "../api/client";
-import { Icon, roleLabel, ThemeSwitcher, type IconName } from "../components/UI";
+import { Icon, IconButton, roleLabel, ThemeSwitcher, type IconName } from "../components/UI";
 import { LanguageSwitcher, useI18n } from "../i18n";
 import { persistAppTheme, readAppTheme, type AppTheme } from "../theme";
 
@@ -52,6 +52,8 @@ export function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem("nivasafe-sidebar-collapsed") === "true");
   const [theme, setTheme] = useState<AppTheme>(() => readAppTheme());
   const { locale, direction, t } = useI18n();
@@ -62,19 +64,65 @@ export function AppLayout() {
   }, [location.pathname, location.search]);
 
   useEffect(() => {
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMobileOpen(false);
-    };
     const closeOnDesktopResize = () => {
       if (window.innerWidth > 760) setMobileOpen(false);
     };
-    window.addEventListener("keydown", closeOnEscape);
     window.addEventListener("resize", closeOnDesktopResize);
-    return () => {
-      window.removeEventListener("keydown", closeOnEscape);
-      window.removeEventListener("resize", closeOnDesktopResize);
-    };
+    return () => window.removeEventListener("resize", closeOnDesktopResize);
   }, []);
+
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const opener = mobileMenuButtonRef.current;
+    const previousOverflow = document.body.style.overflow;
+    const previousDocumentOverflow = document.documentElement.style.overflow;
+    const previousPaddingInlineEnd = document.body.style.paddingInlineEnd;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    document.documentElement.dataset.mobileDrawerOpen = "true";
+    document.body.dataset.mobileDrawerOpen = "true";
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) document.body.style.paddingInlineEnd = `${scrollbarWidth}px`;
+
+    const focusableSelector = "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex=\"-1\"])";
+    const focusFirstControl = () => sidebarRef.current?.querySelector<HTMLElement>(focusableSelector)?.focus({ preventScroll: true });
+    const focusFrame = window.requestAnimationFrame(focusFirstControl);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMobileOpen(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const drawer = sidebarRef.current;
+      if (!drawer) return;
+      const focusable = Array.from(drawer.querySelectorAll<HTMLElement>(focusableSelector)).filter((element) => element.offsetParent !== null);
+      if (!focusable.length) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.removeEventListener("keydown", onKeyDown);
+      document.documentElement.removeAttribute("data-mobile-drawer-open");
+      document.body.removeAttribute("data-mobile-drawer-open");
+      document.documentElement.style.overflow = previousDocumentOverflow;
+      document.body.style.overflow = previousOverflow;
+      document.body.style.paddingInlineEnd = previousPaddingInlineEnd;
+      if (opener?.isConnected && opener.offsetParent !== null) opener.focus({ preventScroll: true });
+    };
+  }, [mobileOpen]);
 
   if (!session) return null;
   const role = getCurrentRole();
@@ -104,13 +152,15 @@ export function AppLayout() {
   const isAdministrator = role === "SUPER_ADMIN" || role === "ORG_ADMIN";
   const adminVariant = role === "SUPER_ADMIN" ? "global-admin-shell" : role === "ORG_ADMIN" ? "organization-admin-shell" : "";
   return <div className={`app ${sidebarCollapsed ? "sidebar-collapsed" : ""} ${isAdministrator ? "admin-shell" : ""} ${adminVariant}`} data-theme={theme} dir={direction} lang={locale}>
-    <aside id="app-sidebar" className={`app-sidebar ${mobileOpen ? "open" : ""}`}>
+    <a className="skip-link" href="#main-content">{t("shell.skipToContent")}</a>
+    <aside ref={sidebarRef} id="app-sidebar" className={`app-sidebar ${mobileOpen ? "open" : ""}`} role={mobileOpen ? "dialog" : undefined} aria-modal={mobileOpen || undefined} aria-label={t("shell.mainMenu")}>
       <div className="side-brand">
         <img className="side-brand-icon" src="/brand/nivasafe-icon.png" alt="" aria-hidden="true"/>
         <div className="side-brand-copy">
           <small>{t(role === "SUPER_ADMIN" ? "brand.adminWorkspace" : role === "ORG_ADMIN" ? "brand.organizationAdminWorkspace" : "brand.hseWorkspace")}</small>
         </div>
-        <button type="button" className="sidebar-toggle" onClick={toggleSidebar} aria-expanded={!sidebarCollapsed} aria-controls="app-sidebar" aria-label={sidebarCollapsed ? t("shell.openSidebar") : t("shell.collapseSidebar")} title={sidebarCollapsed ? t("shell.openSidebar") : t("shell.collapseSidebar")}><Icon name="arrow" size={16}/></button>
+        <button type="button" className="mobile-drawer-close" data-mobile-drawer-close aria-label={t("shell.closeMenu")} onClick={() => setMobileOpen(false)}>×</button>
+        <IconButton icon="arrow" iconSize={16} className="sidebar-toggle" onClick={toggleSidebar} aria-expanded={!sidebarCollapsed} aria-controls="app-sidebar" label={sidebarCollapsed ? t("shell.openSidebar") : t("shell.collapseSidebar")}/>
       </div>
       <nav className="side-nav" aria-label={t("shell.mainMenu")}>
         {groups.map((group) => <div className="nav-group" key={group}>
@@ -120,28 +170,38 @@ export function AppLayout() {
           </NavLink>)}
         </div>)}
       </nav>
-      <Link className="side-user" to="/profile" aria-label={t("nav.profile")} title={t("nav.profile")}>
+      <div className="side-utilities" aria-label={t("shell.utilities")}>
+        {organizationInactive && <Link className="subscription-pill side-subscription-pill" to="/organizations"><Icon name="warning" size={15}/> {t("shell.inactiveOrganization")}</Link>}
+        {!organizationInactive && subscriptionBlocked && <Link className="subscription-pill side-subscription-pill" to="/organizations"><Icon name="warning" size={15}/> {t("shell.activateSubscription")}</Link>}
+        <div className="side-utility-controls">
+          <ThemeSwitcher theme={theme} onChange={changeTheme}/>
+          <LanguageSwitcher className="side-language-switch" onChange={persistLocale}/>
+        </div>
+      </div>
+      <Link className="side-user" to="/profile" aria-label={t("nav.profile")} title={t("nav.profile")} onClick={() => setMobileOpen(false)}>
         <div className="avatar">{session.user.displayName[0]}</div>
         <div><strong>{session.user.displayName}</strong><small>{roleLabel(role)}</small></div>
       </Link>
-      <button className="side-logout" onClick={logout}><Icon name="logout" size={18}/> {t("shell.logoutAccount")}</button>
+      <button type="button" className="side-logout" onClick={logout}><Icon name="logout" size={18}/> {t("shell.logoutAccount")}</button>
     </aside>
-    {mobileOpen && <button className="sidebar-backdrop" aria-label={t("shell.closeMenu")} onClick={() => setMobileOpen(false)}/>}
+    {mobileOpen && <button type="button" className="sidebar-backdrop" aria-label={t("shell.closeMenu")} onClick={() => setMobileOpen(false)}/>}
     <section className="content">
       <header className="topbar">
         <div className="topbar-title">
-          <button type="button" className="mobile-menu" onClick={() => setMobileOpen(true)} aria-expanded={mobileOpen} aria-controls="app-sidebar" aria-label={t("shell.openSidebar")}><Icon name="menu"/></button>
-          <div><div className="eyebrow">{t(role === "SUPER_ADMIN" ? "brand.adminWorkspace" : role === "ORG_ADMIN" ? "brand.organizationAdminWorkspace" : "brand.workspace")}</div><strong>{t(current)}</strong></div>
+          <IconButton ref={mobileMenuButtonRef} icon="menu" className="mobile-menu" onClick={() => setMobileOpen(true)} aria-expanded={mobileOpen} aria-controls="app-sidebar" label={t("shell.openSidebar")}/>
+          <div><div className="eyebrow">{t(role === "SUPER_ADMIN" ? "brand.adminWorkspace" : role === "ORG_ADMIN" ? "brand.organizationAdminWorkspace" : "brand.workspace")}</div><strong title={t(current)} aria-label={t(current)}>{t(current)}</strong></div>
         </div>
         <div className="header-actions">
-          {organizationInactive && <Link className="subscription-pill" to="/organizations"><Icon name="warning" size={15}/> {t("shell.inactiveOrganization")}</Link>}
-          {!organizationInactive && subscriptionBlocked && <Link className="subscription-pill" to="/organizations"><Icon name="warning" size={15}/> {t("shell.activateSubscription")}</Link>}
-          <ThemeSwitcher theme={theme} onChange={changeTheme}/>
-          <LanguageSwitcher className="topbar-language-switch" onChange={persistLocale}/>
+          {organizationInactive && <Link className="subscription-pill topbar-subscription" to="/organizations"><Icon name="warning" size={15}/> {t("shell.inactiveOrganization")}</Link>}
+          {!organizationInactive && subscriptionBlocked && <Link className="subscription-pill topbar-subscription" to="/organizations"><Icon name="warning" size={15}/> {t("shell.activateSubscription")}</Link>}
+          <div className="topbar-secondary-utilities">
+            <ThemeSwitcher theme={theme} onChange={changeTheme}/>
+            <LanguageSwitcher className="topbar-language-switch" onChange={persistLocale}/>
+          </div>
           <NotificationBell/>
         </div>
       </header>
-      <main className="workspace"><Outlet /></main>
+      <main id="main-content" className="workspace" tabIndex={-1}><Outlet /></main>
     </section>
   </div>;
 }

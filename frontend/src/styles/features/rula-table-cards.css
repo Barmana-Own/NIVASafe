@@ -1,0 +1,252 @@
+/* RULA mobile tables use readable cards instead of a horizontal scroll area.
+   This is intentionally limited to phone-sized viewports; desktop and tablet
+   layouts keep their existing table presentation. */
+@media (max-width: 767px) {
+  .rula-smart-analysis .rula-analysis-table-card .table-wrap,
+  .rula-report-page .rula-report-table-wrap,
+  .rula-report-page .rula-correction-table-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    overscroll-behavior-inline: auto;
+  }
+
+  .rula-smart-analysis .rula-analysis-table,
+  .rula-report-page .rula-report-data-table,
+  .rula-report-page .rula-correction-table {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    table-layout: auto;
+    border-collapse: separate;
+    white-space: normal;
+  }
+
+  .rula-smart-analysis .rula-analysis-table thead,
+  .rula-report-page .rula-report-data-table thead,
+  .rula-report-page .rula-correction-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .rula-smart-analysis .rula-analysis-table tbody,
+  .rula-report-page .rula-report-data-table tbody,
+  .rula-report-page .rula-correction-table tbody {
+    display: grid;
+    gap: .6rem;
+    padding: .6rem;
+  }
+
+  .rula-smart-analysis .rula-analysis-table tbody > tr,
+  .rula-report-page .rula-report-data-table tbody > tr,
+  .rula-report-page .rula-correction-table tbody > tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .55rem .7rem;
+    min-width: 0;
+    padding: .7rem;
+    border: 1px solid #dce8ef;
+    border-radius: 11px;
+    background: #fff;
+    box-shadow: 0 4px 14px rgba(27, 81, 111, .045);
+  }
+
+  .rula-smart-analysis .rula-analysis-table tbody > tr:nth-child(even),
+  .rula-report-page .rula-report-data-table tbody > tr:nth-child(even),
+  .rula-report-page .rula-correction-table tbody > tr:nth-child(even) {
+    background: #fff;
+  }
+
+  .rula-smart-analysis .rula-analysis-table tbody > tr:hover,
+  .rula-report-page .rula-report-data-table tbody > tr:hover,
+  .rula-report-page .rula-correction-table tbody > tr:hover {
+    background: #fff;
+  }
+
+  .rula-smart-analysis .rula-analysis-table tbody > tr > td,
+  .rula-report-page .rula-report-data-table tbody > tr > td,
+  .rula-report-page .rula-correction-table tbody > tr > td {
+    display: grid;
+    align-content: start;
+    gap: .2rem;
+    width: auto !important;
+    min-width: 0;
+    max-width: none;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    text-align: start !important;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  .rula-smart-analysis .rula-analysis-table tbody > tr > td::before,
+  .rula-report-page .rula-report-data-table tbody > tr > td::before,
+  .rula-report-page .rula-correction-table tbody > tr > td::before {
+    content: attr(data-label);
+    color: #6c879a;
+    font-size: .54rem;
+    font-weight: 800;
+    line-height: 1.5;
+  }
+
+  .rula-smart-analysis .rula-analysis-table tbody > tr > td:nth-child(1),
+  .rula-smart-analysis .rula-analysis-table tbody > tr > td:last-child,
+  .rula-report-page .rula-report-data-table tbody > tr > td:nth-child(1),
+  .rula-report-page .rula-report-data-table tbody > tr > td:nth-child(3),
+  .rula-report-page .rula-report-data-table tbody > tr > td:nth-child(8),
+  .rula-report-page .rula-report-data-table tbody > tr > td:last-child,
+  .rula-report-page .rula-correction-table tbody > tr > td:nth-child(1),
+  .rula-report-page .rula-correction-table tbody > tr > td:nth-child(2),
+  .rula-report-page .rula-correction-table tbody > tr > td:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .rula-smart-analysis .rula-analysis-table tbody > tr > td:last-child,
+  .rula-report-page .rula-report-data-table tbody > tr > td:last-child,
+  .rula-report-page .rula-correction-table tbody > tr > td:last-child {
+    padding-top: .5rem !important;
+    border-top: 1px solid #e8f0f4 !important;
+  }
+
+  .rula-smart-analysis .rula-analysis-table .rula-source-stack,
+  .rula-smart-analysis .rula-analysis-table .rula-row-actions,
+  .rula-report-page .rula-report-data-table .report-table-actions {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .rula-smart-analysis .rula-analysis-table .rula-row-actions {
+    justify-content: flex-start;
+  }
+
+  .rula-report-page .rula-report-data-table .report-table-stack,
+  .rula-report-page .rula-correction-table .rula-suggestion-content {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .rula-report-page .rula-report-data-table .report-table-stack > span,
+  .rula-report-page .rula-correction-table .rula-suggestion-content > span {
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .rula-report-page .rula-report-data-table .report-table-actions {
+    justify-content: flex-start;
+  }
+
+  .rula-report-page .rula-correction-table tbody > tr.selected {
+    border-color: #9ed8ca;
+    background: #f1fbf9;
+  }
+
+  .rula-report-page .rula-correction-table tbody > tr.selected > td {
+    background: transparent !important;
+  }
+
+  .rula-report-page .rula-correction-table .rula-correction-toggle {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .rula-smart-analysis .rula-analysis-table tbody > tr {
+    grid-template-areas:
+      "body body"
+      "angle status"
+      "source score"
+      "operations operations";
+    gap: .5rem .65rem;
+    padding: .65rem;
+    border-color: #d5e5ee;
+    border-radius: 13px;
+    background: linear-gradient(180deg, #fff, #fbfdff);
+    box-shadow: 0 5px 16px rgba(27, 81, 111, .06);
+  }
+
+  .rula-smart-analysis .rula-analysis-table tbody > tr > td:nth-child(1) {
+    grid-area: body;
+    align-items: center;
+    padding: 0 0 .55rem !important;
+    border: 0 !important;
+    border-bottom: 1px solid #e8f0f4 !important;
+    background: transparent !important;
+    text-align: start !important;
+  }
+
+  .rula-smart-analysis .rula-analysis-table tbody > tr > td:nth-child(2) { grid-area: angle; }
+  .rula-smart-analysis .rula-analysis-table tbody > tr > td:nth-child(3) { grid-area: status; }
+  .rula-smart-analysis .rula-analysis-table tbody > tr > td:nth-child(4) { grid-area: source; }
+  .rula-smart-analysis .rula-analysis-table tbody > tr > td:nth-child(5) { grid-area: score; }
+
+  .rula-smart-analysis .rula-analysis-table tbody > tr > td:nth-child(n+2):nth-child(-n+5) {
+    align-items: start;
+    padding: .42rem .48rem !important;
+    border: 1px solid #e5eef4 !important;
+    border-radius: 9px;
+    background: #fafdff !important;
+    text-align: start !important;
+  }
+
+  .rula-smart-analysis .rula-analysis-table tbody > tr > td:nth-child(6) {
+    grid-area: operations;
+    padding: .55rem 0 0 !important;
+    border: 0 !important;
+    border-top: 1px solid #e8f0f4 !important;
+    background: transparent !important;
+  }
+
+  .rula-smart-analysis .rula-analysis-table tbody > tr > td::before {
+    color: #7892a3;
+    font-size: .51rem;
+    font-weight: 850;
+    line-height: 1.45;
+  }
+
+  .rula-smart-analysis .rula-analysis-table tbody > tr > td:nth-child(1) strong {
+    font-size: .7rem;
+  }
+
+  .rula-smart-analysis .rula-analysis-table .rula-source-stack,
+  .rula-smart-analysis .rula-analysis-table .rula-row-actions {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .rula-smart-analysis .rula-analysis-table .rula-source-stack {
+    justify-items: start;
+  }
+
+  .rula-smart-analysis .rula-analysis-table .rula-source-badge,
+  .rula-smart-analysis .rula-analysis-table .rula-detection-badge {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
+    justify-content: center;
+    line-height: 1.45;
+  }
+
+  .rula-smart-analysis .rula-analysis-table .rula-suggested-score {
+    width: 100%;
+    min-height: 28px;
+  }
+
+  .rula-smart-analysis .rula-analysis-table .rula-row-actions {
+    justify-content: flex-start;
+  }
+
+  .rula-smart-analysis .rula-analysis-table .rula-edit-button {
+    width: 30px;
+    height: 30px;
+  }
+}

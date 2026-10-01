@@ -1,0 +1,20 @@
+/* Installable PWA surfaces */
+.pwa-install, .pwa-update { position: fixed; inset-inline: auto 1rem; bottom: 1rem; z-index: 80; display: flex; align-items: center; justify-content: space-between; gap: 1rem; max-width: min(560px, calc(100vw - 2rem)); padding: .85rem 1rem; border: 1px solid #b9ddd6; border-radius: 16px; background: rgba(255,255,255,.97); box-shadow: 0 18px 45px rgba(20, 62, 56, .16); color: var(--ink); font-size: .75rem; box-sizing: border-box; }
+.pwa-install { inset-inline: 1rem auto; max-width: min(510px, calc(100vw - 2rem)); border-color: #b8d4ec; box-shadow: 0 18px 45px rgba(27, 77, 125, .18); }
+.pwa-install-copy { display: flex; align-items: center; gap: .7rem; min-width: 0; }
+.pwa-install-copy strong { display: block; color: #174b7f; font-size: .8rem; }
+.pwa-install-copy p { margin: .2rem 0 0; color: var(--muted); font-size: .68rem; line-height: 1.7; }
+.pwa-install-icon { width: 38px; height: 38px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 12px; color: #1c659d; background: #eaf4fb; }
+.pwa-install-actions, .pwa-update-actions { display: flex; align-items: center; gap: .45rem; flex: 0 0 auto; }
+.pwa-install button, .pwa-update button { min-height: 38px; }
+.pwa-install .primary, .pwa-update .primary { padding: .55rem .8rem; font-size: .7rem; }
+.pwa-install .text-button, .pwa-update .text-button { font-size: .68rem; white-space: nowrap; }
+@media (max-width: 620px) {
+  .pwa-install, .pwa-update { inset-inline: .7rem; bottom: .7rem; max-width: none; align-items: flex-start; flex-direction: column; gap: .65rem; padding-bottom: calc(.85rem + env(safe-area-inset-bottom)); }
+  .pwa-install-copy { width: 100%; }
+  .pwa-install-actions, .pwa-update-actions { width: 100%; justify-content: flex-end; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pwa-install, .pwa-update { animation: none; transition: none; }
+}

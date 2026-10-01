@@ -1,0 +1,27 @@
+/* Portal-backed assessment overlays stay inside the viewport without widening data surfaces. */
+.rula-edit-backdrop,
+.assessment-image-lightbox-backdrop {
+  z-index: var(--z-overlay-dialog);
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.rula-edit-dialog {
+  max-height: min(calc(100dvh - 2rem), 720px);
+  overflow-y: auto;
+}
+.assessment-image-lightbox {
+  max-width: calc(100vw - 2rem);
+  max-height: min(calc(100dvh - 2rem), 900px);
+}
+.rula-report-data-table td:last-child .report-inline-details > .report-inline-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  flex: 0 0 25px;
+  width: 25px;
+  height: 25px;
+  margin: 0;
+  border-radius: 50%;
+}

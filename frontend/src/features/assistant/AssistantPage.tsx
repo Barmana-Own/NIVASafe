@@ -126,13 +126,13 @@ export function AssistantPage() {
   }
   return <section className="page-shell assistant-page">
     <PageHeader eyebrow={t("assistant.eyebrow")} title={t("assistant.title")} description={t("assistant.description")}/>
-    {error && <div className="alert error"><Icon name="warning"/>{error}</div>}
+    {error && <div className="alert error" role="alert"><Icon name="warning"/>{error}</div>}
     <div className={`assistant-layout${mobileConversationsOpen ? " history-open" : ""}`}>
       <section id="assistant-conversations-panel" className="conversation-panel" aria-label={t("assistant.conversations")}>
         <div className="conversation-head">
           <div><h3>{t("assistant.conversations")}</h3><small>{(conversations.data?.length ?? 0).toLocaleString(numberLocale)} {t("assistant.conversationCount")}</small></div>
           <div className="conversation-head-actions">
-            <button type="button" className="icon-button accent" onClick={createConversation} title={t("assistant.newConversation")} disabled={sending}><Icon name="plus"/></button>
+            <button type="button" className="icon-button accent" onClick={createConversation} aria-label={t("assistant.newConversation")} title={t("assistant.newConversation")} disabled={sending}><Icon name="plus"/></button>
             <button type="button" className="icon-button assistant-history-close" onClick={() => setMobileConversationsOpen(false)} aria-label={t("assistant.closeConversations")} title={t("assistant.closeConversations")}><span aria-hidden="true">×</span></button>
           </div>
         </div>

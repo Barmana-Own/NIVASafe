@@ -1,0 +1,6 @@
+@media print {
+  .app-sidebar, .topbar, .primary, .ghost, .icon-button, .page-actions { display: none !important; }
+  .app, .content { display: block; }
+  .workspace { padding: 0; }
+  .surface { box-shadow: none; break-inside: avoid; }
+}

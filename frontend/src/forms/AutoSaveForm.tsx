@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEventHandler, type FormHTMLAttrib
 import { del as deleteIndexedDraft, get as getIndexedDraft, set as setIndexedDraft } from "idb-keyval";
 import { Icon } from "../components/UI";
 import { useI18n } from "../i18n";
-import { clearStoredDraft, readStoredDraft, restoreForm, snapshotForm, writeStoredDraft, type AutoSaveDraft } from "./autoSave";
+import { clearStoredDraft, readStoredDraft, restoreForm, sanitizeDraft, snapshotForm, writeStoredDraft, type AutoSaveDraft } from "./autoSave";
 
 type AutoSaveFormProps = Omit<FormHTMLAttributes<HTMLFormElement>, "children" | "onSubmit"> & {
   storageKey: string;
@@ -32,7 +32,8 @@ export function AutoSaveForm({ storageKey, children, className, onSubmit, exclud
     if (stored) { draftRef.current = stored; restoreForm(form, stored); }
     if (!stored) {
       void getIndexedDraft<AutoSaveDraft>(storageKey).then((draft) => {
-        if (active && draft && typeof draft === "object" && !Array.isArray(draft) && formRef.current) { draftRef.current = draft; restoreForm(formRef.current, draft); }
+        const safeDraft = draft && typeof draft === "object" && !Array.isArray(draft) ? sanitizeDraft(draft) : null;
+        if (active && safeDraft && formRef.current) { draftRef.current = safeDraft; restoreForm(formRef.current, safeDraft); }
       }).catch(() => { if (active) setSaveState("error"); });
     }
     const observer = typeof MutationObserver === "undefined" ? null : new MutationObserver(() => { if (draftRef.current) restoreForm(form, draftRef.current); });
