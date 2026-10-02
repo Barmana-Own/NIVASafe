@@ -174,28 +174,31 @@ test.describe("responsive shell and critical interactions", () => {
   });
 
   test("uses the same compact report download button styling as FMEA", async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 900 });
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: width < 500 ? 844 : 900 });
 
-    await authenticate(page, "/fmea/fmea-e2e-1/report");
-    const fmeaPdf = page.locator(".fmea-report-page .page-header .page-actions-inline > button").filter({ hasText: "دانلود PDF" });
-    await expect(fmeaPdf).toBeVisible();
-    const fmeaGeometry = await fmeaPdf.evaluate((button) => {
-      const rect = button.getBoundingClientRect();
-      const style = getComputedStyle(button);
-      return { width: rect.width, height: rect.height, fontSize: style.fontSize, padding: style.padding, radius: style.borderRadius };
-    });
+      await authenticate(page, "/fmea/fmea-e2e-1/report");
+      const fmeaPdf = page.locator(".fmea-report-page .page-header .page-actions-inline > button").filter({ hasText: "دانلود PDF" });
+      await expect(fmeaPdf).toBeVisible();
+      const fmeaGeometry = await fmeaPdf.evaluate((button) => {
+        const rect = button.getBoundingClientRect();
+        const style = getComputedStyle(button);
+        return { width: rect.width, height: rect.height, fontSize: style.fontSize, padding: style.padding, radius: style.borderRadius };
+      });
 
-    await authenticate(page, "/rula/rula-e2e-1/report");
-    const rulaPdf = page.locator(".rula-report-page .page-header .page-actions-inline > button").filter({ hasText: "دانلود PDF" });
-    await expect(rulaPdf).toBeVisible();
-    const rulaGeometry = await rulaPdf.evaluate((button) => {
-      const rect = button.getBoundingClientRect();
-      const style = getComputedStyle(button);
-      return { width: rect.width, height: rect.height, fontSize: style.fontSize, padding: style.padding, radius: style.borderRadius };
-    });
+      await authenticate(page, "/rula/rula-e2e-1/report");
+      const rulaPdf = page.locator(".rula-report-page .page-header .page-actions-inline > button").filter({ hasText: "دانلود PDF" });
+      await expect(rulaPdf).toBeVisible();
+      await expect(page.locator(".rula-report-page .page-title-block h2")).toHaveText("نتیجه ارزیابی RULA");
+      const rulaGeometry = await rulaPdf.evaluate((button) => {
+        const rect = button.getBoundingClientRect();
+        const style = getComputedStyle(button);
+        return { width: rect.width, height: rect.height, fontSize: style.fontSize, padding: style.padding, radius: style.borderRadius };
+      });
 
-    expect(rulaGeometry).toEqual(fmeaGeometry);
-    expect(rulaGeometry.height).toBe(44);
+      expect(rulaGeometry, `RULA/FMEA report button geometry at ${width}px`).toEqual(fmeaGeometry);
+      expect(rulaGeometry.height).toBe(44);
+    }
   });
 
   test("shows RULA-specific stage-three results and updates recommendation selection progress", async ({ page }) => {

@@ -3,8 +3,10 @@
 .fmea-report-page > .page-header { align-items: center; padding-block: 0; }
 .fmea-report-page .page-title-block h2 { margin-block: .15rem .2rem; font-size: clamp(1.35rem, 2vw, 1.85rem); }
 .fmea-report-page .page-title-block p { font-size: .72rem; }
-.fmea-report-page .page-actions-inline { gap: .3rem; }
-.fmea-report-page .page-actions-inline > button { min-block-size: var(--control-height-compact); padding: .38rem .58rem; border-radius: 9px; font-size: .62rem; }
+.fmea-report-page .page-actions-inline,
+.rula-report-page .page-actions-inline { gap: .3rem; }
+.fmea-report-page .page-actions-inline > button,
+.rula-report-page .page-actions-inline > button { min-block-size: var(--control-height-compact); padding: .38rem .58rem; border-radius: 9px; font-size: .62rem; }
 .fmea-report-status-row { display: flex; align-items: center; justify-content: space-between; gap: .6rem; min-height: 29px; padding-inline: .2rem; }
 .fmea-report-completion-badge { display: inline-flex; align-items: center; gap: .3rem; padding: .28rem .55rem; border-radius: 999px; color: #18765b; background: #e0f4e9; font-size: .62rem; font-weight: 850; }
 .fmea-report-completion-badge .status-badge { padding: 0; color: inherit; background: transparent; font-size: inherit; }
