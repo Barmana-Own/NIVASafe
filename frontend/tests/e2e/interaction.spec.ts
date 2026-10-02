@@ -207,13 +207,17 @@ test.describe("responsive shell and critical interactions", () => {
     await expect(overview.getByText("خلاصه مدیریتی ارزیابی RULA")).toBeVisible();
     await expect(overview.getByText("توزیع سطح اثر عوامل RULA")).toBeVisible();
     await expect(overview.getByText("پیشرفت انتخاب اقدامات اصلاحی")).toBeVisible();
+    await expect(overview.getByTestId("rula-factor-impact-chart").locator("svg circle.rula-overview-donut-segment").first()).toBeVisible();
 
     const selectionProgress = overview.getByTestId("rula-suggestion-selection-progress");
+    await expect(selectionProgress).toBeVisible();
     await expect(selectionProgress).toHaveAttribute("aria-valuenow", "0");
+    await expect.poll(() => selectionProgress.evaluate((element) => getComputedStyle(element).backgroundImage)).toContain("conic-gradient");
     const selectSuggestion = page.locator(".rula-correction-table .rula-correction-toggle").first();
     await expect(selectSuggestion).toBeVisible();
     await selectSuggestion.click();
     await expect(selectionProgress).toHaveAttribute("aria-valuenow", "1");
+    await expect.poll(() => selectionProgress.evaluate((element) => getComputedStyle(element).backgroundImage)).toContain("conic-gradient");
 
     for (const width of [320, 390, 768, 1280]) {
       await page.setViewportSize({ width, height: width < 500 ? 844 : 900 });
