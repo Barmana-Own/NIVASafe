@@ -173,6 +173,33 @@ test.describe("responsive shell and critical interactions", () => {
     await expect(dialog).toHaveCount(0);
   });
 
+  test("shows RULA-specific stage-three results and updates recommendation selection progress", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await authenticate(page, "/rula?edit=rula-e2e-1&step=3");
+
+    const overview = page.getByTestId("rula-assessment-overview");
+    await expect(overview).toBeVisible();
+    await expect(overview.getByText("خلاصه مدیریتی ارزیابی RULA")).toBeVisible();
+    await expect(overview.getByText("توزیع سطح اثر عوامل RULA")).toBeVisible();
+    await expect(overview.getByText("پیشرفت انتخاب اقدامات اصلاحی")).toBeVisible();
+
+    const selectionProgress = overview.getByTestId("rula-suggestion-selection-progress");
+    await expect(selectionProgress).toHaveAttribute("aria-valuenow", "0");
+    const selectSuggestion = page.locator(".rula-correction-table .rula-correction-toggle").first();
+    await expect(selectSuggestion).toBeVisible();
+    await selectSuggestion.click();
+    await expect(selectionProgress).toHaveAttribute("aria-valuenow", "1");
+
+    for (const width of [320, 390, 768, 1280]) {
+      await page.setViewportSize({ width, height: width < 500 ? 844 : 900 });
+      const hasNoPageOverflow = await page.evaluate(() =>
+        document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1
+        && document.body.scrollWidth <= window.innerWidth + 1,
+      );
+      expect(hasNoPageOverflow, `RULA stage 3 overflow at ${width}px`).toBe(true);
+    }
+  });
+
   test("renders the admin user data view without page-level horizontal overflow", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await authenticate(page, "/admin");

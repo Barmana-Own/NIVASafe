@@ -95,6 +95,14 @@ test.describe("@visual deterministic responsive surfaces", () => {
     await capture(page, "rula-report-en-white", 1280, 1000, "/rula/rula-e2e-1/report", { locale: "en", theme: "white" });
   });
 
+  test("rula-stage-three-phone-390", async ({ page }) => {
+    await capture(page, "rula-stage-three", 390, 900, "/rula?edit=rula-e2e-1&step=3");
+  });
+
+  test("rula-stage-three-desktop-1280", async ({ page }) => {
+    await capture(page, "rula-stage-three", 1280, 900, "/rula?edit=rula-e2e-1&step=3");
+  });
+
   test("fmea-report-english-white-390", async ({ page }) => {
     await capture(page, "fmea-report-en-white", 390, 900, "/fmea/fmea-e2e-1/report", { locale: "en", theme: "white" });
   });
