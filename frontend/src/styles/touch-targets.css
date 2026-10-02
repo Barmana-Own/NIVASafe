@@ -1,0 +1,112 @@
+/*
+ * Interactive target contract.
+ *
+ * Feature styles may tune typography, padding and visual density, but they
+ * must not reduce the usable target below the shared design-system tokens.
+ * This file is deliberately last in the interactive cascade so legacy
+ * feature selectors cannot silently shrink a control in a later breakpoint.
+ */
+:where(
+  button.fmea-add-risk-row-trigger,
+  button.fmea-suggestion-ai-button,
+  button.fmea-description-ai,
+  .fmea-description-suggestion-actions > button,
+  button.fmea-risk-ai-toggle,
+  button.fmea-risk-ai-suggestion,
+  button.rula-correction-toggle,
+  button.report-list-toggle,
+  button.report-collapse-toggle,
+  button.fmea-search-clear,
+  .fmea-process-image-dropzone .fake-button,
+  .fmea-assistant-toggle,
+  .fmea-risk-ai-head > .ghost,
+  .fmea-add-item > .ghost,
+  .fmea-risk-legend-item,
+  .fmea-score-ai-actions > button,
+  .risk-table-pagination button,
+  button.risk-sort-direction,
+  .fmea-final-table-export-actions > button,
+  .fmea-report-page .page-actions-inline > button,
+  .fmea-report-primary-grid .surface-actions > button,
+  .fmea-report-page .report-bottom-actions button,
+  .fmea-report-stepper > button,
+  .knowledge-attachment > .icon-button,
+  .rula-side-tabs > button,
+  .status-toggle,
+  .theme-option,
+  .conversation-list > button,
+  .suggestions button,
+  .fmea-selected-items button,
+  .rula-posture-file-meta .text-button,
+  .pwa-install button,
+  .pwa-update button,
+  button.text-button,
+  a.text-button,
+  .password-toggle,
+  .widget-visibility-toggle,
+  .widget-remove-toggle,
+  .widget-restore-toggle,
+  .rula-edit-button,
+  .rula-confirm-button,
+  .report-table-actions > .icon-button,
+  .report-inline-details > .report-inline-trigger,
+  .fmea-report-ai-detail-card-head > .icon-button,
+  .localized-date-day,
+  .localized-date-clear,
+  .styled-select-option,
+  .language-option,
+  .path-nav-item,
+  .side-logout,
+  .dashboard-widget .text-link
+) {
+  min-inline-size: var(--touch-target);
+  min-block-size: var(--control-height-compact);
+}
+
+:where(
+  button.fmea-suggestion-ai-button,
+  .fmea-report-page .page-actions-inline > .primary
+) {
+  min-block-size: var(--control-height);
+}
+
+:where(
+  .ui-icon-button,
+  .icon-button,
+  .report-inline-details > .report-inline-trigger,
+  .password-toggle,
+  .rula-edit-button,
+  .rula-confirm-button
+) {
+  flex: 0 0 auto;
+}
+
+.report-inline-details > .report-inline-trigger {
+  inline-size: var(--touch-target);
+  block-size: var(--touch-target);
+}
+
+.wizard-stepper > button {
+  min-inline-size: var(--touch-target);
+  min-block-size: var(--control-height-compact);
+}
+
+/* Full-width action controls still satisfy the inline target through their
+ * containing table/card column, while remaining fluid at narrow widths. */
+.rula-correction-table .rula-correction-toggle {
+  inline-size: 100%;
+  min-inline-size: var(--touch-target);
+}
+
+@media (max-width: 767px) {
+  :where(
+    .fmea-description-head,
+    .fmea-suggestion-board-actions,
+    .fmea-risk-ai-head,
+    .rula-side-tabs,
+    .wizard-actions,
+    .page-actions-inline
+  ) > :is(button, a, .fake-button) {
+    min-block-size: var(--control-height-compact);
+  }
+}

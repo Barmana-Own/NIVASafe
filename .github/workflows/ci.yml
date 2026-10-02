@@ -23,3 +23,51 @@ jobs:
       - run: pnpm --filter @nivasafe/web exec playwright install --with-deps chromium
       - run: pnpm --filter @nivasafe/web test:e2e
       - run: pnpm --filter @nivasafe/web test:overflow
+      - name: Upload interaction and overflow diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-quality-diagnostics-${{ runner.os }}
+          path: |
+            frontend/playwright-results/
+            frontend/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  visual:
+    # The tracked Chromium snapshots are verified in the Windows workspace.
+    # Keep visual comparison on that OS to avoid system-font/rasterization drift.
+    runs-on: windows-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.13.1}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm --filter @nivasafe/domain build
+      - run: pnpm --filter @nivasafe/web run playwright:install:chromium
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/ms-playwright
+      - name: Run visual regression suite
+        run: pnpm --filter @nivasafe/web test:visual
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/ms-playwright
+      - name: Upload visual regression diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-visual-diagnostics-${{ runner.os }}
+          path: |
+            frontend/playwright-results/
+            frontend/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7

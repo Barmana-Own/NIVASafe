@@ -43,6 +43,12 @@ export default defineConfig(({ mode }) => {
       host: "0.0.0.0",
       port: 5043,
       strictPort: true,
+      // Playwright writes traces and reports under the frontend package. They
+      // are diagnostics, not application inputs; watching them causes HMR page
+      // reloads during visual captures and makes screenshots nondeterministic.
+      watch: {
+        ignored: ["**/playwright-results/**", "**/playwright-report/**"],
+      },
     },
     preview: {
       host: "0.0.0.0",

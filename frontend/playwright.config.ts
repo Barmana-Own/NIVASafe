@@ -13,10 +13,12 @@ export default defineConfig({
       animations: "disabled",
       caret: "hide",
       scale: "css",
-      maxDiffPixelRatio: 0.08,
+      maxDiffPixelRatio: 0.02,
     },
   },
-  reporter: process.env.CI ? [["line"], ["html", { open: "never" }]] : [["list"]],
+  reporter: process.env.CI
+    ? [["line"], ["html", { open: "never", outputFolder: "./playwright-report" }]]
+    : [["list"]],
   outputDir: "./playwright-results",
   snapshotPathTemplate: "{testDir}/__snapshots__/{projectName}/{testFilePath}/{arg}{ext}",
   use: {
@@ -24,6 +26,7 @@ export default defineConfig({
     locale: "fa-IR",
     timezoneId: "Asia/Tehran",
     colorScheme: "light",
+    deviceScaleFactor: 1,
     serviceWorkers: "block",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",

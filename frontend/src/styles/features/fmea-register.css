@@ -6,8 +6,8 @@
 .fmea-report-table-toolbar .risk-table-search { min-height: 42px; }.fmea-report-table-toolbar .risk-table-search input { min-height: 42px; padding-block: .62rem; border-color: #cfe2ed; background: #fbfdff; }.fmea-report-table-toolbar .risk-table-search .icon { color: #3986c8; }.fmea-report-table-toolbar .risk-table-search:focus-within input { border-color: #3986c8; box-shadow: 0 0 0 3px rgba(57, 134, 200, .12); }
 .risk-table-controls { display: flex; align-items: end; gap: .55rem; }
 .risk-table-controls label { display: grid; gap: .25rem; min-width: 145px; color: var(--muted); font-size: .64rem; font-weight: 750; }
-.risk-table-controls select { min-height: 39px; padding-block: .45rem; font-size: .7rem; }
-.risk-sort-direction { min-width: 42px; min-height: 39px; padding: 0 .65rem; font-size: 1.1rem; }
+.risk-table-controls select { min-block-size: var(--control-height-compact); padding-block: .45rem; font-size: .7rem; }
+.risk-sort-direction { min-inline-size: var(--touch-target); min-block-size: var(--control-height-compact); padding: 0 .65rem; font-size: 1.1rem; }
 .risk-score-guide { margin-bottom: .9rem; border: 1px solid #d6e5f1; border-radius: 13px; background: #f8fbfe; }
 .risk-score-guide summary { display: flex; align-items: center; gap: .45rem; cursor: pointer; padding: .72rem .85rem; color: #255b88; font-size: .75rem; font-weight: 850; list-style: none; }
 .risk-score-guide summary::-webkit-details-marker { display: none; }
@@ -27,7 +27,7 @@
 .risk-controls-cell span { display: block; }
 .risk-controls-cell b { color: #50718c; font-size: .65rem; }
 .risk-row-actions { display: inline-flex; align-items: center; gap: .35rem; }
-.risk-row-actions .icon-button { width: 32px; height: 32px; }
+.risk-row-actions .icon-button { inline-size: var(--touch-target); min-inline-size: var(--touch-target); block-size: var(--touch-target); min-block-size: var(--touch-target); }
 .risk-detail-panel, .risk-item-editor-form { margin-top: .9rem; padding: 1rem; border: 1px solid #cfe1ef; border-radius: 15px; background: #f8fbfe; }
 .risk-detail-head, .risk-item-editor-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .8rem; margin-bottom: .85rem; }
 .risk-detail-head strong, .risk-detail-head small, .risk-item-editor-head strong, .risk-item-editor-head small { display: block; }

@@ -59,7 +59,7 @@
 .fmea-final-table-export-copy strong { color: #245273; font-size: .68rem; }
 .fmea-final-table-export-copy small { color: #7892a8; font-size: .59rem; line-height: 1.7; }
 .fmea-final-table-export-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .35rem; }
-.fmea-final-table-export-actions .ghost { min-height: 31px; padding: .32rem .5rem; border-radius: 8px; color: #245b82; font-size: .6rem; }
+.fmea-final-table-export-actions .ghost { min-block-size: var(--control-height-compact); padding: .32rem .5rem; border-radius: 8px; color: #245b82; font-size: .6rem; }
 .fmea-report-table-wrap,
 .rula-report-table-wrap { border-radius: 10px; }
 .fmea-report-data-table { min-width: 1180px; }
@@ -78,7 +78,7 @@
 .fmea-report-data-table .report-table-actions,
 .rula-report-data-table .report-table-actions { min-width: 5.4rem; gap: .2rem; }
 .fmea-report-data-table .report-table-actions .icon-button,
-.rula-report-data-table .report-table-actions .icon-button { width: 25px; height: 25px; }
+.rula-report-data-table .report-table-actions .icon-button { inline-size: var(--touch-target); min-inline-size: var(--touch-target); block-size: var(--touch-target); min-block-size: var(--touch-target); }
 .fmea-report-data-table .status-badge,
 .rula-report-data-table .status-badge { padding: .16rem .28rem; font-size: .49rem; }
 .danger-button { color: #b34a4a; border-color: #eccaca; }
@@ -142,9 +142,11 @@
 }
 .rula-report-data-table td:last-child .report-table-actions > .report-inline-details {
   display: inline-flex;
-  flex: 0 0 25px;
-  width: 25px;
-  height: 25px;
+  flex: 0 0 var(--touch-target);
+  inline-size: var(--touch-target);
+  min-inline-size: var(--touch-target);
+  block-size: var(--touch-target);
+  min-block-size: var(--touch-target);
 }
 .rula-report-data-table td:last-child .report-inline-details > .report-inline-trigger,
 .rula-report-data-table td:last-child .report-table-actions > .icon-button {
@@ -152,9 +154,11 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  flex: 0 0 25px;
-  width: 25px;
-  height: 25px;
+  flex: 0 0 var(--touch-target);
+  inline-size: var(--touch-target);
+  min-inline-size: var(--touch-target);
+  block-size: var(--touch-target);
+  min-block-size: var(--touch-target);
   margin: 0;
 }
 
@@ -341,7 +345,7 @@
   width: 100%;
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(3, 27px);
+  grid-template-columns: repeat(3, var(--touch-target));
   justify-content: center;
   align-items: center;
   gap: .3rem;
@@ -365,7 +369,7 @@
     min-width: 980px;
   }
   .rula-assessment-register-table .report-table-actions {
-    grid-template-columns: repeat(2, 27px);
+    grid-template-columns: repeat(2, var(--touch-target));
   }
 }
 .rula-suggested-score.rula-unreviewed-value { background: #f3f6f8; color: #8a9ba7 !important; }

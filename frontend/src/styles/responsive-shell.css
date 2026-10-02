@@ -46,13 +46,15 @@
     height: 100vh;
     max-height: none;
     min-height: 0;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     padding-block-start: calc(1rem + env(safe-area-inset-top));
     padding-block-end: calc(1rem + env(safe-area-inset-bottom));
   }
   .side-nav {
     min-height: 0;
-    flex: 1 1 auto;
+    flex: 1 0 auto;
+    overflow: visible;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
   }
@@ -294,7 +296,7 @@ body[data-mobile-drawer-open="true"] {
 .rula-confirm-button:hover { border-color: #65b998; background: #e5f7ee; }
 .rula-review-notice { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .7rem .8rem; border: 1px solid #efd8ad; border-radius: 11px; background: #fff9ec; color: #8a641c; }
 .rula-side-tabs { display: inline-flex; align-items: center; gap: .35rem; width: fit-content; padding: .25rem; border: 1px solid #d8e8f3; border-radius: 999px; background: #f5faff; }
-.rula-side-tabs button { min-height: 30px; padding: .35rem .8rem; border: 0; border-radius: 999px; background: transparent; color: #5f7b8f; font: inherit; font-size: .64rem; font-weight: 800; cursor: pointer; }
+.rula-side-tabs button { min-inline-size: var(--touch-target); min-block-size: var(--control-height-compact); padding: .35rem .8rem; border: 0; border-radius: 999px; background: transparent; color: #5f7b8f; font: inherit; font-size: .64rem; font-weight: 800; cursor: pointer; }
 .rula-side-tabs button:hover, .rula-side-tabs button:focus-visible { color: #1f6fa9; background: #e8f4fd; }
 .rula-side-tabs button.active { color: #fff; background: #2e80bd; box-shadow: 0 4px 12px rgba(46,128,189,.2); }
 .rula-side-score-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem; }

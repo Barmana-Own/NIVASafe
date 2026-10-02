@@ -133,7 +133,7 @@ export const dashboard = {
   counters: { projects: 3, fmeas: 4, rulas: 2, openActions: 5, overdueActions: 1, criticalItems: 1, members: 8, knowledgeDocs: 6, pendingAI: 0 },
   riskDistribution: [{ riskLevel: "CRITICAL", _count: 1 }, { riskLevel: "HIGH", _count: 2 }, { riskLevel: "MEDIUM", _count: 3 }, { riskLevel: "LOW", _count: 4 }],
   actionDistribution: [{ status: "OPEN", _count: 3 }, { status: "IN_PROGRESS", _count: 1 }, { status: "COMPLETED", _count: 2 }],
-  recent: { fmeas: [{ id: fmeaRecord.id, title: fmeaRecord.title, code: fmeaRecord.code, status: "DRAFT", updatedAt: fmeaRecord.updatedAt }], rulas: [{ id: rulaRecord.id, title: rulaRecord.title, score: rulaRecord.score, actionLevel: rulaRecord.actionLevel, updatedAt: rulaRecord.updatedAt }] },
+  recent: { fmeas: [{ id: fmeaRecord.id, title: fmeaRecord.title, code: fmeaRecord.code, status: "DRAFT" }], rulas: [{ id: rulaRecord.id, title: rulaRecord.title, score: rulaRecord.score, actionLevel: rulaRecord.actionLevel, updatedAt: rulaRecord.updatedAt }] },
 };
 
 export const adminOverview = {

@@ -6,41 +6,44 @@ const reportWidths = [320, 390, 430, 768, 1280];
 
 async function capture(page: Parameters<typeof authenticate>[0], name: string, width: number, height: number, path: string, options: { locale?: "fa" | "en"; theme?: "blue" | "white" } = {}) {
   await page.setViewportSize({ width, height });
+  await page.clock.setFixedTime(new Date("2026-01-16T10:45:00.000Z"));
   await authenticate(page, path, options);
-  await waitForPageReady(page);
   await expect(page).toHaveScreenshot(`${name}-${width}.png`, { fullPage: true });
+}
+
+async function openPublicPage(page: Parameters<typeof authenticate>[0], path: string, width: number, height: number) {
+  await page.setViewportSize({ width, height });
+  await page.clock.setFixedTime(new Date("2026-01-16T10:45:00.000Z"));
+  await page.addInitScript(() => {
+    localStorage.setItem("nivasafe-locale", "fa");
+    localStorage.setItem("nivasafe-theme", "blue");
+  });
+  await page.goto(path, { waitUntil: "domcontentloaded" });
+  await waitForPageReady(page, { expectedRoute: path });
 }
 
 test.describe("@visual deterministic responsive surfaces", () => {
   for (const width of phoneWidths) {
     test(`login-${width}`, async ({ page }) => {
-      await page.setViewportSize({ width, height: 844 });
-      await page.goto("/login", { waitUntil: "domcontentloaded" });
-      await waitForPageReady(page);
+      await openPublicPage(page, "/login", width, 844);
       await expect(page).toHaveScreenshot(`login-${width}.png`, { fullPage: true });
     });
   }
 
   for (const width of [768, 1024, 1280, 1440, 1920]) {
     test(`login-desktop-${width}`, async ({ page }) => {
-      await page.setViewportSize({ width, height: 900 });
-      await page.goto("/login", { waitUntil: "domcontentloaded" });
-      await waitForPageReady(page);
+      await openPublicPage(page, "/login", width, 900);
       await expect(page).toHaveScreenshot(`login-${width}.png`, { fullPage: true });
     });
   }
 
   test("register-phone-390", async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/register", { waitUntil: "domcontentloaded" });
-    await waitForPageReady(page);
+    await openPublicPage(page, "/register", 390, 844);
     await expect(page).toHaveScreenshot("register-390.png", { fullPage: true });
   });
 
   test("register-desktop-1280", async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto("/register", { waitUntil: "domcontentloaded" });
-    await waitForPageReady(page);
+    await openPublicPage(page, "/register", 1280, 900);
     await expect(page).toHaveScreenshot("register-1280.png", { fullPage: true });
   });
 
@@ -67,6 +70,26 @@ test.describe("@visual deterministic responsive surfaces", () => {
       await capture(page, name, 1280, 900, path);
     });
   }
+
+  test.describe("@new-route-coverage", () => {
+    for (const [name, path] of [
+      ["fmea-list", "/fmea?view=registered"],
+      ["fmea-editor", "/fmea?edit=fmea-e2e-1"],
+      ["rula-list", "/rula?view=results"],
+      ["rula-editor", "/rula?edit=rula-e2e-1"],
+      ["knowledge", "/knowledge"],
+      ["notifications", "/notifications"],
+      ["members", "/members"],
+      ["profile", "/profile"],
+    ] as const) {
+      test(`${name}-phone-390`, async ({ page }) => {
+        await capture(page, name, 390, 900, path);
+      });
+      test(`${name}-desktop-1280`, async ({ page }) => {
+        await capture(page, name, 1280, 900, path);
+      });
+    }
+  });
 
   test("rula-report-english-white-1280", async ({ page }) => {
     await capture(page, "rula-report-en-white", 1280, 1000, "/rula/rula-e2e-1/report", { locale: "en", theme: "white" });

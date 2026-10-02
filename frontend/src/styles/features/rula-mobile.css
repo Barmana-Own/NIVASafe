@@ -253,7 +253,7 @@
   min-block-size: var(--touch-target);
 }
 :is(button.fmea-risk-ai-toggle, button.fmea-risk-ai-suggestion,
-    button.rula-correction-toggle, button.rula-side-tabs button,
+    button.rula-correction-toggle, .rula-side-tabs button,
     button.report-list-toggle, button.report-collapse-toggle) {
   min-block-size: var(--control-height-compact);
 }

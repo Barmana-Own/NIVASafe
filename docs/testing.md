@@ -27,19 +27,31 @@ With the API running and an organization-scoped test account, verify that `GET /
 
 مرورگرهای Playwright برای آزمون‌های مرورگری نصب می‌شوند و داده‌های آزمون از طریق route interception در `frontend/tests/e2e/fixtures.ts` پاسخ داده می‌شوند. نشست و داده‌های موجود در `frontend/tests/e2e/testData.ts` کاملاً ساختگی هستند؛ هیچ رمز عبور واقعی، کلید دسترسی یا حالت آزمون در مسیر production استفاده نمی‌شود.
 
-From the repository root, install Chromium once with `pnpm --dir frontend exec playwright install chromium`. Run interaction E2E tests with `pnpm --dir frontend test:e2e`. Run the visual suite with `pnpm --dir frontend test:visual`; create or intentionally update local snapshots with `pnpm --dir frontend test:visual:update`, then inspect a failed run with `pnpm --dir frontend exec playwright show-report`.
+From the repository root, the pinned Playwright dependency is installed with the frozen pnpm lockfile. Install its matching Chromium once with `pnpm --filter @nivasafe/web run playwright:install:chromium`. Run interaction E2E tests with `pnpm --filter @nivasafe/web test:e2e`, the visual suite with `pnpm --filter @nivasafe/web test:visual`, and overflow checks with `pnpm --filter @nivasafe/web test:overflow`.
 
-The visual matrix covers login/register, the authenticated shell, FMEA and RULA reports, administration, actions, files and activity log at phone, tablet and desktop widths, with representative Persian/RTL, English/LTR and theme variants. Animations, caret rendering, dates, service-worker state and API responses are stabilized by the test fixture. Chromium screenshot baselines are host/platform-sensitive and are never updated automatically in CI. CI installs Chromium after the normal build and runs `test:e2e`; snapshot updates remain an explicit local action.
+The visual matrix covers login/register, the authenticated shell, FMEA and RULA lists, editors and reports, administration, actions, files, knowledge, notifications, members, profile and activity log at phone, tablet and desktop widths, with representative Persian/RTL, English/LTR and theme variants. Animations, caret rendering, dates, service-worker state and API responses are stabilized by the test fixture. Every screenshot assertion uses the Playwright-wide `maxDiffPixelRatio: 0.02`; there are no per-assertion pixel allowances, masks, or custom pixel thresholds. The project pins `@playwright/test` 1.56.1 in `pnpm-lock.yaml`; the `chromium` project uses Playwright's matching Chromium, `fa-IR`, `Asia/Tehran`, CSS-pixel screenshots, and device scale factor 1. The app requests Vazirmatn from Google Fonts and declares Vazir, Tahoma and Segoe UI fallbacks. In browser tests only, the Google Fonts stylesheet and Vazirmatn subset requests are fulfilled from the same versioned font files under `frontend/tests/e2e/assets/`; this removes external CDN availability from rendering without changing the production font stylesheet or shipped assets. The tracked snapshots are verified in the current Windows workspace, so the visual job uses `windows-latest` to match the baseline OS and reduce system-font/rasterization drift. The Ubuntu quality job continues to run interaction and overflow suites. The Windows visual job runs on every push and pull request after the Ubuntu quality job succeeds. Visual comparisons are read-only in CI: a missing baseline or unexpected pixel difference returns a failing test status.
+
+All browser navigation and visual capture setup uses `waitForPageReady()` in `frontend/tests/e2e/fixtures.ts`. It has one 12-second overall budget shared across route/content, visible application loaders and busy regions, `document.fonts.ready`, visible image completion/decode, and post-render font readiness. It validates the requested pathname/query, requires a meaningful visible route heading (or explicit expected content for a state such as file preview), and checks the main content/overlay/document geometry across consecutive animation frames. It does not wait for universal `networkidle`, which could be blocked by polling or other persistent connections. Failures include the route, expected content, phase, visible loaders/images, and latest geometry. Broken visible fixture images fail with their source URL instead of being ignored. Tests that exercise delayed API data or preview content use controlled route gates; no arbitrary sleep is used for readiness.
+
+Visual output paths are `frontend/playwright-results/` (attachments, expected/actual/diff images and failure traces) and `frontend/playwright-report/` (HTML report). The CI jobs use `actions/upload-artifact@v7` to upload these paths on failure for seven days; missing paths are ignored when a failure occurs before Playwright starts. Generated reports are git-ignored.
+
+Snapshot changes are explicit development changes and must be reviewed image-by-image. For a narrowly selected baseline, use the visual test's title in the grep expression, for example:
+
+```text
+pnpm --filter @nivasafe/web test:visual:update --grep "@visual.*fmea-report-390"
+```
+
+To intentionally update the complete visual suite, use `pnpm --filter @nivasafe/web test:visual:update`. Inspect the PNG changes and failure attachments under `frontend/playwright-results/` before including them. CI never passes `--update-snapshots` and does not generate or replace baselines. For a failed CI run, download the `playwright-visual-diagnostics-Windows` artifact and open `playwright-report/index.html`; expected/actual/diff screenshots and traces are also included.
 
 ## Automated overflow and viewport-escape checks
 
-`pnpm --dir frontend test:overflow` runs the Playwright `@overflow` suite. The suite checks both document-level invariants (`documentElement.scrollWidth` and `body.scrollWidth`) and a visible-element scan that reports the selector/path, bounding rectangle, computed overflow/position/white-space/min/max width and a short text sample for every escape. The tolerance is two CSS pixels for browser rounding only.
+`pnpm --filter @nivasafe/web test:overflow` runs the Playwright `@overflow` suite. The suite checks both document-level invariants (`documentElement.scrollWidth` and `body.scrollWidth`) and a visible-element scan that reports the selector/path, bounding rectangle, computed overflow/position/white-space/min/max width and a short text sample for every escape. The tolerance is two CSS pixels for browser rounding only.
 
 The route matrix covers login, registration, dashboard, projects, choose-path, FMEA list/register/report, RULA list/analysis/report, actions, files, knowledge, assistant, notifications, members, administrator, organizations, activity log, profile and health. All routes are exercised at 390px and 1280px; critical shell/report/register surfaces additionally cover 320, 360, 390, 430, 480, 768, 1024, 1280, 1440 and 1920px, including 360x640 and tablet landscape dimensions.
 
 Dynamic checks reopen the mobile drawer, portalized theme/language menus, StyledSelect, confirmation/detail dialogs, login validation, expanded activity/report details, file preview, English/LTR and white-theme states. Long synthetic Persian/English values, identifiers and filenames are served from `frontend/tests/e2e/testData.ts`.
 
-The explicit allowlist is intentionally narrow: the closed off-canvas `#app-sidebar` and descendants of a bounded `.table-wrap`/`[data-overflow-container="horizontal"]` scroller at widths of at least 768px. The scroller itself must fit the viewport, and any horizontal scroller below 768px fails the test; table scrolling therefore remains local to dense tablet/desktop data surfaces and is not used to mask phone overflow. CI runs `test:overflow` after the ordinary interaction E2E suite and retains Playwright failure artifacts without updating snapshots.
+The explicit allowlist is intentionally narrow: the closed off-canvas `#app-sidebar` and descendants of a bounded `.table-wrap`/`[data-overflow-container="horizontal"]` scroller at widths of at least 768px. The scroller itself must fit the viewport, and any horizontal scroller below 768px fails the test; table scrolling therefore remains local to dense tablet/desktop data surfaces and is not used to mask phone overflow. CI runs `test:overflow` after the ordinary interaction E2E suite and retains Playwright failure artifacts without updating snapshots. A separate Windows job runs `test:visual` after the complete Ubuntu quality job; its nonzero Playwright exit status fails the workflow.
 
 ## CSS architecture and release verification
 
@@ -52,9 +64,9 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
-pnpm --dir frontend test:e2e
-pnpm --dir frontend test:visual
-pnpm --dir frontend test:overflow
+pnpm --filter @nivasafe/web test:e2e
+pnpm --filter @nivasafe/web test:visual
+pnpm --filter @nivasafe/web test:overflow
 ```
 
 On Windows hosts where the repository `pnpm` wrapper cannot create its temporary files, use the equivalent direct workspace binaries and record the wrapper failure as an environment limitation. Visual snapshot updates remain an explicit local command and are never part of CI.

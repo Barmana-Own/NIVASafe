@@ -246,7 +246,9 @@
   }
 
   .rula-smart-analysis .rula-analysis-table .rula-edit-button {
-    width: 30px;
-    height: 30px;
+    inline-size: var(--touch-target);
+    min-inline-size: var(--touch-target);
+    block-size: var(--touch-target);
+    min-block-size: var(--touch-target);
   }
 }

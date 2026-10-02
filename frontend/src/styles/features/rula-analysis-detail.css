@@ -137,8 +137,10 @@
 }
 .rula-smart-analysis .rula-edit-button,
 .rula-smart-analysis .rula-confirm-button {
-  width: 28px;
-  height: 28px;
+  inline-size: var(--touch-target);
+  min-inline-size: var(--touch-target);
+  block-size: var(--touch-target);
+  min-block-size: var(--touch-target);
   border-radius: 8px;
 }
 .rula-smart-analysis .rula-group-summary {

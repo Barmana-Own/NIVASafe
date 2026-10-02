@@ -10,6 +10,7 @@ coverage/
 # Playwright browser-test artifacts (visual baselines remain tracked)
 frontend/test-results/
 frontend/playwright-results/
+frontend/playwright-report/
 frontend/.vite-cache/
 
 # Local configuration and secrets (safe templates remain tracked)

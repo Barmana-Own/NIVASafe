@@ -44,8 +44,8 @@ export function activeSubscription(plan: SubscriptionPlan, now = new Date(), pro
   };
 }
 
-export function subscriptionIsUsable(subscription: { subscriptionStatus: string; subscriptionExpiresAt: Date | null }): boolean {
-  return isSubscriptionActive(subscription.subscriptionStatus as SubscriptionStatus, subscription.subscriptionExpiresAt);
+export function subscriptionIsUsable(subscription: { subscriptionStatus: string; subscriptionExpiresAt: Date | null }, now = new Date()): boolean {
+  return isSubscriptionActive(subscription.subscriptionStatus as SubscriptionStatus, subscription.subscriptionExpiresAt, now);
 }
 
 export function subscriptionRequiredError() {

@@ -44,4 +44,5 @@
 @import "./forms-hardening.css";
 @import "./overlays.css";
 @import "./accessibility.css";
+@import "./touch-targets.css";
 @import "./print.css";

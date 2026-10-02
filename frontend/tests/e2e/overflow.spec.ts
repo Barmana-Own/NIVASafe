@@ -1,4 +1,4 @@
-import { expect, authenticate, test, waitForPageReady } from "./fixtures";
+import { expect, authenticate, test, waitForElementMotionToSettle, waitForPageReady } from "./fixtures";
 import { collectOverflowReport, formatOverflowReport } from "./overflow";
 
 type Viewport = { width: number; height: number };
@@ -66,9 +66,8 @@ async function openRoute(page: Parameters<typeof authenticate>[0], path: string,
   if (authenticated) await authenticate(page, path);
   else {
     await page.goto(path, { waitUntil: "domcontentloaded" });
-    await waitForPageReady(page);
+    await waitForPageReady(page, { expectedRoute: path });
   }
-  await waitForPageReady(page);
 }
 
 test.describe("@overflow page-level horizontal overflow invariants", () => {
@@ -95,7 +94,8 @@ test.describe("@overflow dynamic states", () => {
   test("keeps the mobile drawer and portalized utility menus inside the viewport", async ({ page }) => {
     await openRoute(page, "/", true, { width: 390, height: 844 });
     await page.locator(".mobile-menu").click();
-    await page.waitForTimeout(350);
+    await expect(page.locator("#app-sidebar")).toHaveClass(/open/);
+    await waitForElementMotionToSettle(page, "#app-sidebar");
     await check(page, "mobile drawer open");
 
     await page.locator("#app-sidebar [data-testid='theme-switcher'] .theme-trigger").click();
@@ -103,7 +103,8 @@ test.describe("@overflow dynamic states", () => {
     await page.keyboard.press("Escape");
     if (!(await page.locator("#app-sidebar").evaluate((element) => element.classList.contains("open")))) {
       await page.locator(".mobile-menu").click();
-      await page.waitForTimeout(350);
+      await expect(page.locator("#app-sidebar")).toHaveClass(/open/);
+      await waitForElementMotionToSettle(page, "#app-sidebar");
     }
     await page.locator("#app-sidebar [data-testid='language-switcher']").click();
     await check(page, "mobile drawer language menu open");
@@ -111,7 +112,8 @@ test.describe("@overflow dynamic states", () => {
     if (await page.locator("#app-sidebar").evaluate((element) => element.classList.contains("open"))) {
       await page.locator(".sidebar-backdrop").click();
     }
-    await page.waitForTimeout(350);
+    await expect(page.locator("#app-sidebar")).not.toHaveClass(/open/);
+    await waitForElementMotionToSettle(page, "#app-sidebar");
     await check(page, "mobile drawer closed");
   });
 

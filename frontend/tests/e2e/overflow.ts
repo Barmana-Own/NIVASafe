@@ -168,7 +168,7 @@ export async function collectOverflowReport(page: Page, tolerance = OVERFLOW_TOL
       diagnostics.push({
         selector: selectorFor(element),
         tag: element.tagName.toLowerCase(),
-        className: element.className instanceof SVGAnimatedString ? element.className.baseVal : String(element.className || ""),
+        className: element instanceof SVGElement ? element.className.baseVal : String(element.className || ""),
         left: numeric(rect.left),
         right: numeric(rect.right),
         width: numeric(rect.width),

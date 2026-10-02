@@ -14,8 +14,13 @@ const assessmentShellSource = readFileSync(new URL("./features/assessments/Asses
 const assessmentSharedSource = readFileSync(new URL("./features/assessments/assessmentShared.tsx", import.meta.url), "utf8");
 const fmeaFeatureSource = readFileSync(new URL("./features/assessments/fmea/FmeaFeature.tsx", import.meta.url), "utf8");
 const fmeaReportComponentsSource = readFileSync(new URL("./features/assessments/fmea/FmeaReportComponents.tsx", import.meta.url), "utf8");
+const fmeaDraftSource = readFileSync(new URL("./features/assessments/fmea/fmeaDraft.ts", import.meta.url), "utf8");
+const fmeaRiskEditorSource = readFileSync(new URL("./features/assessments/fmea/FmeaRiskEditor.tsx", import.meta.url), "utf8");
+const fmeaRiskRegisterSource = readFileSync(new URL("./features/assessments/fmea/FmeaRiskRegister.tsx", import.meta.url), "utf8");
 const rulaFeatureSource = readFileSync(new URL("./features/assessments/rula/RulaFeature.tsx", import.meta.url), "utf8");
-const assessmentPagesSource = `${assessmentShellSource}\n${assessmentSharedSource}\n${fmeaFeatureSource}\n${fmeaReportComponentsSource}\n${rulaFeatureSource}`;
+const rulaModelSource = readFileSync(new URL("./features/assessments/rula/rulaModel.ts", import.meta.url), "utf8");
+const rulaPostureComponentsSource = readFileSync(new URL("./features/assessments/rula/RulaPostureComponents.tsx", import.meta.url), "utf8");
+const assessmentPagesSource = `${assessmentShellSource}\n${assessmentSharedSource}\n${fmeaFeatureSource}\n${fmeaReportComponentsSource}\n${fmeaDraftSource}\n${fmeaRiskEditorSource}\n${fmeaRiskRegisterSource}\n${rulaFeatureSource}\n${rulaModelSource}\n${rulaPostureComponentsSource}`;
 const filesPageSource = readFileSync(new URL("./features/files/FilesPage.tsx", import.meta.url), "utf8");
 const stylesEntrySource = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
 const stylesIndexUrl = new URL("./styles/index.css", import.meta.url);
@@ -61,17 +66,17 @@ describe("RULA module boundaries", () => {
     expect(assessmentShellSource).not.toContain("function RulaReportPage");
     expect(rulaFeatureSource).toContain("export function RulaPage");
     expect(rulaFeatureSource).toContain("export function RulaReportPage");
-    expect(rulaFeatureSource).toContain("function RulaPostureAnalysisStep");
+    expect(rulaPostureComponentsSource).toContain("function RulaPostureAnalysisStep");
     expect(rulaFeatureSource).toContain("function RulaReportDataTable");
   });
 });
 
 describe("RULA responsive posture data", () => {
   it("keeps side state and review provenance explicit while using shared phone cards", () => {
-    expect(rulaFeatureSource).toContain("sideAnalyses");
-    expect(rulaFeatureSource).toContain("confirmedByUser");
-    expect(rulaFeatureSource).toContain("isRulaPostureResultReviewed");
-    expect(rulaFeatureSource).toContain('data-label={t("assessment.detectedStatus")}');
+    expect(rulaModelSource).toContain("sideAnalyses");
+    expect(rulaModelSource).toContain("confirmedByUser");
+    expect(rulaModelSource).toContain("isRulaPostureResultReviewed");
+    expect(rulaPostureComponentsSource).toContain('data-label={t("assessment.detectedStatus")}');
     expect(rulaFeatureSource).toContain('data-label={t("assessment.rulaActionBodySide")}');
     expect(stylesSource).toContain('.responsive-table-container[data-responsive="cards"] > table.rula-analysis-table > tbody > tr > td:first-child');
     expect(stylesSource).toContain('.responsive-table-container[data-responsive="cards"] > table.rula-report-data-table > tbody > tr > td:nth-child(8)');
@@ -626,7 +631,7 @@ describe("FMEA risk register", () => {
     expect(stylesSource).toContain("inset-block-start: 50%;");
     expect(stylesSource).toContain(".fmea-report-table-toolbar .risk-table-search input {");
     expect(stylesSource).toContain(".fmea-report-table-toolbar .risk-table-search:focus-within input {");
-    const interactiveReportTableSource = fmeaFeatureSource.slice(fmeaFeatureSource.indexOf("function FmeaInteractiveReportRiskTable"), fmeaFeatureSource.indexOf("function FmeaReportItemDetailsDialog"));
+    const interactiveReportTableSource = fmeaRiskRegisterSource.slice(fmeaRiskRegisterSource.indexOf("function FmeaInteractiveReportRiskTable"), fmeaRiskRegisterSource.indexOf("function FmeaReportItemDetailsDialog"));
     expect(interactiveReportTableSource).not.toContain('t("assessment.processActivity")}</th>');
     expect(assessmentPagesSource).toContain('onClick={() => onView(item)}');
     expect(assessmentPagesSource).toContain('onClick={() => onEdit(item)}');
@@ -2005,7 +2010,9 @@ describe("form auto-save contract", () => {
     expect(stylesSource).toContain(".rula-correction-table tbody tr { display: table-row;");
     expect(stylesSource).toContain(".table-wrap.report-data-table-wrap.rula-correction-table-wrap { overflow-x: hidden;");
     expect(stylesSource).toContain(".rula-correction-table { display: table; width: 100%; min-width: 0 !important; table-layout: fixed; }");
-    expect(stylesSource).toContain(".rula-correction-table .rula-correction-toggle { width: 100%; max-width: 100%; min-width: 0;");
+    expect(stylesSource).toContain(".rula-correction-table .rula-correction-toggle");
+    expect(stylesSource).toContain("min-inline-size: var(--touch-target)");
+    expect(stylesSource).toContain("min-block-size: var(--control-height-compact)");
     expect(stylesSource).toContain("white-space: nowrap; overflow-wrap: normal; word-break: keep-all;");
     expect(i18nSource).toContain('"assessment.rulaSelectAction": "انتخاب"');
     expect(assessmentPagesSource).toContain("const generalActions = selectedActions.filter");
@@ -2030,7 +2037,7 @@ describe("form auto-save contract", () => {
     expect(stylesSource).toContain(".report-details-card .surface-body > details > summary::after");
     expect(stylesSource).toContain(".report-details-card .surface-body > details[open] > summary::after");
     expect(stylesSource).toContain(".rula-report-data-section.report-details-card .surface-body > details > summary");
-    expect(stylesSource).toContain("grid-template-columns: repeat(3, 27px)");
+    expect(stylesSource).toContain("grid-template-columns: repeat(3, var(--touch-target))");
     expect(stylesSource).toContain("overflow-wrap: anywhere");
     expect(assessmentPagesSource).toContain('data-label={t("assessment.bodyPart")}');
     expect(assessmentPagesSource).toContain('data-label={t("assessment.rulaSuggestedAction")}');
