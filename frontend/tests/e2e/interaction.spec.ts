@@ -173,6 +173,31 @@ test.describe("responsive shell and critical interactions", () => {
     await expect(dialog).toHaveCount(0);
   });
 
+  test("uses the same compact report download button styling as FMEA", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+
+    await authenticate(page, "/fmea/fmea-e2e-1/report");
+    const fmeaPdf = page.locator(".fmea-report-page .page-header .page-actions-inline > button").filter({ hasText: "دانلود PDF" });
+    await expect(fmeaPdf).toBeVisible();
+    const fmeaGeometry = await fmeaPdf.evaluate((button) => {
+      const rect = button.getBoundingClientRect();
+      const style = getComputedStyle(button);
+      return { width: rect.width, height: rect.height, fontSize: style.fontSize, padding: style.padding, radius: style.borderRadius };
+    });
+
+    await authenticate(page, "/rula/rula-e2e-1/report");
+    const rulaPdf = page.locator(".rula-report-page .page-header .page-actions-inline > button").filter({ hasText: "دانلود PDF" });
+    await expect(rulaPdf).toBeVisible();
+    const rulaGeometry = await rulaPdf.evaluate((button) => {
+      const rect = button.getBoundingClientRect();
+      const style = getComputedStyle(button);
+      return { width: rect.width, height: rect.height, fontSize: style.fontSize, padding: style.padding, radius: style.borderRadius };
+    });
+
+    expect(rulaGeometry).toEqual(fmeaGeometry);
+    expect(rulaGeometry.height).toBe(44);
+  });
+
   test("shows RULA-specific stage-three results and updates recommendation selection progress", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await authenticate(page, "/rula?edit=rula-e2e-1&step=3");
