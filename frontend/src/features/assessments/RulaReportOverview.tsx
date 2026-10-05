@@ -1,22 +1,25 @@
 import { Icon, SectionCard, StatusBadge } from "../../components/UI";
 import { useI18n } from "../../i18n";
-import { buildRulaOverviewMetrics, summarizeRulaCorrectiveActions, type RulaOverviewCorrectiveAction, type RulaOverviewFactor, type RulaOverviewMetrics } from "./rulaOverviewModel";
+import { useState } from "react";
+import { buildRulaOverviewMetrics, rulaActionLevels, summarizeRulaCorrectiveActions, type RulaOverviewCorrectiveAction, type RulaOverviewMetrics, type RulaOverviewResult } from "./rulaOverviewModel";
 import type { CSSProperties } from "react";
 
-const impactColors = {
-  HIGH: "var(--rula-overview-high)",
-  MEDIUM: "var(--rula-overview-medium)",
-  LOW: "var(--rula-overview-low)",
-} as const;
+const actionLevelColors: Record<(typeof rulaActionLevels)[number], string> = {
+  4: "#cf4a4d",
+  3: "#e19a31",
+  2: "#d7b83f",
+  1: "#43a27d",
+};
 
-const impactTranslationKeys = {
-  HIGH: "assessment.rulaEffectHigh",
-  MEDIUM: "assessment.rulaEffectMedium",
-  LOW: "assessment.rulaEffectLow",
-} as const;
+const actionLevelTranslationKeys: Record<(typeof rulaActionLevels)[number], string> = {
+  4: "assessment.rulaRiskImmediate",
+  3: "assessment.rulaNeedsReview",
+  2: "assessment.rulaRiskInvestigation",
+  1: "assessment.rulaAcceptable",
+};
 
 type RulaReportOverviewProps = {
-  factors: readonly RulaOverviewFactor[];
+  riskResults: readonly RulaOverviewResult[];
   actions: readonly RulaOverviewCorrectiveAction[];
   score: number;
   actionLevelLabel: string;
@@ -27,10 +30,6 @@ type RulaReportOverviewProps = {
   totalPostureCount: number;
   sideLabel: string;
   mainFactor: { label: string; score: number; sharePercent: number } | null;
-  selectedRecommendationCount: number;
-  recommendationCount: number;
-  manualActionCount: number;
-  predictedScore: number;
 };
 
 function numberText(value: number, locale: "fa" | "en") {
@@ -38,22 +37,38 @@ function numberText(value: number, locale: "fa" | "en") {
 }
 
 function percentText(value: number, locale: "fa" | "en") {
-  return `${numberText(value, locale)}${locale === "en" ? "%" : "٪"}`;
+  return `${value.toLocaleString(locale === "en" ? "en-US" : "fa-IR", { maximumFractionDigits: 1 })}${locale === "en" ? "%" : "٪"}`;
 }
 
-function impactDonut(metrics: RulaOverviewMetrics) {
-  if (metrics.totalFactorScore === 0) return "conic-gradient(#e7eef2 0 100%)";
-  let progress = 0;
-  const stops = metrics.impactDistribution.map((item) => {
-    const start = progress;
-    progress += item.share * 100;
-    return `${impactColors[item.level]} ${start}% ${progress}%`;
-  });
-  return `conic-gradient(${stops.join(", ")})`;
+function actionLevelLabelKey(actionLevel: (typeof rulaActionLevels)[number]) {
+  return actionLevelTranslationKeys[actionLevel];
+}
+
+function RulaRiskDistributionChart({ metrics, locale }: { metrics: RulaOverviewMetrics; locale: "fa" | "en" }) {
+  const { t } = useI18n();
+  const [activeActionLevel, setActiveActionLevel] = useState<(typeof rulaActionLevels)[number] | null>(null);
+  const activeEntry = metrics.riskDistribution.find((entry) => entry.actionLevel === activeActionLevel) ?? null;
+  const activeLabel = activeEntry ? t(actionLevelLabelKey(activeEntry.actionLevel)) : "";
+  const numberLocale = locale === "en" ? "en-US" : "fa-IR";
+  const describeEntry = (entry: RulaOverviewMetrics["riskDistribution"][number]) => `${t(actionLevelLabelKey(entry.actionLevel))}: ${entry.count.toLocaleString(numberLocale)}، ${percentText(entry.percentage, locale)} ${t("report.ofTotal")}`;
+
+  return <div className="fmea-risk-distribution-visual rula-risk-distribution-visual">
+    <div className={`fmea-risk-donut${activeEntry ? " has-active" : ""}`} role="group" aria-label={t("assessment.rulaRiskDistributionTitle")} onMouseLeave={() => setActiveActionLevel(null)}>
+      <svg className="fmea-risk-donut-svg" viewBox="0 0 120 120" role="img" aria-label={t("assessment.rulaRiskDistributionTitle")}>
+        <circle className="fmea-risk-donut-track" cx="60" cy="60" r="43" pathLength="100"/>
+        {metrics.riskDistribution.filter((entry) => entry.count > 0).map((entry) => <circle key={entry.actionLevel} className={`fmea-risk-donut-segment${entry.actionLevel === activeActionLevel ? " is-active" : ""}`} cx="60" cy="60" r="43" pathLength="100" stroke={actionLevelColors[entry.actionLevel]} strokeDasharray={`${entry.percentage} ${100 - entry.percentage}`} strokeDashoffset={-entry.startPercentage} tabIndex={0} role="img" aria-label={describeEntry(entry)} onMouseEnter={() => setActiveActionLevel(entry.actionLevel)} onFocus={() => setActiveActionLevel(entry.actionLevel)} onBlur={() => setActiveActionLevel(null)}/>) }
+      </svg>
+      <div className={`fmea-risk-donut-label${activeEntry ? " is-hovered" : ""}`} aria-live="polite"><span>{activeEntry ? percentText(activeEntry.percentage, locale) : metrics.totalResults.toLocaleString(numberLocale)}</span><small>{activeEntry ? `${activeLabel} · ${activeEntry.count.toLocaleString(numberLocale)}` : t("assessment.rulaTotalResults")}</small></div>
+    </div>
+    <div className="fmea-risk-legend rula-risk-legend" role="group" aria-label={t("assessment.rulaRiskDistributionTitle")}>
+      {metrics.riskDistribution.map((entry) => <button type="button" className={`fmea-risk-legend-item${entry.actionLevel === activeActionLevel ? " is-active" : ""}`} key={entry.actionLevel} aria-label={describeEntry(entry)} onMouseEnter={() => setActiveActionLevel(entry.actionLevel)} onMouseLeave={() => setActiveActionLevel(null)} onFocus={() => setActiveActionLevel(entry.actionLevel)} onBlur={() => setActiveActionLevel(null)}><span className="fmea-risk-legend-dot" style={{ background: actionLevelColors[entry.actionLevel] }}/><span className={`rula-risk-level-badge action-level-${entry.actionLevel}`}>{t(actionLevelLabelKey(entry.actionLevel))}</span><span className="fmea-risk-legend-value"><strong>{entry.count.toLocaleString(numberLocale)}</strong><small>{percentText(entry.percentage, locale)}</small></span></button>)}
+      {metrics.totalResults === 0 && <small className="rula-overview-pending-note">{t("assessment.rulaAutomaticAnalysisPending")}</small>}
+    </div>
+  </div>;
 }
 
 export function RulaReportOverview({
-  factors,
+  riskResults,
   actions,
   score,
   actionLevelLabel,
@@ -64,27 +79,10 @@ export function RulaReportOverview({
   totalPostureCount,
   sideLabel,
   mainFactor,
-  selectedRecommendationCount,
-  recommendationCount,
-  manualActionCount,
-  predictedScore,
 }: RulaReportOverviewProps) {
   const { locale, t } = useI18n();
   const correctiveActionSummary = summarizeRulaCorrectiveActions(actions);
-  const metrics = buildRulaOverviewMetrics({
-    factors,
-    selectedRecommendationCount,
-    recommendationCount,
-    manualActionCount,
-    currentScore: score,
-    predictedScore,
-    reviewComplete,
-  });
-  const factorDistributionLabel = t("assessment.rulaFactorDistributionAria", {
-    high: percentText(metrics.impactDistribution[0].sharePercent, locale),
-    medium: percentText(metrics.impactDistribution[1].sharePercent, locale),
-    low: percentText(metrics.impactDistribution[2].sharePercent, locale),
-  });
+  const metrics = buildRulaOverviewMetrics(riskResults, reviewComplete);
   const completionProgressLabel = t("assessment.rulaCompletedActionsProgressAria", {
     completed: numberText(correctiveActionSummary.completedCount, locale),
     total: numberText(correctiveActionSummary.totalCount, locale),
@@ -115,34 +113,19 @@ export function RulaReportOverview({
       </div>
     </SectionCard>
 
-    <SectionCard className="rula-overview-panel rula-overview-distribution-panel" title={t("assessment.rulaFactorDistributionTitle")} description={t("assessment.rulaFactorDistributionDescription")} icon="chart">
-      <div className="rula-overview-distribution">
-        <div className="rula-overview-donut" style={{ background: impactDonut(metrics) }} role="img" aria-label={factorDistributionLabel}>
-          <div><strong>{numberText(metrics.totalFactorScore, locale)}</strong><small>{t("assessment.rulaFactorScore")}</small></div>
-        </div>
-        <div className="rula-overview-legend">
-          {metrics.impactDistribution.map((item) => <div className={`rula-overview-legend-row impact-${item.level.toLowerCase()}`} key={item.level}>
-            <span className="rula-overview-legend-name"><i aria-hidden="true"/>{t(impactTranslationKeys[item.level])}</span>
-            <strong>{numberText(item.factorCount, locale)}</strong>
-            <small>{percentText(item.sharePercent, locale)}</small>
-          </div>)}
-          {!metrics.totalFactorScore && <small className="rula-overview-pending-note">{t("assessment.rulaNoReviewedFactors")}</small>}
-        </div>
-      </div>
+    <SectionCard className="rula-overview-panel rula-overview-distribution-panel" title={t("assessment.rulaRiskDistributionTitle")} description={t("assessment.rulaRiskDistributionDescription")} icon="chart">
+      <RulaRiskDistributionChart metrics={metrics} locale={locale}/>
     </SectionCard>
 
     <SectionCard className="rula-overview-panel rula-overview-actions-panel" title={t("assessment.rulaActionProgressTitle")} description={t("assessment.rulaActionProgressDescription")} icon="actions">
-      <div className="rula-overview-actions">
-        <div className="rula-overview-progress-ring" style={{ "--rula-action-progress": `${correctiveActionSummary.completionPercent}%` } as CSSProperties} role="progressbar" aria-label={completionProgressLabel} aria-valuemin={0} aria-valuemax={100} aria-valuenow={correctiveActionSummary.completionPercent}>
+      <div className="fmea-action-progress-layout rula-overview-actions">
+        <div className="fmea-action-progress-ring" style={{ background: `conic-gradient(#138a61 ${correctiveActionSummary.completionPercent}%, #e6eef2 0)` } as CSSProperties} role="progressbar" aria-label={completionProgressLabel} aria-valuemin={0} aria-valuemax={100} aria-valuenow={correctiveActionSummary.completionPercent}>
           <div><strong>{percentText(correctiveActionSummary.completionPercent, locale)}</strong><small>{t("assessment.rulaCompletedActionsLabel")}</small></div>
         </div>
-        <div className="rula-overview-action-stats">
-          <div><span>{t("assessment.rulaTotalCorrectiveActions")}</span><strong>{numberText(correctiveActionSummary.totalCount, locale)}</strong></div>
-          <div><span>{t("assessment.rulaCompletedCorrectiveActions")}</span><strong>{numberText(correctiveActionSummary.completedCount, locale)}</strong></div>
-          <div><span>{t("assessment.rulaRemainingCorrectiveActions")}</span><strong>{numberText(correctiveActionSummary.remainingCount, locale)}</strong></div>
-          <div><span>{t("assessment.rulaSelectedRecommendations")}</span><strong>{numberText(metrics.selectedRecommendationCount, locale)}</strong></div>
-          <div><span>{t("assessment.rulaManualActionCount")}</span><strong>{numberText(metrics.manualActionCount, locale)}</strong></div>
-          <div><span>{t("assessment.rulaEstimatedScoreReduction")}</span><strong>{reviewComplete ? numberText(metrics.estimatedScoreReduction, locale) : "—"}</strong></div>
+        <div className="fmea-action-progress-list">
+          <div><span className="completed-dot"/>{t("report.completed")}<strong>{numberText(correctiveActionSummary.completedCount, locale)}</strong></div>
+          <div><span className="in-progress-dot"/>{t("report.inProgress")}<strong>{numberText(correctiveActionSummary.inProgressCount, locale)}</strong></div>
+          <div><span className="remaining-dot"/>{t("report.remaining")}<strong>{numberText(correctiveActionSummary.remainingCount, locale)}</strong></div>
         </div>
       </div>
     </SectionCard>

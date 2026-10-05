@@ -14,3 +14,12 @@ describe("assistant offline response", () => {
     expect(translate("assistant.offlineFallback", "en")).toBe("Hello, I am the NIVASafe intelligent assistant for occupational health and safety management.\nThe server is currently unavailable; I will be ready to respond as soon as the connection is restored.");
   });
 });
+
+describe("FMEA report list counts", () => {
+  it("renders the exact remaining count in localized digits", () => {
+    expect(translate("report.showMoreFailureModes", "fa", { count: (6).toLocaleString("fa-IR") })).toBe("نمایش موارد بیشتر (۶)");
+    expect(translate("report.showMoreActions", "fa", { count: (3).toLocaleString("fa-IR") })).toBe("نمایش اقدامات بیشتر (۳)");
+    expect(translate("report.showMoreFailureModes", "en", { count: (6).toLocaleString("en-US") })).toBe("Show more failure modes (6)");
+    expect(translate("report.showMoreActions", "en", { count: (3).toLocaleString("en-US") })).toBe("Show more actions (3)");
+  });
+});

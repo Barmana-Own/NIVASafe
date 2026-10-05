@@ -2,94 +2,63 @@ import { describe, expect, it } from "vitest";
 import { buildRulaOverviewMetrics, summarizeRulaCorrectiveActions } from "./rulaOverviewModel";
 
 describe("RULA stage-three overview metrics", () => {
-  it("groups reviewed factor scores by their existing impact levels and summarizes selected actions", () => {
-    const metrics = buildRulaOverviewMetrics({
-      factors: [
-        { score: 4, impactLevel: "HIGH" },
-        { score: 2, impactLevel: "LOW" },
-        { score: 0, impactLevel: "MEDIUM" },
+  it("distributes actual results across the four RULA action levels", () => {
+    expect(buildRulaOverviewMetrics([
+      { actionLevel: 4 }, { actionLevel: 3 }, { actionLevel: 2 }, { actionLevel: 1 }, { actionLevel: 2 },
+    ], true)).toEqual({
+      totalResults: 5,
+      riskDistribution: [
+        { actionLevel: 4, count: 1, percentage: 20, startPercentage: 0 },
+        { actionLevel: 3, count: 1, percentage: 20, startPercentage: 20 },
+        { actionLevel: 2, count: 2, percentage: 40, startPercentage: 40 },
+        { actionLevel: 1, count: 1, percentage: 20, startPercentage: 80 },
       ],
-      selectedRecommendationCount: 1,
-      recommendationCount: 2,
-      manualActionCount: 1,
-      currentScore: 6,
-      predictedScore: 4,
-      reviewComplete: true,
     });
-
-    expect(metrics.impactDistribution).toEqual([
-      { level: "HIGH", score: 4, factorCount: 1, share: 2 / 3, sharePercent: 67 },
-      { level: "MEDIUM", score: 0, factorCount: 0, share: 0, sharePercent: 0 },
-      { level: "LOW", score: 2, factorCount: 1, share: 1 / 3, sharePercent: 33 },
-    ]);
-    expect(metrics.totalFactorScore).toBe(6);
-    expect(metrics.selectedRecommendationCount).toBe(1);
-    expect(metrics.remainingRecommendationCount).toBe(1);
-    expect(metrics.selectionPercent).toBe(50);
-    expect(metrics.manualActionCount).toBe(1);
-    expect(metrics.estimatedScoreReduction).toBe(2);
   });
 
-  it("does not present unreviewed factor scores or a predicted reduction as confirmed results", () => {
-    const metrics = buildRulaOverviewMetrics({
-      factors: [{ score: 5, impactLevel: "HIGH" }],
-      selectedRecommendationCount: 4,
-      recommendationCount: 2,
-      manualActionCount: 0,
-      currentScore: 6,
-      predictedScore: 2,
-      reviewComplete: false,
-    });
+  it("does not include pending results or malformed action levels", () => {
+    const pending = buildRulaOverviewMetrics([{ actionLevel: 4 }], false);
+    expect(pending.totalResults).toBe(0);
+    expect(pending.riskDistribution.every((item) => item.count === 0 && item.percentage === 0)).toBe(true);
 
-    expect(metrics.totalFactorScore).toBe(0);
-    expect(metrics.impactDistribution.every((item) => item.factorCount === 0)).toBe(true);
-    expect(metrics.selectedRecommendationCount).toBe(2);
-    expect(metrics.remainingRecommendationCount).toBe(0);
-    expect(metrics.selectionPercent).toBe(100);
-    expect(metrics.estimatedScoreReduction).toBe(0);
+    const malformed = buildRulaOverviewMetrics([
+      { actionLevel: 0 }, { actionLevel: 2.5 }, { actionLevel: 5 }, { actionLevel: 3 },
+    ], true);
+    expect(malformed.totalResults).toBe(1);
+    expect(malformed.riskDistribution.find((item) => item.actionLevel === 3)?.count).toBe(1);
   });
 
-  it("handles an assessment with no recommendations without inventing completion progress", () => {
-    const metrics = buildRulaOverviewMetrics({
-      factors: [],
-      selectedRecommendationCount: 0,
-      recommendationCount: 0,
-      manualActionCount: 2,
-      currentScore: 3,
-      predictedScore: 3,
-      reviewComplete: true,
-    });
-
-    expect(metrics.selectionPercent).toBe(0);
-    expect(metrics.remainingRecommendationCount).toBe(0);
-    expect(metrics.manualActionCount).toBe(2);
-    expect(metrics.estimatedScoreReduction).toBe(0);
+  it("returns an empty distribution without fabricating results", () => {
+    const metrics = buildRulaOverviewMetrics([], true);
+    expect(metrics.totalResults).toBe(0);
+    expect(metrics.riskDistribution.map((item) => item.count)).toEqual([0, 0, 0, 0]);
   });
 
-  it("summarizes active corrective actions by urgency and persisted completion status", () => {
+  it("summarizes priority, status groups, and persisted action progress", () => {
     expect(summarizeRulaCorrectiveActions([
-      { priority: "CRITICAL", status: "OPEN" },
-      { priority: "HIGH", status: "COMPLETED" },
-      { priority: "MEDIUM", status: "IN_PROGRESS" },
+      { priority: "CRITICAL", status: "OPEN", progress: 0 },
+      { priority: "HIGH", status: "COMPLETED", progress: 100 },
+      { priority: "MEDIUM", status: "IN_PROGRESS", progress: 50 },
       { priority: "HIGH", status: "CANCELLED" },
       { priority: "CRITICAL", status: "REJECTED" },
     ])).toEqual({
       firstPriorityCount: 2,
       totalCount: 3,
       completedCount: 1,
-      remainingCount: 2,
-      completionPercent: 33,
+      inProgressCount: 1,
+      remainingCount: 1,
+      completionPercent: 50,
     });
   });
 
-  it("counts selected draft actions as planned but not completed and handles an empty action list", () => {
+  it("counts selected draft actions as remaining and handles an empty action list", () => {
     expect(summarizeRulaCorrectiveActions([
-      { priority: "HIGH" },
-      { priority: "LOW" },
+      { priority: "HIGH" }, { priority: "LOW" },
     ])).toEqual({
       firstPriorityCount: 1,
       totalCount: 2,
       completedCount: 0,
+      inProgressCount: 0,
       remainingCount: 2,
       completionPercent: 0,
     });
@@ -97,6 +66,7 @@ describe("RULA stage-three overview metrics", () => {
       firstPriorityCount: 0,
       totalCount: 0,
       completedCount: 0,
+      inProgressCount: 0,
       remainingCount: 0,
       completionPercent: 0,
     });
@@ -104,24 +74,26 @@ describe("RULA stage-three overview metrics", () => {
 
   it("keeps left- and right-side action totals independently scoped", () => {
     const actions = [
-      { priority: "HIGH", bodySide: "RIGHT" as const, status: "COMPLETED" },
-      { priority: "CRITICAL", bodySide: "LEFT" as const, status: "OPEN" },
-      { priority: "MEDIUM", bodySide: "BOTH" as const, status: "IN_PROGRESS" },
+      { priority: "HIGH", bodySide: "RIGHT" as const, status: "COMPLETED", progress: 100 },
+      { priority: "CRITICAL", bodySide: "LEFT" as const, status: "OPEN", progress: 0 },
+      { priority: "MEDIUM", bodySide: "BOTH" as const, status: "IN_PROGRESS", progress: 50 },
     ];
 
     expect(summarizeRulaCorrectiveActions(actions, "RIGHT")).toMatchObject({
-      firstPriorityCount: 1,
-      totalCount: 2,
-      completedCount: 1,
-      remainingCount: 1,
-      completionPercent: 50,
+      firstPriorityCount: 1, totalCount: 2, completedCount: 1, inProgressCount: 1, remainingCount: 0, completionPercent: 75,
     });
     expect(summarizeRulaCorrectiveActions(actions, "LEFT")).toMatchObject({
-      firstPriorityCount: 1,
-      totalCount: 2,
-      completedCount: 0,
-      remainingCount: 2,
-      completionPercent: 0,
+      firstPriorityCount: 1, totalCount: 2, completedCount: 0, inProgressCount: 1, remainingCount: 1, completionPercent: 25,
+    });
+  });
+
+  it("clamps invalid progress and keeps overdue actions in the remaining group", () => {
+    expect(summarizeRulaCorrectiveActions([
+      { priority: "LOW", status: "OVERDUE", progress: 140 },
+      { priority: "LOW", status: "OPEN", progress: -8 },
+      { priority: "LOW", status: "COMPLETED", progress: Number.NaN },
+    ])).toMatchObject({
+      totalCount: 3, completedCount: 1, inProgressCount: 0, remainingCount: 2, completionPercent: 33,
     });
   });
 });

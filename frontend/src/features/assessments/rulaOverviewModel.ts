@@ -1,15 +1,15 @@
-export const rulaImpactLevels = ["HIGH", "MEDIUM", "LOW"] as const;
+export const rulaActionLevels = [4, 3, 2, 1] as const;
 
-export type RulaImpactLevel = (typeof rulaImpactLevels)[number];
+export type RulaActionLevel = (typeof rulaActionLevels)[number];
 
-export type RulaOverviewFactor = {
-  score: number;
-  impactLevel: RulaImpactLevel;
+export type RulaOverviewResult = {
+  actionLevel: number;
 };
 
 export type RulaOverviewCorrectiveAction = {
   priority: string;
   status?: string;
+  progress?: number;
   bodySide?: "RIGHT" | "LEFT" | "BOTH" | null;
 };
 
@@ -17,29 +17,24 @@ export type RulaCorrectiveActionSummary = {
   firstPriorityCount: number;
   totalCount: number;
   completedCount: number;
+  inProgressCount: number;
   remainingCount: number;
   completionPercent: number;
 };
 
 export type RulaOverviewMetrics = {
-  impactDistribution: Array<{
-    level: RulaImpactLevel;
-    score: number;
-    factorCount: number;
-    sharePercent: number;
-    share: number;
+  riskDistribution: Array<{
+    actionLevel: RulaActionLevel;
+    count: number;
+    percentage: number;
+    startPercentage: number;
   }>;
-  totalFactorScore: number;
-  selectedRecommendationCount: number;
-  remainingRecommendationCount: number;
-  recommendationCount: number;
-  selectionPercent: number;
-  manualActionCount: number;
-  estimatedScoreReduction: number;
+  totalResults: number;
 };
 
-function nonNegativeInteger(value: number) {
-  return Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
+function actionProgress(action: RulaOverviewCorrectiveAction) {
+  const value = Number.isFinite(action.progress) ? action.progress! : 0;
+  return Math.min(100, Math.max(0, value));
 }
 
 export function summarizeRulaCorrectiveActions(
@@ -53,79 +48,40 @@ export function summarizeRulaCorrectiveActions(
   );
   const totalCount = activeActions.length;
   const completedCount = activeActions.filter((action) => action.status === "COMPLETED").length;
+  const inProgressCount = activeActions.filter((action) => ["ASSIGNED", "IN_PROGRESS", "WAITING_FOR_REVIEW"].includes(action.status ?? "")).length;
+  const completionPercent = totalCount > 0
+    ? Math.round(activeActions.reduce((total, action) => total + actionProgress(action), 0) / totalCount)
+    : 0;
 
   return {
     firstPriorityCount: activeActions.filter((action) => action.priority === "CRITICAL" || action.priority === "HIGH").length,
     totalCount,
     completedCount,
-    remainingCount: totalCount - completedCount,
-    completionPercent: totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0,
+    inProgressCount,
+    remainingCount: totalCount - completedCount - inProgressCount,
+    completionPercent,
   };
 }
 
-export function buildRulaOverviewMetrics({
-  factors,
-  selectedRecommendationCount,
-  recommendationCount,
-  manualActionCount,
-  currentScore,
-  predictedScore,
-  reviewComplete,
-}: {
-  factors: readonly RulaOverviewFactor[];
-  selectedRecommendationCount: number;
-  recommendationCount: number;
-  manualActionCount: number;
-  currentScore: number;
-  predictedScore: number;
-  reviewComplete: boolean;
-}): RulaOverviewMetrics {
-  const groups = new Map<RulaImpactLevel, { score: number; factorCount: number }>(
-    rulaImpactLevels.map((level) => [level, { score: 0, factorCount: 0 }]),
-  );
-
+export function buildRulaOverviewMetrics(results: readonly RulaOverviewResult[], reviewComplete: boolean): RulaOverviewMetrics {
+  const counts = new Map<RulaActionLevel, number>(rulaActionLevels.map((level) => [level, 0]));
   if (reviewComplete) {
-    for (const factor of factors) {
-      if (!Number.isFinite(factor.score) || factor.score <= 0) continue;
-      const group = groups.get(factor.impactLevel);
-      if (!group) continue;
-      group.score += factor.score;
-      group.factorCount += 1;
+    for (const result of results) {
+      if (!Number.isInteger(result.actionLevel) || !counts.has(result.actionLevel as RulaActionLevel)) continue;
+      const actionLevel = result.actionLevel as RulaActionLevel;
+      counts.set(actionLevel, counts.get(actionLevel)! + 1);
     }
   }
 
-  const totalFactorScore = [...groups.values()].reduce((total, group) => total + group.score, 0);
-  const impactDistribution = rulaImpactLevels.map((level) => {
-    const group = groups.get(level)!;
-    const share = totalFactorScore > 0 ? group.score / totalFactorScore : 0;
-    return {
-      level,
-      ...group,
-      share,
-      sharePercent: Math.round(share * 100),
-    };
+  const totalResults = [...counts.values()].reduce((total, count) => total + count, 0);
+  let cursor = 0;
+  const riskDistribution = rulaActionLevels.map((actionLevel) => {
+    const count = counts.get(actionLevel)!;
+    const percentage = totalResults > 0 ? (count / totalResults) * 100 : 0;
+    const entry = { actionLevel, count, percentage, startPercentage: cursor };
+    cursor += percentage;
+    return entry;
   });
 
-  const normalizedRecommendationCount = nonNegativeInteger(recommendationCount);
-  const normalizedSelectedCount = Math.min(
-    normalizedRecommendationCount,
-    nonNegativeInteger(selectedRecommendationCount),
-  );
-  const selectionPercent = normalizedRecommendationCount > 0
-    ? Math.round((normalizedSelectedCount / normalizedRecommendationCount) * 100)
-    : 0;
-  const estimatedScoreReduction = reviewComplete && Number.isFinite(currentScore) && Number.isFinite(predictedScore)
-    ? Math.max(0, currentScore - predictedScore)
-    : 0;
-
-  return {
-    impactDistribution,
-    totalFactorScore,
-    selectedRecommendationCount: normalizedSelectedCount,
-    remainingRecommendationCount: normalizedRecommendationCount - normalizedSelectedCount,
-    recommendationCount: normalizedRecommendationCount,
-    selectionPercent,
-    manualActionCount: nonNegativeInteger(manualActionCount),
-    estimatedScoreReduction,
-  };
+  return { riskDistribution, totalResults };
 }
