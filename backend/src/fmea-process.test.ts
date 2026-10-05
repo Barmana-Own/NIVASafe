@@ -145,6 +145,8 @@ describe("FMEA process-information helpers", () => {
       locale: "fa",
     });
     expect(suggestions).toContain("NIVASAFE_PROCESS_SUGGESTIONS");
+    expect(suggestions).toContain("FMEA process-risk assessment, not a RULA ergonomic review");
+    expect(suggestions).toContain("directly to the supplied job and activity");
     expect(suggestions).toContain("The user will confirm every item");
     expect(suggestions).toContain(`Return at most ${FMEA_PROCESS_AI_SUGGESTION_MAX} concise items per array`);
     const boundedProcessSuggestions = limitProcessSuggestions({
@@ -179,9 +181,13 @@ describe("FMEA process-information helpers", () => {
     const description = buildDescriptionPrompt({ jobTitle: "Welder", department: "Fabrication", locale: "en" });
     expect(description).toContain("NIVASAFE_PROCESS_DESCRIPTION");
     expect(description).toContain("one or two sentences");
+    expect(description).toContain("FMEA process-risk assessment");
+    expect(description).toContain("scope of failure-mode analysis");
 
     const riskRow = buildFmeaRiskSuggestionsPrompt({ projectName: "Assembly line upgrade", jobTitle: "Welder", processStep: "Welding", failureMode: "", effect: "", cause: "", preventiveControls: "", detectionControls: "", recommendation: "", locale: "en" });
     expect(riskRow).toContain("NIVASAFE_FMEA_RISK_ROW_SUGGESTIONS");
+    expect(riskRow).toContain("This is an FMEA assessment");
+    expect(riskRow).toContain("supplied process step and current row context");
     expect(riskRow).toContain("require explicit user confirmation");
     expect(riskRow).toContain('"scoreSuggestion":{"severity":1,"occurrence":1,"detection":1');
     expect(riskRow).toContain('"preventiveControls":[]');
@@ -192,6 +198,7 @@ describe("FMEA process-information helpers", () => {
 
     const riskRows = buildFmeaRiskRowsPrompt({ projectName: "Assembly line upgrade", jobTitle: "Welder", department: "Fabrication", activityDescription: "Welding", specialConditions: "Night shift", processStep: "Welding", locale: "en" });
     expect(riskRows).toContain("NIVASAFE_FMEA_RISK_ROWS");
+    expect(riskRows).toContain("This is an FMEA risk assessment, not a RULA ergonomic assessment");
     expect(riskRows).toContain('"riskRows"');
     expect(riskRows).toContain("Return exactly 5 distinct");
     expect(riskRows).toContain("defaults for the review table");
@@ -199,6 +206,7 @@ describe("FMEA process-information helpers", () => {
 
     const imagePrompt = buildFmeaImageAnalysisPrompt({ jobTitle: "اپراتور خط", department: "تولید", activityDescription: "جابجایی قطعات.", locale: "fa" });
     expect(imagePrompt).toContain("NIVASAFE_FMEA_IMAGE_REVIEW");
+    expect(imagePrompt).toContain("FMEA process-risk assessment, not a RULA posture assessment");
     expect(imagePrompt).toContain("visible evidence");
     expect(imagePrompt).toContain("editable review rows");
   });

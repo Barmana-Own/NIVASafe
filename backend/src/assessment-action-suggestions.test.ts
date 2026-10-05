@@ -43,6 +43,8 @@ describe("assessment corrective action suggestions", () => {
     expect(prompt).toContain("NIVASAFE_FMEA_ACTION_SUGGESTIONS");
     expect(prompt).toContain("Return only valid JSON");
     expect(prompt).toContain("نشتی اتصال");
+    expect(prompt).toContain("This is an FMEA risk assessment, not a RULA ergonomic assessment");
+    expect(prompt).toContain("failure mode, cause, effect, process step, and current controls");
     expect(prompt).toContain("qualified HSE");
   });
 
@@ -87,7 +89,10 @@ describe("assessment corrective action suggestions", () => {
     expect(prompt).toContain("NIVASAFE_RULA_ACTION_SUGGESTIONS");
     expect(prompt).toContain("Return only valid JSON");
     expect(prompt).toContain("بازرسی خط");
-    expect(prompt).toContain("qualified HSE");
+    expect(prompt).toContain("corrective-action request for a RULA ergonomic posture assessment");
+    expect(prompt).toContain("elevated or observed RULA body-part score");
+    expect(prompt).toContain("Do not return generic PPE");
+    expect(prompt).toContain("qualified ergonomics/HSE professional");
   });
 
   it("includes independent side posture data in BOTH prompts and preserves AI side labels", () => {

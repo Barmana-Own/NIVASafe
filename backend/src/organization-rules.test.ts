@@ -1,8 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { activeSubscription, createSubscriptionFields, resolveSubscriptionPaymentMode, subscriptionIsUsable, subscriptionRequiredError } from "./subscription.js";
 
 describe("multi-organization subscription boundaries", () => {
   const now = new Date("2026-09-12T08:00:00.000Z");
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+  });
+
+  afterEach(() => vi.useRealTimers());
 
   it("keeps every new company subscription independent and blocks unpaid production access", () => {
     const trial = createSubscriptionFields("STARTER", now, false);

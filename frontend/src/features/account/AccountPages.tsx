@@ -6,10 +6,11 @@ import { EmptyState, Icon, PageHeader, SectionCard, StyledSelect, formatDate, ro
 import { AutoSaveForm, clearAutoSaveDraft } from "../../forms/AutoSaveForm";
 import { scopedDraftKey } from "../../forms/autoSave";
 import { LanguageSwitcher, brandAltForLocale, brandLogoForLocale, useI18n } from "../../i18n";
+import { validateMemberRequestIdentity } from "./memberRequestIdentity";
 
 type Profile = { id: string; email: string; username: string | null; displayName: string; locale: string; phone: string | null; jobTitle: string | null };
 type Member = { id: string; role: string; active: boolean; user: { id: string; email: string; username?: string | null; displayName: string; phone?: string | null; jobTitle?: string | null; globalRole?: string } };
-type MemberAccessRequest = { id: string; username: string; email: string; displayName: string; phone: string | null; jobTitle: string | null; role: string; status: string; rejectionReason: string | null; createdAt: string; reviewedAt: string | null; requestedBy?: { id: string; displayName: string; email: string; username: string | null } };
+type MemberAccessRequest = { id: string; username: string | null; email: string | null; displayName: string; phone: string | null; jobTitle: string | null; role: string; status: string; rejectionReason: string | null; createdAt: string; reviewedAt: string | null; requestedBy?: { id: string; displayName: string; email: string; username: string | null } };
 const roles = ["HSE_MANAGER", "HSE_SPECIALIST", "HSE_OFFICER", "EXTERNAL_AUDITOR", "PERSONNEL", "VIEWER"];
 const invitationRoles = [...roles];
 const organizationMemberRoles = roles;
@@ -203,17 +204,21 @@ export function MembersPage() {
     event.preventDefault();
     const element = event.currentTarget;
     const form = new FormData(element);
-    const username = normalizeUsername(String(form.get("username") ?? ""));
-    const email = normalizeEmail(String(form.get("email") ?? ""));
+    const identityResult = validateMemberRequestIdentity({
+      username: String(form.get("username") ?? ""),
+      email: String(form.get("email") ?? ""),
+    });
     const displayName = String(form.get("displayName") ?? "").trim();
     const rawPhone = String(form.get("phone") ?? "").trim();
     setError("");
-    if (!isValidUsername(username)) { setError(t("registration.invalidUsername")); return; }
-    if (!isValidEmail(email)) { setError(t("profile.invalidEmail")); return; }
+    if (identityResult.identity === null) {
+      setError(identityResult.error === "required" ? t("members.requestIdentityRequired") : identityResult.error === "invalidUsername" ? t("registration.invalidUsername") : t("profile.invalidEmail"));
+      return;
+    }
     if (!isValidDisplayName(displayName)) { setError(t("profile.invalidDisplayName")); return; }
     if (rawPhone && !isValidPhone(rawPhone)) { setError(t("profile.invalidPhone")); return; }
     try {
-      await api("/member-requests", { method: "POST", body: JSON.stringify({ username, email, displayName, phone: rawPhone ? normalizePhone(rawPhone) : null, jobTitle: String(form.get("jobTitle") ?? "").trim() || null, role: form.get("role") }) });
+      await api("/member-requests", { method: "POST", body: JSON.stringify({ ...identityResult.identity, displayName, phone: rawPhone ? normalizePhone(rawPhone) : null, jobTitle: String(form.get("jobTitle") ?? "").trim() || null, role: form.get("role") }) });
       await clearAutoSaveDraft(requestDraftKey);
       element.reset();
       requests.reload();
@@ -233,8 +238,24 @@ export function MembersPage() {
     } catch (reason) { setError((reason as Error).message); }
   }
   return <section className="page-shell"><PageHeader eyebrow={t("members.control")} title={t("members.title")} description={t("members.description")}/>{error && <div className="alert error"><Icon name="warning"/>{error}</div>}{message && <div className="alert success"><Icon name="check"/>{message}</div>}
-    {canRequestMembers && <SectionCard title={t("members.requestTitle")} description={t("members.requestDescription")} icon="plus"><AutoSaveForm storageKey={requestDraftKey} className="form-grid" onSubmit={submitRequest}><label>{t("members.requestUsername")}<input name="username" type="text" dir="ltr" autoComplete="username" maxLength={64} placeholder={t("members.requestUsernamePlaceholder")} required/></label><label>{t("members.requestDisplayName")}<input name="displayName" required/></label><label>{t("members.requestEmail")}<input name="email" type="email" dir="ltr" autoComplete="email" placeholder={t("members.requestEmailPlaceholder")} required/></label><label>{t("members.role")}<StyledSelect name="role">{memberRoles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</StyledSelect></label><label>{t("members.requestPhone")}<input name="phone" inputMode="numeric" dir="ltr" autoComplete="tel" maxLength={11} placeholder={t("members.phonePlaceholder")}/></label><label>{t("members.requestJobTitle")}<input name="jobTitle"/></label><button className="primary full"><Icon name="plus"/> {t("members.requestSubmit")}</button></AutoSaveForm></SectionCard>}
-    {canRequestMembers && <SectionCard title={t("members.pendingRequests")} description={t("members.pendingRequestsDescription")} icon="clock">{requests.loading && !requests.data ? <div className="state"><div className="spinner"/></div> : requests.error ? <div className="alert error"><Icon name="warning"/>{requests.error}</div> : requests.data?.length ? <div className="member-request-list">{requests.data.map((request) => <article className="member-request-card" key={request.id}><div><strong>{request.displayName}</strong><small dir="ltr">@{request.username} · {request.email}</small><small>{roleLabel(request.role)} · {formatDate(request.createdAt, true)}</small></div><span className="status-badge warning">{t("members.requestPending")}</span></article>)}</div> : <EmptyState icon="clock" title={t("members.noRequests")}/>}</SectionCard>}
+    {canRequestMembers && <SectionCard title={t("members.requestTitle")} description={t("members.requestDescription")} icon="plus"><AutoSaveForm storageKey={requestDraftKey} className="form-grid" onSubmit={submitRequest}><label>{t("members.requestUsername")}<input name="username" type="text" dir="ltr" autoComplete="username" maxLength={64} placeholder={t("members.requestUsernamePlaceholder")}/></label><label>{t("members.requestDisplayName")}<input name="displayName" required/></label><label>{t("members.requestEmail")}<input name="email" type="email" dir="ltr" autoComplete="email" placeholder={t("members.requestEmailPlaceholder")}/></label><label>{t("members.role")}<StyledSelect name="role">{memberRoles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</StyledSelect></label><label>{t("members.requestPhone")}<input name="phone" inputMode="numeric" dir="ltr" autoComplete="tel" maxLength={11} placeholder={t("members.phonePlaceholder")}/></label><label>{t("members.requestJobTitle")}<input name="jobTitle"/></label><button className="primary full"><Icon name="plus"/> {t("members.requestSubmit")}</button></AutoSaveForm></SectionCard>}
+    {canRequestMembers && <SectionCard title={t("members.pendingRequests")} description={t("members.pendingRequestsDescription")} icon="clock">{requests.loading && !requests.data ? <div className="state"><div className="spinner"/></div> : requests.error ? <div className="alert error"><Icon name="warning"/>{requests.error}</div> : requests.data?.length ? <div className="member-request-list">{requests.data.map((request) => <article className="member-request-card" key={request.id}>
+      <div className="member-request-identity">
+        <span className="member-request-avatar" aria-hidden="true">{request.displayName.trim().slice(0, 1)}</span>
+        <div className="member-request-copy">
+          <strong>{request.displayName}</strong>
+          <div className="member-request-identifiers" dir="ltr">
+            {request.username && <span>@{request.username}</span>}
+            {request.email && <span>{request.email}</span>}
+          </div>
+          <div className="member-request-meta">
+            <span className="member-request-role">{roleLabel(request.role)}</span>
+            <time className="member-request-date" dateTime={request.createdAt}>{formatDate(request.createdAt, true)}</time>
+          </div>
+        </div>
+      </div>
+      <span className="status-badge warning member-request-status">{t("members.requestPending")}</span>
+    </article>)}</div> : <EmptyState icon="clock" title={t("members.noRequests")}/>}</SectionCard>}
     {canManageMembers && <SectionCard title={t("members.legacyInviteTitle")} description={t("members.legacyInviteDescription")} icon="members"><AutoSaveForm storageKey={inviteDraftKey} className="invite-form" onSubmit={invite}><label>{t("members.memberEmail")}<input name="email" type="email" dir="ltr" autoComplete="email" placeholder="name@company.com" required/></label><label>{t("members.role")}<StyledSelect name="role">{invitationRoles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</StyledSelect></label><button className="ghost"><Icon name="members"/> {t("members.sendInvite")}</button></AutoSaveForm></SectionCard>}
          <SectionCard title={t("members.organizationMembers")} description={`${(state.data?.length ?? 0).toLocaleString(numberLocale)} ${t("common.member")}`} icon="members">{state.loading ? <div className="state"><div className="spinner"/></div> : !state.data?.length ? <EmptyState title={t("members.noMembers")} icon="members"/> : <div className="member-list">{state.data.map((member) => { const roleIsAssignable = memberRoles.includes(member.role); return <article className="member-card" key={member.id}><div className="member-avatar">{member.user.displayName[0]}</div><div className="member-copy"><strong>{member.user.displayName}</strong>{member.user.username && <small dir="ltr">@{member.user.username}</small>}<small>{member.user.email}{member.user.jobTitle ? ` · ${member.user.jobTitle}` : ""}</small>{member.user.globalRole === "SUPER_ADMIN" && <span className="tag">{t("members.superAdmin")}</span>}</div>{canManageMembers && <>{roleIsAssignable ? <StyledSelect value={member.role} onChange={(event) => update(member.id, event.target.value, member.active)}>{memberRoles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</StyledSelect> : <span className="status-badge neutral member-legacy-role">{roleLabel(member.role)}</span>}<button className={`status-toggle ${member.active ? "active" : "inactive"}`} onClick={() => update(member.id, member.role, !member.active)}><span/>{member.active ? t("members.active") : t("members.inactive")}</button><div className="member-actions"><button className="text-button" type="button" aria-expanded={editing?.id === member.id} aria-controls={`member-edit-${member.id}`} data-scroll-target={`#member-edit-${member.id}`} data-scroll-focus="input" onClick={() => beginEdit(member)}>{t("members.edit")}</button><button className="text-button danger-link" type="button" onClick={() => void removeMember(member)}>{t("common.delete")}</button></div>{editing?.id === member.id && <AutoSaveForm id={`member-edit-${member.id}`} storageKey={memberDraftKey(member.id)} className="member-edit-form form-grid" onSubmit={saveMember}><label>{t("profile.displayName")}<input name="displayName" defaultValue={editing.displayName} required/></label><label>{t("profile.username")}<input name="username" defaultValue={editing.username} onChange={(event) => { event.currentTarget.value = normalizeUsername(event.target.value); }} dir="ltr" autoComplete="username" maxLength={64}/></label><label>{t("auth.email")}<input name="email" type="email" dir="ltr" defaultValue={editing.email} required/></label><label>{t("profile.phone")}<input name="phone" defaultValue={editing.phone} onChange={normalizePhoneField} inputMode="numeric" autoComplete="tel" dir="ltr" maxLength={11} pattern="09[0-9]{9}" placeholder={t("members.phonePlaceholder")}/></label><label>{t("profile.jobTitle")}<input name="jobTitle" defaultValue={editing.jobTitle}/></label>{currentRole === "SUPER_ADMIN" && <label>{t("members.accountLevel")}<StyledSelect name="globalRole" defaultValue={editing.globalRole}><option value="USER">{t("members.normalUser")}</option><option value="SUPER_ADMIN">{t("members.superAdmin")}</option></StyledSelect></label>}<div className="member-edit-actions"><button className="primary" type="submit">{t("members.save")}</button><button className="ghost" type="button" onClick={() => setEditing(null)}>{t("common.cancel")}</button></div></AutoSaveForm>}</>}</article>; })}</div>}
     </SectionCard>

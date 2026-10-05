@@ -148,6 +148,18 @@ The frontend contract suite, full 157-test suite, typecheck, lint, production bu
 
 هیچ defect با شدت P0 یا P1 باقی نمانده است.
 
+## Checkpoint 2026-10-03 — هم‌ترازی خروجی گزارش‌های FMEA و RULA
+
+| بررسی | وضعیت |
+|---|---|
+| FMEA full report و final table | PASS — PDF، Word قابل‌ویرایش و Excel به‌روزرسانی شدند؛ جدول نهایی در هر سه قالب ترتیب/ستون‌های داده صفحه را حفظ می‌کند و کنترل‌ها و اقدام‌ها درون سلول به خطوط مجزا تبدیل می‌شوند. |
+| RULA report | PASS — خروجی‌ها شامل اطلاعات ارزیابی/فرآیند، امتیاز و سطح اقدام، عوامل و داده پوسچر، اثر پیش‌بینی‌شده و اقدام‌ها هستند؛ جهت فارسی و داده مستقل سمت راست/چپ حفظ می‌شود. |
+| Motion parity | NOT_APPLICABLE — PDF و فایل‌های Office snapshot ثابت‌اند؛ انیمیشن و تعاملات زنده وب به فایل منتقل نمی‌شوند. DOCX و XLSX همچنان قابل ویرایش هستند. |
+| Responsive/authenticated browser visual smoke | NOT_RUN — نشست مرورگر احرازشده برای بازکردن گزارش واقعی در دسترس نبود؛ خروجی PDF و DOCX به‌صورت باینری در تست‌ها بررسی شد. |
+| Full test suites | FAIL — frontend: ۹ شکست از ۱۰۹ مورد در قراردادهای متنی قدیمی UI (۱۰۰ مورد PASS)؛ backend: یک شکست از ۱۴۵ مورد در `organization-rules.test.ts` (۱۴۴ مورد PASS)، خارج از منطق export. |
+| Focused regression, typecheck, build, API contract, release checks | PASS — ۱۰ تست export backend، ۶ تست contract متمرکز frontend، typecheck/build هر دو package، ۶۸ مسیر frontend در برابر ۱۲۱ route backend و ۲۸ بررسی release. |
+| Deployment/database migration | NOT_APPLICABLE / NOT_PERFORMED — schema تغییر نکرد و این تغییر در محیط خارجی deploy نشده است. |
+
 ## Checkpoint 2026-09-25 — گردش ساخت و تأیید عضو سازمان
 
 | سناریو | نتیجه |

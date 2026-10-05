@@ -144,7 +144,7 @@ export function OrganizationsPage() {
   const { locale, t } = useI18n();
   const numberLocale = locale === "en" ? "en-US" : "fa-IR";
   const [error, setError] = useState(""); const [message, setMessage] = useState(""); const [creating, setCreating] = useState(false); const dialog = useDialog(); const role = getCurrentRole(); const canManage = ["SUPER_ADMIN", "ORG_ADMIN"].includes(role); const isSuperAdmin = role === "SUPER_ADMIN";
-  const { session, orgId } = getSession(); const canCreate = Boolean(session);
+  const { session, orgId } = getSession(); const canCreate = canManage;
   const editDraftKey = scopedDraftKey("organization-edit", session?.user.id, orgId);
   const createDraftKey = scopedDraftKey("organization-create", session?.user.id, orgId);
   const subscriptionDraftKey = scopedDraftKey("subscription-change", session?.user.id, orgId);
@@ -381,7 +381,34 @@ export function KnowledgePage() {
       </AutoSaveForm>
     </SectionCard>}
     <SectionCard title={t("knowledge.visibleDocuments")} description={`${filtered.length.toLocaleString(numberLocale)} ${t("knowledge.visibleCount")}`} icon="knowledge">
-      {!filtered.length ? <EmptyState title={t("knowledge.noSearchResult")} description={t("knowledge.noSearchResultDescription")} icon="search"/> : <div className="knowledge-grid">{filtered.map((item) => { const canEdit = canManageKnowledge && (!item.isGlobal || canManageGlobal); return <article className="knowledge-card" key={item.id}><div className="doc-icon"><Icon name="knowledge"/></div><div><div className="knowledge-title-row"><h3>{item.title}</h3><div className="knowledge-badges">{item.isGlobal && <span className="tag">{item.visibleOrganizationIds?.length ? t("common.selectedCompanies") : t("common.defaultAllCompanies")}</span>}{item.published === false && <StatusBadge value="DRAFT"/>}{item.aiReadable === false && <span className="tag">{t("common.humanOnly")}</span>}</div></div><p>{item.content || t("knowledge.fileOnly")}</p><div className="tag-row">{item.tags.map((tag) => <span className="tag" key={tag}>#{tag}</span>)}{item.visibility && item.visibility !== "ALL" && <span className="tag">{item.visibility === "SELECTED" ? t("common.selected") : t("common.hidden")}</span>}</div>{item.attachments?.length ? <div className="knowledge-attachments">{item.attachments.map((file) => <div className="knowledge-attachment" key={file.id}><Icon name="files" size={15}/><span title={file.originalName}>{file.originalName} · {knowledgeFileSize(file.size)}</span><button type="button" className="icon-button" title={t("common.download")} onClick={() => void downloadAttachment(file)}><Icon name="download" size={14}/></button>{canEdit && <button type="button" className="icon-button danger" title={t("common.delete")} onClick={() => void removeAttachment(file)}><Icon name="trash" size={14}/></button>}</div>)}</div> : null}{canEdit && <label className="knowledge-attachment-upload"><input type="file" accept={knowledgeAttachmentAccept} disabled={uploadingAttachmentId !== null} onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; if (file) void uploadAttachment(item.id, file); }}/><Icon name="plus" size={14}/><span>{uploadingAttachmentId === item.id ? t("knowledge.attachmentUploading") : t("knowledge.addAttachment")}</span></label>}{item.updatedAt && <small>{t("knowledge.updated")}: {formatDate(item.updatedAt)} · {t("common.version")} {item.version ?? 1}</small>}{canEdit && <div className="knowledge-actions"><button type="button" className="text-button" onClick={() => void edit(item)}>{t("common.edit")}</button><button type="button" className="text-button" onClick={() => void togglePublished(item)}>{item.published === false ? t("knowledge.published") : t("knowledge.hide")}</button><button type="button" className="text-button" onClick={() => void toggleAiReadable(item)}>{item.aiReadable === false ? t("knowledge.enableAi") : t("knowledge.disableAi")}</button><button type="button" className="text-button danger-link" onClick={() => void remove(item)}>{t("common.delete")}</button></div>}</div></article>; })}</div>}
+      {!filtered.length ? <EmptyState title={t("knowledge.noSearchResult")} description={t("knowledge.noSearchResultDescription")} icon="search"/> : <div className="knowledge-grid">
+        {filtered.map((item) => {
+          const canEdit = canManageKnowledge && (!item.isGlobal || canManageGlobal);
+          return <article className="knowledge-card" key={item.id}>
+            <div className="doc-icon"><Icon name="knowledge"/></div>
+            <div className="knowledge-card-content">
+              <div className={`knowledge-card-overview ${item.attachments?.length || canEdit ? "has-files" : "content-only"}`}>
+                <div className="knowledge-card-copy">
+                  <div className="knowledge-title-row">
+                    <h3>{item.title}</h3>
+                    <div className="knowledge-badges">{item.isGlobal && <span className="tag">{item.visibleOrganizationIds?.length ? t("common.selectedCompanies") : t("common.defaultAllCompanies")}</span>}{item.published === false && <StatusBadge value="DRAFT"/>}{item.aiReadable === false && <span className="tag">{t("common.humanOnly")}</span>}</div>
+                  </div>
+                  <p>{item.content || t("knowledge.fileOnly")}</p>
+                  <div className="tag-row">{item.tags.map((tag) => <span className="tag" key={tag}>#{tag}</span>)}{item.visibility && item.visibility !== "ALL" && <span className="tag">{item.visibility === "SELECTED" ? t("common.selected") : t("common.hidden")}</span>}</div>
+                </div>
+                {(item.attachments?.length || canEdit) ? <div className="knowledge-card-files">
+                  {item.attachments?.length ? <div className="knowledge-attachments">{item.attachments.map((file) => <div className="knowledge-attachment" key={file.id}><Icon name="files" size={15}/><span title={file.originalName}>{file.originalName} · {knowledgeFileSize(file.size)}</span><button type="button" className="icon-button" title={t("common.download")} aria-label={t("common.download")} onClick={() => void downloadAttachment(file)}><Icon name="download" size={14}/></button>{canEdit && <button type="button" className="icon-button danger" title={t("common.delete")} aria-label={t("common.delete")} onClick={() => void removeAttachment(file)}><Icon name="trash" size={14}/></button>}</div>)}</div> : null}
+                  {canEdit && <label className="knowledge-attachment-upload"><input type="file" accept={knowledgeAttachmentAccept} disabled={uploadingAttachmentId !== null} onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; if (file) void uploadAttachment(item.id, file); }}/><Icon name="plus" size={14}/><span>{uploadingAttachmentId === item.id ? t("knowledge.attachmentUploading") : t("knowledge.addAttachment")}</span></label>}
+                </div> : null}
+              </div>
+              {(item.updatedAt || canEdit) && <div className="knowledge-card-footer">
+                {item.updatedAt && <small>{t("knowledge.updated")}: {formatDate(item.updatedAt)} · {t("common.version")} {item.version ?? 1}</small>}
+                {canEdit && <div className="knowledge-actions"><button type="button" className="text-button" onClick={() => void edit(item)}>{t("common.edit")}</button><button type="button" className="text-button" onClick={() => void togglePublished(item)}>{item.published === false ? t("knowledge.published") : t("knowledge.hide")}</button><button type="button" className="text-button" onClick={() => void toggleAiReadable(item)}>{item.aiReadable === false ? t("knowledge.enableAi") : t("knowledge.disableAi")}</button><button type="button" className="text-button danger-link" onClick={() => void remove(item)}>{t("common.delete")}</button></div>}
+              </div>}
+            </div>
+          </article>;
+        })}
+      </div>}
     </SectionCard>
   </section>;
 }

@@ -1,0 +1,3 @@
+ALTER TABLE `MemberAccessRequest`
+  MODIFY COLUMN `username` VARCHAR(64) NULL,
+  MODIFY COLUMN `email` VARCHAR(254) NULL;

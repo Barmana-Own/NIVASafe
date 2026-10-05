@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, getSession, useLoad } from "../../api/client";
-import { EmptyState, Icon, PageHeader, formatDate } from "../../components/UI";
+import { EmptyState, Icon, formatDate } from "../../components/UI";
 import { AutoSaveForm, clearAutoSaveDraft } from "../../forms/AutoSaveForm";
 import { scopedDraftKey } from "../../forms/autoSave";
 import { useI18n } from "../../i18n";
+import { resolveAssistantConnectionStatus } from "./assistantConnectionStatus";
 
 type Conversation = { id: string; title: string; updatedAt?: string };
 type Message = { id: string; role: string; content: string; provider?: string; createdAt: string; citations?: Array<{ id: string; title: string }> };
@@ -25,21 +26,21 @@ export function AssistantPage() {
   const composerDraftKey = scopedDraftKey(`chat-composer:${selected || "new"}`, session?.user.id, orgId);
   const configuredChatProvider = providers.data?.find((provider) => provider.configuredForChat) ?? providers.data?.find((provider) => provider.name === "arvancloud" && provider.available);
   const activeChatProvider = configuredChatProvider?.available ? configuredChatProvider : providers.data?.find((provider) => provider.name === "fallback" && provider.available);
-  const chatUsesRemoteProvider = Boolean(activeChatProvider && activeChatProvider.name !== "fallback");
-  const chatProviderLabel = activeChatProvider?.name === "arvancloud" ? "ArvanCloud AI" : activeChatProvider?.name ?? "Fallback";
-  const chatModel = activeChatProvider?.chatModel ?? "API";
-  const chatStatus = providers.loading
-    ? t("assistant.providerChecking")
-    : providers.error
-      ? t("assistant.providerUnavailable")
-      : chatUsesRemoteProvider
-        ? t("assistant.providerConnected", { provider: chatProviderLabel, model: chatModel })
-        : t("assistant.providerFallback");
-  const chatDescription = chatUsesRemoteProvider ? t("assistant.chatDescriptionAi", { provider: chatProviderLabel, model: chatModel }) : t("assistant.chatDescription");
   const messages = useLoad<Message[]>(selected ? `/chat/conversations/${selected}/messages` : null, [selected]);
+  const latestAssistantMessage = pendingResponse?.role === "assistant"
+    ? pendingResponse
+    : [...(messages.data ?? [])].reverse().find((item) => item.role !== "user") ?? null;
+  const connectionStatus = resolveAssistantConnectionStatus({
+    loading: providers.loading,
+    failed: Boolean(providers.error),
+    activeProvider: activeChatProvider ? { name: activeChatProvider.name, available: activeChatProvider.available, chatModel: activeChatProvider.chatModel } : null,
+    latestResponseProvider: latestAssistantMessage?.provider,
+  });
+  const chatStatus = connectionStatus.kind === "lastResponse"
+    ? t("assistant.lastResponse", { provider: connectionStatus.provider === "arvancloud" ? "ArvanCloud AI" : connectionStatus.provider })
+    : t(connectionStatus.kind === "fallback" ? "assistant.fallbackActive" : `assistant.${connectionStatus.kind}`);
   const logRef = useRef<HTMLDivElement>(null);
   useEffect(() => { if (!selected && conversations.data?.length) setSelected(conversations.data[0]!.id); }, [conversations.data, selected]);
-  useEffect(() => { setPendingResponse(null); }, [selected]);
   useEffect(() => { if (pendingResponse && messages.data?.some((item) => item.id === pendingResponse.id)) setPendingResponse(null); }, [messages.data, pendingResponse]);
   useEffect(() => {
     if (!mobileConversationsOpen) return;
@@ -52,6 +53,7 @@ export function AssistantPage() {
   useEffect(() => { logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" }); }, [messages.data, pendingMessage, pendingResponse, sending]);
 
   function selectConversation(id: string) {
+    setPendingResponse(null);
     setSelected(id);
     setMobileConversationsOpen(false);
   }
@@ -63,6 +65,7 @@ export function AssistantPage() {
         method: "POST",
         body: JSON.stringify({ title: t("assistant.newConversation") }),
       });
+      setPendingResponse(null);
       setSelected(result.data.id);
       setMobileConversationsOpen(false);
       conversations.reload();
@@ -82,6 +85,7 @@ export function AssistantPage() {
     sendingRef.current = true;
     setSending(true);
     setPendingMessage(content);
+    setPendingResponse(null);
     setError("");
     element.reset();
     void clearAutoSaveDraft(composerDraftKey);
@@ -92,15 +96,26 @@ export function AssistantPage() {
         id = created.data.id;
         setSelected(id);
       }
-      const response = await api<Message>(`/chat/conversations/${id}/messages`, { method: "POST", body: JSON.stringify({ content }) });
+      const response = await api<Message>(`/chat/conversations/${id}/messages`, { method: "POST", body: JSON.stringify({ content, locale }) });
       setPendingResponse(response.data);
       setPendingMessage(null);
       messages.reload();
       conversations.reload();
     } catch (reason) {
       setPendingMessage(null);
-      setPendingResponse(null);
-      setError((reason as Error).message);
+      const failure = reason as Error & { code?: string };
+      if (failure.code === "NETWORK_ERROR") {
+        setPendingResponse({
+          id: `offline-${Date.now()}`,
+          role: "assistant",
+          content: t("assistant.offlineFallback"),
+          provider: "fallback",
+          createdAt: new Date().toISOString(),
+          citations: [],
+        });
+      } else {
+        setError(failure.message);
+      }
       if (input instanceof HTMLInputElement && !input.value.trim()) {
         input.value = content;
         input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -124,8 +139,7 @@ export function AssistantPage() {
   function renderMessage(item: Message) {
     return <div className={"message " + item.role} key={item.id}><div className="message-avatar">{item.role === "user" ? (locale === "en" ? "Y" : "ش") : <Icon name="sparkles" size={16}/>}</div><div className="message-bubble"><strong>{item.role === "user" ? t("assistant.you") : t("assistant.assistant")}</strong><p>{item.content}</p>{item.role !== "user" && item.citations?.length ? <div className="message-citations"><small>{t("assistant.knowledgeSources")}</small>{item.citations.map((citation) => <span key={citation.id}>{citation.title}</span>)}</div> : null}<small>{item.provider || formatDate(item.createdAt, true)}</small></div></div>;
   }
-  return <section className="page-shell assistant-page">
-    <PageHeader eyebrow={t("assistant.eyebrow")} title={t("assistant.title")} description={t("assistant.description")}/>
+  return <section className="page-shell assistant-page" aria-label={t("nav.assistant")}>
     {error && <div className="alert error"><Icon name="warning"/>{error}</div>}
     <div className={`assistant-layout${mobileConversationsOpen ? " history-open" : ""}`}>
       <section id="assistant-conversations-panel" className="conversation-panel" aria-label={t("assistant.conversations")}>
@@ -142,9 +156,9 @@ export function AssistantPage() {
       <section className="chat-panel">
         <div className="chat-header">
           <button type="button" className="assistant-history-toggle" onClick={() => setMobileConversationsOpen(true)} aria-expanded={mobileConversationsOpen} aria-controls="assistant-conversations-panel" aria-label={t("assistant.openConversations")} title={t("assistant.openConversations")}><Icon name="menu"/></button>
-          <span className="ai-orb"><Icon name="sparkles"/></span><div><h3>{t("assistant.chatTitle")}</h3><p>{chatDescription}</p></div><span className={`online ${providers.loading || providers.error || !chatUsesRemoteProvider ? "no" : "yes"}`}><span className="online-dot"/>{chatStatus}</span>
+          <span className="ai-orb"><Icon name="sparkles"/></span><div><h3>{t("assistant.chatTitle")}</h3></div><span className={`online ${connectionStatus.tone}`} role="status" aria-live="polite"><span className="online-dot"/>{chatStatus}</span>
         </div>
-        <div className="chat-log" ref={logRef} aria-busy={sending}>{!selected && !pendingMessage ? <EmptyState title={t("assistant.chooseConversation")} description={t("assistant.chooseConversationDescription")} icon="assistant"/> : selected && messages.loading && !pendingMessage ? <div className="state"><div className="spinner"/></div> : !messages.data?.length && !pendingMessage && !pendingResponse ? <div className="chat-welcome"><span className="ai-orb large"><Icon name="sparkles" size={28}/></span><h3>{t("assistant.welcome")}</h3><p>{t("assistant.welcomeDescription")}</p><div className="suggestions"><button type="button" onClick={() => fillSuggestion(t("assistant.suggestionOneText"))}>{t("assistant.suggestionOne")}</button><button type="button" onClick={() => fillSuggestion(t("assistant.suggestionTwoText"))}>{t("assistant.suggestionTwo")}</button></div></div> : <>{messages.data?.map(renderMessage)}{pendingResponse && renderMessage(pendingResponse)}{pendingMessage && <div className="message user pending-message"><div className="message-avatar">{locale === "en" ? "Y" : "ش"}</div><div className="message-bubble"><strong>{t("assistant.you")}</strong><p>{pendingMessage}</p><small>{t("assistant.sending")}</small></div></div>}{sending && <div className="message assistant pending-message"><div className="message-avatar"><Icon name="sparkles" size={16}/></div><div className="message-bubble"><strong>{t("assistant.assistant")}</strong><p>{t("assistant.waitingForResponse")}</p><span className="assistant-typing" aria-hidden="true"><i/><i/><i/></span></div></div>}</>}</div>
+        <div className="chat-log" ref={logRef} aria-busy={sending}>{!selected && !pendingMessage && !pendingResponse ? <EmptyState title={t("assistant.chooseConversation")} description={t("assistant.chooseConversationDescription")} icon="assistant"/> : selected && messages.loading && !pendingMessage && !pendingResponse ? <div className="state"><div className="spinner"/></div> : !messages.data?.length && !pendingMessage && !pendingResponse ? <div className="chat-welcome"><span className="ai-orb large"><Icon name="sparkles" size={28}/></span><h3>{t("assistant.welcome")}</h3><p>{t("assistant.welcomeDescription")}</p><div className="suggestions"><button type="button" onClick={() => fillSuggestion(t("assistant.suggestionOneText"))}>{t("assistant.suggestionOne")}</button><button type="button" onClick={() => fillSuggestion(t("assistant.suggestionTwoText"))}>{t("assistant.suggestionTwo")}</button></div></div> : <>{messages.data?.map(renderMessage)}{pendingResponse && renderMessage(pendingResponse)}{pendingMessage && <div className="message user pending-message"><div className="message-avatar">{locale === "en" ? "Y" : "ش"}</div><div className="message-bubble"><strong>{t("assistant.you")}</strong><p>{pendingMessage}</p><small>{t("assistant.sending")}</small></div></div>}{sending && <div className="message assistant pending-message"><div className="message-avatar"><Icon name="sparkles" size={16}/></div><div className="message-bubble"><strong>{t("assistant.assistant")}</strong><p>{t("assistant.waitingForResponse")}</p><span className="assistant-typing" aria-hidden="true"><i/><i/><i/></span></div></div>}</>}</div>
         <AutoSaveForm storageKey={composerDraftKey} className="composer" onSubmit={send}><input name="content" placeholder={t("assistant.questionPlaceholder")} autoComplete="off" minLength={2} maxLength={4000} required aria-busy={sending}/><button type="submit" className="primary" aria-label={t("assistant.send")} disabled={sending}><Icon name="arrow"/></button>{sending && <small className="composer-send-status" role="status"><span className="composer-spinner" aria-hidden="true"/>{t("assistant.waitingForResponse")}</small>}</AutoSaveForm>
         <small className="assistant-note">{t("assistant.disclaimer")}</small>
       </section>

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { authenticate } from "../auth-guard.js";
 import { checkedPassword } from "./auth.js";
 import { envelope, parse, prisma } from "../core.js";
+import { resolveMemberRequestApprovalEmail } from "../member-request.js";
 
 const adminUserSelect = {
   id: true,
@@ -53,6 +54,7 @@ const userUpdateSchema = z.object({
 const organizationRoleSchema = z.enum(["SUPER_ADMIN", "ORG_ADMIN", "HSE_MANAGER", "HSE_SPECIALIST", "HSE_OFFICER", "EXTERNAL_AUDITOR", "PERSONNEL", "ASSESSOR", "ASSISTANT", "VIEWER"]);
 const membershipUpdateSchema = z.object({ role: organizationRoleSchema.optional(), active: z.boolean().optional() }).refine((value) => value.role !== undefined || value.active !== undefined, { message: "At least one membership field is required" });
 const adminPasswordSchema = z.object({ password: z.string().min(1).max(128) });
+const memberRequestApprovalSchema = adminPasswordSchema.extend({ email: z.string().trim().min(1).max(EMAIL_MAX_LENGTH).optional() });
 const memberRequestStatusSchema = z.enum(["PENDING", "APPROVED", "REJECTED"]);
 const memberRequestRejectSchema = z.object({ reason: z.string().trim().max(1000).nullable().optional() });
 
@@ -127,21 +129,22 @@ export async function registerAdminRoutes(app: FastifyInstance) {
   app.post("/api/v1/admin/member-requests/:id/approve", { preHandler: authenticate, config: { allowUnsubscribed: true } }, async (request) => {
     requireSuperAdmin(request);
     const { id } = parse(z.object({ id: z.string().uuid() }), request.params);
-    const body = parse(adminPasswordSchema, request.body);
+    const body = parse(memberRequestApprovalSchema, request.body);
     const requestRow = await prisma.memberAccessRequest.findUnique({ where: { id } });
     if (!requestRow) throw Object.assign(new Error("درخواست عضویت پیدا نشد."), { statusCode: 404, code: "NOT_FOUND" });
     if (requestRow.status !== MemberRequestStatus.PENDING) throw Object.assign(new Error("این درخواست قبلاً بررسی شده است."), { statusCode: 409, code: "MEMBER_REQUEST_ALREADY_REVIEWED" });
-    const password = checkedPassword(body.password, { email: requestRow.email, displayName: requestRow.displayName });
+    const email = resolveMemberRequestApprovalEmail(requestRow.email, body.email);
+    const password = checkedPassword(body.password, { email, displayName: requestRow.displayName });
     const passwordHash = await bcrypt.hash(password, 12);
     const result = await prisma.$transaction(async (tx) => {
       const current = await tx.memberAccessRequest.findUnique({ where: { id } });
       if (!current || current.status !== MemberRequestStatus.PENDING) throw Object.assign(new Error("این درخواست قبلاً بررسی شده است."), { statusCode: 409, code: "MEMBER_REQUEST_ALREADY_REVIEWED" });
-      const duplicate = await tx.user.findFirst({ where: { OR: [{ email: current.email }, { username: current.username }] }, select: { id: true, email: true, username: true } });
-      if (duplicate?.email === current.email) throw Object.assign(new Error("این ایمیل قبلاً برای یک حساب استفاده شده است."), { statusCode: 409, code: "EMAIL_IN_USE" });
-      if (duplicate?.username === current.username) throw Object.assign(new Error("این نام کاربری قبلاً برای یک حساب استفاده شده است."), { statusCode: 409, code: "USERNAME_IN_USE" });
-      const user = await tx.user.create({ data: { email: current.email, username: current.username, passwordHash, displayName: current.displayName, phone: current.phone, jobTitle: current.jobTitle, active: true } });
+      const duplicate = await tx.user.findFirst({ where: { OR: [{ email }, ...(current.username ? [{ username: current.username }] : [])] }, select: { id: true, email: true, username: true } });
+      if (duplicate?.email === email) throw Object.assign(new Error("این ایمیل قبلاً برای یک حساب استفاده شده است."), { statusCode: 409, code: "EMAIL_IN_USE" });
+      if (current.username && duplicate?.username === current.username) throw Object.assign(new Error("این نام کاربری قبلاً برای یک حساب استفاده شده است."), { statusCode: 409, code: "USERNAME_IN_USE" });
+      const user = await tx.user.create({ data: { email, username: current.username, passwordHash, displayName: current.displayName, phone: current.phone, jobTitle: current.jobTitle, active: true } });
       await tx.organizationMember.create({ data: { organizationId: current.organizationId, userId: user.id, role: current.role, active: true } });
-      const updated = await tx.memberAccessRequest.update({ where: { id }, data: { status: MemberRequestStatus.APPROVED, reviewedById: request.actor!.userId, provisionedUserId: user.id, reviewedAt: new Date(), rejectionReason: null }, include: { organization: { select: { id: true, nameFa: true, nameEn: true } } } });
+      const updated = await tx.memberAccessRequest.update({ where: { id }, data: { email, status: MemberRequestStatus.APPROVED, reviewedById: request.actor!.userId, provisionedUserId: user.id, reviewedAt: new Date(), rejectionReason: null }, include: { organization: { select: { id: true, nameFa: true, nameEn: true } } } });
       await tx.auditLog.create({ data: { userId: request.actor!.userId, organizationId: current.organizationId, action: "MEMBER_ACCESS_REQUEST_APPROVED", entityType: "MemberAccessRequest", entityId: id, metadata: { userId: user.id, username: current.username, role: current.role }, requestId: request.id, ipAddress: request.ip?.slice(0, 64), userAgent: request.headers["user-agent"]?.slice(0, 2000) } });
       return { request: updated, user };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });

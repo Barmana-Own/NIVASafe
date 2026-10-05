@@ -30,6 +30,7 @@ export async function registerOrganizationRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/v1/organizations", { preHandler: authenticate, config: { allowUnsubscribed: true } }, async (request, reply) => {
+    requirePermission(request, "organizations.manage");
     const body = parse(organizationCreateSchema, request.body);
     const { subscriptionPlan, ...organizationData } = body;
     const org = await prisma.organization.create({ data: { ...organizationData, riskMedium: DEFAULT_THRESHOLDS.medium, riskHigh: DEFAULT_THRESHOLDS.high, riskCritical: DEFAULT_THRESHOLDS.critical, ...createSubscriptionFields(subscriptionPlan, new Date(), process.env.NODE_ENV === "production"), members: { create: { userId: request.actor!.userId, role: "ORG_ADMIN" } }, projects: { create: defaultProjectForLocale(body.defaultLocale ?? "fa") } } });

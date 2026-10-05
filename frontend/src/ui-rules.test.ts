@@ -2,32 +2,33 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { calculateRpn, riskLevel } from "@nivasafe/domain";
 
-const appSource = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
-const apiClientSource = readFileSync(new URL("./api/client.ts", import.meta.url), "utf8");
-const appLayoutSource = readFileSync(new URL("./layout/AppLayout.tsx", import.meta.url), "utf8");
-const uiSource = readFileSync(new URL("./components/UI.tsx", import.meta.url), "utf8");
-const generalPagesSource = readFileSync(new URL("./features/general/GeneralPages.tsx", import.meta.url), "utf8");
-const accountPagesSource = readFileSync(new URL("./features/account/AccountPages.tsx", import.meta.url), "utf8");
-const registrationPagesSource = readFileSync(new URL("./features/account/RegistrationPage.tsx", import.meta.url), "utf8");
-const assessmentPagesSource = readFileSync(new URL("./features/assessments/AssessmentPages.tsx", import.meta.url), "utf8");
-const filesPageSource = readFileSync(new URL("./features/files/FilesPage.tsx", import.meta.url), "utf8");
-const stylesSource = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
-const indexHtmlSource = readFileSync(new URL("../index.html", import.meta.url), "utf8");
-const i18nSource = readFileSync(new URL("./i18n.tsx", import.meta.url), "utf8");
-const themeSource = readFileSync(new URL("./theme.ts", import.meta.url), "utf8");
-const requiredFieldValidationSource = readFileSync(new URL("./forms/requiredFieldValidation.tsx", import.meta.url), "utf8");
-const autoSaveSource = readFileSync(new URL("./forms/AutoSaveForm.tsx", import.meta.url), "utf8");
-const autoSaveRulesSource = readFileSync(new URL("./forms/autoSave.ts", import.meta.url), "utf8");
-const assistantPageSource = readFileSync(new URL("./features/assistant/AssistantPage.tsx", import.meta.url), "utf8");
-const adminPageSource = readFileSync(new URL("./features/admin/AdminPanelPage.tsx", import.meta.url), "utf8");
-const adminModuleSource = readFileSync(new URL("../../backend/src/modules/admin.ts", import.meta.url), "utf8");
-const fmeaApiSource = readFileSync(new URL("../../backend/src/modules/assessments.ts", import.meta.url), "utf8");
-const filesApiSource = readFileSync(new URL("../../backend/src/modules/files.ts", import.meta.url), "utf8");
-const fmeaProcessSource = readFileSync(new URL("../../backend/src/fmea-process.ts", import.meta.url), "utf8");
-const reportsSource = readFileSync(new URL("../../backend/src/modules/reports.ts", import.meta.url), "utf8");
-const actionsSource = readFileSync(new URL("../../backend/src/modules/actions.ts", import.meta.url), "utf8");
-const actionProgressSource = readFileSync(new URL("../../backend/src/action-progress.ts", import.meta.url), "utf8");
-const fmeaReportHelpersSource = readFileSync(new URL("../../backend/src/fmea-report.ts", import.meta.url), "utf8");
+const readSource = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8").replace(/\r\n/g, "\n");
+const appSource = readSource("./App.tsx");
+const apiClientSource = readSource("./api/client.ts");
+const appLayoutSource = readSource("./layout/AppLayout.tsx");
+const uiSource = readSource("./components/UI.tsx");
+const generalPagesSource = readSource("./features/general/GeneralPages.tsx");
+const accountPagesSource = readSource("./features/account/AccountPages.tsx");
+const registrationPagesSource = readSource("./features/account/RegistrationPage.tsx");
+const assessmentPagesSource = readSource("./features/assessments/AssessmentPages.tsx");
+const filesPageSource = readSource("./features/files/FilesPage.tsx");
+const stylesSource = readSource("./styles.css");
+const indexHtmlSource = readSource("../index.html");
+const i18nSource = readSource("./i18n.tsx");
+const themeSource = readSource("./theme.ts");
+const requiredFieldValidationSource = readSource("./forms/requiredFieldValidation.tsx");
+const autoSaveSource = readSource("./forms/AutoSaveForm.tsx");
+const autoSaveRulesSource = readSource("./forms/autoSave.ts");
+const assistantPageSource = readSource("./features/assistant/AssistantPage.tsx");
+const adminPageSource = readSource("./features/admin/AdminPanelPage.tsx");
+const adminModuleSource = readSource("../../backend/src/modules/admin.ts");
+const fmeaApiSource = readSource("../../backend/src/modules/assessments.ts");
+const filesApiSource = readSource("../../backend/src/modules/files.ts");
+const fmeaProcessSource = readSource("../../backend/src/fmea-process.ts");
+const reportsSource = readSource("../../backend/src/modules/reports.ts");
+const actionsSource = readSource("../../backend/src/modules/actions.ts");
+const actionProgressSource = readSource("../../backend/src/action-progress.ts");
+const fmeaReportHelpersSource = readSource("../../backend/src/fmea-report.ts");
 
 describe("FMEA live preview", () => {
   it("uses the same shared rule as the API", () => {
@@ -44,7 +45,7 @@ describe("FMEA live preview", () => {
     expect(assessmentPagesSource).not.toContain("fmeaRiskThresholdsFromSettings");
     expect(fmeaApiSource).toContain("riskLevel(rpn, DEFAULT_THRESHOLDS)");
     expect(reportsSource).toContain("function fmeaReferenceRiskThresholds(): RiskThresholds");
-    expect(reportsSource).toContain("return normaliseFmeaItems(data.items, DEFAULT_THRESHOLDS)");
+    expect(reportsSource).toContain("return normaliseFmeaItems(data.items, data.riskThresholds ?? DEFAULT_THRESHOLDS)");
     expect(assessmentPagesSource).toContain('<StatusBadge value={previewRiskLevel}/>');
     expect(assessmentPagesSource).toContain('<option value="VERY_LOW">{t("status.veryLow")}</option>');
     expect(uiSource).toContain('VERY_LOW: { key: "status.veryLow"');
@@ -536,6 +537,7 @@ describe("FMEA risk register", () => {
     const fmeaReportSource = assessmentPagesSource.slice(assessmentPagesSource.indexOf("export function FmeaReportPage"), assessmentPagesSource.indexOf("export function RulaReportPage"));
     expect(fmeaReportSource).toContain('downloadFmeaFullReport("pdf")');
     expect(fmeaReportSource).toContain('downloadFmeaFullReport("docx")');
+    expect(fmeaReportSource).toContain('downloadFmeaFullReport("xlsx")');
     expect(fmeaReportSource).toContain("locale=${locale}");
     expect(assessmentPagesSource).toContain("function FmeaFinalTableExportBar");
     expect(assessmentPagesSource).toContain('onDownload("xlsx")');
@@ -773,6 +775,10 @@ describe("RULA assessment results view", () => {
     expect(stylesSource).toContain(".rula-assessment-list");
     expect(stylesSource).toContain(".rula-assessment-card");
     expect(stylesSource).toContain(".rula-assessment-card:focus-visible");
+    const rulaReportPageSource = assessmentPagesSource.slice(assessmentPagesSource.indexOf("export function RulaReportPage"), assessmentPagesSource.indexOf("function RulaAssessmentTable"));
+    expect(rulaReportPageSource).toContain('/reports/rula/${report.assessment.id}.xlsx?locale=${locale}');
+    expect(rulaReportPageSource).toContain('/reports/rula/${report.assessment.id}.docx?locale=${locale}');
+    expect(rulaReportPageSource).toContain('/reports/rula/${report.assessment.id}.pdf?locale=${locale}');
   });
   it("keeps the manual RULA action form below the final data table", () => {
     const finalTableIndex = assessmentPagesSource.lastIndexOf("<RulaReportDataTable");
@@ -868,6 +874,26 @@ describe("RULA process information", () => {
   it("keeps the RULA task description compact while giving it enough writing space", () => {
     expect(assessmentPagesSource).toContain('id="rula-task-description"');
     expect(stylesSource).toContain(".rula-process-form-grid #rula-task-description { min-height: 148px; font-size: .7rem; line-height: 1.35; padding: .68rem .78rem; }");
+  });
+
+  it("uses the RULA-specific, bounded task-description AI route", () => {
+    const requestStart = assessmentPagesSource.indexOf("async function requestRulaTaskDescriptionSuggestion()");
+    const requestEnd = assessmentPagesSource.indexOf("function acceptRulaTaskDescriptionSuggestion()", requestStart);
+    const rulaDescriptionRequest = assessmentPagesSource.slice(requestStart, requestEnd);
+    expect(rulaDescriptionRequest).toContain('api<RulaTaskDescriptionResponse>("/rula/task-description-suggestion"');
+    expect(rulaDescriptionRequest).toContain("body: JSON.stringify({ jobTitle: title, taskDescription: rulaTaskDescription.trim(), locale })");
+    expect(rulaDescriptionRequest).not.toContain("/fmea/process-suggestions");
+    expect(assessmentPagesSource).toContain('id="rula-ai-data-use-note" className="field-hint"');
+    expect(i18nSource).toContain('"assessment.rulaAiDataUse": "When you request an AI suggestion');
+    expect(fmeaApiSource).toContain("const rulaTaskDescriptionSuggestionBody");
+    const routeStart = fmeaApiSource.indexOf('app.post("/api/v1/rula/task-description-suggestion"');
+    const routeEnd = fmeaApiSource.indexOf('app.post("/api/v1/rula/posture-image-analysis"', routeStart);
+    const rulaDescriptionRoute = fmeaApiSource.slice(routeStart, routeEnd);
+    expect(rulaDescriptionRoute).toContain("parse(rulaTaskDescriptionSuggestionBody, request.body)");
+    expect(rulaDescriptionRoute).toContain("buildRulaTaskDescriptionPrompt(body)");
+    expect(rulaDescriptionRoute).toContain("includeKnowledge: false");
+    expect(rulaDescriptionRoute).toContain('requirePermission(request, "assessments.create")');
+    expect(rulaDescriptionRoute).toContain('rateLimit: { max: 12, timeWindow: "1 minute" }');
   });
 
   it("reuses the FMEA searchable job catalog control for RULA", () => {
@@ -979,12 +1005,12 @@ describe("organization navigation wording", () => {
 });
 
 describe("multi-organization workspace management", () => {
-  it("lets every authenticated account create a company while keeping switching outside the topbar", () => {
-    expect(appSource).toContain('<Route path="organizations" element={<OrganizationsPage />} />');
-    expect(appLayoutSource).toContain('path: "/organizations", labelKey: "nav.organizations", icon: "dashboard", scope: "all"');
+  it("restricts organization management and creation to organization administrators", () => {
+    expect(appSource).toContain('<Route path="organizations" element={<AccessGuard roles={["SUPER_ADMIN", "ORG_ADMIN"]}><OrganizationsPage /></AccessGuard>} />');
+    expect(appLayoutSource).toContain('path: "/organizations", labelKey: "nav.organizations", icon: "dashboard", scope: "admin"');
     expect(appLayoutSource).not.toContain("selectOrganization(event.target.value)");
     expect(apiClientSource).toContain("export function selectOrganization(organizationId: string): boolean");
-    expect(generalPagesSource).toContain("const { session, orgId } = getSession(); const canCreate = Boolean(session)");
+    expect(generalPagesSource).toContain("const { session, orgId } = getSession(); const canCreate = canManage");
     expect(generalPagesSource).toContain("selectOrganization(result.data.id)");
     expect(generalPagesSource).toContain("disabled={creating}");
   });
@@ -1295,8 +1321,6 @@ describe("new user onboarding", () => {
 describe("assistant AI connectivity UX", () => {
   it("shows the configured provider state and protects short chat prompts", () => {
     expect(assistantPageSource).toContain("configuredForChat");
-    expect(assistantPageSource).toContain("providerConnected");
-    expect(assistantPageSource).toContain("providerUnavailable");
     expect(assistantPageSource).toContain("minLength={2}");
     expect(assistantPageSource).toContain("messageTooShort");
   });
@@ -1341,14 +1365,13 @@ describe("assistant AI connectivity UX", () => {
     expect(stylesSource).toContain(".composer .primary { min-width: 44px; min-height: 44px; }");
   });
 
-  it("uses a ChatGPT-like mobile conversation drawer and hides the page title", () => {
+  it("keeps the conversation drawer accessible on mobile", () => {
     expect(assistantPageSource).toContain("mobileConversationsOpen");
     expect(assistantPageSource).toContain("assistant-history-toggle");
     expect(assistantPageSource).toContain("assistant-history-backdrop");
     expect(assistantPageSource).toContain("assistant-history-close");
     expect(assistantPageSource).toContain("history-open");
     expect(assistantPageSource).toContain("setMobileConversationsOpen(false)");
-    expect(stylesSource).toContain(".assistant-page > .page-header { display: none; }");
     expect(stylesSource).toContain(".assistant-layout.history-open .conversation-panel");
     expect(stylesSource).toContain(".assistant-history-backdrop");
     expect(stylesSource).toContain(".assistant-history-toggle");
@@ -1397,7 +1420,7 @@ describe("knowledge form layout", () => {
     expect(stylesSource).toContain(".message-citations {");
     expect(stylesSource).toContain("height: 112px; min-height: 112px;");
     expect(stylesSource).toContain(".knowledge-options .checkbox-card { min-height: 76px;");
-    expect(stylesSource).toContain("@media (max-width: 900px) {\n  .knowledge-form-top, .knowledge-options { grid-template-columns: 1fr; }");
+    expect(stylesSource).toMatch(/@media \(max-width: 900px\) {\r?\n  \.knowledge-form-top, \.knowledge-options \{ grid-template-columns: 1fr; \}/);
   });
 });
 
@@ -1594,7 +1617,7 @@ describe("phone input contract", () => {
     expect(accountPagesSource).toContain("function normalizePhoneField");
     expect(accountPagesSource).toContain('onChange={normalizePhoneField}');
     expect(accountPagesSource).toContain('maxLength={11} pattern="09[0-9]{9}"');
-    const registrationSource = readFileSync(new URL("./features/account/RegistrationPage.tsx", import.meta.url), "utf8");
+    const registrationSource = readSource("./features/account/RegistrationPage.tsx");
     expect(registrationSource).toContain('onChange={(event) => update("phone", normalizePhone(event.target.value))}');
     expect(registrationSource).toContain('phone: typeof draft.phone === "string" ? normalizePhone(draft.phone) : ""');
   });
@@ -1654,8 +1677,8 @@ describe("form auto-save contract", () => {
     expect(autoSaveRulesSource).toContain('"password"');
     expect(autoSaveRulesSource).toContain('"file"');
     expect(autoSaveSource).toContain("restoreForm");
-    expect(readFileSync(new URL("./features/general/GeneralPages.tsx", import.meta.url), "utf8")).toContain("<AutoSaveForm");
-    expect(readFileSync(new URL("./features/assistant/AssistantPage.tsx", import.meta.url), "utf8")).toContain("<AutoSaveForm");
+    expect(readSource("./features/general/GeneralPages.tsx")).toContain("<AutoSaveForm");
+    expect(readSource("./features/assistant/AssistantPage.tsx")).toContain("<AutoSaveForm");
   });
 
   it("protects FMEA and RULA assessment drafts through immediate local persistence and IndexedDB backup", () => {
@@ -1691,12 +1714,19 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain('name="postureHoldDuration"');
     expect(assessmentPagesSource).toContain('name="loadWeight"');
     expect(assessmentPagesSource).toContain('name="postureImage"');
+    expect(assessmentPagesSource).toContain("multiple disabled={Boolean(editingAssessmentId");
+    expect(assessmentPagesSource).toContain("RULA_POSTURE_IMAGE_MAX_COUNT");
+    expect(assessmentPagesSource).toContain("requestRulaPostureImageAnalyses");
+    expect(assessmentPagesSource).toContain("applyRulaPostureImageReview");
+    expect(fmeaApiSource).toContain('app.post("/api/v1/rula/posture-image-analysis"');
+    expect(fmeaApiSource).toContain('const provider = getRulaPostureImageAIProvider();');
+    expect(fmeaApiSource).toContain('imagePurpose: "rula-posture"');
     expect(assessmentPagesSource).toContain('noValidate aria-busy={submitting}');
     expect(assessmentPagesSource).toContain("handlePostureImageChange");
     expect(assessmentPagesSource).toContain("removePostureImage");
     expect(assessmentPagesSource).toContain('accept="image/jpeg,image/png,image/webp"');
     expect(assessmentPagesSource).not.toContain('capture="environment"');
-    expect(assessmentPagesSource).toContain('postureImageInvalidType');
+    expect(assessmentPagesSource).toContain('assessment.rulaImageSelection.${selection.issue}');
     expect(assessmentPagesSource).toContain('registeringRula');
     expect(assessmentPagesSource).toContain('entityType", "RulaAssessment"');
     expect(assessmentPagesSource).toContain("rulaAiImageActive");
@@ -1857,7 +1887,7 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain('t("assessment.editPostureResult")');
     expect(assessmentPagesSource).toContain('part=${encodeURIComponent(part)}');
     expect(assessmentPagesSource).toContain('const editingAssessmentId = searchParams.get("edit")?.trim() ?? ""');
-    expect(assessmentPagesSource).toContain('await api(`/rula/${editingAssessmentId}`, { method: "PATCH"');
+    expect(assessmentPagesSource).toContain('await api<{ id: string; score: number }>(`/rula/${editingAssessmentId}`, { method: "PATCH"');
     expect(assessmentPagesSource).toContain('t("assessment.editRula")');
     expect(i18nSource).toContain('"assessment.editRula": "ویرایش ارزیابی RULA"');
     expect(i18nSource).toContain('"assessment.editRula": "Edit RULA assessment"');
@@ -1912,7 +1942,7 @@ describe("global admin panel", () => {
 
 describe("administrator invitations", () => {
   it("offers only the approved HSE and limited organization roles through member flows", () => {
-    const accountSource = readFileSync(new URL("./features/account/AccountPages.tsx", import.meta.url), "utf8");
+    const accountSource = readSource("./features/account/AccountPages.tsx");
     expect(accountSource).toContain('const roles = ["HSE_MANAGER", "HSE_SPECIALIST", "HSE_OFFICER", "EXTERNAL_AUDITOR", "PERSONNEL", "VIEWER"];');
     expect(accountSource).toContain("const invitationRoles = [...roles];");
     expect(accountSource).not.toContain('const roles = ["ORG_ADMIN"');

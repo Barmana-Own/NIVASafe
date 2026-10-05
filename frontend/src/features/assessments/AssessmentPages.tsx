@@ -8,6 +8,10 @@ import { AutoSaveForm, clearAutoSaveDraft } from "../../forms/AutoSaveForm";
 import { assessmentDraftKey, assessmentWizardStepKey, clearAssessmentWizardStep, readStoredDraft, scopedDraftKey, snapshotForm as snapshotStoredForm, writeStoredDraft, type AutoSaveDraft } from "../../forms/autoSave";
 import { useI18n } from "../../i18n";
 import { LoadState } from "../general/GeneralPages";
+import { RulaReportOverview } from "./RulaReportOverview";
+import { fmeaSuggestionDismissalKey, withoutDismissedFmeaSuggestions } from "./fmeaSuggestionDismissal";
+import { appendNextFmeaReportSuggestion, hiddenFmeaReportItemCount, visibleFmeaReportItems } from "./fmeaReportCollections";
+import { appendRulaPostureImages, RULA_POSTURE_IMAGE_MAX_COUNT, RULA_POSTURE_IMAGE_MAX_BYTES, rulaPostureImageFileKey } from "./rulaPostureImages";
 
 type Project = { id: string; name: string; nameFa?: string; nameEn?: string };
 type FmeaItem = { id: string; rowNumber: number; processStep: string; failureMode: string; effect: string; cause: string; preventiveControls?: string | null; detectionControls?: string | null; severity: number; occurrence: number; detection: number; rpn: number; riskLevel: string; recommendation?: string | null };
@@ -34,6 +38,7 @@ type FmeaScoreKind = "severity" | "occurrence" | "detection";
 type ScoreCriterion = { score: number; label: string; description: string };
 type JobCatalogEntry = { id: string; organizationId: string | null; titleFa: string; titleEn: string; source?: string; sourceLocale?: string | null; keywords: string[]; departmentFa: string | null; departmentEn: string | null; descriptionFa: string | null; descriptionEn: string | null; equipment: string[]; materials: string[]; controls: string[] };
 type ProcessSuggestionResponse = { job: JobCatalogEntry | null; databaseSuggestions: ProcessSuggestions; aiSuggestions: ProcessSuggestions; provider: string; aiStatus: "connected" | "fallback" | "unavailable"; descriptionSuggestion?: string | null; riskSuggestions?: FmeaRiskSuggestions; riskRows?: FmeaProcessRiskRowSuggestion[]; scoreSuggestion?: FmeaRiskScoreSuggestion | null; jobTitleSuggestions?: string[]; aiJobCatalogSuggestions?: JobCatalogEntry[]; autofill?: FmeaProcessAutofill | null };
+type RulaTaskDescriptionResponse = { descriptionSuggestion: string | null; provider: string; aiStatus: "connected" | "fallback" | "unavailable" };
 type Fmea = { id: string; title: string; code: string; scope?: string; activityId?: string | null; department?: string; activityDescription?: string; equipment?: string[]; materials?: string[]; existingControls?: string[]; specialConditions?: string; status: string; version: number; project: Project; items: FmeaItem[]; jobCatalog?: JobCatalogEntry | null };
 type RulaActivityInfo = { jobTitle: string; taskDescription: string; postureDescription?: string | null; durationPerOccurrence?: number; durationUnit?: "SECOND" | "MINUTE" | "HOUR"; repetitionsPerShift?: number; postureHoldDuration?: number; postureHoldUnit?: "SECOND" | "MINUTE" | "HOUR"; loadWeight?: number | null; loadUnit?: "KG" | "LB"; postureImageAttachmentId?: string | null };
 type RulaPosturePart = "upperArm" | "lowerArm" | "wrist" | "wristTwist" | "neck" | "trunk" | "legs";
@@ -50,10 +55,12 @@ type RulaActionBodySide = "LEFT" | "RIGHT" | "BOTH";
 type RulaSinglePostureAnalysis = Record<RulaPosturePart, RulaPostureRow>;
 type RulaPostureAnalysis = RulaSinglePostureAnalysis & { sideAnalyses?: Partial<Record<RulaBodySide, RulaSinglePostureAnalysis>>; imageOverlay?: RulaPostureImageOverlay; sideImageOverlays?: Partial<Record<RulaBodySide, RulaPostureImageOverlay>> };
 type RulaWizardStep = 1 | 2 | 3;
-type Rula = { id: string; title: string; subjectCode?: string; bodySide?: "RIGHT" | "LEFT" | "BOTH"; inputs?: { force?: number; muscleUse?: boolean | number | string } | null; score: number; actionLevel: number; explanation: string; status: string; version: number; createdAt?: string; updatedAt?: string; project: Project; postureReviewComplete?: boolean; activityInfo?: RulaActivityInfo | null; postureAnalysis?: RulaPostureAnalysis | null; postureImage?: { id: string; originalName: string; mimeType: string; size: number; createdAt: string } | null };
+type RulaPostureImageAttachment = { id: string; originalName: string; mimeType: string; size: number; createdAt: string };
+type RulaPostureImageReview = { status: "loading" | "ready" | "error"; result?: RulaPostureImageAnalysisResponse };
+type Rula = { id: string; title: string; subjectCode?: string; bodySide?: "RIGHT" | "LEFT" | "BOTH"; inputs?: { force?: number; muscleUse?: boolean | number | string } | null; score: number; actionLevel: number; explanation: string; status: string; version: number; createdAt?: string; updatedAt?: string; project: Project; postureReviewComplete?: boolean; activityInfo?: RulaActivityInfo | null; postureAnalysis?: RulaPostureAnalysis | null; postureImages?: RulaPostureImageAttachment[]; postureImage?: RulaPostureImageAttachment | null };
 type RulaActionPriority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 type RulaReportFactor = { key: "neck" | "upperArm" | "trunk"; angle: number | null; detected?: boolean; score: number; impactPercent: number; impactLevel: "LOW" | "MEDIUM" | "HIGH"; source: RulaPostureSource; reviewed?: boolean };
-type RulaCorrectionAction = { id: string; titleFa: string; titleEn: string; descriptionFa: string; descriptionEn: string; priority: RulaActionPriority; scoreReduction: number; affectedParts: RulaPosturePart[]; bodySide?: RulaActionBodySide; source?: "AI" | "FALLBACK"; persistedId?: string; suggestionId?: string };
+type RulaCorrectionAction = { id: string; titleFa: string; titleEn: string; descriptionFa: string; descriptionEn: string; priority: RulaActionPriority; status?: string; scoreReduction: number; affectedParts: RulaPosturePart[]; bodySide?: RulaActionBodySide; source?: "AI" | "FALLBACK"; persistedId?: string; suggestionId?: string };
 type RulaSideAssessmentResult = Pick<ReturnType<typeof calculateRula>, "score" | "actionLevel" | "explanation" | "trace" | "groupA" | "groupB" | "adjustment">;
 type RulaPersistedAction = { id: string; title: string; description: string; priority: RulaActionPriority; status: string; progress: number; assigneeName?: string | null; dueDate?: string | null; beforeRisk?: number | null; afterRisk?: number | null; bodySide?: RulaActionBodySide | null; rulaImpact?: { suggestionId?: string; scoreReduction: number; affectedParts: RulaPosturePart[] } | null };
 type RulaReportPayload = { assessment: { id: string; title: string; project: Project; score: number; actionLevel: number; explanation: string; status: string; updatedAt: string; bodySide: RulaActionBodySide; postureReviewComplete?: boolean; activityInfo?: RulaActivityInfo | null; postureAnalysis: RulaPostureAnalysis }; factors: RulaReportFactor[]; sideResults?: Partial<Record<RulaBodySide, RulaSideAssessmentResult>>; sideFactors?: Partial<Record<RulaBodySide, RulaReportFactor[]>>; suggestedActions: RulaCorrectionAction[]; actions: RulaPersistedAction[]; predictedScore: number; predictedSideScores?: Partial<Record<RulaBodySide, number>> };
@@ -83,8 +90,6 @@ const FMEA_ASSISTANT_STORAGE_KEY = "nivasafe-fmea-assistant-enabled-v2";
 const FMEA_JOB_CATALOG_LIMIT = 200;
 const FMEA_JOB_VISIBLE_COUNT = 12;
 const RULA_TASK_DESCRIPTION_MAX = 500;
-const RULA_POSTURE_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
-const RULA_POSTURE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const RULA_CORRECTIVE_SUGGESTION_MAX = 6;
 
 function fmeaRiskValues(severity: number, occurrence: number, detection: number, thresholds: RiskThresholds = DEFAULT_THRESHOLDS) {
@@ -2474,10 +2479,10 @@ function FmeaReportDetailSuggestionsPanel({ suggestions, locale, canEdit, loadin
 export function FmeaReportPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const state = useLoad<FmeaReport>(id ? `/fmea/${id}/report` : null, [id]);
+  const { locale, t } = useI18n();
+  const state = useLoad<FmeaReport>(id ? `/fmea/${id}/report?locale=${locale}` : null, [id, locale]);
   const report = state.data;
   const fmeaRiskThresholds = DEFAULT_THRESHOLDS;
-  const { locale, t } = useI18n();
   const numberLocale = locale === "en" ? "en-US" : "fa-IR";
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -2497,6 +2502,7 @@ export function FmeaReportPage() {
   const [aiActionError, setAiActionError] = useState("");
   const [aiActionStatus, setAiActionStatus] = useState<ReportActionAiStatus | null>(null);
   const [aiSuggestedActions, setAiSuggestedActions] = useState<FmeaReportActionSuggestion[] | null>(null);
+  const [dismissedSuggestionKeys, setDismissedSuggestionKeys] = useState<Set<string>>(() => new Set());
   const [showAllTopFailureModes, setShowAllTopFailureModes] = useState(false);
   const [showAllSuggestedActions, setShowAllSuggestedActions] = useState(false);
   const actionFormRef = useRef<HTMLDivElement>(null);
@@ -2510,14 +2516,16 @@ export function FmeaReportPage() {
   const remainingActionCount = report ? Math.max(0, report.actions.length - completedActionCount - inProgressActionCount) : 0;
   const actionCompletionPercent = report?.actions.length ? Math.round(report.actions.reduce((sum, action) => sum + Math.min(100, Math.max(0, Number(action.progress) || 0)), 0) / report.actions.length) : 0;
   const topFailureModeItems = report?.topFailureModes ?? [];
-  const visibleTopFailureModes = showAllTopFailureModes ? topFailureModeItems : topFailureModeItems.slice(0, FMEA_REPORT_VISIBLE_ITEM_COUNT);
-  const hiddenTopFailureModeCount = Math.max(0, topFailureModeItems.length - FMEA_REPORT_VISIBLE_ITEM_COUNT);
-  const suggestedActionItems = report ? (aiSuggestedActions ?? report.suggestedActions).filter((suggestion) => !report.actions.some((action) => action.fmeaItemId === suggestion.fmeaItemId && action.title.trim().toLocaleLowerCase() === suggestion.title.trim().toLocaleLowerCase())).slice(0, FMEA_REPORT_AI_ACTION_MAX) : [];
-  const visibleSuggestedActions = showAllSuggestedActions ? suggestedActionItems : suggestedActionItems.slice(0, FMEA_REPORT_VISIBLE_ITEM_COUNT);
-  const hiddenSuggestedActionCount = Math.max(0, suggestedActionItems.length - FMEA_REPORT_VISIBLE_ITEM_COUNT);
+  const visibleTopFailureModes = visibleFmeaReportItems(topFailureModeItems, showAllTopFailureModes, FMEA_REPORT_VISIBLE_ITEM_COUNT);
+  const hiddenTopFailureModeCount = hiddenFmeaReportItemCount(topFailureModeItems, FMEA_REPORT_VISIBLE_ITEM_COUNT);
+  const unregisteredSuggestedActions = report ? (aiSuggestedActions ?? report.suggestedActions).filter((suggestion) => !report.actions.some((action) => action.fmeaItemId === suggestion.fmeaItemId && action.title.trim().toLocaleLowerCase() === suggestion.title.trim().toLocaleLowerCase())) : [];
+  const suggestedActionItems = withoutDismissedFmeaSuggestions(unregisteredSuggestedActions, dismissedSuggestionKeys).slice(0, FMEA_REPORT_AI_ACTION_MAX);
+  const visibleSuggestedActions = visibleFmeaReportItems(suggestedActionItems, showAllSuggestedActions, FMEA_REPORT_VISIBLE_ITEM_COUNT);
+  const hiddenSuggestedActionCount = hiddenFmeaReportItemCount(suggestedActionItems, FMEA_REPORT_VISIBLE_ITEM_COUNT);
 
   useEffect(() => {
     setAiSuggestedActions(null);
+    setDismissedSuggestionKeys(new Set());
     setAiActionError("");
     setAiActionStatus(null);
     setShowAllTopFailureModes(false);
@@ -2550,7 +2558,7 @@ export function FmeaReportPage() {
     void saveBlob(`/reports/fmea/${id}.${format}?view=final-table&locale=${locale}`, `${report.assessment.code}-final-table.${format}`).catch((reason) => setError((reason as Error).message));
   }
 
-  function downloadFmeaFullReport(format: "pdf" | "docx") {
+  function downloadFmeaFullReport(format: "pdf" | "docx" | "xlsx") {
     if (!id || !report) return;
     void saveBlob(`/reports/fmea/${id}.${format}?locale=${locale}`, `${report.assessment.code}-report.${format}`).catch((reason) => setError((reason as Error).message));
   }
@@ -2574,6 +2582,11 @@ export function FmeaReportPage() {
     setActionDraft({ title: suggestion.title, description: suggestion.description, fmeaItemId: suggestion.fmeaItemId, priority: suggestion.priority });
     setShowActionForm(true);
     setActionFormScrollRequest((request) => request + 1);
+  }
+
+  function dismissSuggestion(suggestion: FmeaReportActionSuggestion) {
+    const key = fmeaSuggestionDismissalKey(suggestion);
+    setDismissedSuggestionKeys((keys) => new Set(keys).add(key));
   }
 
   function openManualActionForm() {
@@ -2625,19 +2638,26 @@ export function FmeaReportPage() {
 
   async function requestAiActionSuggestions() {
     if (!id || !report || aiActionLoading) return;
-    const currentSuggestions = (aiSuggestedActions ?? report.suggestedActions).filter((suggestion) => !report.actions.some((action) => action.fmeaItemId === suggestion.fmeaItemId && action.title.trim().toLocaleLowerCase() === suggestion.title.trim().toLocaleLowerCase())).slice(0, FMEA_REPORT_AI_ACTION_MAX);
+    const currentSuggestions = withoutDismissedFmeaSuggestions(unregisteredSuggestedActions, dismissedSuggestionKeys).slice(0, FMEA_REPORT_AI_ACTION_MAX);
     if (currentSuggestions.length >= FMEA_REPORT_AI_ACTION_MAX) {
       setShowAllSuggestedActions(true);
       return;
     }
     setAiActionLoading(true); setAiActionError(""); setMessage("");
     try {
-      const result = await api<ReportActionSuggestionsResponse<FmeaReportActionSuggestion>>("/fmea/" + id + "/report/action-suggestions", { method: "POST", body: JSON.stringify({ locale, excludeTitles: currentSuggestions.map((suggestion) => suggestion.title) }) });
-      const currentKeys = new Set(currentSuggestions.map((suggestion) => `${suggestion.fmeaItemId}\u0000${suggestion.title.trim().toLocaleLowerCase()}`));
-      const nextSuggestion = result.data.suggestions.find((suggestion) => !currentKeys.has(`${suggestion.fmeaItemId}\u0000${suggestion.title.trim().toLocaleLowerCase()}`) && !report.actions.some((action) => action.fmeaItemId === suggestion.fmeaItemId && action.title.trim().toLocaleLowerCase() === suggestion.title.trim().toLocaleLowerCase()));
-      setAiSuggestedActions(nextSuggestion ? [...currentSuggestions, nextSuggestion].slice(0, FMEA_REPORT_AI_ACTION_MAX) : currentSuggestions);
+      const result = await api<ReportActionSuggestionsResponse<FmeaReportActionSuggestion>>("/fmea/" + id + "/report/action-suggestions", { method: "POST", body: JSON.stringify({ locale, excludeTitles: unregisteredSuggestedActions.map((suggestion) => suggestion.title) }) });
+      const currentKeys = new Set(unregisteredSuggestedActions.map(fmeaSuggestionDismissalKey));
+      const nextSuggestions = appendNextFmeaReportSuggestion(
+        currentSuggestions,
+        result.data.suggestions,
+        fmeaSuggestionDismissalKey,
+        (suggestion) => currentKeys.has(fmeaSuggestionDismissalKey(suggestion)) || report.actions.some((action) => action.fmeaItemId === suggestion.fmeaItemId && action.title.trim().toLocaleLowerCase() === suggestion.title.trim().toLocaleLowerCase()),
+        FMEA_REPORT_AI_ACTION_MAX,
+      );
+      const suggestionAdded = nextSuggestions.length > currentSuggestions.length;
+      setAiSuggestedActions(nextSuggestions);
       setAiActionStatus(result.data.aiStatus);
-      if (nextSuggestion) setMessage(t("report.aiActionSuggestionAdded"));
+      if (suggestionAdded) setMessage(t("report.aiActionSuggestionAdded"));
       else setAiActionError(t("report.noNewAiActionSuggestion"));
     } catch (reason) {
       setAiActionStatus("unavailable");
@@ -2682,7 +2702,7 @@ export function FmeaReportPage() {
   if (state.error || !report) return <section className="page-shell"><div className="state error-state"><span className="state-icon"><Icon name="warning" size={27}/></span><h3>{t("common.loadFailed")}</h3><p>{state.error || t("report.notFound")}</p><button className="primary" onClick={state.reload}>{t("common.retry")}</button></div></section>;
 
   return <section className="page-shell fmea-report-page">
-     <PageHeader eyebrow={t("report.eyebrow")} title={t("report.title")} description={`${report.assessment.title} · ${report.assessment.code}`} actions={<div className="page-actions-inline"><button type="button" className="ghost" onClick={() => downloadFmeaFullReport("pdf")}><Icon name="download"/> {t("assessment.downloadPdf")}</button><button type="button" className="ghost" onClick={() => downloadFmeaFullReport("docx")}><Icon name="download"/> {t("assessment.downloadWord")}</button><button type="button" className="ghost" onClick={goToPreviousStep}><Icon name="arrow" className="back-arrow"/> {canEditActions ? t("assessment.previousStep") : t("report.back")}</button>{canEditActions && report.assessment.status !== "APPROVED" && <button type="button" className="primary" onClick={() => void approveReport()} disabled={saving}><Icon name="check"/> {t("assessment.approve")}</button>}{canEditActions && <button type="button" className="ghost danger-button" onClick={() => void deleteReport()} disabled={saving}><Icon name="trash"/> {t("common.delete")}</button>}<button type="button" className="ghost" onClick={() => void saveReport()} disabled={saving}><Icon name="check"/> {saving ? t("report.saving") : t("report.save")}</button></div>}/>
+     <PageHeader eyebrow={t("report.eyebrow")} title={t("report.title")} description={`${report.assessment.title} · ${report.assessment.code}`} actions={<div className="page-actions-inline"><button type="button" className="ghost" onClick={() => downloadFmeaFullReport("pdf")}><Icon name="download"/> {t("assessment.downloadPdf")}</button><button type="button" className="ghost" onClick={() => downloadFmeaFullReport("docx")}><Icon name="download"/> {t("assessment.downloadWord")}</button><button type="button" className="ghost" onClick={() => downloadFmeaFullReport("xlsx")}><Icon name="download"/> {t("assessment.downloadExcel")}</button><button type="button" className="ghost" onClick={goToPreviousStep}><Icon name="arrow" className="back-arrow"/> {canEditActions ? t("assessment.previousStep") : t("report.back")}</button>{canEditActions && report.assessment.status !== "APPROVED" && <button type="button" className="primary" onClick={() => void approveReport()} disabled={saving}><Icon name="check"/> {t("assessment.approve")}</button>}{canEditActions && <button type="button" className="ghost danger-button" onClick={() => void deleteReport()} disabled={saving}><Icon name="trash"/> {t("common.delete")}</button>}<button type="button" className="ghost" onClick={() => void saveReport()} disabled={saving}><Icon name="check"/> {saving ? t("report.saving") : t("report.save")}</button></div>}/>
      <FmeaReportStepper onStepClick={canEditActions && id ? (step) => navigate(`/fmea?edit=${encodeURIComponent(id)}&step=${step}`) : undefined}/>
      {error && <div className="alert error" role="alert"><Icon name="warning"/>{error}</div>}{message && <div className="alert success" role="status"><Icon name="check"/>{message}</div>}
     <div className="fmea-report-status-row"><span className="fmea-report-completion-badge"><Icon name="check" size={14}/>{report.assessment.status === "APPROVED" ? t("report.assessmentCompleted") : <StatusBadge value={report.assessment.status}/>}</span><span className="fmea-report-code">{report.assessment.code}</span></div>
@@ -2695,7 +2715,7 @@ export function FmeaReportPage() {
       <SectionCard className="fmea-report-dashboard-panel fmea-report-distribution-panel" title={t("report.riskDistribution")} description={t("report.riskDistributionDescription")} icon="chart"><FmeaRiskDistributionChart distribution={report.summary.distribution} totalFailureModes={report.summary.totalFailureModes} locale={locale}/></SectionCard>
       <SectionCard className="fmea-report-dashboard-panel fmea-report-progress-panel" title={t("report.actionCompletion")} icon="actions"><div className="fmea-action-progress-layout"><div className="fmea-action-progress-ring" style={{ background: `conic-gradient(#138a61 ${actionCompletionPercent}%, #e6eef2 0)` }} role="img" aria-label={`${actionCompletionPercent}%`}><div><strong>{actionCompletionPercent.toLocaleString(numberLocale)}%</strong><small>{t("report.completed")}</small></div></div><div className="fmea-action-progress-list"><div><span className="completed-dot"/>{t("report.completed")}<strong>{completedActionCount.toLocaleString(numberLocale)}</strong></div><div><span className="in-progress-dot"/>{t("report.inProgress")}<strong>{inProgressActionCount.toLocaleString(numberLocale)}</strong></div><div><span className="remaining-dot"/>{t("report.remaining")}<strong>{remainingActionCount.toLocaleString(numberLocale)}</strong></div></div></div></SectionCard>
     </div>
-     <div className="report-two-column fmea-report-primary-grid"><SectionCard title={t("report.topFailureModes")} description={t("report.topFailureModesDescription")} icon="warning"><div id="fmea-top-failure-modes" className="report-top-list">{topFailureModeItems.length ? visibleTopFailureModes.map((item) => <article className="report-top-item" key={item.id}><div className="report-top-index">{item.rowNumber.toLocaleString(numberLocale)}</div><div className="report-top-copy"><strong>{item.failureMode}</strong><small>{item.effect}</small></div><div className="report-score-trio"><span><b>S</b>{item.severity}</span><span><b>O</b>{item.occurrence}</span><span><b>D</b>{item.detection}</span><span><b>AP</b><StatusBadge value={item.actionPriority}/></span><span><b>RPN</b>{item.rpn.toLocaleString(numberLocale)}</span></div></article>) : <EmptyState title={t("report.noFailureModes")} icon="fmea"/>}</div>{hiddenTopFailureModeCount > 0 && <button type="button" className="report-list-toggle" aria-expanded={showAllTopFailureModes} aria-controls="fmea-top-failure-modes" onClick={() => setShowAllTopFailureModes((expanded) => !expanded)}><span aria-hidden="true">{showAllTopFailureModes ? "−" : "+"}</span>{showAllTopFailureModes ? t("report.hideMoreFailureModes") : t("report.showMoreFailureModes", { count: hiddenTopFailureModeCount })}</button>}</SectionCard><SectionCard title={t("report.proposedActions")} description={t("report.proposedActionsDescription")} icon="actions" actions={canEditActions ? <><button type="button" className="ghost" onClick={() => void requestAiActionSuggestions()} disabled={aiActionLoading || suggestedActionItems.length >= FMEA_REPORT_AI_ACTION_MAX}><Icon name="sparkles"/> {aiActionLoading ? t("report.aiActionsWorking") : t("report.getAiActionSuggestion")}</button><button type="button" className="primary" onClick={openManualActionForm}><Icon name="plus"/> {t("report.addManualAction")}</button></> : undefined}><div className="report-ai-action-status" role="status" aria-live="polite">{aiActionLoading && <span className="ai-status loading"><span className="spinner"/>{t("report.aiActionsWorking")}</span>}{!aiActionLoading && aiActionStatus && <span className={"ai-status " + aiActionStatus}>{t("assessment.aiStatus." + aiActionStatus)}</span>}{aiActionError && <div className="report-ai-action-error" role="alert"><span>{aiActionError}</span><button type="button" className="text-button" onClick={() => void requestAiActionSuggestions()}>{t("common.retry")}</button></div>}</div>{suggestedActionItems.length ? <div id="fmea-suggested-actions" className="report-action-list">{visibleSuggestedActions.map((item) => <article className="report-action-row" key={`${item.id}-${item.fmeaItemId}-${item.title}`}><div className="report-action-icon"><Icon name="sparkles" size={17}/></div><div><strong>{item.title}</strong><small>{t("report.relatedRisk")}: {item.failureMode}</small><small>{t("actions.assignee")}: {t("common.none")}</small></div><StatusBadge value={item.priority}/><StatusBadge value="SUGGESTED"/>{canEditActions && <button className="text-button" type="button" onClick={() => chooseSuggestion(item)}>{t("report.useSuggestion")}</button>}</article>)}</div> : <EmptyState title={t("report.noSuggestedActions")} icon="actions"/>}{hiddenSuggestedActionCount > 0 && <button type="button" className="report-list-toggle" aria-expanded={showAllSuggestedActions} aria-controls="fmea-suggested-actions" onClick={() => setShowAllSuggestedActions((expanded) => !expanded)}><span aria-hidden="true">{showAllSuggestedActions ? "−" : "+"}</span>{showAllSuggestedActions ? t("report.hideMoreActions") : t("report.showMoreActions", { count: hiddenSuggestedActionCount })}</button>}</SectionCard></div>
+     <div className="report-two-column fmea-report-primary-grid"><SectionCard title={t("report.topFailureModes")} description={t("report.topFailureModesDescription")} icon="warning"><div id="fmea-top-failure-modes" className="report-top-list">{topFailureModeItems.length ? visibleTopFailureModes.map((item) => <article className="report-top-item" key={item.id}><div className="report-top-index">{item.rowNumber.toLocaleString(numberLocale)}</div><div className="report-top-copy"><strong>{item.failureMode}</strong><small>{item.effect}</small></div><div className="report-score-trio"><span><b>S</b>{item.severity}</span><span><b>O</b>{item.occurrence}</span><span><b>D</b>{item.detection}</span><span><b>AP</b><StatusBadge value={item.actionPriority}/></span><span><b>RPN</b>{item.rpn.toLocaleString(numberLocale)}</span></div></article>) : <EmptyState title={t("report.noFailureModes")} icon="fmea"/>}</div>{hiddenTopFailureModeCount > 0 && <button type="button" className="report-list-toggle" aria-expanded={showAllTopFailureModes} aria-controls="fmea-top-failure-modes" onClick={() => setShowAllTopFailureModes((expanded) => !expanded)}><span aria-hidden="true">{showAllTopFailureModes ? "−" : "+"}</span>{showAllTopFailureModes ? t("report.hideMoreFailureModes") : t("report.showMoreFailureModes", { count: hiddenTopFailureModeCount })}</button>}</SectionCard><SectionCard title={t("report.proposedActions")} description={t("report.proposedActionsDescription")} icon="actions" actions={canEditActions ? <><button type="button" className="ghost" onClick={() => void requestAiActionSuggestions()} disabled={aiActionLoading || suggestedActionItems.length >= FMEA_REPORT_AI_ACTION_MAX}><Icon name="sparkles"/> {aiActionLoading ? t("report.aiActionsWorking") : t("report.getAiActionSuggestion")}</button><button type="button" className="primary" onClick={openManualActionForm}><Icon name="plus"/> {t("report.addManualAction")}</button></> : undefined}><div className="report-ai-action-status" role="status" aria-live="polite">{aiActionLoading && <span className="ai-status loading"><span className="spinner"/>{t("report.aiActionsWorking")}</span>}{!aiActionLoading && aiActionStatus && <span className={"ai-status " + aiActionStatus}>{t("assessment.aiStatus." + aiActionStatus)}</span>}{aiActionError && <div className="report-ai-action-error" role="alert"><span>{aiActionError}</span><button type="button" className="text-button" onClick={() => void requestAiActionSuggestions()}>{t("common.retry")}</button></div>}</div>{suggestedActionItems.length ? <div id="fmea-suggested-actions" className="report-action-list">{visibleSuggestedActions.map((item) => <article className="report-action-row" key={`${item.id}-${item.fmeaItemId}-${item.title}`}><div className="report-action-icon"><Icon name="sparkles" size={17}/></div><div><strong>{item.title}</strong><small>{t("report.relatedRisk")}: {item.failureMode}</small><small>{t("actions.assignee")}: {t("common.none")}</small></div><StatusBadge value={item.priority}/><StatusBadge value="SUGGESTED"/>{canEditActions && <div className="report-suggestion-actions"><button className="text-button" type="button" onClick={() => chooseSuggestion(item)}>{t("report.useSuggestion")}</button><button className="text-button danger-text" type="button" aria-label={t("report.removeSuggestion")} title={t("report.removeSuggestion")} onClick={() => dismissSuggestion(item)}><Icon name="trash" size={14}/>{t("report.removeSuggestion")}</button></div>}</article>)}</div> : <EmptyState title={t("report.noSuggestedActions")} icon="actions"/>}{hiddenSuggestedActionCount > 0 && <button type="button" className="report-list-toggle" aria-expanded={showAllSuggestedActions} aria-controls="fmea-suggested-actions" onClick={() => setShowAllSuggestedActions((expanded) => !expanded)}><span aria-hidden="true">{showAllSuggestedActions ? "−" : "+"}</span>{showAllSuggestedActions ? t("report.hideMoreActions") : t("report.showMoreActions", { count: hiddenSuggestedActionCount })}</button>}</SectionCard></div>
       {canEditActions && <div ref={actionFormRef} className="report-action-form-anchor">
         <SectionCard className={`report-action-form-card ${showActionForm ? "is-expanded" : "is-collapsed"}`} title={t("report.manualActionTitle")} description={t("report.manualActionDescription")} icon="plus" actions={<button type="button" className="ghost report-collapse-toggle" aria-expanded={showActionForm} aria-controls="fmea-manual-action-form" onClick={toggleManualActionForm}><span aria-hidden="true">{showActionForm ? "−" : "+"}</span>{showActionForm ? t("report.collapseManualAction") : t("report.expandManualAction")}</button>}>
           <div id="fmea-manual-action-form">{showActionForm && <form className="report-action-form" onSubmit={createAction}><label>{t("actions.titleLabel")}<input name="title" value={actionDraft.title} onChange={(event) => setActionDraft((draft) => ({ ...draft, title: event.target.value }))} placeholder={t("actions.titlePlaceholder")} required/></label><label>{t("actions.priority")}<StyledSelect name="priority" value={actionDraft.priority} onChange={(event) => setActionDraft((draft) => ({ ...draft, priority: event.target.value }))}><option value="CRITICAL">{t("status.critical")}</option><option value="HIGH">{t("status.high")}</option><option value="MEDIUM">{t("status.medium")}</option><option value="LOW">{t("status.low")}</option></StyledSelect></label><label>{t("report.relatedRisk")}<StyledSelect name="fmeaItemId" value={actionDraft.fmeaItemId} onChange={(event) => setActionDraft((draft) => ({ ...draft, fmeaItemId: event.target.value }))}><option value="">{t("report.noRelatedRisk")}</option>{report.items.map((item) => <option key={item.id} value={item.id}>#{item.rowNumber} · {item.failureMode}</option>)}</StyledSelect></label><label>{t("actions.statusColumn")}<StyledSelect name="status" defaultValue="OPEN"><option value="OPEN">{t("report.actionStatusNew")}</option><option value="ASSIGNED">{t("report.actionStatusWaiting")}</option><option value="IN_PROGRESS">{t("status.inProgress")}</option><option value="WAITING_FOR_REVIEW">{t("status.waitingForReview")}</option></StyledSelect></label><label>{t("actions.assignee")}<StyledSelect name="assigneeName" defaultValue=""><option value="">{t("common.none")}</option>{report.assessment.evaluationTeam.map((member) => <option key={member.id} value={member.displayName}>{member.displayName}</option>)}</StyledSelect></label><label>{t("actions.dueDate")}<LocalizedDateInput name="dueDate" ariaLabel={t("actions.dueDate")}/></label><label className="report-action-description">{t("actions.detailsLabel")}<textarea name="description" rows={3} value={actionDraft.description} onChange={(event) => setActionDraft((draft) => ({ ...draft, description: event.target.value }))} placeholder={t("actions.detailsPlaceholder")} required/></label><div className="report-action-form-actions"><button className="ghost" type="button" onClick={() => setShowActionForm(false)} disabled={actionSaving}>{t("common.cancel")}</button><button className="primary" type="submit" disabled={actionSaving}><Icon name="check"/> {actionSaving ? t("report.registeringAction") : t("report.registerAction")}</button></div></form>}</div>
@@ -3219,7 +3239,7 @@ function RulaManualActionForm({ actionBodySide, actionSideOptions, busyActionId,
   </div>;
 }
 
-function RulaReportView({ result, analysis, activityInfo, factors, sideResults, sideFactors, suggestions: rawSuggestions, selectedActions, bodySide, actionBodySide, onActionBodySideChange, locale, busyActionId, onToggleAction, onAddAction, onRemoveAction, onEditPosture, suggestionsLoading = false, suggestionsStatus, suggestionsError, onRetrySuggestions, showResultHero = true }: { result: { score: number; actionLevel: number; explanation?: string; status?: string; postureReviewComplete?: boolean }; analysis: RulaPostureAnalysis; activityInfo?: RulaActivityInfo | null; factors: RulaReportFactor[]; sideResults?: Partial<Record<RulaBodySide, RulaSideAssessmentResult>>; sideFactors?: Partial<Record<RulaBodySide, RulaReportFactor[]>>; suggestions: RulaCorrectionAction[]; selectedActions: RulaCorrectionAction[]; bodySide: RulaActionBodySide; actionBodySide: RulaActionBodySide; onActionBodySideChange?: (side: RulaActionBodySide) => void; locale: "fa" | "en"; busyActionId?: string | null; onToggleAction?: (action: RulaCorrectionAction) => void; onAddAction?: (action: RulaCorrectionAction) => void; onRemoveAction?: (action: RulaCorrectionAction) => void; onEditPosture?: (part: RulaPosturePart) => void; suggestionsLoading?: boolean; suggestionsStatus?: ReportActionAiStatus; suggestionsError?: string; onRetrySuggestions?: () => void; showResultHero?: boolean }) {
+function RulaReportView({ result, analysis, activityInfo, factors, sideResults, sideFactors, suggestions: rawSuggestions, selectedActions, bodySide, actionBodySide, onActionBodySideChange, locale, busyActionId, onToggleAction, onAddAction, onRemoveAction, onEditPosture, suggestionsLoading = false, suggestionsStatus, suggestionsError, onRetrySuggestions, showResultHero = true, showAssessmentOverview = true }: { result: { score: number; actionLevel: number; explanation?: string; status?: string; postureReviewComplete?: boolean }; analysis: RulaPostureAnalysis; activityInfo?: RulaActivityInfo | null; factors: RulaReportFactor[]; sideResults?: Partial<Record<RulaBodySide, RulaSideAssessmentResult>>; sideFactors?: Partial<Record<RulaBodySide, RulaReportFactor[]>>; suggestions: RulaCorrectionAction[]; selectedActions: RulaCorrectionAction[]; bodySide: RulaActionBodySide; actionBodySide: RulaActionBodySide; onActionBodySideChange?: (side: RulaActionBodySide) => void; locale: "fa" | "en"; busyActionId?: string | null; onToggleAction?: (action: RulaCorrectionAction) => void; onAddAction?: (action: RulaCorrectionAction) => void; onRemoveAction?: (action: RulaCorrectionAction) => void; onEditPosture?: (part: RulaPosturePart) => void; suggestionsLoading?: boolean; suggestionsStatus?: ReportActionAiStatus; suggestionsError?: string; onRetrySuggestions?: () => void; showResultHero?: boolean; showAssessmentOverview?: boolean }) {
   const { t } = useI18n();
   const { id: reportId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -3251,6 +3271,11 @@ function RulaReportView({ result, analysis, activityInfo, factors, sideResults, 
   const actionLevel = reviewComplete ? rulaActionLevelFor(visibleResult.actionLevel) : { labelKey: "assessment.manualReviewRequiredShort", className: "review-required" } as const;
   const predictedActionLevel = rulaActionLevelForScore(predictedScore);
   const manualActions = visibleSelectedActions.filter((action) => !suggestions.some((suggestion) => rulaActionIsSame(action, suggestion)));
+  const selectedRecommendationCount = suggestions.filter((suggestion) => visibleSelectedActions.some((action) => rulaActionIsSame(action, suggestion))).length;
+  const reviewedPostureCount = rulaPostureRows.filter(({ key }) => isRulaPostureResultReviewed(visibleAnalysis[key])).length;
+  const overviewSideLabel = showBothSides
+    ? t(activeReportSide === "LEFT" ? "assessment.left" : "assessment.right")
+    : rulaActionBodySideLabel(bodySide, t);
   const actionSideOptions: RulaActionBodySide[] = bodySide === "BOTH" ? ["RIGHT", "LEFT", "BOTH"] : [bodySide];
   function addManual() {
     const title = manualTitle.trim();
@@ -3264,7 +3289,9 @@ function RulaReportView({ result, analysis, activityInfo, factors, sideResults, 
   const manualActionForm = onAddAction ? <RulaManualActionForm actionBodySide={actionBodySide} actionSideOptions={actionSideOptions} busyActionId={busyActionId} manualAffectedParts={manualAffectedParts} manualDescription={manualDescription} manualPriority={manualPriority} manualReduction={manualReduction} manualTitle={manualTitle} manualValidationError={manualValidationError} onActionBodySideChange={onActionBodySideChange} onAdd={addManual} onAffectedPartChange={(part, checked) => setManualAffectedParts((current) => checked ? [...current, part] : current.filter((item) => item !== part))} onDescriptionChange={setManualDescription} onPriorityChange={setManualPriority} onReductionChange={setManualReduction} onTitleChange={(value) => { setManualTitle(value); if (manualValidationError) setManualValidationError(""); }}/> : null;
   return <div className="rula-report-view">
     {showResultHero && <header className="rula-result-hero"><div className="rula-result-hero-copy"><span className="rula-result-hero-icon" aria-hidden="true"><Icon name="rula" size={21}/></span><div><h2>{t("assessment.rulaReportTitle")}</h2><p>{t("assessment.rulaReportDescription")}</p></div></div><span className={`rula-result-complete ${reviewComplete ? "" : "pending"}`}><Icon name={reviewComplete ? "check" : "activity"} size={14}/>{reviewComplete ? t("assessment.rulaReportCompleted") : t("assessment.rulaAutomaticAnalysisPending")}</span></header>}
-    {showBothSides && <><div className="rula-side-tabs rula-report-side-tabs" role="tablist" aria-label={t("assessment.bodySide")}>{(["RIGHT", "LEFT"] as const).map((side) => <button type="button" role="tab" aria-selected={activeReportSide === side} className={activeReportSide === side ? "active" : ""} onClick={() => setActiveReportSide(side)} key={side}>{side === "RIGHT" ? t("assessment.right") : t("assessment.left")}</button>)}</div>{sideResults?.RIGHT && sideResults.LEFT && <div className="rula-side-score-strip" aria-label={t("assessment.bothSides")}><span><small>{t("assessment.right")}</small><strong>{reviewComplete ? sideResults.RIGHT.score.toLocaleString(numberLocale) : "—"}</strong></span><span><small>{t("assessment.left")}</small><strong>{reviewComplete ? sideResults.LEFT.score.toLocaleString(numberLocale) : "—"}</strong></span><span className="final"><small>{t("assessment.bothSides")}</small><strong>{reviewComplete ? result.score.toLocaleString(numberLocale) : "—"}</strong></span></div>}</>}    <div className={`rula-report-score-card ${actionLevel.className}`}><div className="rula-report-score"><div className="rula-report-score-label"><small>{t("assessment.rulaScoreLabel")}</small><span className="rula-report-score-icon" aria-hidden="true"><Icon name="rula" size={21}/></span></div><strong>{reviewComplete ? visibleResult.score.toLocaleString(numberLocale) : "—"}</strong><span>{reviewComplete ? t("assessment.rulaCurrentScoreDescription") : t("assessment.rulaAutomaticAnalysisPending")}</span></div><div className="rula-report-risk"><div className="rula-report-risk-head"><small>{t("assessment.rulaRiskLevel")}</small><span className={`rula-report-risk-badge ${actionLevel.className}`} role="status">{t(actionLevel.labelKey)}</span></div><div className="rula-report-status-line"><span>{t("assessment.rulaAssessmentStatus")}</span><StatusBadge value={result.status ?? "DRAFT"}/></div><p>{reviewComplete && mainFactor ? t("assessment.rulaMainFactorSummary", { factor: t(`assessment.${mainFactor.key}`) }) : t("assessment.rulaAutomaticAnalysisHint")}</p></div></div>
+    {showBothSides && <><div className="rula-side-tabs rula-report-side-tabs" role="tablist" aria-label={t("assessment.bodySide")}>{(["RIGHT", "LEFT"] as const).map((side) => <button type="button" role="tab" aria-selected={activeReportSide === side} className={activeReportSide === side ? "active" : ""} onClick={() => setActiveReportSide(side)} key={side}>{side === "RIGHT" ? t("assessment.right") : t("assessment.left")}</button>)}</div>{sideResults?.RIGHT && sideResults.LEFT && <div className="rula-side-score-strip" aria-label={t("assessment.bothSides")}><span><small>{t("assessment.right")}</small><strong>{reviewComplete ? sideResults.RIGHT.score.toLocaleString(numberLocale) : "—"}</strong></span><span><small>{t("assessment.left")}</small><strong>{reviewComplete ? sideResults.LEFT.score.toLocaleString(numberLocale) : "—"}</strong></span><span className="final"><small>{t("assessment.bothSides")}</small><strong>{reviewComplete ? result.score.toLocaleString(numberLocale) : "—"}</strong></span></div>}</>}
+    {showAssessmentOverview && <RulaReportOverview factors={reviewComplete ? visibleFactors : []} actions={visibleSelectedActions} score={visibleResult.score} actionLevelLabel={t(actionLevel.labelKey)} actionLevelClassName={actionLevel.className} status={result.status ?? "DRAFT"} reviewComplete={reviewComplete} reviewedPostureCount={reviewedPostureCount} totalPostureCount={rulaPostureRows.length} sideLabel={overviewSideLabel} mainFactor={reviewComplete && mainFactor?.score > 0 ? { label: t(`assessment.${mainFactor.key}`), score: mainFactor.score, sharePercent: mainFactor.impactPercent } : null} selectedRecommendationCount={selectedRecommendationCount} recommendationCount={suggestions.length} manualActionCount={manualActions.length} predictedScore={predictedScore}/>}
+    {!showAssessmentOverview && <div className={`rula-report-score-card ${actionLevel.className}`}><div className="rula-report-score"><div className="rula-report-score-label"><small>{t("assessment.rulaScoreLabel")}</small><span className="rula-report-score-icon" aria-hidden="true"><Icon name="rula" size={21}/></span></div><strong>{reviewComplete ? visibleResult.score.toLocaleString(numberLocale) : "—"}</strong><span>{reviewComplete ? t("assessment.rulaCurrentScoreDescription") : t("assessment.rulaAutomaticAnalysisPending")}</span></div><div className="rula-report-risk"><div className="rula-report-risk-head"><small>{t("assessment.rulaRiskLevel")}</small><span className={`rula-report-risk-badge ${actionLevel.className}`} role="status">{t(actionLevel.labelKey)}</span></div><div className="rula-report-status-line"><span>{t("assessment.rulaAssessmentStatus")}</span><StatusBadge value={result.status ?? "DRAFT"}/></div><p>{reviewComplete && mainFactor ? t("assessment.rulaMainFactorSummary", { factor: t(`assessment.${mainFactor.key}`) }) : t("assessment.rulaAutomaticAnalysisHint")}</p></div></div>}
     <section className="rula-report-section rula-main-factors-section"><div className="rula-report-section-heading"><div><h3>{t("assessment.rulaMainFactors")}</h3><p>{t("assessment.rulaMainFactorsDescription")}</p></div><Icon name="chart" size={21}/></div><div className="rula-factor-grid">{rankedFactors.length ? rankedFactors.map((factor) => { const detected = factor.detected ?? factor.angle !== null; const contribution = Math.max(0, Math.min(100, factor.impactPercent)); return <article className={`rula-factor-card impact-${factor.impactLevel.toLowerCase()}`} key={factor.key}><div className="rula-factor-card-head"><div className="rula-factor-title"><span className="rula-factor-figure" aria-hidden="true"><Icon name="rula" size={17}/></span><div><strong>{t(`assessment.${factor.key}`)}</strong>{factor.source !== "AI" && <small>{t(rulaSourceLabelKey(factor.source))}</small>}</div></div><span className="rula-factor-impact-label">{t(rulaFactorImpactKeys[factor.impactLevel])}</span></div><div className="rula-factor-value"><div><small>{t("assessment.detectedAngle")}</small><b>{formatPostureAngle(factor.angle, locale)}</b></div><div><small>{t("assessment.rulaFactorScore")}</small><strong>{factor.score.toLocaleString(numberLocale)}</strong></div></div><div className="rula-factor-status"><span className={`rula-detection-badge ${detected ? "detected" : "pending"}`}>{detected ? t("assessment.detected") : t("assessment.notDetected")}</span><small>{t("assessment.rulaFactorContribution", { percent: contribution })}</small></div><div className="rula-factor-meter" role="progressbar" aria-label={t("assessment.rulaFactorContribution", { percent: contribution })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={contribution}><span style={{ width: `${contribution}%` }}/></div></article>; }) : <EmptyState title={t("assessment.rulaNoFactors")} icon="chart"/>}</div></section>
     <section className="rula-report-section rula-corrections-section"><div className="rula-report-section-heading"><div><h3>{t("assessment.rulaCorrections")}</h3><p>{t("assessment.rulaCorrectionsDescription")}</p></div><Icon name="actions" size={21}/></div><div className="rula-corrections-layout"><div className="rula-suggested-actions-panel"><div className="rula-suggested-actions-heading"><div><strong>{t("assessment.rulaCorrections")}</strong><small>{t("assessment.rulaCorrectionsDescription")}</small></div><Icon name="actions" size={18}/></div><div className="rula-action-scope"><strong>{t("assessment.rulaActionScope")}</strong><span>{t("assessment.bodySide")}: {rulaActionBodySideLabel(bodySide, t)}</span><small>{t("assessment.rulaActionBodySideHint")}</small></div><div className="rula-ai-suggestions-status" role="status" aria-live="polite">{suggestionsLoading && <span className="ai-status loading"><span className="spinner"/>{t("report.aiActionsWorking")}</span>}{!suggestionsLoading && suggestionsStatus && <span className={"ai-status " + suggestionsStatus}>{t("assessment.aiStatus." + suggestionsStatus)}</span>}{suggestionsError && <div className="report-ai-action-error" role="alert"><span>{suggestionsError}</span>{onRetrySuggestions && <button type="button" className="text-button" onClick={onRetrySuggestions}>{t("common.retry")}</button>}</div>}</div><RulaCorrectionSuggestionsTable suggestions={suggestions} selectedActions={visibleSelectedActions} bodySide={showBothSides ? activeReportSide : bodySide} locale={locale} busyActionId={busyActionId} onToggleAction={onToggleAction}/>{manualActions.length > 0 && <div className="rula-manual-actions">{manualActions.map((action) => <article className="rula-manual-action" key={action.id}><div><div className="rula-manual-action-title-row"><strong>{rulaActionText(action, locale, "title")}</strong><span className="rula-selected-badge">{t("assessment.rulaSelected")}</span></div><small>{rulaActionText(action, locale, "description") || t("assessment.rulaManualAction")}</small><small className="rula-correction-related">{t("assessment.rulaRelatedFactor")}: {rulaActionPartLabel(action, locale, t)}</small><small className="rula-correction-side">{t("assessment.rulaActionScope")}: {rulaActionBodySideLabel(action.bodySide, t)}</small></div><span>{t(`status.${action.priority.toLowerCase()}`)}</span>{onRemoveAction && <button type="button" className="text-button danger-text" disabled={Boolean(busyActionId)} aria-busy={busyActionId === action.id} onClick={() => onRemoveAction(action)}>{busyActionId === action.id ? <span className="rula-action-spinner dark" aria-hidden="true"/> : t("common.delete")}</button>}</article>)}</div>}</div><aside className="rula-report-impact-panel" aria-live="polite"><div className="rula-impact-panel-heading"><div><strong>{t("assessment.rulaPredictedEffect")}</strong><small>{t("assessment.rulaPredictionEstimate")}</small></div><span className="rula-impact-panel-icon" aria-hidden="true"><Icon name="chart" size={18}/></span></div><div className="rula-prediction-score-pair"><div><small>{t("assessment.rulaCurrentScore")}</small><strong>{visibleResult.score.toLocaleString(numberLocale)}</strong></div><span aria-hidden="true">←</span><div><small>{t("assessment.rulaPredictedScore")}</small><strong className="predicted">{predictedScore.toLocaleString(numberLocale)}</strong></div></div><span className={`rula-prediction-badge ${predictedActionLevel.className}`}>{t(predictedActionLevel.labelKey)}</span><p>{t("assessment.rulaPredictedNote")}</p><div className="rula-selected-actions-preview"><strong>{t("assessment.rulaSelectedActionsSummary")}</strong>{visibleSelectedActions.length ? visibleSelectedActions.slice(0, 3).map((action) => <div key={action.id}><span>{rulaActionText(action, locale, "title")}</span><small>{t(`status.${action.priority.toLowerCase()}`)}</small></div>) : <small>{t("assessment.rulaNoSelectedActionsHint")}</small>}{visibleSelectedActions.length > 3 && <small>+ {(visibleSelectedActions.length - 3).toLocaleString(numberLocale)}</small>}</div></aside></div></section>
     <div className="rula-report-secondary-sections">{activityInfo && <RulaReportContext activityInfo={activityInfo} locale={locale}/>}<RulaReportDataTable analysis={visibleAnalysis} factors={visibleFactors} selectedActions={tableSelectedActions} locale={locale} onEdit={reportPostureEditHandler}/>{manualActionForm}</div>
@@ -3303,13 +3330,16 @@ function RulaReportPreview({ result, analysis, force, muscleUse, bodySide, local
     };
   }, [analysis, bodySide]);
   const suggestions = useMemo(() => buildLocalRulaSuggestionsForAssessment(analysis, inputs, bodySide), [analysis, inputs, bodySide]);
-  return <RulaReportView result={{ ...result, status: "DRAFT" }} analysis={analysis} bodySide={bodySide} actionBodySide={actionBodySide} onActionBodySideChange={setActionBodySide} factors={factors} sideResults={sideResults} sideFactors={sideFactors} suggestions={suggestions} selectedActions={selectedActions} locale={locale} onToggleAction={(action) => onSelectedActionsChange(selectedActions.some((item) => rulaActionIsSame(item, action)) ? selectedActions.filter((item) => !rulaActionIsSame(item, action)) : [...selectedActions, action])} onAddAction={(action) => onSelectedActionsChange([...selectedActions, action])} onRemoveAction={(action) => onSelectedActionsChange(selectedActions.filter((item) => !rulaActionIsSame(item, action)))}/>;
+  const postureReviewComplete = bodySide === "BOTH"
+    ? isRulaSingleAnalysisReviewed(analysis.sideAnalyses?.LEFT) && isRulaSingleAnalysisReviewed(analysis.sideAnalyses?.RIGHT)
+    : isRulaSingleAnalysisReviewed(analysis);
+  return <RulaReportView result={{ ...result, status: "DRAFT", postureReviewComplete }} analysis={analysis} bodySide={bodySide} actionBodySide={actionBodySide} onActionBodySideChange={setActionBodySide} factors={factors} sideResults={sideResults} sideFactors={sideFactors} suggestions={suggestions} selectedActions={selectedActions} locale={locale} onToggleAction={(action) => onSelectedActionsChange(selectedActions.some((item) => rulaActionIsSame(item, action)) ? selectedActions.filter((item) => !rulaActionIsSame(item, action)) : [...selectedActions, action])} onAddAction={(action) => onSelectedActionsChange([...selectedActions, action])} onRemoveAction={(action) => onSelectedActionsChange(selectedActions.filter((item) => !rulaActionIsSame(item, action)))} showAssessmentOverview/>;
 }
 
 function rulaClientActionFromPersisted(action: RulaPersistedAction, locale: "fa" | "en"): RulaCorrectionAction {
   const impact = action.rulaImpact;
   const title = action.title || (locale === "fa" ? "اقدام اصلاحی" : "Corrective action");
-  return { id: impact?.suggestionId ?? `persisted-${action.id}`, persistedId: action.id, suggestionId: impact?.suggestionId, titleFa: title, titleEn: title, descriptionFa: action.description, descriptionEn: action.description, priority: action.priority, scoreReduction: impact?.scoreReduction ?? Math.max(0, (action.beforeRisk ?? 0) - (action.afterRisk ?? 0)), affectedParts: impact?.affectedParts ?? [], bodySide: action.bodySide ?? undefined };
+  return { id: impact?.suggestionId ?? `persisted-${action.id}`, persistedId: action.id, suggestionId: impact?.suggestionId, titleFa: title, titleEn: title, descriptionFa: action.description, descriptionEn: action.description, priority: action.priority, status: action.status, scoreReduction: impact?.scoreReduction ?? Math.max(0, (action.beforeRisk ?? 0) - (action.afterRisk ?? 0)), affectedParts: impact?.affectedParts ?? [], bodySide: action.bodySide ?? undefined };
 }
 
 export function RulaReportPage() {
@@ -3473,6 +3503,12 @@ export function RulaPage() {
   const state = useLoad<Rula[]>("/rula");
   const projects = useLoad<Project[]>("/projects");
   const [error, setError] = useState(""); const [draftNotice, setDraftNotice] = useState(""); const [draftSyncAvailable, setDraftSyncAvailable] = useState(false); const [history, setHistory] = useState<VersionRow[]>([]); const [historyAssessment, setHistoryAssessment] = useState(""); const [wizardStep, setWizardStep] = useState<RulaWizardStep>(() => editingExistingAssessment ? requestedWizardStep : 1); const [draft, setDraftState] = useState<DraftRecord | null>(initialDraft); const [selectedProjectId, setSelectedProjectId] = useState(() => draftValue(initialDraft, "projectId")); const [lastSaved, setLastSaved] = useState<Date | null>(null); const [autosaveError, setAutosaveError] = useState(false); const [postureImage, setPostureImage] = useState<File | null>(null); const [postureImagePreview, setPostureImagePreview] = useState(""); const [postureImageError, setPostureImageError] = useState(""); const [postureImageAnalysisLoading, setPostureImageAnalysisLoading] = useState(false); const [postureImageAnalysisError, setPostureImageAnalysisError] = useState(""); const [postureImageAttachmentId, setPostureImageAttachmentId] = useState(""); const [postureDescription, setPostureDescription] = useState(() => String(initialDraft?.postureDescription ?? "")); const [rulaTaskDescription, setRulaTaskDescription] = useState(() => String(initialDraft?.taskDescription ?? "")); const [rulaBodySide, setRulaBodySide] = useState<"LEFT" | "RIGHT" | "BOTH">(() => initialDraft?.bodySide === "LEFT" ? "LEFT" : initialDraft?.bodySide === "BOTH" ? "BOTH" : "RIGHT"); const [submitting, setSubmitting] = useState(false); const [postureAnalysis, setPostureAnalysis] = useState<RulaPostureAnalysis>(() => parsePostureAnalysis(initialDraft?.postureAnalysis)); const [rulaForce, setRulaForce] = useState(() => { const value = Number(initialDraft?.force ?? 0); return Number.isInteger(value) && value >= 0 && value <= 3 ? value : 0; }); const [rulaMuscleUse, setRulaMuscleUse] = useState(() => rulaMuscleUseFromValue(initialDraft?.muscleUse)); const [selectedRulaActions, setSelectedRulaActions] = useState<RulaCorrectionAction[]>([]); const dialog = useDialog(); const formRef = useRef<HTMLFormElement>(null); const postureImageInputRef = useRef<HTMLInputElement>(null); const postureImageAnalysisRequestId = useRef(0); const postureImageAnalysisContextKey = useRef(""); const saveTimer = useRef<number | null>(null); const draftWriteQueue = useRef<Promise<void>>(Promise.resolve()); const suppressRulaDraftPersistence = useRef(false);
+  const [additionalPostureImages, setAdditionalPostureImages] = useState<File[]>([]);
+  const [savedPostureImages, setSavedPostureImages] = useState<RulaPostureImageAttachment[]>([]);
+  const [postureImagePreviews, setPostureImagePreviews] = useState<Record<string, string>>({});
+  const [postureImageReviews, setPostureImageReviews] = useState<Record<string, RulaPostureImageReview>>({});
+  const [selectedPostureImageKey, setSelectedPostureImageKey] = useState("");
+  const postureImagePreviewsRef = useRef<Record<string, string>>({});
    const [jobQuery, setJobQuery] = useState(() => draftValue(initialDraft, "jobTitle"));
    const [taskDescriptionAiLoading, setTaskDescriptionAiLoading] = useState(false);
    const [taskDescriptionAiStatus, setTaskDescriptionAiStatus] = useState<ProcessSuggestionResponse["aiStatus"] | null>(null);
@@ -3508,6 +3544,7 @@ export function RulaPage() {
     const primary = right.score >= left.score ? right : left;
     return { ...primary, explanation: `LEFT: ${left.explanation}; RIGHT: ${right.explanation}`, trace: [`LEFT — ${left.trace.join(" | ")}`, `RIGHT — ${right.trace.join(" | ")}`, `Final score: ${primary.score}`] };
   }, [currentRulaInputs, currentRulaSideResults]);
+  const selectedPostureImages = useMemo(() => [postureImage, ...additionalPostureImages].filter((file): file is File => Boolean(file)), [additionalPostureImages, postureImage]);
   const editingAssessment = editingAssessmentId ? state.data?.find((item) => item.id === editingAssessmentId) : undefined;
   useEffect(() => {
     if (!editingAssessmentId || !state.data) return;
@@ -3549,6 +3586,10 @@ export function RulaPage() {
     setCustomJobSelected(true);
     setPostureImageAttachmentId(activityInfo?.postureImageAttachmentId ?? "");
     setPostureImage(null);
+    setAdditionalPostureImages([]);
+    setSavedPostureImages(assessment.postureImages ?? (assessment.postureImage ? [assessment.postureImage] : []));
+    setPostureImageReviews({});
+    setSelectedPostureImageKey("");
     setPostureImageError("");
     setSelectedRulaActions([]);
     setWizardStep(requestedWizardStep);
@@ -3621,7 +3662,18 @@ export function RulaPage() {
      document.addEventListener("pointerdown", close);
      return () => document.removeEventListener("pointerdown", close);
    }, [jobSearchOpen]);
-   useEffect(() => { if (!postureImage) { setPostureImagePreview(""); return undefined; } const objectUrl = URL.createObjectURL(postureImage); setPostureImagePreview(objectUrl); return () => URL.revokeObjectURL(objectUrl); }, [postureImage]);
+   useEffect(() => {
+     const entries = selectedPostureImages.map((file) => [rulaPostureImageFileKey(file), URL.createObjectURL(file)] as const);
+     const previews = Object.fromEntries(entries);
+     postureImagePreviewsRef.current = previews;
+     setPostureImagePreviews(previews);
+     setSelectedPostureImageKey((current) => {
+       const nextKey = current && previews[current] ? current : entries[0]?.[0] ?? "";
+       setPostureImagePreview(previews[nextKey] ?? "");
+       return nextKey;
+     });
+     return () => entries.forEach(([, preview]) => URL.revokeObjectURL(preview));
+   }, [selectedPostureImages]);
 
   useEffect(() => {
     if (wizardStep === 1) {
@@ -3638,20 +3690,24 @@ export function RulaPage() {
       return;
     }
     const activityInfo = formRef.current ? rulaActivityInfoFromForm(new FormData(formRef.current)) : null;
-    const imageKey = postureImage ? `${postureImage.name}:${postureImage.size}:${postureImage.lastModified}` : "text-only";
+    const imageKey = selectedPostureImages.length ? selectedPostureImages.map(rulaPostureImageFileKey).join("|") : "text-only";
     const contextKey = `${imageKey}:${rulaBodySide}:${locale}:${jobTitle}:${taskDescription}:${postureDescription.trim()}:${rulaForce}:${rulaMuscleUse}:${JSON.stringify(activityInfo)}`;
     if (postureImageAnalysisContextKey.current === contextKey) return;
     postureImageAnalysisContextKey.current = contextKey;
-    postureImageAnalysisRequestId.current += 1;
-    const analysisTimer = window.setTimeout(() => { void (postureImage ? requestRulaPostureImageAnalysis(postureImage) : requestRulaPostureTextAnalysis()); }, 450);
+    const requestId = ++postureImageAnalysisRequestId.current;
+    setPostureImageAnalysisError("");
+    setPostureImageAnalysisLoading(true);
+    setPostureImageReviews(Object.fromEntries(selectedPostureImages.map((file) => [rulaPostureImageFileKey(file), { status: "loading" as const }])));
+    const analysisTimer = window.setTimeout(() => { void (selectedPostureImages.length ? requestRulaPostureImageAnalyses(selectedPostureImages, requestId) : requestRulaPostureTextAnalysis()); }, 450);
     return () => { window.clearTimeout(analysisTimer); };
-  }, [jobQuery, locale, postureDescription, postureImage, rulaBodySide, rulaForce, rulaMuscleUse, rulaTaskDescription, wizardStep]);
+  }, [additionalPostureImages, jobQuery, locale, postureDescription, postureImage, rulaBodySide, rulaForce, rulaMuscleUse, rulaTaskDescription, selectedPostureImages, wizardStep]);
 
   function clearRulaPostureImageAnalysis() {
     postureImageAnalysisRequestId.current += 1;
     postureImageAnalysisContextKey.current = "";
     setPostureImageAnalysisLoading(false);
     setPostureImageAnalysisError("");
+    setPostureImageReviews({});
     setPostureAnalysis(postureAnalysisFromValue(null));
   }
 
@@ -3674,28 +3730,50 @@ export function RulaPage() {
     setPostureAnalysis({ ...current.analysis, ...(current.overlay ? { imageOverlay: current.overlay } : {}) });
   }
 
-  async function requestRulaPostureImageAnalysis(file = postureImage) {
-    if (!file || jobQuery.trim().length < 2 || rulaTaskDescription.trim().length < 2) return;
-    const requestId = ++postureImageAnalysisRequestId.current;
+  async function requestRulaPostureImageAnalyses(files = selectedPostureImages, requestId: number) {
+    if (!files.length || jobQuery.trim().length < 2 || rulaTaskDescription.trim().length < 2) return;
     setPostureImageAnalysisLoading(true);
     setPostureImageAnalysisError("");
-    setPostureAnalysis((current) => postureAnalysisFromValue({ ...current, imageOverlay: undefined, sideImageOverlays: undefined }));
-    const body = new FormData();
-    body.append("bodySide", rulaBodySide);
-    body.append("jobTitle", jobQuery.trim());
-    body.append("taskDescription", rulaTaskDescription.trim());
-    body.append("postureDescription", postureDescription.trim());
-    body.append("locale", locale);
-    body.append("file", file);
-    try {
-      const result = await api<RulaPostureImageAnalysisResponse>("/rula/posture-image-analysis", { method: "POST", body });
+    setPostureAnalysis(postureAnalysisFromValue(null));
+    let appliedFirstResult = false;
+    let failedCount = 0;
+    for (const file of files) {
       if (requestId !== postureImageAnalysisRequestId.current) return;
-      applyRulaPostureAnalysisResponse(result.data);
-    } catch {
-      if (requestId === postureImageAnalysisRequestId.current) setPostureImageAnalysisError(t("assessment.rulaImageAnalysisUnavailable"));
-    } finally {
-      if (requestId === postureImageAnalysisRequestId.current) setPostureImageAnalysisLoading(false);
+      const fileKey = rulaPostureImageFileKey(file);
+      const body = new FormData();
+      body.append("bodySide", rulaBodySide);
+      body.append("jobTitle", jobQuery.trim());
+      body.append("taskDescription", rulaTaskDescription.trim());
+      body.append("postureDescription", postureDescription.trim());
+      body.append("locale", locale);
+      body.append("file", file);
+      try {
+        const result = await api<RulaPostureImageAnalysisResponse>("/rula/posture-image-analysis", { method: "POST", body });
+        if (requestId !== postureImageAnalysisRequestId.current) return;
+        setPostureImageReviews((current) => ({ ...current, [fileKey]: { status: "ready", result: result.data } }));
+        if (!appliedFirstResult) {
+          appliedFirstResult = true;
+          setSelectedPostureImageKey(fileKey);
+          setPostureImagePreview(postureImagePreviewsRef.current[fileKey] ?? "");
+          applyRulaPostureAnalysisResponse(result.data);
+        }
+      } catch {
+        if (requestId !== postureImageAnalysisRequestId.current) return;
+        failedCount += 1;
+        setPostureImageReviews((current) => ({ ...current, [fileKey]: { status: "error" } }));
+      }
     }
+    if (requestId !== postureImageAnalysisRequestId.current) return;
+    setPostureImageAnalysisLoading(false);
+    if (!appliedFirstResult && failedCount) setPostureImageAnalysisError(t("assessment.rulaImageAnalysisUnavailable"));
+  }
+
+  function applyRulaPostureImageReview(file: File) {
+    const fileKey = rulaPostureImageFileKey(file);
+    const review = postureImageReviews[fileKey];
+    setSelectedPostureImageKey(fileKey);
+    setPostureImagePreview(postureImagePreviews[fileKey] ?? "");
+    if (review?.status === "ready" && review.result) applyRulaPostureAnalysisResponse(review.result);
   }
 
   async function requestRulaPostureTextAnalysis() {
@@ -3722,15 +3800,27 @@ export function RulaPage() {
   }
 
   function handlePostureImageChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0] ?? null;
-    setPostureImageError("");
-    if (!file) { clearRulaPostureImageAnalysis(); setPostureImage(null); return; }
-    if (!RULA_POSTURE_IMAGE_TYPES.has(file.type)) { clearRulaPostureImageAnalysis(); setPostureImage(null); setPostureImageError(t("assessment.postureImageInvalidType")); event.target.value = ""; return; }
-    if (file.size > RULA_POSTURE_IMAGE_MAX_BYTES) { clearRulaPostureImageAnalysis(); setPostureImage(null); setPostureImageError(t("assessment.postureImageTooLarge")); event.target.value = ""; return; }
-    clearRulaPostureImageAnalysis();
-    setPostureImage(file);
+    const selected = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (!selected.length) return;
+    const selection = appendRulaPostureImages(selectedPostureImages, selected, savedPostureImages.length);
+    if (selection.files.length !== selectedPostureImages.length) {
+      clearRulaPostureImageAnalysis();
+      setPostureImage(selection.files[0] ?? null);
+      setAdditionalPostureImages(selection.files.slice(1));
+      setSelectedPostureImageKey(selection.files[0] ? rulaPostureImageFileKey(selection.files[0]) : "");
+    }
+    setPostureImageError(selection.issue ? t(`assessment.rulaImageSelection.${selection.issue}`) : "");
   }
-  function removePostureImage() { clearRulaPostureImageAnalysis(); setPostureImage(null); setPostureImageAttachmentId(""); setPostureImageError(""); if (postureImageInputRef.current) postureImageInputRef.current.value = ""; }
+  function removePostureImage(file: File) {
+    const nextFiles = selectedPostureImages.filter((item) => rulaPostureImageFileKey(item) !== rulaPostureImageFileKey(file));
+    clearRulaPostureImageAnalysis();
+    setPostureImage(nextFiles[0] ?? null);
+    setAdditionalPostureImages(nextFiles.slice(1));
+    setSelectedPostureImageKey(nextFiles[0] ? rulaPostureImageFileKey(nextFiles[0]) : "");
+    setPostureImageError("");
+    if (postureImageInputRef.current) postureImageInputRef.current.value = "";
+  }
   function changeBodySide(value: "LEFT" | "RIGHT" | "BOTH") {
     setRulaBodySide(value);
     setPostureAnalysis((current) => {
@@ -3854,6 +3944,10 @@ export function RulaPage() {
       setJobSearchOpen(false);
       setJobSearchError("");
       setPostureImage(null);
+      setAdditionalPostureImages([]);
+      setSavedPostureImages([]);
+      setPostureImageReviews({});
+      setSelectedPostureImageKey("");
       setPostureImageError("");
       setPostureImageAnalysisLoading(false);
       setPostureImageAnalysisError("");
@@ -3895,9 +3989,9 @@ export function RulaPage() {
      setTaskDescriptionAiError("");
      setTaskDescriptionSuggestion("");
      try {
-       const result = await api<ProcessSuggestionResponse>("/fmea/process-suggestions", {
+       const result = await api<RulaTaskDescriptionResponse>("/rula/task-description-suggestion", {
          method: "POST",
-         body: JSON.stringify({ jobCatalogId: selectedJobId || null, jobTitle: title, department: null, activityDescription: rulaTaskDescription.trim() || null, locale, mode: "description" }),
+         body: JSON.stringify({ jobTitle: title, taskDescription: rulaTaskDescription.trim(), locale }),
        });
        if (requestId !== taskDescriptionRequestId.current) return;
        setTaskDescriptionAiStatus(result.data.aiStatus);
@@ -3970,6 +4064,30 @@ export function RulaPage() {
     setError("");
     setWizardStep((step) => step === 1 ? 2 : step === 2 ? 3 : 3);
   }
+  async function persistRulaPostureImages(assessmentId: string, files: File[], activityInfo: RulaActivityInfo) {
+    let firstUploadedId = "";
+    let failed = false;
+    for (const file of files) {
+      const upload = new FormData();
+      upload.append("entityType", "RulaAssessment");
+      upload.append("entityId", assessmentId);
+      upload.append("file", file);
+      try {
+        const attachment = await api<{ id: string }>("/files", { method: "POST", body: upload });
+        firstUploadedId ||= attachment.data.id;
+      } catch {
+        failed = true;
+      }
+    }
+    if (firstUploadedId && !activityInfo.postureImageAttachmentId) {
+      try {
+        await api(`/rula/${assessmentId}`, { method: "PATCH", body: JSON.stringify({ activityInfo: { ...activityInfo, postureImageAttachmentId: firstUploadedId } }) });
+      } catch {
+        failed = true;
+      }
+    }
+    return failed;
+  }
   async function create(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if (submitting) return; if (wizardStep < 3) { advanceRulaWizard(); return; } if (!validateRulaProcessInfo()) { setWizardStep(1); return; } setSubmitting(true); try { await (editingAssessmentId ? updateRula(event) : createRula(event)); } finally { setSubmitting(false); } }
   async function createRula(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -3986,25 +4104,14 @@ export function RulaPage() {
     if (!navigator.onLine) {
       setDraftNotice(t("assessment.draftSavedOffline"));
       setDraftSyncAvailable(true);
-      if (postureImage) setError(t("assessment.postureImageOffline"));
+      if (selectedPostureImages.length) setError(t("assessment.postureImageOffline"));
       return;
     }
     try {
       const created = await api<Rula>("/rula", { method: "POST", body: JSON.stringify(payload) });
       let imageUploadFailed = false;
       let actionPersistFailed = false;
-      if (postureImage) {
-        try {
-          const upload = new FormData();
-          upload.append("entityType", "RulaAssessment");
-          upload.append("entityId", created.data.id);
-          upload.append("file", postureImage);
-          const attachment = await api<{ id: string }>("/files", { method: "POST", body: upload });
-          await api(`/rula/${created.data.id}`, { method: "PATCH", body: JSON.stringify({ activityInfo: { ...payload.activityInfo, postureImageAttachmentId: attachment.data.id } }) });
-        } catch {
-          imageUploadFailed = true;
-        }
-      }
+      if (selectedPostureImages.length) imageUploadFailed = await persistRulaPostureImages(created.data.id, selectedPostureImages, payload.activityInfo);
       for (const action of selectedRulaActions) {
         const actionSide = action.bodySide ?? payload.bodySide;
         const scoreSide = actionSide === "LEFT" || actionSide === "RIGHT" ? actionSide : undefined;
@@ -4040,16 +4147,7 @@ export function RulaPage() {
     try {
       const updated = await api<{ id: string; score: number }>(`/rula/${editingAssessmentId}`, { method: "PATCH", body: JSON.stringify(payload) });
       let imageUploadFailed = false;
-      if (postureImage) {
-        try {
-          const upload = new FormData();
-          upload.append("entityType", "RulaAssessment");
-          upload.append("entityId", editingAssessmentId);
-          upload.append("file", postureImage);
-          const attachment = await api<{ id: string }>("/files", { method: "POST", body: upload });
-          await api(`/rula/${editingAssessmentId}`, { method: "PATCH", body: JSON.stringify({ activityInfo: { ...payload.activityInfo, postureImageAttachmentId: attachment.data.id } }) });
-        } catch { imageUploadFailed = true; }
-      }
+      if (selectedPostureImages.length) imageUploadFailed = await persistRulaPostureImages(editingAssessmentId, selectedPostureImages, payload.activityInfo);
       let actionPersistFailed = false;
       for (const action of selectedRulaActions) {
         const actionSide = action.bodySide ?? payload.bodySide;
@@ -4099,8 +4197,9 @@ export function RulaPage() {
                   <input type="hidden" name="jobCatalogId" value={selectedJobId} readOnly/><input type="hidden" name="customJobSelected" value={customJobSelected ? "true" : "false"} readOnly/>
                   <div className="fmea-description-field span-two">
                     <div className="fmea-description-head"><label htmlFor="rula-task-description"><span className="fmea-field-label"><span>{t("assessment.rulaTask")}</span><span className="required-label">{t("common.required")}</span></span></label><button type="button" className="fmea-description-ai" onClick={() => void requestRulaTaskDescriptionSuggestion()} disabled={taskDescriptionAiLoading} aria-busy={taskDescriptionAiLoading}><Icon name="sparkles" size={15}/>{taskDescriptionAiLoading ? t("assessment.aiDescriptionWorking") : t(rulaTaskDescription.trim() ? "assessment.improveDescriptionWithAi" : "assessment.suggestDescriptionWithAi")}</button></div>
-                    <textarea id="rula-task-description" name="taskDescription" value={rulaTaskDescription} maxLength={RULA_TASK_DESCRIPTION_MAX} rows={2} required aria-describedby="rula-task-description-hint rula-task-description-error" placeholder={t("assessment.rulaTaskPlaceholder")} onChange={(event) => changeRulaTaskDescription(event.target.value)}/>
+                    <textarea id="rula-task-description" name="taskDescription" value={rulaTaskDescription} maxLength={RULA_TASK_DESCRIPTION_MAX} rows={2} required aria-describedby="rula-task-description-hint rula-task-description-error rula-ai-data-use-note" placeholder={t("assessment.rulaTaskPlaceholder")} onChange={(event) => changeRulaTaskDescription(event.target.value)}/>
                     <div className="fmea-description-meta"><span id="rula-task-description-hint" className="field-counter">{rulaTaskDescription.length.toLocaleString(numberLocale)} / {Number(RULA_TASK_DESCRIPTION_MAX).toLocaleString(numberLocale)}</span>{taskDescriptionAiStatus && !taskDescriptionAiLoading && <span className={`ai-status ${taskDescriptionAiStatus}`}>{t(`assessment.aiStatus.${taskDescriptionAiStatus}`)}</span>}</div>
+                    <small id="rula-ai-data-use-note" className="field-hint">{t("assessment.rulaAiDataUse")}</small>
                     {taskDescriptionSuggestion && <div className="fmea-description-suggestion" role="status" aria-live="polite"><div className="fmea-description-suggestion-head"><div><strong>{t("assessment.descriptionSuggestionTitle")}</strong><small>{t("assessment.descriptionSuggestionHint")}</small></div><span className={`ai-status ${taskDescriptionAiStatus ?? "connected"}`}>{taskDescriptionAiStatus ? t(`assessment.aiStatus.${taskDescriptionAiStatus}`) : "AI"}</span></div><p>{taskDescriptionSuggestion}</p><div className="fmea-description-suggestion-actions"><button type="button" className="primary" onClick={acceptRulaTaskDescriptionSuggestion}>{t("assessment.useDescriptionSuggestion")}</button><button type="button" className="ghost" onClick={dismissRulaTaskDescriptionSuggestion}>{t("assessment.dismissDescriptionSuggestion")}</button></div></div>}
                     {taskDescriptionAiError && <small id="rula-task-description-error" className="field-error fmea-description-assist-error" role="status">{taskDescriptionAiError}</small>}
                   </div>
@@ -4114,12 +4213,25 @@ export function RulaPage() {
              <div className="rula-posture-panel">
                <div className="rula-posture-heading"><span className="rula-posture-icon"><Icon name="rula" size={21}/></span><div><strong>{t("assessment.rulaPosturePhoto")}</strong><small>{t("assessment.rulaPosturePhotoHint")}</small></div></div>
                <div className="rula-posture-upload">
-                 <label className={`rula-posture-dropzone ${postureImagePreview ? "has-image" : ""}`}>
-                   <input ref={postureImageInputRef} name="postureImage" type="file" accept="image/jpeg,image/png,image/webp" aria-invalid={postureImageError ? true : undefined} aria-describedby={postureImageError ? "rula-posture-image-error" : undefined} onChange={handlePostureImageChange}/>
-                   {postureImagePreview ? <><img src={postureImagePreview} alt={t("assessment.rulaPosturePhoto")}/><span className="rula-posture-change">{t("assessment.changePostureImage")}</span></> : <><Icon name="files" size={34}/><strong>{t("assessment.choosePosturePhoto")}</strong><small>{t("assessment.choosePosturePhotoHint")}</small><span className="ghost fake-button">{t("assessment.choosePhoto")}</span></>}
+                 <label className="rula-posture-dropzone">
+                   <input ref={postureImageInputRef} name="postureImage" type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={Boolean(editingAssessmentId && !editingAssessment) || savedPostureImages.length + selectedPostureImages.length >= RULA_POSTURE_IMAGE_MAX_COUNT} aria-invalid={postureImageError ? true : undefined} aria-describedby={postureImageError ? "rula-posture-image-error" : undefined} onChange={handlePostureImageChange}/>
+                   <Icon name="files" size={34}/><strong>{t("assessment.choosePosturePhoto")}</strong><small>{t("assessment.rulaPostureMultiPhotoHint", { max: RULA_POSTURE_IMAGE_MAX_COUNT.toLocaleString(numberLocale), size: (RULA_POSTURE_IMAGE_MAX_BYTES / 1024 / 1024).toLocaleString(numberLocale) })}</small><span className="ghost fake-button">{t("assessment.choosePhoto")}</span>
                  </label>
                  {editingExistingAssessment && <input type="hidden" name="postureImageAttachmentId" value={postureImageAttachmentId} readOnly/>}
-                 {postureImage && <div className="rula-posture-file-meta"><span title={postureImage.name}>{postureImage.name}</span><button type="button" className="text-button" onClick={removePostureImage}>{t("assessment.removePostureImage")}</button></div>}
+                 <div className="rula-posture-image-count" aria-live="polite">{t("assessment.rulaPostureImageCount", { count: (savedPostureImages.length + selectedPostureImages.length).toLocaleString(numberLocale), max: RULA_POSTURE_IMAGE_MAX_COUNT.toLocaleString(numberLocale) })}</div>
+                 {(savedPostureImages.length > 0 || selectedPostureImages.length > 0) && <div className="rula-posture-gallery" aria-label={t("assessment.rulaPosturePhoto")}>
+                   {savedPostureImages.map((image) => <div className="rula-saved-posture-image" key={image.id}><Icon name="files" size={18}/><span title={image.originalName}>{image.originalName}</span><small>{t("assessment.rulaImageAlreadySaved")}</small></div>)}
+                   {selectedPostureImages.map((file) => {
+                     const fileKey = rulaPostureImageFileKey(file);
+                     const review = postureImageReviews[fileKey];
+                     const preview = postureImagePreviews[fileKey];
+                     const statusKey = review?.status === "loading" ? "assessment.rulaImageStatusWorking" : review?.status === "ready" ? "assessment.rulaImageStatusReady" : review?.status === "error" ? "assessment.rulaImageStatusFailed" : "assessment.rulaImageStatusWaiting";
+                     return <article className={`rula-posture-image-card ${selectedPostureImageKey === fileKey ? "is-selected" : ""}`} key={fileKey}>
+                       <button type="button" className="rula-posture-image-select" aria-pressed={selectedPostureImageKey === fileKey} onClick={() => applyRulaPostureImageReview(file)} disabled={!preview}><img src={preview} alt={file.name}/><span>{file.name}</span></button>
+                       <div className="rula-posture-image-card-meta"><small className={`rula-image-review-status ${review?.status ?? "pending"}`} role="status">{t(statusKey)}</small><div><button type="button" className="text-button" onClick={() => applyRulaPostureImageReview(file)} disabled={review?.status !== "ready"}>{t("assessment.rulaImageApplyAnalysis")}</button><button type="button" className="text-button" onClick={() => removePostureImage(file)}>{t("assessment.removePostureImage")}</button></div></div>
+                     </article>;
+                   })}
+                 </div>}
                  {postureImageError && <small id="rula-posture-image-error" className="field-error" role="alert">{postureImageError}</small>}
                </div>
                <label className="rula-posture-description-field"><span className="field-label-line"><span>{t("assessment.rulaPostureDescription")}</span><span className="optional-label">{t("common.optional")}</span></span><textarea name="postureDescription" value={postureDescription} maxLength={1000} rows={4} aria-describedby="rula-posture-description-hint" placeholder={t("assessment.rulaPostureDescriptionPlaceholder")} onChange={(event) => setPostureDescription(event.target.value)}/><small id="rula-posture-description-hint" className="field-hint">{t("assessment.rulaPostureDescriptionHint")} · <span className="rula-posture-description-counter">{postureDescription.length.toLocaleString(numberLocale)} / {Number(1000).toLocaleString(numberLocale)}</span></small></label>

@@ -22,7 +22,7 @@ const nav = [
   { path: "/notifications", labelKey: "nav.notifications", icon: "notifications", scope: "all", group: "guidance" },
   { path: "/members", labelKey: "nav.members", icon: "members", scope: "members", group: "organization" },
   { path: "/admin", labelKey: "nav.adminPanel", icon: "shield", scope: "superadmin", group: "organization" },
-  { path: "/organizations", labelKey: "nav.organizations", icon: "dashboard", scope: "all", group: "organization" },
+  { path: "/organizations", labelKey: "nav.organizations", icon: "dashboard", scope: "admin", group: "organization" },
   { path: "/activity-log", labelKey: "nav.activityLog", icon: "audit", scope: "all", group: "organization" },
   { path: "/profile", labelKey: "nav.profile", icon: "profile", scope: "all", group: "settings" },
   { path: "/health", labelKey: "nav.health", icon: "health", scope: "admin", group: "settings" },
@@ -134,8 +134,8 @@ export function AppLayout() {
           <div><div className="eyebrow">{t(role === "SUPER_ADMIN" ? "brand.adminWorkspace" : role === "ORG_ADMIN" ? "brand.organizationAdminWorkspace" : "brand.workspace")}</div><strong>{t(current)}</strong></div>
         </div>
         <div className="header-actions">
-          {organizationInactive && <Link className="subscription-pill" to="/organizations"><Icon name="warning" size={15}/> {t("shell.inactiveOrganization")}</Link>}
-          {!organizationInactive && subscriptionBlocked && <Link className="subscription-pill" to="/organizations"><Icon name="warning" size={15}/> {t("shell.activateSubscription")}</Link>}
+          {isAdministrator && organizationInactive && <Link className="subscription-pill" to="/organizations"><Icon name="warning" size={15}/> {t("shell.inactiveOrganization")}</Link>}
+          {isAdministrator && !organizationInactive && subscriptionBlocked && <Link className="subscription-pill" to="/organizations"><Icon name="warning" size={15}/> {t("shell.activateSubscription")}</Link>}
           <ThemeSwitcher theme={theme} onChange={changeTheme}/>
           <LanguageSwitcher className="topbar-language-switch" onChange={persistLocale}/>
           <NotificationBell/>

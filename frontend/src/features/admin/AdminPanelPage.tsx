@@ -1,6 +1,6 @@
 import { Fragment, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { isForbiddenDisplayName, isStrongPassword, isValidDisplayName, isValidEmail, isValidPhone, isValidUsername, normalizePhone, normalizeUsername, PASSWORD_MIN_LENGTH } from "@nivasafe/domain";
+import { isForbiddenDisplayName, isStrongPassword, isValidDisplayName, isValidEmail, isValidPhone, isValidUsername, normalizeEmail, normalizePhone, normalizeUsername, PASSWORD_MIN_LENGTH } from "@nivasafe/domain";
 import { api, getSession, useLoad } from "../../api/client";
 import { EmptyState, Icon, SectionCard, StyledSelect, roleLabel, useDialog, formatDate } from "../../components/UI";
 import { useI18n } from "../../i18n";
@@ -20,7 +20,7 @@ type UserEdit = { displayName: string; email: string; username: string; phone: s
 type PasswordEdit = { password: string; confirmation: string };
 type UserPatch = Partial<{ active: boolean; globalRole: UserRole; displayName: string; email: string; username: string | null; phone: string | null; jobTitle: string | null }>;
 type OrganizationMember = { id: string; role: string; active: boolean; user: { id: string; email: string; username?: string | null; displayName: string; jobTitle?: string | null; active?: boolean; globalRole?: string } };
-type AdminMemberRequest = { id: string; username: string; email: string; displayName: string; phone: string | null; jobTitle: string | null; role: string; status: string; rejectionReason: string | null; createdAt: string; reviewedAt: string | null; organization: { id: string; nameFa: string; nameEn: string; active: boolean }; requestedBy: { id: string; displayName: string; email: string; username: string | null } };
+type AdminMemberRequest = { id: string; username: string | null; email: string | null; displayName: string; phone: string | null; jobTitle: string | null; role: string; status: string; rejectionReason: string | null; createdAt: string; reviewedAt: string | null; organization: { id: string; nameFa: string; nameEn: string; active: boolean }; requestedBy: { id: string; displayName: string; email: string; username: string | null } };
 type AdminAIUsageRow = { userId: string; displayName: string; username: string | null; email: string; active: boolean; requestCount: number; inputTokens: number; outputTokens: number; totalTokens: number };
 type AdminAIUsage = { users: AdminAIUsageRow[]; totals: Pick<AdminAIUsageRow, "requestCount" | "inputTokens" | "outputTokens" | "totalTokens"> };
 
@@ -48,6 +48,7 @@ function MemberRequestsSection({ data, loading, onChanged }: { data: AdminMember
   const { locale, t } = useI18n();
   const dialog = useDialog();
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [approvalEmail, setApprovalEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [error, setError] = useState("");
@@ -55,6 +56,7 @@ function MemberRequestsSection({ data, loading, onChanged }: { data: AdminMember
 
   function openApproval(request: AdminMemberRequest) {
     setActiveId(request.id);
+    setApprovalEmail(request.email ?? "");
     setPassword("");
     setConfirmation("");
     setError("");
@@ -63,16 +65,19 @@ function MemberRequestsSection({ data, loading, onChanged }: { data: AdminMember
 
   async function approve(request: AdminMemberRequest, event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const email = request.email === null ? normalizeEmail(approvalEmail) : undefined;
+    if (email !== undefined && !isValidEmail(email)) { setError(t("profile.invalidEmail")); return; }
     if (password !== confirmation) { setError(t("admin.passwordMismatch")); return; }
-    if (!isStrongPassword(password, { email: request.email, displayName: request.displayName })) { setError(t("admin.invalidPassword", { min: PASSWORD_MIN_LENGTH })); return; }
+    if (!isStrongPassword(password, { email: email ?? request.email ?? undefined, displayName: request.displayName })) { setError(t("admin.invalidPassword", { min: PASSWORD_MIN_LENGTH })); return; }
     setError("");
     setMessage("");
     try {
-      const result = await api<{ credentialsReady: boolean; user: { username: string } }>(`/admin/member-requests/${request.id}/approve`, { method: "POST", body: JSON.stringify({ password }) });
+      const result = await api<{ credentialsReady: boolean; user: { username: string | null; email: string } }>(`/admin/member-requests/${request.id}/approve`, { method: "POST", body: JSON.stringify({ password, ...(email === undefined ? {} : { email }) }) });
       setActiveId(null);
+      setApprovalEmail("");
       setPassword("");
       setConfirmation("");
-      setMessage(t("admin.credentialsReady", { username: result.data.user.username }));
+      setMessage(t("admin.credentialsReady", { identifier: result.data.user.username ?? result.data.user.email }));
       onChanged();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t("admin.updateFailed"));
@@ -96,9 +101,29 @@ function MemberRequestsSection({ data, loading, onChanged }: { data: AdminMember
     {error && <div className="alert error" role="alert"><Icon name="warning"/>{error}</div>}
     {message && <div className="alert success" role="status"><Icon name="check"/>{message}</div>}
     {loading && !data ? <LoadingState/> : data?.length ? <div className="admin-request-list">{data.map((request) => <article className="admin-request-card" key={request.id}>
-      <div className="admin-request-copy"><strong>{request.displayName}</strong><small dir="ltr">{request.username} · {request.email}</small>{request.jobTitle && <small>{request.jobTitle}</small>}<small>{t("admin.requestedForOrganization")}: {locale === "en" ? request.organization.nameEn : request.organization.nameFa}</small><small>{t("admin.requestedBy")}: {request.requestedBy.displayName} · {formatDate(request.createdAt, true)}</small></div>
-      <div className="admin-request-role"><span className="status-badge neutral">{roleLabel(request.role)}</span><span className="status-badge warning">{t("admin.pendingApproval")}</span></div>
-      {activeId === request.id ? <form className="admin-request-approval form-grid" onSubmit={(event) => void approve(request, event)}><p className="field-hint full">{t("admin.approveMemberRequestDescription")}</p><label>{t("admin.initialPassword")}<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} required/></label><label>{t("admin.initialPasswordConfirm")}<input type="password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} required/></label><div className="admin-edit-actions full"><button className="primary" type="submit"><Icon name="check" size={16}/>{t("admin.approveMemberRequest")}</button><button className="ghost" type="button" onClick={() => setActiveId(null)}>{t("common.cancel")}</button></div></form> : <div className="admin-request-actions"><button className="primary" type="button" onClick={() => openApproval(request)}>{t("admin.approveMemberRequest")}</button><button className="ghost danger-link" type="button" onClick={() => void reject(request)}>{t("admin.rejectMemberRequest")}</button></div>}
+      <header className="admin-request-card-head">
+        <div className="admin-request-person">
+          <span className="admin-request-avatar" aria-hidden="true">{request.displayName.trim().slice(0, 1)}</span>
+          <div className="admin-request-copy">
+            <strong>{request.displayName}</strong>
+            <div className="admin-request-identifiers" dir="ltr">
+              {request.username && <span>@{request.username}</span>}
+              {request.email && <span>{request.email}</span>}
+            </div>
+            {request.jobTitle && <small className="admin-request-job-title">{request.jobTitle}</small>}
+          </div>
+        </div>
+        <div className="admin-request-badges">
+          <span className="status-badge neutral">{roleLabel(request.role)}</span>
+          <span className="status-badge warning">{t("admin.pendingApproval")}</span>
+        </div>
+      </header>
+      <div className="admin-request-meta">
+        <div className="admin-request-meta-item"><span>{t("admin.requestedForOrganization")}</span><strong>{locale === "en" ? request.organization.nameEn : request.organization.nameFa}</strong></div>
+        <div className="admin-request-meta-item"><span>{t("admin.requestedBy")}</span><strong>{request.requestedBy.displayName}</strong></div>
+        <div className="admin-request-meta-item"><span>{t("admin.requestDate")}</span><time dateTime={request.createdAt}>{formatDate(request.createdAt, true)}</time></div>
+      </div>
+      {activeId === request.id ? <form className="admin-request-approval form-grid" onSubmit={(event) => void approve(request, event)}><p className="field-hint full">{t("admin.approveMemberRequestDescription")}</p>{request.email === null && <><p className="field-hint full">{t("admin.memberRequestEmailRequired")}</p><label>{t("members.requestEmail")}<input type="email" dir="ltr" autoComplete="email" value={approvalEmail} onChange={(event) => setApprovalEmail(event.target.value)} maxLength={254} required/></label></>}<label>{t("admin.initialPassword")}<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} required/></label><label>{t("admin.initialPasswordConfirm")}<input type="password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} required/></label><div className="admin-edit-actions admin-request-form-actions full"><button className="primary" type="submit"><Icon name="check" size={16}/>{t("admin.approveMemberRequest")}</button><button className="ghost" type="button" onClick={() => setActiveId(null)}>{t("common.cancel")}</button></div></form> : <div className="admin-request-actions"><button className="primary" type="button" onClick={() => openApproval(request)}>{t("admin.approveMemberRequest")}</button><button className="ghost danger-link" type="button" onClick={() => void reject(request)}>{t("admin.rejectMemberRequest")}</button></div>}
     </article>)}</div> : <EmptyState icon="members" title={t("admin.noPendingMemberRequests")}/>}
   </SectionCard>;
 }
@@ -168,6 +193,8 @@ export function AdminPanelPage() {
   }
 
   function beginEdit(user: AdminUser) {
+    setPasswordEditingId(null);
+    setPasswordForm({ password: "", confirmation: "" });
     setEditingId(user.id);
     setEditForm({ displayName: user.displayName, email: user.email, username: user.username ?? "", phone: user.phone ?? "", jobTitle: user.jobTitle ?? "" });
     setActionError("");
@@ -190,6 +217,7 @@ export function AdminPanelPage() {
   }
 
   function beginPasswordEdit(user: AdminUser) {
+    setEditingId(null);
     setPasswordEditingId(user.id);
     setPasswordForm({ password: "", confirmation: "" });
     setActionError("");

@@ -1,7 +1,8 @@
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
-import { buildFmeaFinalTablePdfDocument, buildFmeaFinalTableWorkbook, buildFmeaFinalTableWordDocument, buildFmeaPdfLines, buildFmeaWorkbook, buildFmeaWordDocument, buildPdfDocument, buildRegisteredReportSummaries, buildRulaPdfLines, buildRulaWorkbook, buildRulaWordDocument, FMEA_FINAL_TABLE_HEADERS, type FmeaReportData, type RulaReportData, type RulaReportExport } from "./modules/reports.js";
+import { buildFmeaFinalTablePdfDocument, buildFmeaFinalTableWorkbook, buildFmeaFinalTableWordDocument, buildFmeaPdfLines, buildFmeaReportPdfDocument, buildFmeaWorkbook, buildFmeaWordDocument, buildPdfDocument, buildRegisteredReportSummaries, buildRulaPdfLines, buildRulaReportPdfDocument, buildRulaWorkbook, buildRulaWordDocument, FMEA_FINAL_TABLE_HEADERS, type FmeaReportData, type FmeaReportPayload, type RulaReportData, type RulaReportExport } from "./modules/reports.js";
+import { actionPriority, summariseFmea } from "./fmea-report.js";
 
 const fmea: FmeaReportData = {
   title: "Production line FMEA",
@@ -49,6 +50,47 @@ const rulaReport: RulaReportExport = {
   predictedScore: 4,
 };
 
+const normalizedFmeaItem = { ...fmea.items[0]!, id: "item-1", rpn: 96, riskLevel: "LOW" };
+const fmeaReportItems = [{ ...normalizedFmeaItem, actionPriority: actionPriority(normalizedFmeaItem.riskLevel), correctiveActions: [{ id: "action-1", title: "Install restraint", status: "OPEN", priority: "HIGH" }] }];
+const fmeaPageReport: FmeaReportPayload = {
+  riskThresholds: { medium: 101, high: 201, critical: 401 },
+  assessment: {
+    id: "assessment-1", title: fmea.title, code: fmea.code, status: fmea.status, version: 1,
+    createdAt: fmea.createdAt, updatedAt: fmea.updatedAt, approvedAt: null, fmeaDetailSeeded: true, method: "FMEA",
+    processName: { fa: "اپراتور خط تولید", en: "Production line operator" },
+    companyName: { fa: "شرکت ایمنی", en: "Safety Company" },
+    project: { id: "project-1", name: fmea.project.name, code: "P-1" },
+    evaluationTeam: [{ id: "user-1", displayName: "Safety lead", email: "lead@example.com", role: "HSE_MANAGER" }],
+  },
+  summary: summariseFmea([normalizedFmeaItem]),
+  items: fmeaReportItems,
+  topFailureModes: fmeaReportItems,
+  suggestedActions: [{ id: "suggestion-1", title: "Review the loading procedure", description: "Update and retrain the loading procedure.", fmeaItemId: "item-1", failureMode: "Dropped load", priority: "MEDIUM", status: "SUGGESTED", source: "FALLBACK" }],
+  actions: fmea.actions.map((action) => ({ ...action, id: "action-1", fmeaItemId: "item-1" })),
+};
+
+function worksheetValues(sheet: ExcelJS.Worksheet) {
+  const values: unknown[] = [];
+  sheet.eachRow((row) => values.push(...row.values as unknown[]));
+  return values;
+}
+
+function dashboardMetricValue(sheet: ExcelJS.Worksheet, label: string) {
+  let labelRow = 0;
+  let labelColumn = 0;
+  sheet.eachRow((row, rowNumber) => {
+    if (labelRow) return;
+    for (const column of [1, 3, 5, 7]) {
+      if (row.getCell(column).value === label) {
+        labelRow = rowNumber;
+        labelColumn = column;
+        return;
+      }
+    }
+  });
+  return labelRow ? sheet.getCell(labelRow + 1, labelColumn).value : undefined;
+}
+
 describe("assessment report exports", () => {
   it("orders registered FMEA and RULA reports by finalization date", () => {
     const reports = buildRegisteredReportSummaries(
@@ -59,30 +101,111 @@ describe("assessment report exports", () => {
     expect(reports[0]?.finalizedAt).toBe("2026-09-21T10:00:00.000Z");
   });
 
-  it("creates a readable FMEA Excel workbook with separate report sheets", async () => {
-    const buffer = await buildFmeaWorkbook(fmea);
+  it("creates a readable FMEA Excel workbook that mirrors the report and preserves extended data", async () => {
+    const buffer = await buildFmeaWorkbook(fmea, "en", fmeaPageReport);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
-    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["FMEA", "SUMMARY", "PROCESS", "ACTIONS"]);
-    expect(workbook.getWorksheet("FMEA")?.getRow(1).values).toContain("Failure mode");
+    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["OVERVIEW", "FMEA", "FMEA DATA", "SUMMARY", "PROCESS", "RISK DISTRIBUTION", "TOP RISKS", "PROPOSED ACTIONS", "ACTIONS"]);
+    expect((workbook.getWorksheet("FMEA")?.getRow(1).values as unknown[]).slice(1)).toEqual([...FMEA_FINAL_TABLE_HEADERS]);
     expect(workbook.getWorksheet("FMEA")?.getRow(2).values).toContain("Dropped load");
-    expect(workbook.getWorksheet("FMEA")?.getRow(2).values).toContain("Add a load restraint | Install restraint (OPEN, HIGH)");
+    expect(workbook.getWorksheet("FMEA")?.getRow(2).values).toContain("Inspection\nSupervisor check");
+    expect(workbook.getWorksheet("FMEA")?.getRow(2).values).toContain("Add a load restraint\nInstall restraint (OPEN, HIGH)");
+    expect(workbook.getWorksheet("FMEA DATA")?.getRow(1).values).toContain("Process / activity");
+    expect(workbook.getWorksheet("TOP RISKS")?.getRow(2).values).toContain("Dropped load");
+    expect(workbook.getWorksheet("PROPOSED ACTIONS")?.getRow(2).values).toContain("Review the loading procedure");
     expect(workbook.getWorksheet("SUMMARY")?.getRow(8).values).toContain(1);
     expect(workbook.getWorksheet("FMEA")?.autoFilter).toBeTruthy();
-    const injectionBuffer = await buildFmeaWorkbook({ ...fmea, title: "=HYPERLINK(\"https://example.invalid\")" });
+    const overview = workbook.getWorksheet("OVERVIEW")!;
+    const overviewValues = worksheetValues(overview);
+    expect(overviewValues).toEqual(expect.arrayContaining([
+      "Executive risk summary", "Risk-level distribution", "Average corrective-action progress",
+      "Top failure modes", "Proposed corrective actions / controls", "Corrective-action register",
+    ]));
+    expect(overview.getCell("A2").fill).toMatchObject({ type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F7FC" } });
+    const injectionBuffer = await buildFmeaWorkbook({ ...fmea, title: "=HYPERLINK(\"https://example.invalid\")" }, "en", fmeaPageReport);
     const injectionWorkbook = new ExcelJS.Workbook();
     await injectionWorkbook.xlsx.load(injectionBuffer as unknown as Parameters<typeof injectionWorkbook.xlsx.load>[0]);
     expect(injectionWorkbook.getWorksheet("SUMMARY")?.getCell("B2").value).toBe("'=HYPERLINK(\"https://example.invalid\")");
+  });
+
+  it("uses report thresholds and canonical report actions consistently in every full FMEA export", async () => {
+    const reportRisk = { ...fmeaReportItems[0]!, riskLevel: "HIGH", actionPriority: actionPriority("HIGH") };
+    const canonicalAction = {
+      ...fmeaPageReport.actions[0]!,
+      title: "Canonical report action",
+      description: "Action supplied by the report payload",
+      status: "COMPLETED",
+      progress: 100,
+    };
+    const report: FmeaReportPayload = {
+      ...fmeaPageReport,
+      riskThresholds: { medium: 50, high: 90, critical: 180 },
+      summary: summariseFmea([reportRisk]),
+      items: [reportRisk],
+      topFailureModes: [reportRisk],
+      actions: [canonicalAction],
+    };
+
+    const workbook = new ExcelJS.Workbook();
+    const workbookBuffer = await buildFmeaWorkbook(fmea, "en", report);
+    await workbook.xlsx.load(workbookBuffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    expect(workbook.getWorksheet("FMEA")?.getCell(2, 10).value).toBe("HIGH");
+    expect(worksheetValues(workbook.getWorksheet("OVERVIEW")!).join(" ")).toContain("Canonical report action");
+    expect(worksheetValues(workbook.getWorksheet("ACTIONS")!).join(" ")).toContain("Canonical report action");
+    expect(worksheetValues(workbook.getWorksheet("ACTIONS")!).join(" ")).not.toContain("Install restraint");
+
+    const wordBuffer = await buildFmeaWordDocument(fmea, "en", report);
+    const archive = await JSZip.loadAsync(wordBuffer);
+    const document = await archive.file("word/document.xml")!.async("string");
+    expect(document).toContain("Canonical report action");
+    expect(document).toContain("HIGH");
+    expect(document).not.toContain("Install restraint");
+  });
+
+  it("limits the FMEA overview to the report's initial five risks while retaining every detailed row", async () => {
+    const manyItems = Array.from({ length: 7 }, (_, index) => ({
+      ...fmea.items[0]!,
+      id: `item-${index + 1}`,
+      rowNumber: index + 1,
+      failureMode: `Failure mode ${index + 1}`,
+      severity: 5,
+      occurrence: 5,
+      detection: 5,
+      rpn: 125,
+      riskLevel: "MEDIUM",
+    }));
+    const manyReportItems = manyItems.map((item) => ({
+      ...item,
+      actionPriority: actionPriority(item.riskLevel),
+      correctiveActions: [],
+    }));
+    const report: FmeaReportPayload = {
+      ...fmeaPageReport,
+      summary: summariseFmea(manyReportItems),
+      items: manyReportItems,
+      topFailureModes: manyReportItems,
+      suggestedActions: [],
+      actions: [],
+    };
+    const workbook = new ExcelJS.Workbook();
+    const buffer = await buildFmeaWorkbook({ ...fmea, items: manyItems, actions: [] }, "en", report);
+    await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    const overviewValues = worksheetValues(workbook.getWorksheet("OVERVIEW")!).join(" ");
+    const detailsValues = worksheetValues(workbook.getWorksheet("FMEA")!).join(" ");
+    expect(overviewValues).toContain("Failure mode 5");
+    expect(overviewValues).not.toContain("Failure mode 6");
+    expect(detailsValues).toContain("Failure mode 7");
+    expect(workbook.getWorksheet("FMEA")?.rowCount).toBe(8);
   });
 
   it("exports the final FMEA table with identical columns and row order in Excel, Word, and PDF", async () => {
     const workbookBuffer = await buildFmeaFinalTableWorkbook(fmea);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(workbookBuffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
-    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["FMEA"]);
+    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["FMEA", "DETAILS"]);
     const sheet = workbook.getWorksheet("FMEA")!;
     expect((sheet.getRow(1).values as unknown[]).slice(1)).toEqual([...FMEA_FINAL_TABLE_HEADERS]);
-    expect((sheet.getRow(2).values as unknown[]).slice(1)).toEqual([1, "Dropped load", "Injury", "Unstable load", "Inspection | Supervisor check", 8, 4, 3, 96, "LOW", "Add a load restraint | Install restraint (OPEN, HIGH)"]);
+    expect((sheet.getRow(2).values as unknown[]).slice(1)).toEqual([1, "Dropped load", "Injury", "Unstable load", "Inspection\nSupervisor check", 8, 4, 3, 96, "LOW", "Add a load restraint\nInstall restraint (OPEN, HIGH)"]);
 
     const wordBuffer = await buildFmeaFinalTableWordDocument(fmea);
     const wordArchive = await JSZip.loadAsync(wordBuffer);
@@ -103,14 +226,46 @@ describe("assessment report exports", () => {
     await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
     expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["RULA", "SUMMARY", "PROCESS", "IMPACT", "FACTORS", "RULA DATA", "CORRECTIONS", "ACTIONS"]);
     expect(workbook.getWorksheet("RULA")?.getColumn(2).values).toContain(4);
-    expect(workbook.getWorksheet("FACTORS")?.getRow(2).values).toContain("neck");
+    expect(workbook.getWorksheet("FACTORS")?.getCell("A2").value).toBe("neck");
     expect(workbook.getWorksheet("ACTIONS")?.getRow(2).values).toContain("Adjust work surface");
     expect(workbook.getWorksheet("ACTIONS")?.getRow(2).values).toContain("Selected");
     expect(workbook.getWorksheet("ACTIONS")?.getRow(2).values).toContain("neck, trunk");
     expect(workbook.getWorksheet("PROCESS")?.getRow(2).values).toContain("Packing operator");
-    expect(workbook.getWorksheet("RULA DATA")?.getColumn(4).values).toContain("Neck");
+    expect(workbook.getWorksheet("FACTORS")?.getRow(1).values).toEqual([undefined, "Main factor", "Angle", "Detected", "Score", "Contribution", "Effect", "Source"]);
+    expect(workbook.getWorksheet("RULA DATA")?.getColumn(3).values).toContain("Neck");
     expect(workbook.getWorksheet("CORRECTIONS")?.getRow(2).values).toContain("Adjust work surface");
     expect(workbook.getWorksheet("CORRECTIONS")?.getRow(2).values).toContain("Selected");
+    const overview = workbook.getWorksheet("RULA")!;
+    const overviewValues = worksheetValues(overview);
+    expect(overviewValues).toEqual(expect.arrayContaining([
+      "Factor score distribution", "Corrective-action progress", "Main factors",
+      "Proposed corrective actions", "Predicted effect", "RULA assessment data", "Selected corrective actions",
+    ]));
+    expect(dashboardMetricValue(overview, "Score")).toBe(6);
+    expect(overview.getCell("A2").fill).toMatchObject({ type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F7FC" } });
+
+    const weightedReport: RulaReportExport = {
+      ...rulaReport,
+      factors: [
+        { key: "neck", angle: 24, detected: true, score: 3, impactPercent: 50, impactLevel: "HIGH", source: "AI" },
+        { key: "trunk", angle: 28, detected: true, score: 2, impactPercent: 33, impactLevel: "MEDIUM", source: "AI" },
+        { key: "wrist", angle: 18, detected: true, score: 1, impactPercent: 17, impactLevel: "LOW", source: "AI" },
+      ],
+    };
+    const weightedWorkbook = new ExcelJS.Workbook();
+    const weightedBuffer = await buildRulaWorkbook(rula, weightedReport);
+    await weightedWorkbook.xlsx.load(weightedBuffer as unknown as Parameters<typeof weightedWorkbook.xlsx.load>[0]);
+    const weightedOverview = weightedWorkbook.getWorksheet("RULA")!;
+    const distributionRow = (label: string) => {
+      let match: ExcelJS.Row | undefined;
+      weightedOverview.eachRow((row) => {
+        if (row.getCell(1).value === label) match = row;
+      });
+      return match;
+    };
+    expect([3, 4, 5].map((column) => distributionRow("High-impact factors")?.getCell(column).value)).toEqual([1, 3, "50%"]);
+    expect([3, 4, 5].map((column) => distributionRow("Medium-impact factors")?.getCell(column).value)).toEqual([1, 2, "33%"]);
+    expect([3, 4, 5].map((column) => distributionRow("Low-impact factors")?.getCell(column).value)).toEqual([1, 1, "17%"]);
 
     const incompleteReport: RulaReportExport = {
       ...rulaReport,
@@ -120,8 +275,7 @@ describe("assessment report exports", () => {
     const incompleteBuffer = await buildRulaWorkbook(rula, incompleteReport);
     const incompleteWorkbook = new ExcelJS.Workbook();
     await incompleteWorkbook.xlsx.load(incompleteBuffer as unknown as Parameters<typeof incompleteWorkbook.xlsx.load>[0]);
-    expect(incompleteWorkbook.getWorksheet("RULA")?.getColumn(2).values).toContain("-");
-    expect(incompleteWorkbook.getWorksheet("RULA")?.getColumn(2).values).not.toContain(6);
+    expect(dashboardMetricValue(incompleteWorkbook.getWorksheet("RULA")!, "Score")).toBe("-");
   });
 
   it("exports independent RULA side scores and factors for BOTH assessments", async () => {
@@ -136,14 +290,30 @@ describe("assessment report exports", () => {
         RIGHT: [{ key: "neck", angle: 32, detected: true, score: 4, impactPercent: 57, impactLevel: "HIGH", source: "AI", reviewed: true }],
         LEFT: [{ key: "neck", angle: 12, detected: true, score: 2, impactPercent: 40, impactLevel: "LOW", source: "AI", reviewed: true }],
       },
+      actions: [
+        ...rulaReport.actions,
+        { title: "Right-only neck support", description: "Support the right side.", priority: "HIGH", status: "IN_PROGRESS", bodySide: "RIGHT", rulaImpact: { scoreReduction: 1, affectedParts: ["neck"] } },
+      ],
     };
     const workbookBuffer = await buildRulaWorkbook(rula, bothReport);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(workbookBuffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
-    expect(workbook.getWorksheet("RULA")?.getColumn(1).values).toContain("RIGHT score");
-    expect(workbook.getWorksheet("RULA")?.getColumn(1).values).toContain("LEFT score");
-    expect(workbook.getWorksheet("FACTORS")?.getColumn(1).values).toContain("RIGHT / neck");
-    expect(workbook.getWorksheet("FACTORS")?.getColumn(1).values).toContain("LEFT / neck");
+    expect(worksheetValues(workbook.getWorksheet("RULA")!)).toContain("RIGHT score");
+    expect(worksheetValues(workbook.getWorksheet("RULA")!)).toContain("LEFT score");
+    expect(workbook.getWorksheet("FACTORS")?.getColumn(1).values).toContain("RIGHT");
+    expect(workbook.getWorksheet("FACTORS")?.getColumn(1).values).toContain("LEFT");
+    expect(workbook.getWorksheet("FACTORS")?.getColumn(2).values).toContain("RIGHT / neck");
+    expect(workbook.getWorksheet("FACTORS")?.getColumn(2).values).toContain("LEFT / neck");
+    const dataSheet = workbook.getWorksheet("RULA DATA")!;
+    let rightNeckActions: unknown;
+    let leftNeckActions: unknown;
+    dataSheet.eachRow((row) => {
+      if (row.getCell(4).value !== "Neck") return;
+      if (row.getCell(1).value === "RIGHT") rightNeckActions = row.getCell(9).value;
+      if (row.getCell(1).value === "LEFT") leftNeckActions = row.getCell(9).value;
+    });
+    expect(rightNeckActions).toContain("Right-only neck support");
+    expect(leftNeckActions).not.toContain("Right-only neck support");
 
     const wordBuffer = await buildRulaWordDocument(rula, bothReport);
     const archive = await JSZip.loadAsync(wordBuffer);
@@ -151,6 +321,32 @@ describe("assessment report exports", () => {
     expect(document).toContain("RIGHT score");
     expect(document).toContain("LEFT score");
   });
+  it("keeps selected RULA corrections without posture-part mappings in exported results", async () => {
+    const generalActionReport: RulaReportExport = {
+      ...rulaReport,
+      actions: [
+        ...rulaReport.actions,
+        { title: "Rotate staff between stations", description: "Add scheduled rotation to the task plan.", priority: "MEDIUM", status: "IN_PROGRESS", bodySide: "RIGHT", rulaImpact: { scoreReduction: 1, affectedParts: [] } },
+      ],
+    };
+    const workbook = new ExcelJS.Workbook();
+    const workbookBuffer = await buildRulaWorkbook(rula, generalActionReport);
+    await workbook.xlsx.load(workbookBuffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    const exportedRulaRows = worksheetValues(workbook.getWorksheet("RULA DATA")!);
+    expect(exportedRulaRows).toContain("General corrective actions");
+    expect(exportedRulaRows).toContain("Rotate staff between stations (MEDIUM)");
+    expect(worksheetValues(workbook.getWorksheet("ACTIONS")!).join(" ")).toContain("Rotate staff between stations");
+    expect(worksheetValues(workbook.getWorksheet("RULA")!).join(" ")).toContain("Factor score distribution");
+
+    const wordBuffer = await buildRulaWordDocument(rula, generalActionReport);
+    const archive = await JSZip.loadAsync(wordBuffer);
+    const document = await archive.file("word/document.xml")!.async("string");
+    expect(document).toContain("General corrective actions");
+    expect(document).toContain("Rotate staff between stations");
+    expect(buildRulaPdfLines(rula, generalActionReport).join("\n")).toContain("Rotate staff between stations");
+    expect((await buildRulaReportPdfDocument(rula, generalActionReport)).subarray(0, 5).toString("ascii")).toBe("%PDF-");
+  });
+
   it("keeps RULA Excel and Word exports aligned", async () => {
     const parityReport: RulaReportExport = {
       ...rulaReport,
@@ -161,23 +357,19 @@ describe("assessment report exports", () => {
     const wordBuffer = await buildRulaWordDocument(rula, parityReport);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(workbookBuffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
-    const summaryRows = workbook.getWorksheet("RULA")?.getRows(2, 7)?.map((row) => [row.getCell(1).value, row.getCell(2).value]);
-    expect(summaryRows).toEqual([
-      ["Title", "Packing posture"],
-      ["Project", "Ergonomics project"],
-      ["Score", 6],
-      ["Action level", 3],
-      ["Status", "IN_REVIEW"],
-      ["Explanation", "Needs review"],
-      ["Predicted score (estimate)", 4],
-    ]);
-    expect(workbook.getWorksheet("RULA")?.getRow(9).values).toContain("Reassess after controls");
+    const overviewValues = worksheetValues(workbook.getWorksheet("RULA")!);
+    expect(dashboardMetricValue(workbook.getWorksheet("RULA")!, "Score")).toBe(6);
+    expect(dashboardMetricValue(workbook.getWorksheet("RULA")!, "Action level")).toBe(3);
+    expect(dashboardMetricValue(workbook.getWorksheet("RULA")!, "Predicted score (estimate)")).toBe(4);
+    expect(overviewValues).toContain("Reassess after controls");
+    expect(worksheetValues(workbook.getWorksheet("SUMMARY")!)).toContain("IN_REVIEW");
 
     const archive = await JSZip.loadAsync(wordBuffer);
     const document = await archive.file("word/document.xml")!.async("string");
-    for (const value of ["Status", "IN_REVIEW", "Predicted score (estimate)", "Reassess after controls", "neck", "43%", "Adjust work surface", "neck, trunk", "Selected", "Process information", "RULA assessment data", "Proposed corrective actions", "Packing operator"]) {
+    for (const value of ["Status", "IN_REVIEW", "Predicted score (estimate)", "Reassess after controls", "neck", "43%", "Adjust work surface", "neck, trunk", "Selected", "Process information", "RULA assessment data", "Proposed corrective actions", "Packing operator", "Factor score distribution", "Corrective-action progress", "Total factor score"]) {
       expect(document).toContain(value);
     }
+    expect(document).toContain("<w:shd w:fill=\"F1F7FC\"/>");
   });
 
   it("renders complete Persian RULA exports with FMEA-style report sections", async () => {
@@ -203,7 +395,7 @@ describe("assessment report exports", () => {
     expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["RULA", "SUMMARY", "PROCESS", "IMPACT", "FACTORS", "RULA DATA", "CORRECTIONS", "ACTIONS"]);
     expect(workbook.getWorksheet("SUMMARY")?.getColumn(1).values).toContain("تاریخ انجام ارزیابی");
     expect(workbook.getWorksheet("RULA DATA")?.getRow(1).values).toContain("عضو بدن");
-    expect(workbook.getWorksheet("ACTIONS")?.getRow(2).values).toContain("گردن, تنه");
+    expect(workbook.getWorksheet("ACTIONS")?.getRow(2).values).toContain("گردن، تنه");
   });
 
   it("creates valid Office Open XML Word documents instead of mislabeled HTML files", async () => {
@@ -245,6 +437,39 @@ describe("assessment report exports", () => {
     expect(pdfSource).toContain("/Type0");
   });
 
+  it("renders complete styled report PDFs and editable, direction-aware Word tables", async () => {
+    const fmeaPdf = await buildFmeaReportPdfDocument(fmea, fmeaPageReport);
+    const localizedFmeaPdf = await buildFmeaReportPdfDocument(fmea, fmeaPageReport, "fa");
+    const rulaPdf = await buildRulaReportPdfDocument(rula, rulaReport);
+    expect(fmeaPdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+    expect(localizedFmeaPdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+    expect(rulaPdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+    expect(fmeaPdf.byteLength).toBeGreaterThan(2_000);
+    expect(localizedFmeaPdf.byteLength).toBeGreaterThan(2_000);
+    expect(rulaPdf.byteLength).toBeGreaterThan(2_000);
+
+    const fmeaDocx = await buildFmeaWordDocument(fmea, "fa", fmeaPageReport);
+    const fmeaArchive = await JSZip.loadAsync(fmeaDocx);
+    const fmeaXml = await fmeaArchive.file("word/document.xml")!.async("string");
+    expect(fmeaXml).toContain("<w:bidiVisual/>");
+    expect(fmeaXml).toContain("<w:color w:val=\"FFFFFF\"/>");
+    expect(fmeaXml).toContain("<w:br/>");
+    expect(fmeaXml).toContain("جزئیات کامل FMEA");
+    expect(fmeaXml).toContain("Review the loading procedure");
+
+    const hostileWord = await buildFmeaWordDocument({ ...fmea, project: { name: "<script>alert('x')</script>" } });
+    const hostileArchive = await JSZip.loadAsync(hostileWord);
+    const hostileXml = await hostileArchive.file("word/document.xml")!.async("string");
+    expect(hostileXml).toContain("&lt;script&gt;alert(&apos;x&apos;)&lt;/script&gt;");
+    expect(hostileXml).not.toContain("<script>");
+
+    const rulaDocx = await buildRulaWordDocument({ ...rula, bodySide: "BOTH" }, { ...rulaReport, assessment: { ...rula, bodySide: "BOTH" } }, "fa");
+    const rulaArchive = await JSZip.loadAsync(rulaDocx);
+    const rulaXml = await rulaArchive.file("word/document.xml")!.async("string");
+    expect(rulaXml).toContain("<w:bidiVisual/>");
+    expect(rulaXml).toContain("سهم امتیاز");
+  });
+
   it("localizes FMEA exports and includes assessment details in Persian output", async () => {
     const localizedLines = buildFmeaPdfLines({ ...fmea, evaluationTeam: [{ displayName: "Safety lead", email: "lead@example.com", role: "HSE_MANAGER" }] }, "fa");
     expect(localizedLines.join("\n")).toContain("جدول نهایی ارزیابی FMEA");
@@ -255,7 +480,7 @@ describe("assessment report exports", () => {
     const wordArchive = await JSZip.loadAsync(wordBuffer);
     const wordDocument = await wordArchive.file("word/document.xml")!.async("string");
     expect(wordDocument).toContain("NIVASafe — ارزیابی ریسک FMEA");
-    expect(wordDocument).toContain("جزئیات ارزیابی");
+    expect(wordDocument).toContain("مشخصات ارزیابی");
     expect(wordDocument).toContain("تاریخ ارزیابی");
     expect(wordDocument).toContain("حالت خرابی");
 
@@ -271,6 +496,7 @@ describe("assessment report exports", () => {
     await workbook.xlsx.load(workbookBuffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
     expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["FMEA", "DETAILS"]);
     expect(workbook.getWorksheet("FMEA")?.getRow(1).values).toContain("حالت خرابی");
+    expect(workbook.getWorksheet("FMEA")?.views[0]?.rightToLeft).toBe(true);
     expect(workbook.getWorksheet("DETAILS")?.getColumn(1).values).toContain("تاریخ ارزیابی");
 
     const pdfBuffer = await buildFmeaFinalTablePdfDocument(fmea, "fa");

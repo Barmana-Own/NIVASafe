@@ -148,7 +148,9 @@ export async function api<T>(path: string, options: RequestInit = {}, retry = tr
     if (!hasBody && !options.cache) requestOptions.cache = "no-store";
     response = await fetch(`${API}${path}`, requestOptions);
   } catch {
-    throw new Error(localizedMessage("ارتباط با سرور برقرار نشد. لطفاً دوباره تلاش کنید.", "Unable to connect to the server. Please try again."));
+    const error = new Error(localizedMessage("ارتباط با سرور برقرار نشد. لطفاً دوباره تلاش کنید.", "Unable to connect to the server. Please try again.")) as ApiError;
+    error.code = "NETWORK_ERROR";
+    throw error;
   }
   if (response.status === 401 && retry && session?.refreshToken && !path.includes("/auth/refresh")) {
     try { await refreshSession(session); return api<T>(path, options, false); }

@@ -1045,5 +1045,22 @@
     "validation": "PASS — focused backend FMEA tests (12 tests), frontend UI suite (105 tests across 5 files), shared-domain tests (12 tests), frontend/backend/shared typechecks, frontend lint, frontend production build, backend Prisma validation, project-state JSON validation, and git diff check passed. The frontend build emitted only the existing large-chunk warning. The complete backend suite still has unrelated pre-existing failures in organization-rules.test.ts and an AI-provider availability timeout; authenticated browser smoke, migration deployment, and production deployment were NOT_RUN.",
     "migration": "backend/prisma/migrations/202609300001_fmea_fixed_risk_bands/migration.sql — normalizes organization threshold columns, recalculates stored RPN values from S×O×D, and reclassifies existing FmeaItem rows using the fixed bands.",
     "deployment": "NOT_PERFORMED — source/local scope"
+  },
+  "latestAssessmentReportExportParityChange": {
+    "status": "PASS_LOCAL_WITH_UNRELATED_SUITE_FAILURES",
+    "scope": "Full FMEA report and final-table exports and RULA reports now use styled PDF, editable DOCX and structured XLSX output aligned with the visible report data, locale, table columns, newline-separated controls/actions and RULA side-specific scoring.",
+    "implementation": "The FMEA report screen exposes all three full-report formats; report exports reuse the page locale/read model. PDF uses branded report sections and styled tables, DOCX uses editable RTL-aware tables, and XLSX preserves the visible table and existing report worksheets. No schema, dependency, authentication or authorization contract changed.",
+    "validation": "Focused PASS — backend reports-export.test.ts: 10/10; focused frontend report assertions: 6 passed; RULA overview model tests: 3/3; backend/frontend lint/typecheck and builds passed; API contract matched 68 frontend paths to 121 backend routes; verify:release passed 28 checks. Full suites: backend 144/145 (one existing organization-rules subscription-boundary failure); frontend 100/109 (nine legacy source-contract failures in wizard/widgets/knowledge/mobile shell/login/RULA layout/activity-log assertions). Authenticated visual smoke NOT_RUN.",
+    "security": "Tenant-scoped authenticated export and reports.generate permission checks remain enforced. DOCX XML escaping and Excel formula-injection tests are included; no dependencies or secrets were added.",
+    "migration": "NOT_APPLICABLE — existing FMEA/RULA records and routes are reused; no database schema change.",
+    "deployment": "NOT_PERFORMED — local source/build only; no staging or production release."
+  },
+  "latestRulaMultiPostureImageChange": {
+    "status": "IMPLEMENTED_WITH_ENVIRONMENT_VALIDATION_LIMITATIONS",
+    "scope": "RULA اکنون حداکثر چهار تصویر JPG/PNG/WEBP (هرکدام تا ۱۰ مگابایت) را در هر ارزیابی می‌پذیرد؛ تصاویر در گالری جداگانه نمایش داده می‌شوند و هرکدام در درخواست مستقل هوش مصنوعی بررسی و نتیجه‌اش قابل اعمال است. endpoint تصاویر RULA فقط GapGPT را صدا می‌زند و هیچ fallback بین ارائه‌دهنده‌ها ندارد؛ GapGPT برای تصویر FMEA مجاز نیست. محدودیت سمت سرور tenant-scoped و با قفل تراکنشی اعمال می‌شود.",
+    "validation": "PASS — backend and frontend TypeScript checks (frontend direct project check), backend emitted compilation to isolated temporary output, frontend Vite production bundle, Prisma validation, native Node selection smoke, final focused RULA run (5/5: 3 image-selection tests plus 2 RULA UI contracts), backend provider/attachment tests (37/37), API contract verification (68 frontend paths / 121 backend routes), and local runtime configuration resolving the dedicated GapGPT adapter. NOT_RUN — frontend build-mode lint wrapper could not write ignored frontend/tsconfig.tsbuildinfo (EPERM); direct typecheck passed. PARTIAL — combined focused frontend UI suite passed 96/98; two unrelated source-contract assertions remain stale. FAIL — verify:release reported one unrelated organization-switching source assertion failure. External provider connectivity and authenticated browser smoke were not exercised.",
+    "security": "PASS_STATIC_REVIEW — authentication, assessments.create permission, rate limiting, MIME/signature/size checks, per-assessment limit, tenant ownership and RULA-only GapGPT image purpose are enforced; audit events exclude prompts and image bytes.",
+    "migration": "NOT_APPLICABLE — existing RulaAssessment and Attachment models reused.",
+    "deployment": "NOT_PERFORMED — local source only; no external provider request or production deployment."
   }
 }

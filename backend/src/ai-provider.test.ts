@@ -18,6 +18,8 @@ describe("AI provider adapters", () => {
     process.env.AI_PROVIDER_RETRY_DELAY_MS = "0";
     process.env.ARVAN_API_KEY = "test-arvancloud";
     process.env.ARVAN_BASE_URL = "https://api.arvancloudai.ir/v1";
+    process.env.GAPGPT_API_KEY = "test-gapgpt";
+    process.env.GAPGPT_BASE_URL = "https://api.gapgpt.test/v1";
     process.env.OPENAI_API_KEY = "test-openai";
     process.env.OPENAI_CHAT_MODEL = "test-openai-model";
     process.env.GEMINI_API_KEY = "test-gemini";
@@ -33,7 +35,7 @@ describe("AI provider adapters", () => {
   it("reports configured providers as available", async () => {
     const { listAIProviders } = await import("./ai-provider.js");
     const availability = Object.fromEntries(listAIProviders().map((item) => [item.name, item.available]));
-    expect(availability).toEqual({ fallback: true, arvancloud: true, openai: true, gemini: true, anthropic: true });
+    expect(availability).toEqual({ fallback: true, arvancloud: true, gapgpt: true, openai: true, gemini: true, anthropic: true });
     expect(listAIProviders().find((item) => item.name === "arvancloud")).toMatchObject({ configuredForRisk: true, configuredForChat: true });
   });
 
@@ -64,6 +66,25 @@ describe("AI provider adapters", () => {
     expect(body.model).toBe("GPT-5-Mini");
   });
 
+  it("can omit organization knowledge from a narrowly scoped assessment prompt", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ choices: [{ message: { content: "RULA task response" } }] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const findMany = vi.fn().mockResolvedValue([{ id: "private-doc", title: "Private title", content: "Private organization context", tags: [], visibility: "ALL", visibleUserIds: null, visibleOrganizationIds: null, isGlobal: false, aiOnly: false, updatedAt: new Date() }]);
+    vi.doMock("./core.js", () => ({ prisma: { knowledgeDocument: { findMany } } }));
+    const { getAIProvider } = await import("./ai-provider.js");
+    const result = await getAIProvider("arvancloud", "risk").analyze({
+      organizationId: "org",
+      userId: "user",
+      message: "RULA job title and task description",
+      includeKnowledge: false,
+    });
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(findMany).not.toHaveBeenCalled();
+    expect(body.messages[1].content).toContain("RULA job title and task description");
+    expect(body.messages[1].content).not.toContain("Private organization context");
+    expect(result.citations).toEqual([]);
+  });
+
   it("uses role-specific ArvanCloud models through the chat completions endpoint", async () => {
     const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ choices: [{ message: { content: "Role-aware answer" } }] }), { status: 200 })));
     vi.stubGlobal("fetch", fetchMock);
@@ -89,14 +110,38 @@ describe("AI provider adapters", () => {
     expect(chatBody.messages[1].content).toContain("Assistant: Earlier answer");
   });
 
-  it("keeps the assistant introduction in chat fallback responses only", async () => {
+  it("returns the offline notice for chat fallback while preserving risk guidance", async () => {
     vi.doMock("./core.js", () => ({ prisma: { knowledgeDocument: { findMany: vi.fn().mockResolvedValue([]) } } }));
     const { getAIProvider } = await import("./ai-provider.js");
-    const chat = await getAIProvider("fallback", "chat").analyze({ organizationId: "org", message: "سلام" });
+    const chat = await getAIProvider("fallback", "chat").analyze({ organizationId: "org", message: "سلام", locale: "fa" });
     const risk = await getAIProvider("fallback", "risk").analyze({ organizationId: "org", message: "پیشنهاد کنترل خطر" });
-    expect(chat.answer).toContain("من دستیار هوشمند سامانه NIVASafe");
-    expect(risk.answer).not.toContain("من دستیار هوشمند سامانه NIVASafe");
+    expect(chat.answer).toBe("سلام من دستیار هوشمند NIVASafe جهت مدیریت ایمنی و بهداشت حرفه‌ای هستم.\nدرحال حاضر امکان برقراری ارتباط با سرور را ندارم؛ اما به محض برقراری ارتباط پاسخگوی شما خواهم بود.");
+    expect(chat.citations).toEqual([]);
+    expect(risk.answer).not.toContain("سلام من دستیار هوشمند NIVASafe");
     expect(risk.answer).toContain("راهنمای پایه:");
+  });
+
+  it("does not retrieve organization documents for an explicitly context-free local fallback", async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
+    vi.doMock("./core.js", () => ({ prisma: { knowledgeDocument: { findMany } } }));
+    const { getAIProvider } = await import("./ai-provider.js");
+    const result = await getAIProvider("fallback", "risk").analyze({ organizationId: "org", message: "task description", includeKnowledge: false });
+    expect(findMany).not.toHaveBeenCalled();
+    expect(result.citations).toEqual([]);
+  });
+
+  it("returns the localized offline notice when a configured chat model cannot be reached", async () => {
+    process.env.AI_PROVIDER_MAX_ATTEMPTS = "1";
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { message: "temporary outage" } }), { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.doMock("./core.js", () => ({ prisma: { knowledgeDocument: { findMany: vi.fn().mockResolvedValue([]) } } }));
+    const { getAvailableAIProvider } = await import("./ai-provider.js");
+
+    const result = await getAvailableAIProvider("chat").analyze({ organizationId: "org", message: "سلام", locale: "fa" });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(result.provider).toBe("fallback");
+    expect(result.answer).toBe("سلام من دستیار هوشمند NIVASafe جهت مدیریت ایمنی و بهداشت حرفه‌ای هستم.\nدرحال حاضر امکان برقراری ارتباط با سرور را ندارم؛ اما به محض برقراری ارتباط پاسخگوی شما خواهم بود.");
   });
 
   it("normalises concatenated Persian chat introductions before storage", async () => {
@@ -115,7 +160,7 @@ describe("AI provider adapters", () => {
       { id: "doc-selected", title: "LOTO selected procedure", content: "This selected document is for another user.", tags: ["LOTO"], visibility: "SELECTED", visibleUserIds: ["another-user"], visibleOrganizationIds: null, isGlobal: false, aiOnly: false, updatedAt: new Date("2026-09-29") },
     ]) } } }));
     const { getAIProvider } = await import("./ai-provider.js");
-    const result = await getAIProvider("fallback", "chat").analyze({ organizationId: "org", userId: "user", message: "LOTO procedure" });
+    const result = await getAIProvider("fallback", "risk").analyze({ organizationId: "org", userId: "user", message: "LOTO procedure" });
     expect(result.citations).toEqual([{ id: "doc-relevant", title: "LOTO procedure" }]);
     expect(result.answer).toContain("Lockout controls must be verified");
     expect(result.answer).not.toContain("hidden document");
@@ -139,10 +184,35 @@ describe("AI provider adapters", () => {
 
     const provider = getAIProvider("arvancloud", "risk");
     expect(provider.supportsImages()).toBe(true);
-    await provider.analyze({ organizationId: "org", message: "image review", image: { mimeType: "image/png", base64: "iVBORw0KGgo=" } });
+    await provider.analyze({ organizationId: "org", imagePurpose: "fmea-process", message: "image review", image: { mimeType: "image/png", base64: "iVBORw0KGgo=" } });
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
     expect(body.messages[1].content[0]).toMatchObject({ type: "text" });
     expect(body.messages[1].content[1]).toEqual({ type: "image_url", image_url: { url: "data:image/png;base64,iVBORw0KGgo=" } });
+  });
+
+  it("routes RULA image analysis to the configured GapGPT-compatible vision endpoint", async () => {
+    process.env.AI_RISK_PROVIDER = "gapgpt";
+    process.env.AI_RISK_MODEL = "gpt-5-mini";
+    process.env.AI_RISK_FALLBACK_MODEL = "fallback-that-must-not-receive-images";
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ choices: [{ message: { content: '{"sides":{"RIGHT":{}},"notes":"review"}' } }] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.doMock("./core.js", () => ({ prisma: { knowledgeDocument: { findMany: vi.fn().mockResolvedValue([]) } } }));
+    const { getRulaPostureImageAIProvider, listAIProviders } = await import("./ai-provider.js");
+    const provider = getRulaPostureImageAIProvider();
+
+    expect(provider.available()).toBe(true);
+    expect(provider.name).toBe("gapgpt");
+    expect(provider.supportsImages({ imagePurpose: "rula-posture" })).toBe(true);
+    expect(provider.supportsImages({ imagePurpose: "fmea-process" })).toBe(false);
+    expect(listAIProviders().find((item) => item.name === "gapgpt")).toMatchObject({ configuredForRisk: true, riskModel: "gpt-5-mini" });
+    await provider.analyze({ organizationId: "org", imagePurpose: "rula-posture", message: "RULA posture review", image: { mimeType: "image/jpeg", base64: "dGVzdA==" } });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("https://api.gapgpt.test/v1/chat/completions");
+    expect(fetchMock.mock.calls[0]?.[1]?.headers).toMatchObject({ Authorization: "Bearer test-gapgpt" });
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(body.model).toBe("gpt-5-mini");
+    expect(body.messages[1].content[1]).toEqual({ type: "image_url", image_url: { url: "data:image/jpeg;base64,dGVzdA==" } });
   });
 
   it("retries a transient provider response with bounded attempts", async () => {
@@ -190,6 +260,7 @@ describe("AI provider adapters", () => {
   });
 
   it("fails over risk requests to the configured secondary ArvanCloud model", async () => {
+    process.env.AI_RISK_MODEL = "DeepSeek-V4-Flash";
     process.env.AI_RISK_FALLBACK_MODEL = "GPT-5-Mini";
     const fetchMock = vi.fn()
       .mockRejectedValueOnce(new Error("primary unavailable"))

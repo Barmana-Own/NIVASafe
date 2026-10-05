@@ -41,7 +41,7 @@ function ApplicationRoutes() {
         <Route path="activity-log" element={<ActivityLogPage />} />
         <Route path="audit" element={<Navigate to="/activity-log" replace />} />
         <Route path="health" element={<AccessGuard roles={["SUPER_ADMIN", "ORG_ADMIN"]}><HealthPage /></AccessGuard>} />
-        <Route path="organizations" element={<OrganizationsPage />} />
+        <Route path="organizations" element={<AccessGuard roles={["SUPER_ADMIN", "ORG_ADMIN"]}><OrganizationsPage /></AccessGuard>} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

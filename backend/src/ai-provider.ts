@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "./core.js";
-import { normaliseChatAnswer } from "./chat-text.js";
+import { chatProviderUnavailableMessage, normaliseChatAnswer } from "./chat-text.js";
 
 export interface AIProviderResult {
   provider: string;
@@ -19,13 +19,14 @@ export interface AIUsage {
 }
 
 export type AIConversationTurn = { role: "user" | "assistant"; content: string };
-export type AIProviderInput = { organizationId: string; userId?: string; message: string; history?: AIConversationTurn[]; image?: { mimeType: string; base64: string } };
+export type AIImagePurpose = "fmea-process" | "rula-posture";
+export type AIProviderInput = { organizationId: string; userId?: string; message: string; locale?: "fa" | "en"; history?: AIConversationTurn[]; imagePurpose?: AIImagePurpose; image?: { mimeType: string; base64: string }; includeKnowledge?: boolean };
 
 export interface AIProvider {
   readonly name: string;
   available(): boolean;
   unavailableReason(): string | null;
-  supportsImages(): boolean;
+  supportsImages(input?: Pick<AIProviderInput, "imagePurpose">): boolean;
   analyze(input: AIProviderInput): Promise<AIProviderResult>;
 }
 
@@ -285,13 +286,15 @@ class KnowledgeFallbackProvider implements AIProvider {
   unavailableReason() { return null; }
   supportsImages() { return false; }
   async analyze(input: AIProviderInput): Promise<AIProviderResult> {
-    const knowledge = await loadKnowledge(input.organizationId, input.message, input.userId, this.useCase);
+    if (this.useCase === "chat") {
+      return { provider: this.name, answer: chatProviderUnavailableMessage(input.locale), confidence: 0, citations: [] };
+    }
+    const knowledge = input.includeKnowledge === false ? { context: "", citations: [] } : await loadKnowledge(input.organizationId, input.message, input.userId, this.useCase);
     const documents = knowledge.context.split("\n\n").filter(Boolean);
-    const introduction = this.useCase === "chat" ? "من دستیار هوشمند سامانه NIVASafe برای مدیریت ایمنی و بهداشت حرفه‌ای هستم.\n\n" : "";
     const answer = documents.length
-      ? `${introduction}بر اساس پایگاه دانش سازمان:\n${documents.map((document) => document.split("\n").slice(1).join("\n").slice(0, 320)).join("\n")}`
-      : `${introduction}راهنمای پایه: خطر را شناسایی کنید، شدت و احتمال را بسنجید، کنترل‌های موجود را ثبت کنید، اقدام اصلاحی دارای مسئول و مهلت بسازید و نتیجه را به تأیید متخصص HSE برسانید.`;
-    return { provider: this.name, answer: this.useCase === "chat" ? normaliseChatAnswer(answer) : answer, confidence: documents.length ? 0.72 : 0.45, citations: knowledge.citations };
+      ? `بر اساس پایگاه دانش سازمان:\n${documents.map((document) => document.split("\n").slice(1).join("\n").slice(0, 320)).join("\n")}`
+      : "راهنمای پایه: خطر را شناسایی کنید، شدت و احتمال را بسنجید، کنترل‌های موجود را ثبت کنید، اقدام اصلاحی دارای مسئول و مهلت بسازید و نتیجه را به تأیید متخصص HSE برسانید.";
+    return { provider: this.name, answer, confidence: documents.length ? 0.72 : 0.45, citations: knowledge.citations };
   }
 }
 
@@ -307,7 +310,7 @@ abstract class HttpProvider implements AIProvider {
     return null;
   }
   protected async prompt(input: AIProviderInput) {
-    const knowledge = await loadKnowledge(input.organizationId, input.message, input.userId, this.useCase);
+    const knowledge = input.includeKnowledge === false ? { context: "", citations: [] } : await loadKnowledge(input.organizationId, input.message, input.userId, this.useCase);
     const history = (input.history ?? []).slice(-MAX_HISTORY_TURNS).map((turn) => {
       const content = turn.content.trim().slice(0, MAX_HISTORY_CHARS_PER_TURN);
       return content ? `${turn.role === "assistant" ? "Assistant" : "User"}: ${content}` : "";
@@ -406,6 +409,50 @@ class ArvanCloudProvider extends HttpProvider {
   supportsImages() { return true; }
 }
 
+class GapGptProvider extends HttpProvider {
+  readonly name = "gapgpt";
+  private readonly baseUrl: string | null;
+
+  constructor(key: string | undefined, model: string | undefined, baseUrl: string | undefined, useCase: AIUseCase) {
+    super(key, model, useCase);
+    this.baseUrl = normaliseBaseUrl(baseUrl);
+  }
+
+  available() {
+    return super.available() && Boolean(this.baseUrl);
+  }
+
+  unavailableReason() {
+    const reason = super.unavailableReason();
+    if (reason) return reason;
+    return this.baseUrl ? null : "GAPGPT_BASE_URL is invalid";
+  }
+
+  async analyze(input: AIProviderInput): Promise<AIProviderResult> {
+    const { userText, citations } = await this.prompt(input);
+    const messageContent = input.image ? [
+      { type: "text", text: userText },
+      { type: "image_url", image_url: { url: `data:${input.image.mimeType};base64,${input.image.base64}` } },
+    ] : userText;
+    const payload = await fetchJson<ChatCompletionPayload>(`${this.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: this.model,
+        messages: [{ role: "system", content: systemInstruction(this.useCase) }, { role: "user", content: messageContent }],
+        max_tokens: outputTokenLimit(this.useCase),
+      }),
+    });
+    const answer = normaliseAIAnswer(extractChatCompletionText(payload), this.useCase);
+    if (!answer) throw Object.assign(new Error("GapGPT returned no text output"), { code: "EMPTY_PROVIDER_RESPONSE" });
+    const model = normaliseModel(payload.model, this.model);
+    const usage = normaliseAIUsage(payload.usage);
+    return { provider: this.name, answer, confidence: 0.82, citations, ...(model ? { model } : {}), ...(usage ? { usage } : {}) };
+  }
+
+  supportsImages(input?: Pick<AIProviderInput, "imagePurpose">) { return input?.imagePurpose === "rula-posture"; }
+}
+
 class OpenAIProvider extends HttpProvider {
   readonly name = "openai";
   constructor(key: string | undefined, model: string | undefined, useCase: AIUseCase) { super(key, model, useCase); }
@@ -479,13 +526,13 @@ class FailoverProvider implements AIProvider {
   available() { return this.candidates.some((candidate) => candidate.available()); }
 
   unavailableReason() { return this.candidates.find((candidate) => candidate.available()) ? null : this.candidates.map((candidate) => candidate.unavailableReason()).filter(Boolean).join("; ") || "No AI provider is available"; }
-  supportsImages() { return this.candidates.some((candidate) => candidate.available() && candidate.supportsImages()); }
+  supportsImages(input?: Pick<AIProviderInput, "imagePurpose">) { return this.candidates.some((candidate) => candidate.available() && candidate.supportsImages(input)); }
 
   async analyze(input: AIProviderInput): Promise<AIProviderResult> {
     let lastError: unknown;
     for (const [index, candidate] of this.candidates.entries()) {
       if (!candidate.available()) continue;
-      if (input.image && !candidate.supportsImages()) continue;
+      if (input.image && !candidate.supportsImages(input)) continue;
       try {
         const result = await candidate.analyze(input);
         this.name = candidate.name;
@@ -499,15 +546,16 @@ class FailoverProvider implements AIProvider {
   }
 }
 
-const providerNames = ["fallback", "arvancloud", "openai", "gemini", "anthropic"] as const;
+const providerNames = ["fallback", "arvancloud", "gapgpt", "openai", "gemini", "anthropic"] as const;
 
 function configuredProviderName(useCase: AIUseCase) {
   const configured = useCase === "risk" ? process.env.AI_RISK_PROVIDER : process.env.AI_CHAT_PROVIDER;
   return (configured ?? process.env.AI_DEFAULT_PROVIDER ?? "fallback").trim().toLowerCase();
 }
 
-function modelFor(provider: "openai" | "gemini" | "anthropic", useCase: AIUseCase) {
+function modelFor(provider: "gapgpt" | "openai" | "gemini" | "anthropic", useCase: AIUseCase) {
   const roleModel = useCase === "risk" ? process.env.AI_RISK_MODEL : process.env.AI_CHAT_MODEL;
+  if (provider === "gapgpt") return roleModel ?? (useCase === "risk" ? process.env.GAPGPT_RISK_MODEL : process.env.GAPGPT_CHAT_MODEL);
   if (provider === "openai") return roleModel ?? process.env.OPENAI_CHAT_MODEL;
   if (provider === "gemini") return roleModel ?? process.env.GEMINI_CHAT_MODEL;
   return roleModel ?? process.env.ANTHROPIC_CHAT_MODEL;
@@ -521,6 +569,7 @@ function configuredRiskFallbackProviderName() {
 function createProvider(name: string, useCase: AIUseCase, modelOverride?: string): AIProvider {
   switch (name) {
     case "arvancloud": return new ArvanCloudProvider(process.env.ARVAN_API_KEY, modelOverride ?? (useCase === "risk" ? process.env.AI_RISK_MODEL : process.env.AI_CHAT_MODEL), process.env.ARVAN_BASE_URL ?? "https://api.arvancloudai.ir/v1", useCase);
+    case "gapgpt": return new GapGptProvider(process.env.GAPGPT_API_KEY, modelOverride ?? modelFor("gapgpt", useCase), process.env.GAPGPT_BASE_URL, useCase);
     case "openai": return new OpenAIProvider(process.env.OPENAI_API_KEY, modelOverride ?? modelFor("openai", useCase), useCase);
     case "gemini": return new GeminiProvider(process.env.GEMINI_API_KEY, modelOverride ?? modelFor("gemini", useCase), useCase);
     case "anthropic": return new AnthropicProvider(process.env.ANTHROPIC_API_KEY, modelOverride ?? modelFor("anthropic", useCase), useCase);
@@ -545,14 +594,21 @@ export function getAvailableAIProvider(useCase: AIUseCase = "chat", modelOverrid
   const candidates: AIProvider[] = [selected];
   if (useCase === "risk" && process.env.AI_RISK_FALLBACK_MODEL?.trim()) {
     const fallbackProviderName = configuredRiskFallbackProviderName();
-    if (fallbackProviderName !== "fallback") candidates.push(getAIProvider(fallbackProviderName, useCase, modelOverride ?? process.env.AI_RISK_FALLBACK_MODEL));
+    const fallbackModel = modelOverride ?? process.env.AI_RISK_FALLBACK_MODEL;
+    const selectedAndFallbackAreSame = fallbackProviderName === selected.name && (Boolean(modelOverride) || process.env.AI_RISK_MODEL === process.env.AI_RISK_FALLBACK_MODEL);
+    if (fallbackProviderName !== "fallback" && !selectedAndFallbackAreSame) candidates.push(getAIProvider(fallbackProviderName, useCase, fallbackModel));
   }
   if (selected.name !== fallback.name) candidates.push(fallback);
   return new FailoverProvider(candidates);
 }
 
 export function getAvailableAssessmentAIProvider() {
-  return getAvailableAIProvider("risk", ASSESSMENT_AI_MODEL);
+  const provider = getConfiguredAIProviderName("risk");
+  return getAvailableAIProvider("risk", provider === "gapgpt" ? undefined : ASSESSMENT_AI_MODEL);
+}
+
+export function getRulaPostureImageAIProvider() {
+  return getAIProvider("gapgpt", "risk");
 }
 
 export function getRoutedAIProvider(useCase: AIUseCase, requestedProvider?: string) {
@@ -572,8 +628,8 @@ export function listAIProviders() {
       name,
       available: risk.available() || chat.available(),
       reason: chat.available() || risk.available() ? null : chat.unavailableReason() ?? risk.unavailableReason(),
-      riskModel: name === "arvancloud" ? process.env.AI_RISK_MODEL ?? null : null,
-      chatModel: name === "arvancloud" ? process.env.AI_CHAT_MODEL ?? null : null,
+      riskModel: name === "arvancloud" ? process.env.AI_RISK_MODEL ?? null : name === "gapgpt" ? modelFor("gapgpt", "risk") ?? null : null,
+      chatModel: name === "arvancloud" ? process.env.AI_CHAT_MODEL ?? null : name === "gapgpt" ? modelFor("gapgpt", "chat") ?? null : null,
       riskFallbackProvider: name === configuredRisk ? configuredRiskFallbackProviderName() : null,
       riskFallbackModel: name === configuredRisk ? process.env.AI_RISK_FALLBACK_MODEL ?? null : null,
       configuredForRisk: configuredRisk === name,

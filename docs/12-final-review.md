@@ -439,6 +439,23 @@ release `release-20260922-rula-force-score` مستقل بررسی شد. گزین
 
 نتیجه release: PASS؛ امتیاز انتخاب نیروی واردشده اکنون در پیش‌نمایش زنده و ثبت/ویرایش server-authoritative RULA یکسان و قابل ردیابی اعمال می‌شود.
 
+## بررسی تغییر محلی خروجی گزارش‌های FMEA/RULA — 2026-10-03
+
+این مرور فقط دامنه تغییر خروجی گزارش‌ها را پوشش می‌دهد و به‌معنی PASS مجدد کل release یا اجرای کامل Stage 12 نیست.
+
+| بررسی | وضعیت |
+|---|---|
+| FMEA full report | PASS — PDF، DOCX و XLSX از read model گزارش با locale صفحه تغذیه می‌شوند و metadata، خلاصه، توزیع ریسک، top risks، پیشنهادها، اقدام‌ها و جدول کامل را نگه می‌دارند. |
+| FMEA final table | PASS — ستون‌های داده و ترتیب ردیف‌ها در PDF/DOCX/XLSX یکسان است؛ متن کنترل‌ها و اقدام اصلاحی مطابق stack رابط با شکست‌خط حفظ می‌شود. |
+| RULA report | PASS — PDF عوامل را در کارت‌های مشابه رابط با وضعیت تشخیص، زاویه، امتیاز و سهم نمایش می‌دهد؛ در Word/Excel داده عوامل، posture table، پیشنهادها، اثر تخمینی و اقدامات انتخاب‌شده حفظ می‌شوند. ستون سمت فقط برای تحلیل مستقل دوطرفه درج می‌شود. |
+| Animation parity | NOT_APPLICABLE — فایل‌های PDF/Office snapshot ثابت از ظاهر و داده گزارش هستند؛ انیمیشن و تعامل زنده وب قابل انتقال نیست. Word و Excel قابل ویرایش باقی می‌مانند. |
+| Security/regression | PASS — tenant/permission guards حفظ شده‌اند؛ DOCX XML escaping و Excel formula-injection regression پوشش دارند؛ dependency set تغییر نکرده است. |
+| Focused validation | PASS — ۱۰ تست export، تست‌های UI متمرکز گزارش، ۳ تست مدل overview RULA، lint/typecheck/build backend و frontend، API contract و ۲۸ بررسی release موفق شدند. |
+| Full suite / browser / deployment | FAIL / NOT_RUN / NOT_PERFORMED — ۹ شکست از ۱۰۹ frontend و یک شکست از ۱۴۵ backend خارج از مسیر export گزارش شده‌اند؛ نشست مرورگر احرازشده و انتشار واقعی اجرا نشدند. |
+| Migration | NOT_APPLICABLE — هیچ schema یا داده پایداری تغییر نکرده است. |
+
+نتیجه: خروجی محلی گزارش‌ها از نظر contract و ساخت فایل معتبر است؛ این checkpoint ادعای آمادگی یا انتشار production برای کل پروژه ندارد.
+
 ## بازبینی نهایی معیار استفاده تکراری از عضله RULA — 2026-09-22
 
 release `release-20260922-rula-muscle-score` مستقل بررسی شد. کنترل مرحله دوم RULA اکنون دو معیار صریح از مرجع ارزیابی را نمایش می‌دهد: پوسچر عمدتاً استاتیک یا بیش از چهار بار در دقیقه تکرارشونده با امتیاز ۱، و پوسچر نه استاتیک و نه به‌شدت تکراری با امتیاز صفر. انتخاب در draft/FormData حفظ می‌شود و `calculateRula` در preview و مسیرهای server-authoritative همان adjustment را به امتیاز نهایی اعمال می‌کند.

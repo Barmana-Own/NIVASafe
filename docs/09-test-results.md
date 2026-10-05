@@ -1,5 +1,17 @@
 # Stage 09 — Test Results
 
+## Current local checkpoint — 2026-10-03 — گزارش‌های FMEA/RULA
+
+| Command/check | Status | Evidence |
+|---|---|---|
+| Backend focused export tests | PASS | `backend/src/reports-export.test.ts`: 10/10; PDF signatures, DOCX package/content, editable table structure, Persian RTL output, FMEA control/action separation and Excel formula-injection handling are covered. |
+| Frontend focused report contracts | PASS | Focused checks cover FMEA export controls and all three RULA report download routes; the RULA overview calculation suite passed 3/3. |
+| Frontend/backend lint, typecheck and production build | PASS | Backend `tsc --noEmit` and frontend `tsc -b --noEmit` lint/type checks passed; backend `tsc` build and frontend Vite production build passed. Existing frontend large-chunk warning remains. |
+| API contract and release checks | PASS | 68 frontend API paths matched 121 backend routes; `verify:release` passed all 28 checks. |
+| Full backend suite | FAIL | 144/145 passed; the single failure is the existing subscription-boundary expectation in `src/organization-rules.test.ts`, unrelated to report export. |
+| Full frontend suite | FAIL | 100/109 passed; 9 failures are legacy source-contract assertions for wizard, widgets, knowledge layout, authenticated shell, login imagery, RULA UI and activity-log layout. |
+| Authenticated browser visual smoke / database migration / deployment | NOT_RUN / NOT_APPLICABLE / NOT_PERFORMED | No authenticated browser or disposable database was used; no schema change or external deployment was part of this checkpoint. |
+
 | Command/check | Status | Evidence |
 |---|---|---|
 | `pnpm test` | PASS | 162 tests: 74 frontend, 78 backend and 10 shared-domain |
@@ -21,7 +33,7 @@
 | Production API exposure | PASS | Fresh authorized-server verification shows the `NIVASafe-API` task Running, `pm2-runtime` supervising the API, `127.0.0.1:5044` listening with MySQL healthy, public `/api/v1/health` HTTP 200, and direct port 5044 not reachable. |
 | `prisma validate` | PASS | Schema valid; deprecation warning only |
 | Clean local migration | NOT_RUN | A clean disposable database was not available for this checkpoint; the additive AI usage SQL was applied and verified against the existing local schema |
-| FMEA risk-register contract tests | PASS | Complete matrix columns, search/filter/sort, client pagination, detail/edit/delete controls, per-score 1–10 S/O/D criteria, explicit risk-row AI suggestions, Excel/DOCX panel exports and absence of PDF panel controls are covered; the backend PDF compatibility route remains tested |
+| FMEA risk-register contract tests | PASS | Complete matrix columns, search/filter/sort, client pagination, detail/edit/delete controls, per-score 1–10 S/O/D criteria, explicit risk-row AI suggestions, and PDF/DOCX/XLSX full-report and final-table exports are covered |
 | FMEA add-row defaults | PASS | The add-row form no longer renders row-number or process-stage inputs; the create API accepts omitted legacy fields, derives the next row number and uses the parent assessment process context; frontend and backend regression tests pass |
 | FMEA AI suggestion visibility | PASS | Each of the four suggestion categories is capped at six bounded suggestions, renders three by default, and exposes an independent accessible plus/minus toggle for the remaining items; explicit acceptance remains unchanged and frontend regression/build/public bundle smoke passed |
 | FMEA score panel reference scale and layout | PASS | Add/edit score panels keep S/O/D selectors and multiplication separators in one aligned desktop row with the RPN preview and calculate/save actions; responsive rules stack the groups on narrow screens, and the supplied severity/occurrence/detection 1–10 labels are covered by the frontend regression test |
@@ -29,7 +41,7 @@
 | Binary report export tests and local smoke | PASS | FMEA and RULA `.xlsx` workbooks parse with ExcelJS; FMEA and RULA `.docx` responses are valid ZIP-based Office Open XML packages with the expected content types and report data; the FMEA PDF builder emits a valid %PDF- document from the structured report sections |
 | Runtime smoke export coverage | PASS | The authenticated smoke script now exercises FMEA PDF/XLSX/DOCX and RULA PDF/XLSX/DOCX endpoints |
 | FMEA report calculation tests | PASS | Summary counts, risk distribution, action-priority ranking and safe unknown-level fallback are covered |
-| FMEA report UI contract tests | PASS | Report route, full collapsible detail table, manual-action flow, localized action states, duplicate-suggestion suppression, guarded action submission, absence of PDF controls and API report/save endpoints are covered |
+| FMEA report UI contract tests | PASS | Report route, full collapsible detail table, manual-action flow, localized action states, duplicate-suggestion suppression, guarded action submission, three-format export controls and API report/save endpoints are covered |
 | FMEA report migration execution | NOT_RUN | A clean disposable database migration was not rerun in this checkpoint; migration SQL and Prisma validation passed |
 | FMEA process-information enhancement | PASS | Keyboard-searchable catalog/custom-title selection, tenant-scoped suggestions, explicit multi-select confirmation, one/two-sentence description validation, direct AI description insertion, non-blocking AI errors and removal of the secondary suggestion panel are covered by source contracts and helper tests |
 | RULA activity-information validation | PASS | Four backend unit tests cover measured activity context, bounded posture description, optional image reference, invalid ranges/units, optional title fallback and both-side validation; frontend contract coverage checks all required fields, client image type/size validation, preview/remove/replace controls, upload linkage and guarded registration |
@@ -523,3 +535,24 @@ asset عمومی CSS rule مشترک و selectorهای header را ارائه م
 - authenticated browser visual smoke: NOT_RUN — نشست browser automation احراز‌شده محلی در دسترس نبود.
 - migration/database changes: NOT_APPLICABLE — فقط markup، CSS و تست frontend تغییر کردند.
 - external deployment: NOT_PERFORMED — محدوده این تغییر فقط source/local است.
+
+## Checkpoint 2026-10-05 — تحلیل چندتصویری RULA
+
+| Command/check | Status | Evidence |
+|---|---|---|
+| Backend TypeScript typecheck | PASS | `pnpm --filter @nivasafe/api typecheck` completed successfully after the RULA provider and attachment changes. |
+| Frontend TypeScript check | PASS | Direct `tsc --noEmit -p tsconfig.json` in `frontend` completed successfully. |
+| Frontend lint wrapper | NOT_RUN | The configured `tsc -b --noEmit` wrapper could not write the ignored `frontend/tsconfig.tsbuildinfo` file (`EPERM`); the equivalent project typecheck completed successfully with direct `tsc --noEmit -p tsconfig.json`. |
+| Backend emitted compilation | PASS | TypeScript emitted the backend into a fresh temporary output directory; the standard `backend/dist` path was unwritable in this environment (`EPERM`). Temporary output was removed after validation. |
+| Prisma schema validation | PASS | `pnpm --filter @nivasafe/api prisma:validate` confirmed the current schema is valid; no schema migration was added for this feature. |
+| Frontend production bundle | PASS | Vite built successfully to a new temporary output directory; the existing large-chunk warning remains. |
+| Backend provider and attachment suites | PASS | `ai-provider.test.ts` and `contract-rules.test.ts`: 37/37 tests passed, including GapGPT RULA vision routing, FMEA purpose isolation, fallback model selection, attachment aliases and the four-image limit. |
+| Frontend RULA selection and flow tests | PASS | Final focused run: 5/5 passed (3 image-selection tests plus 2 UI contracts for RULA photo guidance and editable posture analysis). |
+| Frontend combined focused suite | FAIL | 96/98 passed. Two existing source-contract assertions remain stale: the FMEA report normalization expression and the RULA report-edit route; neither concerns the multi-image upload path. CRLF normalization fixed the Windows-only multiline assertion mismatches. |
+| RULA image-selection smoke | PASS | A native Node smoke verified four accepted images, rejection of a fifth, and enforcement when four saved images already occupy the limit. |
+| API contract verification | PASS | `pnpm verify:contract` matched 68 frontend API paths to 121 backend routes. |
+| Local GapGPT runtime configuration | PASS | Backend environment loading resolves the dedicated provider as configured for RULA posture images and rejects FMEA image purpose; no image or request was sent to the external service. |
+| Release verification | FAIL | `pnpm verify:release` reports one unrelated organization-switching source assertion failure. Its internal API-contract subprocess passes: 68 frontend paths match 121 backend routes. |
+| `git diff --check` | PASS | No whitespace errors; Git emitted only its existing LF/CRLF normalization warnings. |
+| External GapGPT connectivity | NOT_RUN | Provider adapter tests are mocked; no live image or credential was sent during validation. |
+| Authenticated browser, clean database, deployment | NOT_RUN / NOT_APPLICABLE / NOT_PERFORMED | No authenticated visual session or disposable database was used; this change reuses the existing Attachment schema and remains local. |

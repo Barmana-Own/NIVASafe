@@ -780,3 +780,7 @@ artifact frontend در `C:\ProgramData\NIVASafe\staging\release-20260921-fmea-pr
 ## آماده‌سازی PWA با نام و آیکون NIVASafe — 2026-09-25
 
 هویت نصب PWA به‌صورت صریح روی `NIVASafe` تنظیم شد: عنوان HTML و `application-name` همین مقدار را دارند، manifest از آیکون‌های PNG برندشده با `purpose: "any maskable"` و SVG self-contained استفاده می‌کند، و shortcutها نیز به همان آیکون برندشده اشاره دارند. service worker به v15 ارتقا یافت تا پنجره‌ها و نصب‌های stale پس از دریافت release جدید به shell و metadata تازه مهاجرت کنند. این تغییر فقط آماده‌سازی source/build است و انتشار واقعی انجام نشده است.
+
+## Checkpoint 2026-10-03 — خروجی گزارش‌های ارزیابی
+
+PDF/Word/Excel گزارش‌های FMEA و RULA در source و build محلی تغییر کرده‌اند. schema، migration، متغیر محیطی، image/container یا provider deployment تغییری نکرده است؛ migration لازم نیست. buildهای backend و frontend در محیط محلی موفق شدند. انتشار روی staging یا production انجام نشده و فایل‌های فعال سرور تغییری نکرده‌اند. بررسی بصری با نشست احرازشده، smoke روی سرویس مستقر و rollout/rollback این تغییر `NOT_PERFORMED` هستند.

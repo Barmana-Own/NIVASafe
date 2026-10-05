@@ -6,6 +6,7 @@ import { z } from "zod";
 import { authenticate } from "../auth-guard.js";
 import { audit, envelope, parse, prisma, requireAnyPermission, requireOrg, requirePermission, requireRole, ROLE_PERMISSIONS, tokenHash } from "../core.js";
 import { scheduleEmail } from "../mail.js";
+import { normalizeMemberRequestIdentifiers } from "../member-request.js";
 
 export function canChangeGlobalRole(actorRole: string | undefined, requestedGlobalRole: string | undefined): boolean {
   return requestedGlobalRole === undefined || actorRole === "SUPER_ADMIN";
@@ -15,20 +16,14 @@ export const ORGANIZATION_MEMBER_ROLES = ["ORG_ADMIN", "HSE_MANAGER", "HSE_SPECI
 export const INVITATION_ROLES = ["SUPER_ADMIN", ...ORGANIZATION_MEMBER_ROLES] as const;
 const memberRoleSchema = z.enum(INVITATION_ROLES);
 const memberRequestRoleSchema = z.enum(ORGANIZATION_MEMBER_ROLES);
-const memberRequestInput = z.object({
-  username: z.string().trim().min(3).max(USERNAME_MAX_LENGTH),
-  email: z.string().trim().min(1).max(EMAIL_MAX_LENGTH),
+export const memberRequestInput = z.object({
+  username: z.string().trim().min(3).max(USERNAME_MAX_LENGTH).nullable().optional(),
+  email: z.string().trim().min(1).max(EMAIL_MAX_LENGTH).nullable().optional(),
   displayName: z.string().trim().min(1).max(DISPLAY_NAME_MAX_LENGTH),
   phone: z.string().trim().max(32).nullable().optional(),
   jobTitle: z.string().trim().max(120).nullable().optional(),
   role: memberRequestRoleSchema,
-});
-
-function checkedMemberUsername(value: string): string {
-  const username = normalizeUsername(value);
-  if (!isValidUsername(username)) throw Object.assign(new Error("نام کاربری باید انگلیسی، بدون فاصله و بین ۳ تا ۶۴ نویسه باشد."), { statusCode: 400, code: "INVALID_USERNAME" });
-  return username;
-}
+}).refine((value) => Boolean(value.username?.trim() || value.email?.trim()), { message: "نام کاربری یا ایمیل را وارد کنید.", path: ["email"] });
 
 export async function registerUserRoutes(app: FastifyInstance) {
   app.get("/api/v1/roles", { preHandler: authenticate }, async (request) => {
@@ -68,19 +63,18 @@ export async function registerUserRoutes(app: FastifyInstance) {
     const organizationId = requireOrg(request);
     requireAnyPermission(request, ["users.manage", "users.request"]);
     const body = parse(memberRequestInput, request.body);
-    const username = checkedMemberUsername(body.username);
-    const email = normalizeEmail(body.email);
-    if (!isValidEmail(email)) throw Object.assign(new Error("ایمیل معتبر وارد کنید."), { statusCode: 400, code: "INVALID_EMAIL" });
+    const { username, email } = normalizeMemberRequestIdentifiers(body);
     const displayName = normalizeDisplayName(body.displayName);
     if (!isValidDisplayName(displayName) || isForbiddenDisplayName(displayName)) throw Object.assign(new Error("نام نمایشی معتبر وارد کنید."), { statusCode: 400, code: "INVALID_NAME" });
     const phone = body.phone && body.phone.trim() ? normalizePhone(body.phone) : null;
     if (phone && !isValidPhone(phone)) throw Object.assign(new Error("شماره تلفن معتبر وارد کنید."), { statusCode: 400, code: "INVALID_PHONE" });
+    const identityFilters = [...(email ? [{ email }] : []), ...(username ? [{ username }] : [])];
     const [existingUser, duplicateRequest] = await Promise.all([
-      prisma.user.findFirst({ where: { OR: [{ email }, { username }] }, select: { id: true, email: true, username: true } }),
-      prisma.memberAccessRequest.findFirst({ where: { organizationId, status: "PENDING", OR: [{ email }, { username }] }, select: { id: true } }),
+      prisma.user.findFirst({ where: { OR: identityFilters }, select: { id: true, email: true, username: true } }),
+      prisma.memberAccessRequest.findFirst({ where: { organizationId, status: "PENDING", OR: identityFilters }, select: { id: true } }),
     ]);
-    if (existingUser?.email === email) throw Object.assign(new Error("این ایمیل قبلاً برای یک حساب استفاده شده است."), { statusCode: 409, code: "EMAIL_IN_USE" });
-    if (existingUser?.username === username) throw Object.assign(new Error("این نام کاربری قبلاً برای یک حساب استفاده شده است."), { statusCode: 409, code: "USERNAME_IN_USE" });
+    if (email && existingUser?.email === email) throw Object.assign(new Error("این ایمیل قبلاً برای یک حساب استفاده شده است."), { statusCode: 409, code: "EMAIL_IN_USE" });
+    if (username && existingUser?.username === username) throw Object.assign(new Error("این نام کاربری قبلاً برای یک حساب استفاده شده است."), { statusCode: 409, code: "USERNAME_IN_USE" });
     if (duplicateRequest) throw Object.assign(new Error("برای این ایمیل یا نام کاربری یک درخواست در انتظار بررسی وجود دارد."), { statusCode: 409, code: "MEMBER_REQUEST_EXISTS" });
     const created = await prisma.memberAccessRequest.create({ data: { organizationId, requestedById: request.actor!.userId, username, email, displayName, phone, jobTitle: body.jobTitle?.trim() || null, role: body.role } });
     await audit(request, "MEMBER_ACCESS_REQUEST_CREATED", "MemberAccessRequest", created.id, { username, email, role: body.role });

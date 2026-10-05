@@ -210,8 +210,8 @@ model MemberAccessRequest {
   requestedById         String              @db.VarChar(36)
   reviewedById          String?             @db.VarChar(36)
   provisionedUserId     String?             @unique @db.VarChar(36)
-  username              String              @db.VarChar(64)
-  email                 String              @db.VarChar(254)
+  username              String?             @db.VarChar(64)
+  email                 String?             @db.VarChar(254)
   displayName           String
   phone                 String?
   jobTitle              String?

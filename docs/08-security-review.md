@@ -27,6 +27,21 @@ The account-management review also covers inactive self-registration, Super Admi
 
 The Activity Log visibility review now distinguishes self scope, selected-organization scope and unscoped Super Admin scope server-side. Active-member checks are applied to account-level login/logout records, assessment enrichment is tenant-keyed, and token usage is joined only by bounded source identifiers without returning prompts or provider credentials. The new composite index is additive and does not alter existing audit history.
 
+## Checkpoint 2026-10-05 — RULA posture images and AI egress
+
+| Finding | Severity | Result |
+|---|---:|---|
+| Oversized, spoofed or unsupported posture image | High | PASS — the upload and analysis routes enforce supported image MIME types, actual file signatures and a 10 MB per-image maximum before persistence/provider calls. |
+| Cross-organization or over-limit image attachment | High | PASS — uploads require the assessment to belong to the authenticated organization; recognized entity-type aliases are canonicalized; active images are counted under a transaction lock and capped at four per assessment. |
+| Unauthorized image transmission or cross-purpose routing | High | PASS — the RULA analysis route requires authentication and `assessments.create`, is rate-limited, sends one image per request, and calls the dedicated GapGPT adapter without fallback to any other provider. GapGPT explicitly declines FMEA image purpose. The interface discloses that images are sent to GapGPT, and task-level authorization for RULA-to-GapGPT transmission was obtained before enabling it. |
+| Image/base64 leakage into audit/log output | Medium | PASS — audit metadata contains provider, MIME type, byte count and overlay count only; prompt, base64 and image bytes are excluded. |
+
+Static review found no new Critical/High issue in the changed trust boundaries. Backend provider/attachment tests passed 37/37, RULA image-selection tests passed 3/3, the focused RULA wizard/process UI checks passed 5/5, and the Vite production bundle, both TypeScript checks, backend emission and Prisma validation passed. The broader frontend focused suite remains 96/98 because two unrelated source-contract assertions are stale. External provider connectivity was not exercised.
+
+## Checkpoint 2026-10-03 — خروجی گزارش‌های FMEA و RULA
+
+این تغییر وابستگی، route احراز هویت، سطح دسترسی یا مرز tenant جدیدی اضافه نکرد. مسیرهای export همچنان session/permission و organization scope فعلی را اعمال می‌کنند؛ بارگذاری گزارش FMEA نیز شناسه ارزیابی را همراه organization احراز‌شده محدود می‌کند. متن DOCX با XML escaping نوشته می‌شود و مقادیر Excel که می‌توانند به‌عنوان فرمول تفسیر شوند با پیشوند امن خارج می‌شوند. تست regression خروجی شامل XML escaping و formula-injection اجرا شد و هر دو PASS شدند. بررسی وابستگی مجدداً اجرا نشد چون package و lockfile تغییری نکردند. مرور ایستای مسیرهای export، scope سازمان، مجوز `reports.generate`، filename ثابت، XML escaping و formula escaping نقص امنیتی جدیدی نشان نداد.
+
 ## Checkpoint 2026-09-25 — نام کاربری و درخواست ساخت عضو سازمان
 
 - PASS — ورود و بازیابی رمز با ایمیل یا نام کاربری انجام می‌شود؛ نام کاربری یکتا، نرمال‌شده و محدود به حروف ASCII، رقم، نقطه، خط تیره و زیرخط است.
