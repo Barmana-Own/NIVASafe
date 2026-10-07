@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { directionForLocale, getCurrentLocale, type Locale } from "./api/client";
+import { useMenuPlacement } from "./components/useMenuPlacement";
 
 type TranslationValues = Record<string, string | number>;
 type TranslationDictionary = Record<string, string>;
@@ -779,6 +780,9 @@ const fa: TranslationDictionary = {
   "knowledge.attachmentDeleted": "پیوست حذف شد.",
   "notifications.eyebrow": "مرکز پیام",
   "notifications.title": "اعلان‌ها",
+  "notifications.viewAll": "مشاهدهٔ همهٔ اعلان‌ها",
+  "notifications.openDetails": "مشاهدهٔ جزئیات",
+  "notifications.showing": "اعلان‌های اخیر؛ نمایش",
   "notifications.unread": "اعلان خوانده‌نشده",
   "notifications.readAll": "خواندن همه",
   "notifications.settings": "تنظیمات اعلان",
@@ -927,8 +931,8 @@ const fa: TranslationDictionary = {
   "assistant.lastFallback": "آخرین پاسخ در حالت پشتیبان",
   "assistant.lastResponse": "آخرین پاسخ از {{provider}}",
   "assistant.offlineFallback": "سلام من دستیار هوشمند NIVASafe جهت مدیریت ایمنی و بهداشت حرفه‌ای هستم.\nدرحال حاضر امکان برقراری ارتباط با سرور را ندارم؛ اما به محض برقراری ارتباط پاسخگوی شما خواهم بود.",
-  "assistant.chooseConversation": "یک گفتگو را انتخاب کنید",
-  "assistant.chooseConversationDescription": "یا با دکمه + گفتگوی جدید بسازید.",
+  "assistant.chooseConversation": "گفتگوی جدید آماده است",
+  "assistant.chooseConversationDescription": "پیام خود را بنویسید؛ گفتگوهای قبلی فقط با انتخاب از تاریخچه باز می‌شوند.",
   "assistant.welcome": "چطور می‌توانم کمک کنم؟",
   "assistant.welcomeDescription": "درباره کنترل ریسک، FMEA، RULA یا اقدامات اصلاحی سؤال کنید.",
   "assistant.suggestionOne": "کنترل ریسک جابه‌جایی بار",
@@ -1215,10 +1219,12 @@ const fa: TranslationDictionary = {
   "assessment.rulaCompletedCorrectiveActions": "اقدامات اصلاحی تکمیل‌شده",
   "assessment.rulaRemainingCorrectiveActions": "اقدامات اصلاحی باقی‌مانده",
   "assessment.rulaRiskDistributionTitle": "توزیع سطح ریسک ارزیابی RULA",
-  "assessment.rulaRiskDistributionDescription": "تعداد نتایج واقعی RULA در هر سطح اقدام، بر اساس امتیاز نهایی ثبت‌شده.",
-  "assessment.rulaTotalResults": "نتایج RULA",
+  "assessment.rulaRiskDistributionDescription": "توزیع اولویت پیشنهادهای اصلاحی و اقدامات ردیف‌های RULA؛ هر اقدام فقط یک‌بار شمرده می‌شود، مستقل از امتیاز نهایی پوسچر.",
+  "assessment.rulaTotalResults": "کل اقدامات",
+  "assessment.rulaPriorityDistributionEmpty": "هنوز پیشنهاد یا اقدامی با اولویت مشخص وجود ندارد.",
   "assessment.rulaActionProgressTitle": "پیشرفت اقدامات اصلاحی",
-  "assessment.rulaActionProgressDescription": "میانگین پیشرفت و وضعیت اقدامات اصلاحی فعال.",
+  "assessment.rulaActionProgressDescription": "درصد اقدامات تکمیل‌شده از مجموع پیشنهادها و اقدامات اصلاحی.",
+  "assessment.rulaConfirmActionCompletion": "تأیید انجام اقدام اصلاحی",
   "assessment.rulaCompletedActionsLabel": "تکمیل‌شده",
   "assessment.rulaCompletedActionsProgressAria": "میانگین پیشرفت اقدامات اصلاحی {{percent}} درصد است؛ {{completed}} اقدام از {{total}} اقدام تکمیل شده است",
   "assessment.rulaReviewProgress": "بخش‌های پوسچر بازبینی‌شده",
@@ -2314,6 +2320,9 @@ const en: TranslationDictionary = {
   "knowledge.attachmentDeleted": "Attachment deleted.",
   "notifications.eyebrow": "Message center",
   "notifications.title": "Notifications",
+  "notifications.viewAll": "View all notifications",
+  "notifications.openDetails": "View details",
+  "notifications.showing": "Recent notifications; showing",
   "notifications.unread": "unread notifications",
   "notifications.readAll": "Mark all as read",
   "notifications.settings": "Notification settings",
@@ -2462,8 +2471,8 @@ const en: TranslationDictionary = {
   "assistant.lastFallback": "Latest response used fallback mode",
   "assistant.lastResponse": "Latest response from {{provider}}",
   "assistant.offlineFallback": "Hello, I am the NIVASafe intelligent assistant for occupational health and safety management.\nThe server is currently unavailable; I will be ready to respond as soon as the connection is restored.",
-  "assistant.chooseConversation": "Choose a conversation",
-  "assistant.chooseConversationDescription": "Or create a new conversation with the + button.",
+  "assistant.chooseConversation": "Your new conversation is ready",
+  "assistant.chooseConversationDescription": "Write your message; previous conversations open only when selected from history.",
   "assistant.welcome": "How can I help?",
   "assistant.welcomeDescription": "Ask about risk controls, FMEA, RULA, or corrective actions.",
   "assistant.suggestionOne": "Manual-load risk controls",
@@ -2750,10 +2759,12 @@ const en: TranslationDictionary = {
   "assessment.rulaCompletedCorrectiveActions": "Completed corrective actions",
   "assessment.rulaRemainingCorrectiveActions": "Remaining corrective actions",
   "assessment.rulaRiskDistributionTitle": "RULA assessment risk-level distribution",
-  "assessment.rulaRiskDistributionDescription": "Actual RULA results by action level, based on the recorded final score.",
-  "assessment.rulaTotalResults": "RULA results",
+  "assessment.rulaRiskDistributionDescription": "Priorities of corrective suggestions and RULA row actions; each action is counted once, independently of the final posture score.",
+  "assessment.rulaTotalResults": "Total actions",
+  "assessment.rulaPriorityDistributionEmpty": "No suggestion or action with a defined priority is available yet.",
   "assessment.rulaActionProgressTitle": "Corrective-action progress",
-  "assessment.rulaActionProgressDescription": "Average progress and status of active corrective actions.",
+  "assessment.rulaActionProgressDescription": "Completed actions as a percentage of all recommendations and corrective actions.",
+  "assessment.rulaConfirmActionCompletion": "Confirm corrective-action completion",
   "assessment.rulaCompletedActionsLabel": "completed",
   "assessment.rulaCompletedActionsProgressAria": "Average corrective-action progress is {{percent}} percent; {{completed}} of {{total}} actions are complete",
   "assessment.rulaReviewProgress": "Posture segments reviewed",
@@ -3110,6 +3121,7 @@ export function LanguageSwitcher({ className = "", onChange }: { className?: str
   const pickerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuPlacement = useMenuPlacement(open, pickerRef, menuRef, 320, 8);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const menuId = `language-menu-${useId().replace(/:/g, "")}`;
   const options: Locale[] = ["fa", "en"];
@@ -3154,7 +3166,7 @@ export function LanguageSwitcher({ className = "", onChange }: { className?: str
     <button ref={triggerRef} type="button" className={`language-switch ${className}`.trim()} onClick={() => setOpen((value) => !value)} aria-label={t("language.choose")} aria-haspopup="menu" aria-expanded={open} aria-controls={menuId} title={t("language.choose")} data-testid="language-switcher">
       <span>{t(locale === "en" ? "language.english" : "language.persian")}</span><span className={`language-switch-chevron ${open ? "open" : ""}`} aria-hidden="true">⌄</span>
     </button>
-    {open && <div ref={menuRef} id={menuId} className="language-menu" role="menu" aria-label={t("language.choose")}>
+    {open && <div ref={menuRef} {...menuPlacement} id={menuId} className="language-menu" role="menu" aria-label={t("language.choose")}>
       <div className="language-menu-title">{t("language.choose")}</div>
       {options.map((option, index) => {
         const selected = option === locale;

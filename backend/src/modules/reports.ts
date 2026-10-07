@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { hasExplicitlyEmptyFmeaRiskRows } from "../fmea-process.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FastifyInstance, FastifyReply } from "fastify";
@@ -217,7 +218,7 @@ const rulaExportLabels = {
     highFactors: "High-impact factors",
     mediumFactors: "Medium-impact factors",
     lowFactors: "Low-impact factors",
-    correctionProgress: "Corrective-action progress",
+    correctionProgress: "Corrective-action selection status",
     selectedRecommendations: "Selected recommendations",
     remainingRecommendations: "Remaining recommendations",
     manualActions: "Manual corrective actions",
@@ -300,7 +301,7 @@ const rulaExportLabels = {
     highFactors: "عوامل با اثر زیاد",
     mediumFactors: "عوامل با اثر متوسط",
     lowFactors: "عوامل با اثر کم",
-    correctionProgress: "پیشرفت اقدامات اصلاحی",
+    correctionProgress: "وضعیت انتخاب اقدامات اصلاحی",
     selectedRecommendations: "پیشنهادهای انتخاب‌شده",
     remainingRecommendations: "پیشنهادهای باقی‌مانده",
     manualActions: "اقدامات اصلاحی دستی",
@@ -309,7 +310,7 @@ const rulaExportLabels = {
     predictedEffect: "اثر پیش‌بینی‌شده",
     currentScore: "امتیاز فعلی",
     currentActionLevel: "سطح اقدام فعلی",
-    predictedScore: "امتیاز پیش‌بینی‌شده (تخمینی)",
+    predictedScore: "امتیاز تخمینی پس از اصلاح",
     predictedActionLevel: "سطح اقدام پیش‌بینی‌شده",
     predictionNote: "یادداشت پیش‌بینی",
     mainFactors: "عوامل اصلی مؤثر",
@@ -401,7 +402,7 @@ function localizedFmeaActionPriority(value: string, locale: ReportLocale) {
 }
 
 const pdfRtlCharacter = /[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]/u;
-const pdfLtrCharacter = /[A-Za-z\u00c0-\u024f\u1e00-\u1eff0-9]/u;
+const pdfLtrCharacter = /[A-Za-z\u00c0-\u024f\u1e00-\u1eff0-9\u0660-\u0669\u06f0-\u06f9]/u;
 const pdfSectionHeadings = new Set([
   "REPORT HEADER",
   "PROCESS INFORMATION",
@@ -481,14 +482,13 @@ function normalizePdfText(value: string) {
 }
 
 function pdfDirectionOfCharacter(character: string, fallback: "rtl" | "ltr") {
-  if (pdfRtlCharacter.test(character)) return "rtl" as const;
   if (pdfLtrCharacter.test(character)) return "ltr" as const;
+  if (pdfRtlCharacter.test(character)) return "rtl" as const;
   return fallback;
 }
 
-function pdfTextRuns(value: string) {
-  const firstStrong = [...value].find((character) => pdfRtlCharacter.test(character) || pdfLtrCharacter.test(character));
-  const baseDirection = firstStrong && pdfRtlCharacter.test(firstStrong) ? "rtl" : "ltr";
+export function pdfTextRuns(value: string) {
+  const baseDirection = hasPdfRtlText(value) ? "rtl" : "ltr";
   const runs: Array<{ direction: "rtl" | "ltr"; text: string }> = [];
   let current: { direction: "rtl" | "ltr"; text: string } | null = null;
   for (const character of value) {
@@ -513,15 +513,48 @@ function drawPdfText(doc: PDFKit.PDFDocument, value: string, fonts: PdfFontPaths
     return;
   }
 
-  const { baseDirection, runs } = pdfTextRuns(text);
-  const visualRuns = baseDirection === "rtl" ? [...runs].reverse() : runs;
-  if (visualRuns.length === 1) {
-    doc.text(visualRuns[0]!.text, { width, align: baseDirection === "rtl" ? "right" : "left", lineGap: 2 });
-    return;
+  const startX = doc.x;
+  let y = doc.y;
+  const lineHeight = doc.currentLineHeight(true) + 2;
+  for (const line of wrapPdfText(doc, text, width)) {
+    const { baseDirection, runs } = pdfTextRuns(line);
+    const visualRuns = baseDirection === "rtl" ? [...runs].reverse() : runs;
+    const words = visualRuns.flatMap((run) => run.direction === "rtl" ? run.text.trim().split(/\s+/u).reverse() : run.text.trim().split(/\s+/u)).filter(Boolean);
+    const space = doc.widthOfString(" ");
+    const lineWidth = words.reduce((sum, word) => sum + doc.widthOfString(word), 0) + space * Math.max(0, words.length - 1);
+    let x = startX + (baseDirection === "rtl" ? Math.max(0, width - lineWidth) : 0);
+    for (const word of words) {
+      // Font shaping can reverse Persian date digits even in an LTR run.
+      // Paint numeric tokens in logical order while leaving letters fully shaped.
+      if (/^[0-9\u0660-\u0669\u06f0-\u06f9/.:,%+−-]+$/u.test(word) && /[\u0660-\u0669\u06f0-\u06f9]/u.test(word)) {
+        let digitX = x;
+        for (const character of word) {
+          doc.text(character, digitX, y, { lineBreak: false });
+          digitX += doc.widthOfString(character);
+        }
+      } else doc.text(word, x, y, { lineBreak: false });
+      x += doc.widthOfString(word) + space;
+    }
+    y += lineHeight;
   }
-  visualRuns.forEach((run, index) => {
-    doc.font(font).fontSize(fontSize).text(run.text, { width, continued: index < visualRuns.length - 1, lineGap: 2 });
-  });
+  doc.x = startX;
+  doc.y = y;
+}
+
+function wrapPdfText(doc: PDFKit.PDFDocument, text: string, width: number) {
+  const lines: string[] = [];
+  let line = "";
+  for (const word of text.split(/\s+/u)) {
+    if (line && doc.widthOfString(`${line} ${word}`) > width) { lines.push(line); line = ""; }
+    if (doc.widthOfString(word) > width) {
+      for (const character of Array.from(word)) {
+        if (line && doc.widthOfString(line + character) > width) { lines.push(line); line = ""; }
+        line += character;
+      }
+    } else line += `${line ? " " : ""}${word}`;
+  }
+  if (line) lines.push(line);
+  return lines.length ? lines : [" "];
 }
 
 function drawPdfMultilineText(doc: PDFKit.PDFDocument, value: string, fonts: PdfFontPaths, width: number, fontSize: number, bold = false) {
@@ -553,7 +586,11 @@ function drawPdfFooter(doc: PDFKit.PDFDocument, fonts: PdfFontPaths, margin: num
   const textY = doc.page.height - margin - 12;
   doc.save();
   doc.strokeColor("#d9e5ee").lineWidth(0.6).moveTo(margin, lineY).lineTo(doc.page.width - margin, lineY).stroke();
-  doc.fillColor("#6d7e8b").font(fonts.regular).fontSize(8).text(`${label} | ${pageNumber} / ${pageCount}`, margin, textY, { width: doc.page.width - margin * 2, align: "center", lineBreak: false });
+  doc.fillColor("#6d7e8b");
+  doc.x = margin + 70;
+  doc.y = textY;
+  drawPdfText(doc, label, fonts, doc.page.width - margin * 2 - 70, 8);
+  doc.text(`${pageNumber} / ${pageCount}`, margin, textY, { width: 60, align: "left", lineBreak: false });
   doc.restore();
 }
 
@@ -1004,7 +1041,7 @@ function exportText(value: ExportCell | undefined) {
 function pdfCellTextHeight(doc: PDFKit.PDFDocument, value: ExportCell, width: number, fonts: PdfFontPaths, fontSize: number, bold = false) {
   const font = bold ? fonts.bold : fonts.regular;
   doc.font(font).fontSize(fontSize);
-  return exportText(value).split(/\r?\n/).reduce((height, line) => height + doc.heightOfString(normalizePdfText(line) || " ", { width: Math.max(10, width), lineGap: 1 }) + 1, 0);
+  return exportText(value).split(/\r?\n/).reduce((height, line) => height + (hasPdfRtlText(line) ? wrapPdfText(doc, normalizePdfText(line), Math.max(10, width)).length * (doc.currentLineHeight(true) + 2) : doc.heightOfString(normalizePdfText(line) || " ", { width: Math.max(10, width), lineGap: 1 })) + 1, 0);
 }
 
 function drawPdfDonutSegment(doc: PDFKit.PDFDocument, centerX: number, centerY: number, outerRadius: number, innerRadius: number, startPercent: number, endPercent: number, color: string) {
@@ -1104,10 +1141,10 @@ function drawStyledReportPdf(title: string, subtitle: string, blocks: ReportPdfB
       } else {
         doc.text(normalized || " ", x, lineY, { width, align, lineGap: 1 });
       }
-      lineY += doc.heightOfString(normalized || " ", { width, lineGap: 1 }) + 1;
+      lineY += pdfCellTextHeight(doc, normalized, width, resolvedFonts, fontSize, bold);
     }
   };
-  const tableHeaderHeight = (headers: string[], widths: number[]) => Math.max(25, ...headers.map((header, index) => pdfCellTextHeight(doc, header, widths[index]! - 10, resolvedFonts, 6.5, true) + 10));
+  const tableHeaderHeight = (headers: string[], widths: number[]) => Math.max(30, ...headers.map((header, index) => pdfCellTextHeight(doc, header, widths[index]! - 10, resolvedFonts, 8, true) + 12));
   const drawTableHeader = (headers: string[], widths: number[]) => {
     const y = doc.y;
     const height = tableHeaderHeight(headers, widths);
@@ -1118,7 +1155,7 @@ function drawStyledReportPdf(title: string, subtitle: string, blocks: ReportPdfB
       doc.save();
       doc.rect(x, y, column.width, height).fillAndStroke("#1e5b8f", "#c9d9e5");
       doc.fillColor("#ffffff");
-      cellText(column.value, x + 4, y + 5, column.width - 8, 6.5, true, locale === "fa" ? "right" : "left", "#ffffff");
+      cellText(column.value, x + 5, y + 6, column.width - 10, 8, true, locale === "fa" ? "right" : "left", "#ffffff");
       doc.restore();
       x += column.width;
     }
@@ -1149,8 +1186,8 @@ function drawStyledReportPdf(title: string, subtitle: string, blocks: ReportPdfB
       continue;
     }
     let firstContentHeight = 40;
-    if (block.kind === "distribution") firstContentHeight = Math.max(126, block.rows.length * 19 + 20) + 7;
-    else if (block.kind === "progress") firstContentHeight = 111;
+    if (block.kind === "distribution") firstContentHeight = Math.max(92, block.rows.length * 19 + 20) + 7;
+    else if (block.kind === "progress") firstContentHeight = 92;
     else if (block.kind === "factorCards") firstContentHeight = 84;
     else if (block.kind === "keyValues") {
       const cardWidth = (contentWidth - 7) / 2;
@@ -1159,7 +1196,7 @@ function drawStyledReportPdf(title: string, subtitle: string, blocks: ReportPdfB
       const total = block.widths?.reduce((sum, width) => sum + width, 0) || block.headers.length;
       const widths = block.headers.map((_, index) => contentWidth * ((block.widths?.[index] ?? 1) / total));
       const firstRow = block.rows[0] ?? block.headers.map(() => "-");
-      const rowHeight = Math.max(25, ...block.headers.map((_, index) => pdfCellTextHeight(doc, firstRow[index] ?? "-", widths[index]! - 10, resolvedFonts, 6.4) + 9));
+      const rowHeight = Math.max(30, ...block.headers.map((_, index) => pdfCellTextHeight(doc, firstRow[index] ?? "-", widths[index]! - 10, resolvedFonts, 8) + 12));
       firstContentHeight = tableHeaderHeight(block.headers, widths) + rowHeight + 4;
     }
     ensureRoom(34 + firstContentHeight);
@@ -1177,7 +1214,7 @@ function drawStyledReportPdf(title: string, subtitle: string, blocks: ReportPdfB
         visualRow.forEach((pair, columnIndex) => {
           const key = pair[0] ?? "-";
           const value = pair[1] ?? "-";
-          const x = margin + columnIndex * (cardWidth + gap);
+          const x = margin + (columnIndex + (locale === "fa" && row.length === 1 ? 1 : 0)) * (cardWidth + gap);
           doc.save();
           doc.roundedRect(x, rowY, cardWidth, height, 5).fillAndStroke("#ffffff", "#d7e5ef");
           doc.restore();
@@ -1189,13 +1226,13 @@ function drawStyledReportPdf(title: string, subtitle: string, blocks: ReportPdfB
       continue;
     }
     if (block.kind === "distribution") {
-      const height = Math.max(126, block.rows.length * 19 + 20);
+      const height = Math.max(92, block.rows.length * 19 + 20);
       ensureRoom(height + 7);
       const y = doc.y;
       doc.save();
       doc.roundedRect(margin, y, contentWidth, height, 7).fillAndStroke("#ffffff", "#d7e5ef");
       doc.restore();
-      const chartSize = 118;
+      const chartSize = 86;
       const centerX = locale === "fa" ? margin + contentWidth - chartSize / 2 - 10 : margin + chartSize / 2 + 10;
       const centerY = y + height / 2;
       const total = block.centerValue ?? block.rows.reduce((sum, row) => sum + (row.weight ?? row.count), 0);
@@ -1229,7 +1266,7 @@ function drawStyledReportPdf(title: string, subtitle: string, blocks: ReportPdfB
       continue;
     }
     if (block.kind === "progress") {
-      const height = 104;
+      const height = 85;
       ensureRoom(height + 7);
       const y = doc.y;
       doc.save();
@@ -1307,7 +1344,7 @@ function drawStyledReportPdf(title: string, subtitle: string, blocks: ReportPdfB
     const rows = block.rows.length ? block.rows : [block.headers.map(() => "-")];
     for (const row of rows) {
       const logical = block.headers.map((_, index) => ({ value: row[index] ?? "-", width: logicalWidths[index]! }));
-      const maxHeight = Math.max(25, ...logical.map((column) => pdfCellTextHeight(doc, column.value, column.width - 10, resolvedFonts, 6.4) + 9));
+      const maxHeight = Math.max(30, ...logical.map((column) => pdfCellTextHeight(doc, column.value, column.width - 10, resolvedFonts, 8) + 12));
       if (doc.y + maxHeight > doc.page.height - margin - footerReserve) {
         addPage();
         drawSection(block.heading);
@@ -1320,7 +1357,7 @@ function drawStyledReportPdf(title: string, subtitle: string, blocks: ReportPdfB
         doc.save();
         doc.rect(x, y, column.width, maxHeight).fillAndStroke("#ffffff", "#d7e5ef");
         const valueIsNumeric = typeof column.value === "number" || /^\d+(?:[.,]\d+)?%?$/.test(String(column.value));
-        cellText(column.value, x + 4, y + 5, column.width - 8, 6.4, false, valueIsNumeric ? "center" : locale === "fa" ? "right" : "left");
+        cellText(column.value, x + 5, y + 6, column.width - 10, 8, false, valueIsNumeric ? "center" : locale === "fa" ? "right" : "left");
         doc.restore();
         x += column.width;
       });
@@ -1338,6 +1375,19 @@ function drawStyledReportPdf(title: string, subtitle: string, blocks: ReportPdfB
 }
 
 const FMEA_RISK_COLORS: Record<string, string> = { CRITICAL: "#cf4a4d", HIGH: "#e19a31", MEDIUM: "#d7b83f", LOW: "#43a27d", VERY_LOW: "#78c4a1" };
+
+function fmeaInterpretationRows(data: FmeaReportData, locale: ReportLocale): ExportRow[] {
+  const thresholds = data.riskThresholds ?? DEFAULT_THRESHOLDS;
+  return locale === "fa" ? [
+    ["راهنمای امتیازها", "S: شدت پیامد؛ O: احتمال وقوع؛ D: دشواری کشف. عدد بزرگ‌تر نشان‌دهنده امتیاز نامطلوب‌تر است. RPN = S × O × D."],
+    ["حدود سطح ریسک", `متوسط از ${thresholds.medium}؛ زیاد از ${thresholds.high}؛ بحرانی از ${thresholds.critical}. طبقه‌بندی مطابق حدود تنظیم‌شده برای این ارزیابی است.`],
+    ["تفسیر پیشرفت", "پیشرفت، میانگین درصد پیشرفت اقدامات ثبت‌شده است؛ پیشنهاد اقدام به معنی ثبت یا تکمیل اقدام نیست."],
+  ] : [
+    ["Score guide", "S: severity; O: occurrence; D: detection difficulty. Higher values indicate less favourable scores. RPN = S × O × D."],
+    ["Risk thresholds", `Medium from ${thresholds.medium}; high from ${thresholds.high}; critical from ${thresholds.critical}. Classification uses this assessment's configured thresholds.`],
+    ["Progress interpretation", "Progress is the average progress of registered actions. A recommendation is not a registered or completed action."],
+  ];
+}
 
 export function buildFmeaReportPdfDocument(data: FmeaReportData, report: FmeaReportPayload, locale: ReportLocale = "en") {
   const labels = fmeaLabels(locale);
@@ -1376,12 +1426,11 @@ export function buildFmeaReportPdfDocument(data: FmeaReportData, report: FmeaRep
     `${action.title}\n${action.description}`,
     action.fmeaItem ? `#${action.fmeaItem.rowNumber} · ${action.fmeaItem.failureMode}` : "-",
     localizedFmeaActionPriority(action.priority, locale), action.assigneeName ?? "-",
-    localizedFmeaStatus(action.status, locale), `${Math.max(0, Math.min(100, action.progress))}%`,
+    localizedFmeaStatus(action.status, locale), `${Math.max(0, Math.min(100, action.progress))}%`, reportDate(action.dueDate, locale),
   ]);
   const fullRows = fmeaFinalTableRows(reportData, locale);
   const fullHeaders = fmeaFinalTableHeaders(locale);
   return drawStyledReportPdf(labels.reportTitle, data.title, [
-    { kind: "keyValues", heading: labels.header, rows: metadataRows },
     { kind: "metrics", heading: labels.summary, cards: [
       { label: labels.totalFailureModes, value: summary.totalFailureModes, tone: "blue" },
       { label: labels.highPriorityRisks, value: summary.highPriorityRisks, tone: "red" },
@@ -1389,14 +1438,16 @@ export function buildFmeaReportPdfDocument(data: FmeaReportData, report: FmeaRep
       { label: labels.immediateActions, value: summary.immediateActions, tone: "red" },
     ] },
     { kind: "distribution", heading: labels.riskDistribution, centerLabel: labels.totalFailureModes, rows: distributionRows },
-    { kind: "progress", heading: labels.actionRegister, progress: actionMetrics.progress, centerLabel: locale === "fa" ? "تکمیل‌شده" : "Complete", rows: [
+    { kind: "progress", heading: locale === "fa" ? "پیشرفت اقدامات ثبت‌شده" : "Registered-action progress", progress: actionMetrics.progress, centerLabel: locale === "fa" ? "میانگین" : "Average", rows: [
       { label: labels.completedActions, count: actionMetrics.completed, color: "#279a78" },
       { label: labels.activeActions, count: actionMetrics.active, color: "#e19a31" },
       { label: labels.remainingActions, count: remainingActions, color: "#b8c7d0" },
     ] },
+    { kind: "keyValues", heading: labels.header, rows: metadataRows },
+    { kind: "keyValues", heading: locale === "fa" ? "راهنمای خواندن گزارش" : "Report interpretation", rows: fmeaInterpretationRows(reportData, locale) },
     { kind: "table", heading: labels.topFailureModes, headers: locale === "en" ? ["Row", "Failure mode", "Effect", "S", "O", "D", "AP", "RPN"] : [labels.row, labels.failureMode, labels.effect, "S", "O", "D", "AP", labels.rpn], rows: topRiskRows, widths: [0.6, 2.1, 2.1, 0.45, 0.45, 0.45, 0.8, 0.65] },
     { kind: "table", heading: labels.proposedActions, headers: [labels.relatedRisk, labels.title, labels.priority, locale === "fa" ? "وضعیت" : "Status"], rows: proposedRows.length ? proposedRows : [[labels.noRecommendations, "-", "-", "-"]], widths: [2, 3.4, 1, 1] },
-    { kind: "table", heading: labels.actionRegister, headers: [labels.actionStatus === "Status" ? "Action / description" : "اقدام / شرح", labels.relatedRisk, labels.priority, labels.assignee, labels.actionStatus, labels.actionProgress], rows: actionRows.length ? actionRows : [[labels.noActions, "-", "-", "-", "-", "-"]], widths: [3.2, 2.2, 1, 1.4, 1.2, 0.8] },
+    { kind: "table", heading: labels.actionRegister, headers: [labels.actionStatus === "Status" ? "Action / description" : "اقدام / شرح", labels.relatedRisk, labels.priority, labels.assignee, labels.actionStatus, labels.actionProgress, labels.dueDate], rows: actionRows.length ? actionRows : [[labels.noActions, "-", "-", "-", "-", "-", "-"]], widths: [3.2, 2.2, 0.8, 1.2, 1, 0.8, 1.1] },
     { kind: "table", heading: labels.fullDetails, headers: [...fullHeaders], rows: fullRows, widths: [0.6, 1.5, 1.4, 1.4, 1.6, 0.75, 0.75, 0.75, 0.8, 1, 2.2] },
   ], locale, labels.footer);
 }
@@ -1467,7 +1518,7 @@ function pdfFinalTableRowHeight(doc: PDFKit.PDFDocument, row: ExportRow, widths:
   const fontSize = header ? 7.1 : 7.3;
   const heights = row.map((value, index) => {
     doc.font(font).fontSize(fontSize);
-    return doc.heightOfString(pdfFinalTableCellText(value), { width: Math.max(12, widths[index]! - 8), lineGap: 2 });
+    return pdfCellTextHeight(doc, pdfFinalTableCellText(value), Math.max(12, widths[index]! - 8), fonts, fontSize, header);
   });
   return Math.max(24, Math.max(...heights, 0) + 10);
 }
@@ -1495,7 +1546,7 @@ function drawFmeaFinalTableRow(doc: PDFKit.PDFDocument, row: ExportRow, widths: 
 export async function buildFmeaFinalTablePdfDocument(data: FmeaReportData, locale: ReportLocale = "en") {
   const labels = fmeaLabels(locale);
   const fonts = resolvePdfFontPaths();
-  const headers = fmeaFinalTableHeaders(locale);
+  const headers = fmeaFinalTableHeaders(locale).map((label, index) => index === 5 ? "S" : index === 6 ? "O" : index === 7 ? "D" : label);
   const rows = fmeaFinalTableRows(data, locale);
   const processTitle = fmeaProcessTitle(data, locale);
   const allValues = [
@@ -1590,19 +1641,21 @@ function styleExportSheet(sheet: ExcelJS.Worksheet, widths: number[], locale: Re
       const lines = String(value ?? "-").split(/\r?\n/).reduce((total, line) => total + Math.max(1, Math.ceil(line.length / width)), 0);
       return Math.max(maximum, lines);
     }, 1);
-    row.height = rowNumber === 1 ? 30 : Math.max(24, Math.min(180, 14 * visualLines + 12));
+    row.height = rowNumber === 1 ? 36 : Math.max(28, Math.min(409, 16 * visualLines + 16));
     row.eachCell((cell) => {
-      cell.alignment = { vertical: "top", wrapText: true, horizontal: typeof cell.value === "number" ? "center" : locale === "fa" ? "right" : "left" };
+      cell.font = { name: "Tahoma", size: 11, color: { argb: "FF253746" } };
+      cell.alignment = { readingOrder: locale === "fa" ? "rtl" : "ltr", vertical: "middle", wrapText: true, horizontal: typeof cell.value === "number" ? "center" : locale === "fa" ? "right" : "left" };
       if (rowNumber === 1) {
-        cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+        cell.font = { name: "Tahoma", size: 11, bold: true, color: { argb: "FFFFFFFF" } };
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E5B8F" } };
-        cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+        cell.alignment = { readingOrder: locale === "fa" ? "rtl" : "ltr", vertical: "middle", horizontal: "center", wrapText: true };
       } else if (rowNumber % 2 === 0) {
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2F7FB" } };
       }
     });
   });
   sheet.views = [{ state: "frozen", ySplit: 1, rightToLeft: locale === "fa" }];
+  sheet.pageSetup = { paperSize: 9, orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: "1:1" };
   if (sheet.rowCount > 1) sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: sheet.rowCount, column: sheet.columnCount } };
 }
 
@@ -1627,8 +1680,8 @@ const dashboardPalette: Record<DashboardTone, { fill: string; border: string; ac
 function dashboardCellStyle(cell: ExcelJS.Cell, tone: DashboardTone, locale: ReportLocale, bold = false, size = 11, vertical: "top" | "middle" = "middle") {
   const colors = dashboardPalette[tone];
   cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: colors.fill } };
-  cell.font = { bold, size, color: { argb: colors.accent } };
-  cell.alignment = { vertical, wrapText: true, horizontal: typeof cell.value === "number" ? "center" : locale === "fa" ? "right" : "left" };
+  cell.font = { name: "Tahoma", bold, size, color: { argb: colors.accent } };
+  cell.alignment = { readingOrder: locale === "fa" ? "rtl" : "ltr", vertical, wrapText: true, horizontal: typeof cell.value === "number" ? "center" : locale === "fa" ? "right" : "left" };
   cell.border = {
     top: { style: "thin", color: { argb: colors.border } },
     left: { style: "thin", color: { argb: colors.border } },
@@ -1642,12 +1695,16 @@ function dashboardMergedCell(sheet: ExcelJS.Worksheet, row: number, firstColumn:
   const master = sheet.getCell(row, firstColumn);
   master.value = excelExportCell(value);
   for (let column = firstColumn; column <= lastColumn; column += 1) dashboardCellStyle(sheet.getCell(row, column), tone, locale, bold, size);
+  const width = Array.from({ length: lastColumn - firstColumn + 1 }, (_, index) => sheet.getColumn(firstColumn + index).width ?? 18).reduce((sum, item) => sum + item, 0);
+  const lines = exportText(value).split(/\r?\n/).reduce((sum, line) => sum + Math.max(1, Math.ceil(line.length / Math.max(8, width * 0.85))), 0);
+  sheet.getRow(row).height = Math.max(sheet.getRow(row).height ?? 0, Math.min(409, lines * (size + 5) + 16));
 }
 
 function createDashboardSheet(workbook: ExcelJS.Workbook, name: string, title: string, subtitle: string, locale: ReportLocale) {
   const sheet = workbook.addWorksheet(name);
   sheet.columns = [15, 30, 30, 12, 12, 12, 16, 14, 20].map((width, index) => ({ key: `dashboard${index + 1}`, width }));
   sheet.views = [{ showGridLines: false, rightToLeft: locale === "fa" }];
+  sheet.pageSetup = { paperSize: 9, orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
   sheet.properties.tabColor = { argb: "FF1E5B8F" };
   dashboardMergedCell(sheet, 1, 1, 9, "NIVASafe", locale, "header", true, 15);
   dashboardMergedCell(sheet, 2, 1, 9, title, locale, "blue", true, 19);
@@ -1673,7 +1730,7 @@ function dashboardFieldCards(sheet: ExcelJS.Worksheet, row: number, fields: Arra
       dashboardMergedCell(sheet, row + 1, first, first + 2, value, locale, "blue", true, 11);
     });
     sheet.getRow(row).height = 22;
-    sheet.getRow(row + 1).height = 34;
+    sheet.getRow(row + 1).height = Math.max(34, sheet.getRow(row + 1).height ?? 0);
     row += 2;
   }
   return row;
@@ -1700,7 +1757,7 @@ function dashboardTable(sheet: ExcelJS.Worksheet, row: number, headers: string[]
       dashboardMergedCell(sheet, targetRow, firstColumn, firstColumn + span - 1, values[index] ?? "-", locale, tone, bold, bold ? 9 : 10);
       firstColumn += span;
     });
-    sheet.getRow(targetRow).height = bold ? 30 : 42;
+    sheet.getRow(targetRow).height = Math.max(bold ? 36 : 42, sheet.getRow(targetRow).height ?? 0);
   };
   write(headers, row, "header", true);
   rows.forEach((values, index) => write(values, row + index + 1, index % 2 === 0 ? "blue" : "green", false));
@@ -1799,10 +1856,10 @@ function rulaPostureStatus(key: RulaPosturePart, row: RulaPostureResult, locale:
   return row.source === "DEFAULT" ? "Pending detection" : "Not detected";
 }
 
-function rulaScoreShare(row: RulaPostureResult, key: RulaPosturePart, factors: RulaReportExport["factors"], totalScore: number) {
+function rulaScoreShare(row: RulaPostureResult, totalScore: number) {
   if (!isRulaPostureResultReviewed(row)) return null;
-  const factor = factors.find((item) => item.key === key);
-  return factor?.impactPercent ?? Math.round((row.score / totalScore) * 100);
+  // This column covers all posture parts, unlike the main-factor contribution column.
+  return totalScore > 0 ? Math.round((row.score / totalScore) * 100) : 0;
 }
 
 function rulaExportRowsWithOptionalSide(rows: ExportRow[], hasIndependentSides: boolean) {
@@ -1857,6 +1914,16 @@ function rulaActionLevelForScore(score: number) {
   return 4;
 }
 
+function localizedRulaExplanation(value: string, locale: ReportLocale) {
+  if (locale === "en") return value;
+  return ({
+    "Acceptable posture": "وضعیت بدنی قابل قبول است.",
+    "Further investigation may be needed": "ممکن است بررسی بیشتر وضعیت بدنی لازم باشد.",
+    "Investigate and change soon": "بررسی و اصلاح وضعیت بدنی در اسرع وقت لازم است.",
+    "Investigate and change immediately": "بررسی و اصلاح فوری وضعیت بدنی لازم است.",
+  } as Record<string, string>)[value] ?? value;
+}
+
 function buildRulaExportModel(data: RulaReportData, report?: RulaReportExport, locale: ReportLocale = "en"): RulaExportModel {
   const labels = rulaLabels(locale);
   const assessment = report?.assessment ?? data;
@@ -1877,7 +1944,7 @@ function buildRulaExportModel(data: RulaReportData, report?: RulaReportExport, l
     [labels.score, reviewComplete ? assessment.score : "-"],
     [labels.actionLevel, reviewComplete ? assessment.actionLevel : "-"],
     [labels.status, localizedRulaStatus(assessment.status, locale)],
-    [labels.explanation, reviewComplete ? assessment.explanation : labels.manualReview],
+    [labels.explanation, reviewComplete ? localizedRulaExplanation(assessment.explanation, locale) : labels.manualReview],
   ];
 
   if (report && reviewComplete) {
@@ -1926,11 +1993,10 @@ function buildRulaExportModel(data: RulaReportData, report?: RulaReportExport, l
     const sideAnalysis = rulaAnalysisForSide(postureAnalysis, bodySide, side);
     if (!sideAnalysis) continue;
     const totalScore = Math.max(1, RULA_POSTURE_EXPORT_ROWS.reduce((sum, item) => sum + (isRulaPostureResultReviewed(sideAnalysis[item.key]) ? sideAnalysis[item.key].score : 0), 0));
-    const sideFactorForRows = report?.factors ?? [];
     for (const [index, item] of RULA_POSTURE_EXPORT_ROWS.entries()) {
       const row = sideAnalysis[item.key];
       const reviewed = isRulaPostureResultReviewed(row);
-      const scoreShare = rulaScoreShare(row, item.key, hasIndependentSides ? report?.sideFactors?.[side] ?? [] : sideFactorForRows, totalScore);
+      const scoreShare = rulaScoreShare(row, totalScore);
       const relatedActions = activeActions.filter((action) => action.rulaImpact?.affectedParts?.includes(item.key)
         && (!hasIndependentSides || !action.bodySide || action.bodySide === "BOTH" || action.bodySide === side));
       dataRows.push([
@@ -2192,7 +2258,7 @@ export function buildRulaReportPdfDocument(data: RulaReportData, report?: RulaRe
     ...(report ? [
       { kind: "table" as const, heading: labels.assessmentData, headers: dataHeaders, rows: rulaExportRowsWithOptionalSide(model.dataRows, model.hasIndependentSides).length
         ? rulaExportRowsWithOptionalSide(model.dataRows, model.hasIndependentSides)
-        : [dataHeaders.map((_, index) => index === (model.hasIndependentSides ? 3 : 2) ? labels.noData : "-")], widths: model.hasIndependentSides ? [1, 0.45, 0.45, 1.2, 0.9, 1, 0.8, 0.7, 2.2] : [0.45, 0.45, 0.45, 1.2, 0.9, 1, 0.8, 2.2] },
+        : [dataHeaders.map((_, index) => index === (model.hasIndependentSides ? 3 : 2) ? labels.noData : "-")], widths: model.hasIndependentSides ? [1, 0.45, 0.45, 1.2, 0.9, 1.5, 0.8, 0.7, 2.2] : [0.45, 0.45, 1.2, 0.9, 1.5, 0.8, 0.7, 2.2] },
       { kind: "table" as const, heading: labels.selectedActions, headers: actionHeaders, rows: model.actionRows.length ? model.actionRows : [[labels.noSelectedActions, "-", "-", "-", "-", "-", "-", 0]], widths: [2, 3.2, 1.7, 1, 0.8, 1, 1, 1] },
     ] : []),
   ];
@@ -2232,7 +2298,7 @@ export async function buildFmeaWorkbook(data: FmeaReportData, locale: ReportLoca
     priority: actionPriority(item.riskLevel),
   }));
   const suggestionHeaders = locale === "en" ? ["Related risk", "Proposed action", "Priority", "Status"] : [labels.relatedRisk, labels.recommendedAction, labels.priority, labels.actionStatus];
-  const suggestionRows = suggestions.filter((suggestion) => !actions.some((action) => action.fmeaItemId === suggestion.fmeaItemId && action.title.trim().toLocaleLowerCase() === suggestion.title.trim().toLocaleLowerCase())).slice(0, 5)
+  const suggestionRows = suggestions.filter((suggestion) => !actions.some((action) => action.fmeaItemId === suggestion.fmeaItemId && action.title.trim().toLocaleLowerCase() === suggestion.title.trim().toLocaleLowerCase()))
     .map((suggestion) => [suggestion.risk, suggestion.title, localizedFmeaActionPriority(suggestion.priority, locale), locale === "fa" ? "پیشنهادی" : "Suggested"]);
   const actionMetrics = fmeaActionMetrics(actions);
   const overview = createDashboardSheet(workbook, "OVERVIEW", labels.reportTitle, `${data.title} · ${labels.code}: ${data.code}`, locale);
@@ -2291,14 +2357,16 @@ export async function buildFmeaWorkbook(data: FmeaReportData, locale: ReportLoca
     [labels.immediateActions, summary.immediateActions], [localizedFmeaRiskLevel("CRITICAL", locale), summary.distribution.CRITICAL],
     [localizedFmeaRiskLevel("HIGH", locale), summary.distribution.HIGH], [localizedFmeaRiskLevel("MEDIUM", locale), summary.distribution.MEDIUM],
     [localizedFmeaRiskLevel("LOW", locale), summary.distribution.LOW], [localizedFmeaRiskLevel("VERY_LOW", locale), summary.distribution.VERY_LOW],
+    ...fmeaInterpretationRows(exportData, locale),
   ], [34, 90], locale);
   addExportSheet(workbook, "PROCESS", summaryHeaders, [
     [locale === "en" ? "Job/process" : labels.process, fmeaProcessTitle(data, locale)], [labels.department, data.department ?? "-"],
     [labels.activity, data.activityDescription ?? "-"], [labels.equipment, reportList(data.equipment)], [labels.materials, reportList(data.materials)],
     [labels.existingControls, reportList(data.existingControls)], [labels.specialConditions, data.specialConditions ?? "-"],
   ], [34, 90], locale);
-  addExportSheet(workbook, "RISK DISTRIBUTION", locale === "en" ? ["Risk level", "Count", "Share"] : [labels.riskLevel, labels.count, labels.share],
-    (["CRITICAL", "HIGH", "MEDIUM", "LOW", "VERY_LOW"] as const).map((level) => [localizedFmeaRiskLevel(level, locale), summary.distribution[level], `${summary.totalFailureModes ? Math.round(summary.distribution[level] / summary.totalFailureModes * 1000) / 10 : 0}%`]), [28, 14, 14], locale);
+  const distributionSheet = addExportSheet(workbook, "RISK DISTRIBUTION", locale === "en" ? ["Risk level", "Count", "Share"] : [labels.riskLevel, labels.count, labels.share],
+    (["CRITICAL", "HIGH", "MEDIUM", "LOW", "VERY_LOW"] as const).map((level) => [localizedFmeaRiskLevel(level, locale), summary.distribution[level], summary.totalFailureModes ? summary.distribution[level] / summary.totalFailureModes : 0]), [28, 14, 14], locale);
+  distributionSheet.getColumn(3).numFmt = "0.0%";
   addExportSheet(workbook, "TOP RISKS", topHeaders, topRows, [8, 32, 36, 8, 8, 8, 16, 12, 18], locale);
   addExportSheet(workbook, "PROPOSED ACTIONS", suggestionHeaders, suggestionRows.length ? suggestionRows : [[labels.noRecommendations, "-", "-", "-"]], [30, 56, 18, 18], locale);
   const actionHeaders = locale === "en"
@@ -2309,7 +2377,8 @@ export async function buildFmeaWorkbook(data: FmeaReportData, locale: ReportLoca
     localizedFmeaActionPriority(action.priority, locale), localizedFmeaStatus(action.status, locale), action.assigneeName ?? "-",
     action.progress, reportDate(action.dueDate, locale),
   ]);
-  addExportSheet(workbook, "ACTIONS", actionHeaders, actionSheetRows.length ? actionSheetRows : [[labels.noActions, "-", "-", "-", "-", "-", "-", "-"]], [28, 28, 40, 14, 18, 24, 12, 16], locale);
+  const actionsSheet = addExportSheet(workbook, "ACTIONS", actionHeaders, actionSheetRows.length ? actionSheetRows : [[labels.noActions, "-", "-", "-", "-", "-", "-", "-"]], [28, 28, 40, 14, 18, 24, 12, 16], locale);
+  actionsSheet.getColumn(7).numFmt = '0"%"';
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
@@ -2432,8 +2501,15 @@ export async function buildRulaWorkbook(data: RulaReportData, report?: RulaRepor
 }
 
 function docxRuns(value: unknown, bold = false, rtl = false, color?: string, size?: number) {
-  const runProperties = bold || rtl || color || size ? `<w:rPr>${bold ? "<w:b/>" : ""}${rtl ? "<w:rtl/>" : ""}${color ? `<w:color w:val="${color}"/>` : ""}${size ? `<w:sz w:val="${size}"/><w:szCs w:val="${size}"/>` : ""}</w:rPr>` : "";
-  return String(value ?? "-").split(/\r?\n/).map((line, index) => `${index ? "<w:r><w:br/></w:r>" : ""}<w:r>${runProperties}<w:t xml:space="preserve">${xmlEscape(line)}</w:t></w:r>`).join("");
+  return String(value ?? "-").split(/\r?\n/).map((line, index) => {
+    // Keep logical text order; Word performs bidi layout, with Latin identifiers isolated from Persian runs.
+    const runs = rtl && hasPdfRtlText(line) ? line.match(/[A-Za-z0-9\u0660-\u0669\u06f0-\u06f9][A-Za-z0-9\u0660-\u0669\u06f0-\u06f9@._%/+\- ]*|[^A-Za-z0-9\u0660-\u0669\u06f0-\u06f9]+/gu) ?? [line] : [line];
+    return `${index ? "<w:r><w:br/></w:r>" : ""}${runs.map((text) => {
+      const complex = rtl && /[\u0590-\u065f\u066a-\u06ef\u06fa-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]/u.test(text);
+      const properties = `<w:rPr>${bold ? "<w:b/><w:bCs/>" : ""}<w:rtl w:val="${complex ? "1" : "0"}"/><w:lang w:val="en-US" w:bidi="fa-IR"/>${color ? `<w:color w:val="${color}"/>` : ""}${size ? `<w:sz w:val="${size}"/><w:szCs w:val="${size}"/>` : ""}</w:rPr>`;
+      return `<w:r>${properties}<w:t xml:space="preserve">${xmlEscape(text)}</w:t></w:r>`;
+    }).join("")}`;
+  }).join("");
 }
 
 function docxParagraph(value: unknown, style?: "Title" | "Heading1" | "Heading2", locale: ReportLocale = "en") {
@@ -2447,7 +2523,15 @@ function docxTable(headers: string[], rows: ExportRow[], locale: ReportLocale = 
     ? 15400 - Math.floor(headers.slice(0, -1).reduce((sum, __, previousIndex) => sum + 15400 * ((requestedWidths?.[previousIndex] ?? 1) / weightTotal), 0))
     : Math.max(350, Math.floor(15400 * ((requestedWidths?.[index] ?? 1) / weightTotal))));
   const grid = widths.map((width) => `<w:gridCol w:w="${width}"/>`).join("");
-  const renderRow = (row: ExportRow, header = false, rowIndex = 0) => `<w:tr><w:trPr>${header ? "<w:tblHeader/>" : ""}<w:cantSplit/></w:trPr>${headers.map((_, index) => `<w:tc><w:tcPr><w:tcW w:w="${widths[index] ?? 1000}" w:type="dxa"/><w:vAlign w:val="center"/><w:shd w:fill="${header ? "1E5B8F" : rowIndex % 2 === 0 ? "F2F7FB" : "FFFFFF"}"/></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/>${locale === "fa" ? "<w:bidi/><w:jc w:val=\"right\"/>" : "<w:jc w:val=\"left\"/>"}</w:pPr>${docxRuns(row[index] ?? "-", header, locale === "fa", header ? "FFFFFF" : undefined)}</w:p></w:tc>`).join("")}</w:tr>`;
+  const renderRow = (row: ExportRow, header = false, rowIndex = 0) => {
+    const cells = headers.map((_, index) => {
+      const value = row[index] ?? "-";
+      const numeric = typeof value === "number" || /^[\d۰-۹٠-٩]+(?:[.,][\d۰-۹٠-٩]+)?%?$/u.test(String(value));
+      const align = header || numeric ? "center" : locale === "fa" ? "right" : "left";
+      return `<w:tc><w:tcPr><w:tcW w:w="${widths[index] ?? 1000}" w:type="dxa"/><w:vAlign w:val="center"/><w:shd w:fill="${header ? "1E5B8F" : rowIndex % 2 === 0 ? "F2F7FB" : "FFFFFF"}"/></w:tcPr><w:p><w:pPr><w:spacing w:after="60" w:before="60" w:line="280" w:lineRule="auto"/>${locale === "fa" ? "<w:bidi/>" : ""}<w:jc w:val="${align}"/></w:pPr>${docxRuns(value, header, locale === "fa", header ? "FFFFFF" : undefined, headers.length > 6 ? 20 : 22)}</w:p></w:tc>`;
+    });
+    return `<w:tr><w:trPr>${header ? "<w:tblHeader/>" : ""}<w:cantSplit/></w:trPr>${cells.join("")}</w:tr>`;
+  };
   return `<w:tbl><w:tblPr><w:tblW w:w="15400" w:type="dxa"/><w:tblLayout w:type="fixed"/>${locale === "fa" ? "<w:bidiVisual/>" : ""}<w:tblBorders><w:top w:val="single" w:sz="4" w:color="C9D9E5"/><w:left w:val="single" w:sz="4" w:color="C9D9E5"/><w:bottom w:val="single" w:sz="4" w:color="C9D9E5"/><w:right w:val="single" w:sz="4" w:color="C9D9E5"/><w:insideH w:val="single" w:sz="4" w:color="C9D9E5"/><w:insideV w:val="single" w:sz="4" w:color="C9D9E5"/></w:tblBorders><w:tblCellMar><w:top w:w="80" w:type="dxa"/><w:left w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${grid}</w:tblGrid>${renderRow(headers, true)}${rows.map((row, index) => renderRow(row, false, index)).join("")}</w:tbl>`;
 }
 
@@ -2482,11 +2566,15 @@ function docxCardGrid(cards: DocxCard[], locale: ReportLocale, columns = 4) {
 }
 
 function docxBanner(title: string, subtitle: string, locale: ReportLocale) {
-  const paragraphProperties = locale === "fa" ? "<w:pPr><w:bidi/><w:jc w:val=\"right\"/></w:pPr>" : "<w:pPr><w:jc w:val=\"left\"/></w:pPr>";
-  return `<w:tbl><w:tblPr><w:tblW w:w="15400" w:type="dxa"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/></w:tblBorders><w:tblCellMar><w:top w:w="190" w:type="dxa"/><w:left w:w="240" w:type="dxa"/><w:bottom w:w="190" w:type="dxa"/><w:right w:w="240" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="15400"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w="15400" w:type="dxa"/><w:shd w:fill="123F66"/></w:tcPr><w:p>${paragraphProperties}${docxRuns("NIVASafe", true, locale === "fa", "FFFFFF", 24)}</w:p><w:p>${paragraphProperties}${docxRuns(title, true, locale === "fa", "FFFFFF", 34)}</w:p><w:p>${paragraphProperties}${docxRuns(subtitle, false, locale === "fa", "D9EAF8", 18)}</w:p></w:tc></w:tr></w:tbl>`;
+  return `${docxParagraph("NIVASafe", undefined, locale)}${docxParagraph(title, "Title", locale)}${docxParagraph(subtitle, undefined, locale)}`;
 }
 
-const docxStyles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/><w:sz w:val="20"/></w:rPr></w:rPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:rPr><w:b/><w:color w:val="174E86"/><w:sz w:val="32"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:rPr><w:b/><w:color w:val="255B88"/><w:sz w:val="26"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:rPr><w:b/><w:color w:val="255B88"/><w:sz w:val="22"/></w:rPr></w:style></w:styles>`;
+const docxStyles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Tahoma" w:hAnsi="Tahoma" w:cs="Tahoma"/><w:sz w:val="22"/><w:szCs w:val="22"/><w:lang w:val="en-US" w:bidi="fa-IR"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="100" w:line="300" w:lineRule="auto"/><w:widowControl/></w:pPr></w:pPrDefault></w:docDefaults>
+<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>
+${[["Title", 34], ["Heading1", 28], ["Heading2", 24]].map(([name, size]) => `<w:style w:type="paragraph" w:styleId="${name}"><w:name w:val="${name}"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="200" w:after="120"/></w:pPr><w:rPr><w:b/><w:bCs/><w:color w:val="253746"/><w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr></w:style>`).join("")}
+</w:styles>`;
 
 async function buildDocx(title: string, subtitle: string, sections: DocxSection[], locale: ReportLocale = "en") {
   const generatedAt = new Date().toISOString();
@@ -2511,12 +2599,12 @@ export async function buildFmeaWordDocument(data: FmeaReportData, locale: Report
   const actionMetrics = fmeaActionMetrics(reportData.actions);
   const totalFailureModes = Math.max(summary.totalFailureModes, 1);
   const topItems = (pageReport?.topFailureModes ?? topFailureModes(fmeaItemsForOutput(reportData).map((item) => ({ ...item, actionPriority: actionPriority(item.riskLevel) }))).slice(0, 5)).slice(0, 5);
-  const suggestedActions = pageReport?.suggestedActions.filter((item) => !pageReport.actions.some((action) => action.fmeaItemId === item.fmeaItemId && action.title.trim().toLocaleLowerCase() === item.title.trim().toLocaleLowerCase())).slice(0, 5).map((item) => ({
+  const suggestedActions = pageReport?.suggestedActions.filter((item) => !pageReport.actions.some((action) => action.fmeaItemId === item.fmeaItemId && action.title.trim().toLocaleLowerCase() === item.title.trim().toLocaleLowerCase())).map((item) => ({
     rowNumber: pageReport.items.find((risk) => risk.id === item.fmeaItemId)?.rowNumber ?? 0,
     failureMode: item.failureMode,
     title: item.title,
     priority: item.priority,
-  })) ?? fmeaSuggestedActions(reportData).slice(0, 5).map((item) => ({ rowNumber: item.rowNumber, failureMode: item.failureMode, title: item.recommendation?.trim() ?? "-", priority: actionPriority(item.riskLevel) }));
+  })) ?? fmeaSuggestedActions(reportData).map((item) => ({ rowNumber: item.rowNumber, failureMode: item.failureMode, title: item.recommendation?.trim() ?? "-", priority: actionPriority(item.riskLevel) }));
   const evaluationTeam = data.evaluationTeam?.map((member) => `${member.displayName || member.email} (${member.role})`).filter(Boolean).join(" | ") || "-";
   const processTitle = fmeaProcessTitle(data, locale);
   const remainingActions = Math.max(0, reportData.actions.length - actionMetrics.completed - actionMetrics.active);
@@ -2530,11 +2618,10 @@ export async function buildFmeaWordDocument(data: FmeaReportData, locale: Report
     localizedFmeaActionPriority(action.priority, locale),
     localizedFmeaStatus(action.status, locale),
     action.assigneeName ?? "-",
-    action.progress,
+    `${Math.max(0, Math.min(100, action.progress))}%`,
     reportDate(action.dueDate, locale),
   ]);
   return buildDocx(labels.reportTitle, `${labels.code}: ${data.code} · ${labels.project}: ${data.project.name}`, [
-    { heading: labels.header, headers: [labels.field, labels.value], rows: [[labels.process, processTitle], [labels.company, fmeaCompanyName(data, locale)], [labels.date, reportDate(data.approvedAt ?? data.updatedAt, locale)], [labels.method, "FMEA"], [labels.team, `${data.evaluationTeam?.length ?? 0} ${labels.teamMembers}\n${evaluationTeam}`], [labels.code, data.code], [labels.project, data.project.name], [labels.status, localizedFmeaStatus(data.status, locale)], [labels.version, data.version ?? "-"]] },
     { kind: "cards", heading: labels.summary, cards: [
       { label: labels.totalFailureModes, value: summary.totalFailureModes, tone: "blue" },
       { label: labels.highPriorityRisks, value: summary.highPriorityRisks, tone: "red" },
@@ -2548,10 +2635,12 @@ export async function buildFmeaWordDocument(data: FmeaReportData, locale: Report
       { label: labels.activeActions, value: actionMetrics.active, tone: "amber" },
       { label: labels.remainingActions, value: remainingActions, tone: "blue" },
     ] },
-    { heading: labels.processInformation, headers: [labels.field, labels.value], rows: [[labels.department, data.department ?? "-"], [labels.activity, data.activityDescription ?? "-"], [labels.equipment, reportList(data.equipment)], [labels.materials, reportList(data.materials)], [labels.existingControls, reportList(data.existingControls)], [labels.specialConditions, data.specialConditions ?? "-"]] },
+    { heading: labels.header, headers: [labels.field, labels.value], rows: [[labels.process, processTitle], [labels.company, fmeaCompanyName(data, locale)], [labels.date, reportDate(data.approvedAt ?? data.updatedAt, locale)], [labels.method, "FMEA"], [labels.team, `${data.evaluationTeam?.length ?? 0} ${labels.teamMembers}\n${evaluationTeam}`], [labels.code, data.code], [labels.project, data.project.name], [labels.status, localizedFmeaStatus(data.status, locale)], [labels.version, data.version ?? "-"]], widths: [1, 3] },
+    { heading: locale === "fa" ? "راهنمای خواندن گزارش" : "Report interpretation", headers: [labels.field, labels.value], rows: fmeaInterpretationRows(reportData, locale), widths: [1, 3] },
+    { heading: labels.processInformation, headers: [labels.field, labels.value], rows: [[labels.department, data.department ?? "-"], [labels.activity, data.activityDescription ?? "-"], [labels.equipment, reportList(data.equipment)], [labels.materials, reportList(data.materials)], [labels.existingControls, reportList(data.existingControls)], [labels.specialConditions, data.specialConditions ?? "-"]], widths: [1, 3] },
     { heading: locale === "en" ? "Top failure modes" : labels.topFailureModes, headers: locale === "en" ? ["Row", "Failure mode", "Effect", "S", "O", "D", "AP", "RPN"] : [labels.row, labels.failureMode, labels.effect, "S", "O", "D", "AP", labels.rpn], rows: topItems.map((item) => [item.rowNumber, item.failureMode, item.effect, item.severity, item.occurrence, item.detection, localizedFmeaActionPriority(item.actionPriority, locale), item.rpn]), widths: [0.6, 2.2, 2, 0.5, 0.5, 0.5, 0.9, 0.7] },
     { heading: labels.proposedActions, headers: locale === "en" ? ["Related risk", "Failure mode", "Proposed action", "Priority", "Status"] : [labels.relatedRisk, labels.failureMode, labels.recommendedAction, labels.priority, labels.actionStatus], rows: suggestedActions.length ? suggestedActions.map((item) => [`#${item.rowNumber || "-"}`, item.failureMode, item.title, localizedFmeaActionPriority(item.priority, locale), locale === "fa" ? "پیشنهادی" : "Suggested"]) : [["-", "-", labels.noRecommendations, "-", "-"]], widths: [1, 2, 4, 1, 1] },
-    { heading: locale === "en" ? "Corrective actions" : labels.actionRegister, headers: actionHeaders, rows: actionRows.length ? actionRows : [["-", "-", labels.noActions, "-", "-", "-", 0, "-"]] },
+    { heading: locale === "en" ? "Corrective actions" : labels.actionRegister, headers: actionHeaders, rows: actionRows.length ? actionRows : [["-", "-", labels.noActions, "-", "-", "-", 0, "-"]], widths: [1.5, 2, 3, 0.8, 1, 1.2, 0.8, 1] },
     { heading: labels.fullDetails, headers: fmeaFinalTableHeaders(locale), rows: fmeaFinalTableRows(reportData, locale), widths: [0.5, 1.6, 1.5, 1.5, 1.8, 0.45, 0.45, 0.45, 0.65, 0.9, 2.2] },
   ], locale);
 }
@@ -2585,7 +2674,7 @@ export async function buildRulaWordDocument(data: RulaReportData, report?: RulaR
   ]);
   const summaryDetailRows = model.summaryRows.filter(([key]) => typeof key === "string" && !summaryCoreKeys.has(key));
   return buildDocx(labels.reportTitle, `${labels.code}: ${model.assessment.subjectCode?.trim() || "-"} · ${labels.project}: ${model.assessment.project.name}`, [
-    { heading: labels.assessmentDetails, headers: [labels.field, labels.value], rows: model.detailsRows },
+    { heading: labels.assessmentDetails, headers: [labels.field, labels.value], rows: model.detailsRows, widths: [1, 3] },
     { kind: "cards", heading: labels.summary, cards: [
       { label: labels.score, value: model.reviewComplete ? model.assessment.score : "-", tone: model.reviewComplete ? "blue" : "amber" },
       { label: labels.actionLevel, value: model.reviewComplete ? model.assessment.actionLevel : "-", tone: "amber" },
@@ -2762,7 +2851,7 @@ export async function registerReportRoutes(app: FastifyInstance) {
     });
     if (!fmea) throw Object.assign(new Error("Assessment not found"), { statusCode: 404, code: "NOT_FOUND" });
     const processName = body.locale === "en" ? fmea.jobCatalog?.titleEn ?? fmea.title : fmea.jobCatalog?.titleFa ?? fmea.title;
-    const fallback = fallbackFmeaReportDetailSuggestions({ processName, projectName: fmea.project.name, locale: body.locale, limit: FMEA_REPORT_DETAIL_SUGGESTION_MAX });
+    const fallback = fallbackFmeaReportDetailSuggestions({ processName, projectName: fmea.project.name, locale: body.locale });
     const provider = getAvailableAssessmentAIProvider();
     let suggestions = fallback;
     let aiStatus: "connected" | "fallback" | "unavailable" = provider.name === "fallback" ? "fallback" : "connected";
@@ -2779,10 +2868,12 @@ export async function registerReportRoutes(app: FastifyInstance) {
           existingRows: fmea.items,
           locale: body.locale,
         }),
+        maxOutputTokens: 8000,
       });
       const parsed = parseFmeaReportDetailSuggestions(result.answer);
-      suggestions = ensureMinimumFmeaReportDetailSuggestions(parsed, fallback);
-      aiStatus = result.usedFallback || result.provider === "fallback" ? "fallback" : "connected";
+      const explicitlyEmpty = hasExplicitlyEmptyFmeaRiskRows(result.answer);
+      suggestions = explicitlyEmpty ? [] : ensureMinimumFmeaReportDetailSuggestions(parsed, fallback);
+      aiStatus = result.usedFallback || result.provider === "fallback" || (!parsed.length && !explicitlyEmpty) ? "fallback" : "connected";
       await recordAIUsage(prisma, { organizationId, userId: request.actor!.userId, useCase: "risk", sourceType: "FMEA_REPORT_DETAILS", sourceId: request.id, result });
     } catch {
       // The deterministic rows are already prepared before the provider call.
@@ -2806,9 +2897,8 @@ export async function registerReportRoutes(app: FastifyInstance) {
         const seedRows = buildFmeaReportDetailSeedRows({
           assessmentId: id,
           suggestions,
-          fallbackSuggestions: fallback,
           existingRows: currentRows,
-          additionalCount: FMEA_REPORT_DETAIL_SUGGESTION_MIN,
+          additionalCount: Math.min(suggestions.length, Math.max(0, FMEA_REPORT_DETAIL_SUGGESTION_MAX - currentRows.length)),
           thresholds: DEFAULT_THRESHOLDS,
         });
         if (!seedRows.length) return 0;
@@ -2820,7 +2910,7 @@ export async function registerReportRoutes(app: FastifyInstance) {
       });
     }
     await audit(request, "FMEA_REPORT_DETAIL_SUGGESTIONS", "FmeaAssessment", id, { provider: provider.name, aiStatus, suggestionCount: suggestions.length, createdCount });
-    return envelope({ suggestions: body.autoCreate ? [] : suggestions, provider: provider.name, aiStatus, minimum: 5, createdCount });
+    return envelope({ suggestions: body.autoCreate ? [] : suggestions, provider: provider.name, aiStatus, minimum: 0, maximum: FMEA_REPORT_DETAIL_SUGGESTION_MAX, createdCount });
   });
   app.post("/api/v1/fmea/:id/report/save", { preHandler: authenticate }, async (request) => {
     const organizationId = requireOrg(request); requirePermission(request, "reports.generate"); const { id } = parse(reportIdParams, request.params);

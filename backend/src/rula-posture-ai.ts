@@ -300,6 +300,7 @@ export const rulaPostureImageAnalysisResponseSchema = z.object({
   }).strict(),
   notes: z.string().max(MAX_NOTE_LENGTH),
   provider: z.string().min(1).max(80),
+  model: z.string().min(1).max(180).optional(),
   aiStatus: z.enum(["connected", "fallback"]),
 }).strict();
 

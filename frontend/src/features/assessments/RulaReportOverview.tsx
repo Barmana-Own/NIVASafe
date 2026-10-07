@@ -1,7 +1,7 @@
 import { Icon, SectionCard, StatusBadge } from "../../components/UI";
 import { useI18n } from "../../i18n";
 import { useState } from "react";
-import { buildRulaOverviewMetrics, rulaActionLevels, summarizeRulaCorrectiveActions, type RulaOverviewCorrectiveAction, type RulaOverviewMetrics, type RulaOverviewResult } from "./rulaOverviewModel";
+import { buildRulaPriorityDistribution, rulaActionLevels, summarizeRulaActionWorkflow, type RulaOverviewCorrectiveAction, type RulaOverviewMetrics, type RulaOverviewResult } from "./rulaOverviewModel";
 import type { CSSProperties } from "react";
 
 const actionLevelColors: Record<(typeof rulaActionLevels)[number], string> = {
@@ -62,13 +62,12 @@ function RulaRiskDistributionChart({ metrics, locale }: { metrics: RulaOverviewM
     </div>
     <div className="fmea-risk-legend rula-risk-legend" role="group" aria-label={t("assessment.rulaRiskDistributionTitle")}>
       {metrics.riskDistribution.map((entry) => <button type="button" className={`fmea-risk-legend-item${entry.actionLevel === activeActionLevel ? " is-active" : ""}`} key={entry.actionLevel} aria-label={describeEntry(entry)} onMouseEnter={() => setActiveActionLevel(entry.actionLevel)} onMouseLeave={() => setActiveActionLevel(null)} onFocus={() => setActiveActionLevel(entry.actionLevel)} onBlur={() => setActiveActionLevel(null)}><span className="fmea-risk-legend-dot" style={{ background: actionLevelColors[entry.actionLevel] }}/><span className={`rula-risk-level-badge action-level-${entry.actionLevel}`}>{t(actionLevelLabelKey(entry.actionLevel))}</span><span className="fmea-risk-legend-value"><strong>{entry.count.toLocaleString(numberLocale)}</strong><small>{percentText(entry.percentage, locale)}</small></span></button>)}
-      {metrics.totalResults === 0 && <small className="rula-overview-pending-note">{t("assessment.rulaAutomaticAnalysisPending")}</small>}
+      {metrics.totalResults === 0 && <small className="rula-overview-pending-note">{t("assessment.rulaPriorityDistributionEmpty")}</small>}
     </div>
   </div>;
 }
 
 export function RulaReportOverview({
-  riskResults,
   actions,
   score,
   actionLevelLabel,
@@ -81,8 +80,10 @@ export function RulaReportOverview({
   mainFactor,
 }: RulaReportOverviewProps) {
   const { locale, t } = useI18n();
-  const correctiveActionSummary = summarizeRulaCorrectiveActions(actions);
-  const metrics = buildRulaOverviewMetrics(riskResults, reviewComplete);
+  const correctiveActionSummary = summarizeRulaActionWorkflow(actions);
+  const inProgressPercent = correctiveActionSummary.totalCount ? correctiveActionSummary.inProgressCount / correctiveActionSummary.totalCount * 100 : 0;
+  const completedPercent = correctiveActionSummary.totalCount ? correctiveActionSummary.completedCount / correctiveActionSummary.totalCount * 100 : 0;
+  const metrics = buildRulaPriorityDistribution(actions);
   const completionProgressLabel = t("assessment.rulaCompletedActionsProgressAria", {
     completed: numberText(correctiveActionSummary.completedCount, locale),
     total: numberText(correctiveActionSummary.totalCount, locale),
@@ -119,7 +120,7 @@ export function RulaReportOverview({
 
     <SectionCard className="rula-overview-panel rula-overview-actions-panel" title={t("assessment.rulaActionProgressTitle")} description={t("assessment.rulaActionProgressDescription")} icon="actions">
       <div className="fmea-action-progress-layout rula-overview-actions">
-        <div className="fmea-action-progress-ring" style={{ background: `conic-gradient(#138a61 ${correctiveActionSummary.completionPercent}%, #e6eef2 0)` } as CSSProperties} role="progressbar" aria-label={completionProgressLabel} aria-valuemin={0} aria-valuemax={100} aria-valuenow={correctiveActionSummary.completionPercent}>
+        <div className="fmea-action-progress-ring" style={{ background: `conic-gradient(#138a61 0% ${completedPercent}%, #e19a31 ${completedPercent}% ${completedPercent + inProgressPercent}%, #e6eef2 ${completedPercent + inProgressPercent}% 100%)` } as CSSProperties} role="progressbar" aria-label={completionProgressLabel} aria-valuemin={0} aria-valuemax={100} aria-valuenow={correctiveActionSummary.completionPercent}>
           <div><strong>{percentText(correctiveActionSummary.completionPercent, locale)}</strong><small>{t("assessment.rulaCompletedActionsLabel")}</small></div>
         </div>
         <div className="fmea-action-progress-list">

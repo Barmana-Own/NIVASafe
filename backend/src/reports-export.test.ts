@@ -1,8 +1,11 @@
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildFmeaFinalTablePdfDocument, buildFmeaFinalTableWorkbook, buildFmeaFinalTableWordDocument, buildFmeaPdfLines, buildFmeaReportPdfDocument, buildFmeaWorkbook, buildFmeaWordDocument, buildPdfDocument, buildRegisteredReportSummaries, buildRulaPdfLines, buildRulaReportPdfDocument, buildRulaWorkbook, buildRulaWordDocument, FMEA_FINAL_TABLE_HEADERS, type FmeaReportData, type FmeaReportPayload, type RulaReportData, type RulaReportExport } from "./modules/reports.js";
 import { actionPriority, summariseFmea } from "./fmea-report.js";
+import { pdfTextRuns } from "./modules/reports.js";
 
 const fmea: FmeaReportData = {
   title: "Production line FMEA",
@@ -75,6 +78,10 @@ function worksheetValues(sheet: ExcelJS.Worksheet) {
   return values;
 }
 
+function processEnvQaDirectory() {
+  return process.env.RULA_REPORT_QA_DIR;
+}
+
 function dashboardMetricValue(sheet: ExcelJS.Worksheet, label: string) {
   let labelRow = 0;
   let labelColumn = 0;
@@ -92,6 +99,128 @@ function dashboardMetricValue(sheet: ExcelJS.Worksheet, label: string) {
 }
 
 describe("assessment report exports", () => {
+  it("keeps Persian and Arabic date digits in logical LTR order beside RTL labels", () => {
+    for (const date of ["۱۴۰۵/۰۶/۱۱", "١٤٠٥/٠٦/١١", "2026-09-02"]) {
+      const layout = pdfTextRuns(`تاریخ: ${date}`);
+      expect(layout.baseDirection).toBe("rtl");
+      expect(layout.runs).toContainEqual({ direction: "ltr", text: date });
+      expect(layout.runs[0]).toEqual({ direction: "rtl", text: "تاریخ: " });
+    }
+  });
+  it("exports complete Persian FMEA guidance, recommendations and editable risk tables", async () => {
+    const description = "اپراتور بسته‌بندی مسئول آماده‌سازی، تنظیم و راه‌اندازی دستگاه‌های بسته‌بندی، قراردهی و نصب کالاها در بسته‌بندی مناسب، کنترل کیفیت بصری بسته‌ها، برچسب‌زنی و ثبت اطلاعات تولید، تعویض رول‌ها و مواد بسته‌بندی، انجام تنظیمات جهت حفظ نرخ تولید و حداقل ضایعات، و همکاری در نظافت و نگهداری پایه‌ای تجهیزات طبق دستورالعمل‌های ایمنی و کیفیت است.";
+    const scores = [[6, 4, 5], [7, 2, 6], [7, 3, 5], [8, 3, 5], [8, 3, 5], [8, 3, 4], [7, 3, 5], [8, 3, 4], [7, 2, 6], [6, 4, 5]];
+    const data: FmeaReportData = {
+      ...fmea, title: "ارزیابی ریسک اپراتور بسته‌بندی", code: "FMEA-MUMF88P3", activityDescription: description,
+      jobCatalog: { titleFa: "اپراتور بسته‌بندی", titleEn: "Packing operator" },
+      items: scores.map(([severity, occurrence, detection], index) => ({
+        ...fmea.items[0]!, id: `risk-${index + 1}`, rowNumber: index + 1,
+        processStep: "بسته‌بندی محصول", failureMode: `خطر مرحله بسته‌بندی ${index + 1}`,
+        effect: "آسیب شغلی یا خسارت به تجهیز و توقف کار", cause: "محافظ‌گذاری یا محدوده ممنوعه کافی نیست",
+        preventiveControls: "محافظ‌گذاری، ایزولاسیون و علامت‌گذاری محدوده", detectionControls: "بازرسی پیش از استفاده و تأیید سرپرست",
+        recommendation: `کنترل‌های مرحله ${index + 1} را پیش از شروع تأیید کنید`,
+        severity: severity!, occurrence: occurrence!, detection: detection!, rpn: severity! * occurrence! * detection!,
+      })),
+      actions: [{ ...fmea.actions[0]!, title: "بازبینی حفاظ دستگاه", description: description, progress: 37, assigneeName: "مسئول ایمنی", fmeaItemId: "risk-1", fmeaItem: { rowNumber: 1, failureMode: "خطر مرحله بسته‌بندی 1" } }],
+    };
+    const reportItems = data.items.map((item) => ({ ...item, id: item.id!, riskLevel: item.rpn >= 101 ? "MEDIUM" : "LOW", actionPriority: "MEDIUM", correctiveActions: [] }));
+    const report: FmeaReportPayload = {
+      ...fmeaPageReport, assessment: { ...fmeaPageReport.assessment, title: data.title, code: data.code },
+      items: reportItems, topFailureModes: reportItems, summary: summariseFmea(reportItems),
+      actions: data.actions.map((action) => ({ ...action, id: "action-1", fmeaItemId: action.fmeaItemId! })),
+      suggestedActions: reportItems.slice(0, 8).map((item, index) => ({ ...fmeaPageReport.suggestedActions[0]!, id: `suggestion-${index}`, fmeaItemId: item.id, failureMode: item.failureMode, title: `پیشنهاد اصلاح مرحله ${index + 1}` })),
+    };
+    const word = await buildFmeaWordDocument(data, "fa", report);
+    const archive = await JSZip.loadAsync(word);
+    const xml = await archive.file("word/document.xml")!.async("string");
+    const text = xml.replace(/<[^>]+>/g, "");
+    expect(text.indexOf("خلاصه مدیریتی ریسک")).toBeLessThan(text.indexOf("مشخصات ارزیابی"));
+    expect(text).toContain("راهنمای خواندن گزارش");
+    expect(text).toContain("RPN = S × O × D.");
+    expect(text).toContain("پیشنهاد اصلاح مرحله 8");
+    expect(text).toContain(description);
+    expect(xml).toContain('<w:jc w:val="center"/>');
+    expect(xml).toContain('<w:rtl w:val="0"/>');
+    expect(xml).toContain('<w:rtl w:val="1"/>');
+    const excel = await buildFmeaWorkbook(data, "fa", report);
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(excel as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    expect(workbook.getWorksheet("FMEA")!.rowCount).toBe(11);
+    expect(workbook.getWorksheet("PROPOSED ACTIONS")!.rowCount).toBe(9);
+    expect(workbook.getWorksheet("ACTIONS")!.getCell("G2").value).toBe(37);
+    expect(workbook.getWorksheet("ACTIONS")!.getCell("G2").numFmt).toBe('0"%"');
+    expect(workbook.getWorksheet("RISK DISTRIBUTION")!.getCell("C4").value).toBe(0.6);
+    expect(workbook.getWorksheet("RISK DISTRIBUTION")!.getCell("C4").numFmt).toBe("0.0%");
+    expect(worksheetValues(workbook.getWorksheet("PROCESS")!)).toContain(description);
+    expect(workbook.getWorksheet("FMEA")!.views[0]!.rightToLeft).toBe(true);
+    expect(worksheetValues(workbook.getWorksheet("SUMMARY")!).join(" ")).toContain("بحرانی از 401");
+    const pdf = await buildFmeaReportPdfDocument(data, report, "fa");
+    const finalPdf = await buildFmeaFinalTablePdfDocument(data, "fa");
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+    if (process.env.FMEA_REPORT_QA_DIR) {
+      const directory = process.env.FMEA_REPORT_QA_DIR;
+      await mkdir(directory, { recursive: true });
+      await Promise.all([
+        writeFile(path.join(directory, "FMEA-fa.pdf"), pdf),
+        writeFile(path.join(directory, "FMEA-final-fa.pdf"), finalPdf),
+        writeFile(path.join(directory, "FMEA-fa.docx"), word),
+        writeFile(path.join(directory, "FMEA-fa.xlsx"), excel),
+      ]);
+    }
+  });
+  it("preserves mixed Persian identifiers and long descriptions in editable RULA exports", async () => {
+    const task = "اپراتور تصفیه‌خانه طی شیفت کاری با ایستادن یا نشستن در کنار دستگاه‌ها و پنل‌ها، کارهای کنترلی و نظارتی را انجام می‌دهد؛ شامل مشاهده نمایشگرها، تنظیم دسته‌ها و سوئیچ‌ها، برداشتن و گذاشتن ابزار یا نمونه‌ها با دست‌ها و مداخله دستی محدود در اتصالات و شلنگ‌ها که نیاز به حرکت مکرر بازوها، خم شدن جزئی تنه و تغییر موقعیت مچ و گردن برای دیدن نمایشگرها دارد.";
+    const data: RulaReportData = { ...rula, title: "ارزیابی اپراتور تصفیه‌خانه RULA-001", project: { name: "پروژه ایمنی" }, activityInfo: { ...rula.activityInfo!, taskDescription: task } };
+    const report = { ...rulaReport, assessment: data };
+    const word = await buildRulaWordDocument(data, report, "fa");
+    const zip = await JSZip.loadAsync(word);
+    const document = await zip.file("word/document.xml")!.async("string");
+    const styles = await zip.file("word/styles.xml")!.async("string");
+    expect(document).toContain('<w:rtl w:val="0"/>');
+    expect(document).toContain('<w:rtl w:val="1"/>');
+    expect(document).toContain('>RULA-001</w:t>');
+    expect(document).toContain(task);
+    expect(styles).toContain('w:cs="Tahoma"');
+    expect(styles).toContain('<w:szCs w:val="22"/>');
+    expect(styles).toContain('<w:keepNext/>');
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(await buildRulaWorkbook(data, report, "fa") as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    const process = workbook.getWorksheet("PROCESS")!;
+    const overview = workbook.getWorksheet("RULA")!;
+    let found = false;
+    for (const sheet of [process, overview]) {
+      sheet.eachRow((row) => row.eachCell((cell) => {
+        if (cell.value !== task) return;
+        found = true;
+        expect(cell.font.name).toBe("Tahoma");
+        expect(cell.alignment.readingOrder).toBe("rtl");
+        expect(cell.alignment.wrapText).toBe(true);
+        expect(row.height).toBeGreaterThan(42);
+      }));
+      expect(sheet.pageSetup.fitToHeight).toBe(0);
+    }
+    expect(found).toBe(true);
+    const postureRows = workbook.getWorksheet("RULA DATA")!;
+    let neckShare: unknown;
+    postureRows.eachRow((row) => { if (row.getCell(3).value === "گردن") neckShare = row.getCell(7).value; });
+    expect(neckShare).toBe("20%");
+    const reloaded = new ExcelJS.Workbook();
+    const excel = await workbook.xlsx.writeBuffer();
+    await reloaded.xlsx.load(excel);
+    expect(worksheetValues(reloaded.getWorksheet("PROCESS")!)).toContain(task);
+    const pdf = await buildRulaReportPdfDocument(data, report, "fa");
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+    // Optional local visual QA artifacts, never enabled during normal test runs or production.
+    const qaDirectory = processEnvQaDirectory();
+    if (qaDirectory) {
+      await mkdir(qaDirectory, { recursive: true });
+      await Promise.all([
+        writeFile(path.join(qaDirectory, "RULA-fa.pdf"), pdf),
+        writeFile(path.join(qaDirectory, "RULA-fa.docx"), word),
+        writeFile(path.join(qaDirectory, "RULA-fa.xlsx"), Buffer.from(excel)),
+      ]);
+    }
+  });
   it("orders registered FMEA and RULA reports by finalization date", () => {
     const reports = buildRegisteredReportSummaries(
       [{ id: "fmea-1", title: "FMEA one", code: "FMEA-1", projectName: "Project one", projectCode: "P-1", finalizedAt: new Date("2026-09-20T10:00:00.000Z") }],
@@ -238,7 +367,7 @@ describe("assessment report exports", () => {
     const overview = workbook.getWorksheet("RULA")!;
     const overviewValues = worksheetValues(overview);
     expect(overviewValues).toEqual(expect.arrayContaining([
-      "Factor score distribution", "Corrective-action progress", "Main factors",
+      "Factor score distribution", "Corrective-action selection status", "Main factors",
       "Proposed corrective actions", "Predicted effect", "RULA assessment data", "Selected corrective actions",
     ]));
     expect(dashboardMetricValue(overview, "Score")).toBe(6);
@@ -366,7 +495,7 @@ describe("assessment report exports", () => {
 
     const archive = await JSZip.loadAsync(wordBuffer);
     const document = await archive.file("word/document.xml")!.async("string");
-    for (const value of ["Status", "IN_REVIEW", "Predicted score (estimate)", "Reassess after controls", "neck", "43%", "Adjust work surface", "neck, trunk", "Selected", "Process information", "RULA assessment data", "Proposed corrective actions", "Packing operator", "Factor score distribution", "Corrective-action progress", "Total factor score"]) {
+    for (const value of ["Status", "IN_REVIEW", "Predicted score (estimate)", "Reassess after controls", "neck", "43%", "Adjust work surface", "neck, trunk", "Selected", "Process information", "RULA assessment data", "Proposed corrective actions", "Packing operator", "Factor score distribution", "Corrective-action selection status", "Total factor score"]) {
       expect(document).toContain(value);
     }
     expect(document).toContain("<w:shd w:fill=\"F1F7FC\"/>");
@@ -385,8 +514,8 @@ describe("assessment report exports", () => {
     const wordBuffer = await buildRulaWordDocument(localizedRula, { ...rulaReport, assessment: localizedRula }, "fa");
     const wordArchive = await JSZip.loadAsync(wordBuffer);
     const wordDocument = await wordArchive.file("word/document.xml")!.async("string");
-    expect(wordDocument).toContain("NIVASafe — ارزیابی ارگونومی RULA");
-    expect(wordDocument).toContain("جدول داده‌های ارزیابی RULA");
+    expect(wordDocument.replace(/<[^>]+>/g, "")).toContain("NIVASafe — ارزیابی ارگونومی RULA");
+    expect(wordDocument.replace(/<[^>]+>/g, "")).toContain("جدول داده‌های ارزیابی RULA");
     expect(wordDocument).toContain("تاریخ انجام ارزیابی");
 
     const workbookBuffer = await buildRulaWorkbook(localizedRula, { ...rulaReport, assessment: localizedRula }, "fa");
@@ -454,7 +583,7 @@ describe("assessment report exports", () => {
     expect(fmeaXml).toContain("<w:bidiVisual/>");
     expect(fmeaXml).toContain("<w:color w:val=\"FFFFFF\"/>");
     expect(fmeaXml).toContain("<w:br/>");
-    expect(fmeaXml).toContain("جزئیات کامل FMEA");
+    expect(fmeaXml.replace(/<[^>]+>/g, "")).toContain("جزئیات کامل FMEA");
     expect(fmeaXml).toContain("Review the loading procedure");
 
     const hostileWord = await buildFmeaWordDocument({ ...fmea, project: { name: "<script>alert('x')</script>" } });
@@ -479,7 +608,7 @@ describe("assessment report exports", () => {
     const wordBuffer = await buildFmeaWordDocument(fmea, "fa");
     const wordArchive = await JSZip.loadAsync(wordBuffer);
     const wordDocument = await wordArchive.file("word/document.xml")!.async("string");
-    expect(wordDocument).toContain("NIVASafe — ارزیابی ریسک FMEA");
+    expect(wordDocument.replace(/<[^>]+>/g, "")).toContain("NIVASafe — ارزیابی ریسک FMEA");
     expect(wordDocument).toContain("مشخصات ارزیابی");
     expect(wordDocument).toContain("تاریخ ارزیابی");
     expect(wordDocument).toContain("حالت خرابی");
@@ -487,7 +616,7 @@ describe("assessment report exports", () => {
     const finalWordBuffer = await buildFmeaFinalTableWordDocument(fmea, "fa");
     const finalWordArchive = await JSZip.loadAsync(finalWordBuffer);
     const finalWordDocument = await finalWordArchive.file("word/document.xml")!.async("string");
-    expect(finalWordDocument).toContain("جدول نهایی ارزیابی FMEA");
+    expect(finalWordDocument.replace(/<[^>]+>/g, "")).toContain("جدول نهایی ارزیابی FMEA");
     expect(finalWordDocument).toContain("جزئیات ارزیابی");
     expect(finalWordDocument).toContain("نام فرآیند / شغل");
 

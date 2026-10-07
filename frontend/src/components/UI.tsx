@@ -2,6 +2,7 @@ import { Children, createContext, isValidElement, useContext, useEffect, useId, 
 import { getCurrentLocale } from "../api/client";
 import { translate, useI18n } from "../i18n";
 import type { AppTheme } from "../theme";
+import { useMenuPlacement } from "./useMenuPlacement";
 
 export type IconName =
   | "dashboard" | "projects" | "fmea" | "rula" | "actions" | "files"
@@ -81,6 +82,8 @@ export function StyledSelect({ children, className = "", id, name, value, defaul
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const nativeSelectRef = useRef<HTMLSelectElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuPlacement = useMenuPlacement(open, rootRef, menuRef);
   const menuId = `styled-select-menu-${useId().replace(/:/g, "")}`;
   const selectedValue = String(value ?? internalValue);
   const selectedIndex = options.findIndex((option) => option.value === selectedValue);
@@ -184,7 +187,7 @@ export function StyledSelect({ children, className = "", id, name, value, defaul
       <span className={`styled-select-value${selectedOption ? "" : " is-placeholder"}`}>{selectedOption?.label ?? "—"}</span>
       <span className={`styled-select-chevron${open ? " is-open" : ""}`} aria-hidden="true">⌄</span>
     </button>
-    {open && <div id={menuId} className="styled-select-menu" role="listbox" aria-label={ariaProps["aria-label"]}>
+    {open && <div ref={menuRef} {...menuPlacement} id={menuId} className="styled-select-menu" role="listbox" aria-label={ariaProps["aria-label"]}>
       {options.map((option, index) => <button id={`${menuId}-option-${index}`} key={`${option.value}-${index}`} type="button" role="option" aria-selected={option.value === selectedValue} className={`styled-select-option${option.value === selectedValue ? " is-selected" : ""}${index === highlightedIndex ? " is-highlighted" : ""}`} disabled={option.disabled} onMouseEnter={() => setHighlightedIndex(index)} onMouseDown={(event) => event.preventDefault()} onClick={() => choose(index)}><span>{option.label}</span>{option.value === selectedValue && <span className="styled-select-check" aria-hidden="true">✓</span>}</button>)}
     </div>}
   </div>;
@@ -194,6 +197,8 @@ export function ThemeSwitcher({ theme, onChange, className = "" }: { theme: AppT
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuPlacement = useMenuPlacement(open, pickerRef, menuRef, 320, 7);
   const menuId = `theme-menu-${useId().replace(/:/g, "")}`;
   const options: Array<{ value: AppTheme; labelKey: string }> = [
     { value: "blue", labelKey: "shell.themeBlue" },
@@ -229,7 +234,7 @@ export function ThemeSwitcher({ theme, onChange, className = "" }: { theme: AppT
     <button type="button" className="theme-option theme-trigger selected" data-theme-option={selectedOption.value} aria-pressed="true" aria-haspopup="menu" aria-expanded={open} aria-controls={menuId} aria-label={`${selectedLabel}، ${t("shell.chooseTheme")}`} title={t("shell.chooseTheme")} onClick={() => setOpen((value) => !value)}>
       <span className="theme-swatch" aria-hidden="true"/><span className="theme-option-label">{selectedLabel}</span><span className={`theme-switch-chevron ${open ? "open" : ""}`} aria-hidden="true">⌄</span>
     </button>
-    {open && <div id={menuId} className="theme-options-menu" role="menu" aria-label={t("shell.chooseTheme")}>
+    {open && <div ref={menuRef} {...menuPlacement} id={menuId} className="theme-options-menu" role="menu" aria-label={t("shell.chooseTheme")}>
       <button type="button" className="theme-option theme-menu-option" data-theme-option={alternateOption.value} role="menuitem" aria-label={alternateLabel} title={alternateLabel} onClick={() => chooseTheme(alternateOption.value)}>
         <span className="theme-swatch" aria-hidden="true"/><span className="theme-option-label">{alternateLabel}</span>
       </button>

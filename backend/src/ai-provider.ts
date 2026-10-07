@@ -20,7 +20,7 @@ export interface AIUsage {
 
 export type AIConversationTurn = { role: "user" | "assistant"; content: string };
 export type AIImagePurpose = "fmea-process" | "rula-posture";
-export type AIProviderInput = { organizationId: string; userId?: string; message: string; locale?: "fa" | "en"; history?: AIConversationTurn[]; imagePurpose?: AIImagePurpose; image?: { mimeType: string; base64: string }; includeKnowledge?: boolean };
+export type AIProviderInput = { organizationId: string; userId?: string; message: string; locale?: "fa" | "en"; history?: AIConversationTurn[]; imagePurpose?: AIImagePurpose; image?: { mimeType: string; base64: string }; includeKnowledge?: boolean; maxOutputTokens?: number };
 
 export interface AIProvider {
   readonly name: string;
@@ -47,8 +47,8 @@ const DEFAULT_PROVIDER_MAX_ATTEMPTS = 2;
 const MAX_PROVIDER_MAX_ATTEMPTS = 3;
 const DEFAULT_PROVIDER_RETRY_DELAY_MS = 250;
 const MAX_PROVIDER_RETRY_DELAY_MS = 5_000;
-const MAX_HISTORY_TURNS = 6;
-const MAX_HISTORY_CHARS_PER_TURN = 800;
+const MAX_HISTORY_TURNS = 12;
+const MAX_HISTORY_CHARS_PER_TURN = 8_000;
 const transientProviderStatusCodes = new Set([408, 425, 429, 500, 502, 503, 504]);
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -196,11 +196,11 @@ function knowledgeUpdatedAt(document: KnowledgeDocumentRow) {
   return document.updatedAt instanceof Date ? document.updatedAt.getTime() : 0;
 }
 
-function outputTokenLimit(useCase: AIUseCase) {
+function outputTokenLimit(useCase: AIUseCase, requested?: number) {
   const environmentKey = useCase === "chat" ? "AI_CHAT_MAX_OUTPUT_TOKENS" : "AI_MAX_OUTPUT_TOKENS";
   const defaultLimit = useCase === "chat" ? 900 : 1600;
   const rawValue = process.env[environmentKey]?.trim();
-  const configured = rawValue ? Number(rawValue) : defaultLimit;
+  const configured = requested !== undefined && Number.isFinite(requested) ? requested : rawValue ? Number(rawValue) : defaultLimit;
   return Number.isFinite(configured) ? Math.min(Math.max(Math.trunc(configured), 128), 8000) : defaultLimit;
 }
 
@@ -236,12 +236,12 @@ async function loadKnowledge(organizationId: string, message: string, userId: st
   };
 }
 
-async function fetchJson<T>(url: string, init: RequestInit): Promise<T> {
-  const maxAttempts = providerMaxAttempts();
+async function fetchJson<T>(url: string, init: RequestInit, options?: { maxAttempts: number; timeoutMs: number }): Promise<T> {
+  const maxAttempts = options?.maxAttempts ?? providerMaxAttempts();
   let lastError: unknown;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), providerTimeoutMs());
+    const timeout = setTimeout(() => controller.abort(), options?.timeoutMs ?? providerTimeoutMs());
     try {
       const response = await fetch(url, { ...init, signal: controller.signal });
       const text = await response.text();
@@ -310,11 +310,22 @@ abstract class HttpProvider implements AIProvider {
     return null;
   }
   protected async prompt(input: AIProviderInput) {
-    const knowledge = input.includeKnowledge === false ? { context: "", citations: [] } : await loadKnowledge(input.organizationId, input.message, input.userId, this.useCase);
-    const history = (input.history ?? []).slice(-MAX_HISTORY_TURNS).map((turn) => {
-      const content = turn.content.trim().slice(0, MAX_HISTORY_CHARS_PER_TURN);
+    let knowledge: Awaited<ReturnType<typeof loadKnowledge>> = { context: "", citations: [] };
+    if (input.includeKnowledge !== false) {
+      try {
+        knowledge = await loadKnowledge(input.organizationId, input.message, input.userId, this.useCase);
+      } catch (error) {
+        if (this.useCase !== "chat") throw error;
+        // Knowledge is supplementary to chat; do not misreport its outage as model disconnection.
+        console.warn(JSON.stringify({ event: "CHAT_KNOWLEDGE_UNAVAILABLE", provider: this.name }));
+      }
+    }
+    let historyBudget = 24_000;
+    const history = (input.history ?? []).slice(-MAX_HISTORY_TURNS).reverse().map((turn) => {
+      const content = turn.content.trim().slice(0, Math.min(MAX_HISTORY_CHARS_PER_TURN, historyBudget));
+      historyBudget -= content.length;
       return content ? `${turn.role === "assistant" ? "Assistant" : "User"}: ${content}` : "";
-    }).filter(Boolean).join("\n");
+    }).filter(Boolean).reverse().join("\n");
     const sections = [
       knowledge.context ? `Organization knowledge (reference only):\n${knowledge.context}` : "",
       history ? `Recent conversation history (reference only):\n${history}` : "",
@@ -396,7 +407,7 @@ class ArvanCloudProvider extends HttpProvider {
       body: JSON.stringify({
         model: this.model,
         messages: [{ role: "system", content: systemInstruction(this.useCase) }, { role: "user", content: messageContent }],
-        max_tokens: outputTokenLimit(this.useCase),
+        max_tokens: outputTokenLimit(this.useCase, input.maxOutputTokens),
       }),
     });
     const answer = normaliseAIAnswer(extractChatCompletionText(payload), this.useCase);
@@ -440,9 +451,11 @@ class GapGptProvider extends HttpProvider {
       body: JSON.stringify({
         model: this.model,
         messages: [{ role: "system", content: systemInstruction(this.useCase) }, { role: "user", content: messageContent }],
-        max_tokens: outputTokenLimit(this.useCase),
+        ...(this.model?.toLowerCase().startsWith("gpt-5")
+          ? { max_completion_tokens: outputTokenLimit(this.useCase, input.maxOutputTokens), ...(input.imagePurpose === "rula-posture" ? { reasoning_effort: "low", response_format: { type: "json_object" } } : {}) }
+          : { max_tokens: outputTokenLimit(this.useCase, input.maxOutputTokens) }),
       }),
-    });
+    }, input.imagePurpose === "rula-posture" ? { maxAttempts: 1, timeoutMs: 45_000 } : this.useCase === "chat" ? { maxAttempts: 1, timeoutMs: 60_000 } : undefined);
     const answer = normaliseAIAnswer(extractChatCompletionText(payload), this.useCase);
     if (!answer) throw Object.assign(new Error("GapGPT returned no text output"), { code: "EMPTY_PROVIDER_RESPONSE" });
     const model = normaliseModel(payload.model, this.model);
@@ -466,7 +479,7 @@ class OpenAIProvider extends HttpProvider {
     }>("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: { Authorization: `Bearer ${this.key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: this.model, store: false, instructions: systemInstruction(this.useCase), input: userText, max_output_tokens: outputTokenLimit(this.useCase) }),
+      body: JSON.stringify({ model: this.model, store: false, instructions: systemInstruction(this.useCase), input: userText, max_output_tokens: outputTokenLimit(this.useCase, input.maxOutputTokens) }),
     });
     const answer = normaliseAIAnswer(payload.output_text?.trim() || payload.output?.flatMap((item) => item.content ?? []).filter((item) => item.type === "output_text").map((item) => item.text ?? "").join("\n").trim() || "", this.useCase);
     if (!answer) throw Object.assign(new Error("OpenAI returned no text output"), { code: "EMPTY_PROVIDER_RESPONSE" });
@@ -488,7 +501,7 @@ class GeminiProvider extends HttpProvider {
     }>(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model!)}:generateContent`, {
       method: "POST",
       headers: { "x-goog-api-key": this.key!, "Content-Type": "application/json" },
-      body: JSON.stringify({ system_instruction: { parts: [{ text: systemInstruction(this.useCase) }] }, contents: [{ role: "user", parts: [{ text: userText }] }], generationConfig: { maxOutputTokens: outputTokenLimit(this.useCase) } }),
+      body: JSON.stringify({ system_instruction: { parts: [{ text: systemInstruction(this.useCase) }] }, contents: [{ role: "user", parts: [{ text: userText }] }], generationConfig: { maxOutputTokens: outputTokenLimit(this.useCase, input.maxOutputTokens) } }),
     });
     const answer = normaliseAIAnswer(payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("\n").trim() || "", this.useCase);
     if (!answer) throw Object.assign(new Error("Gemini returned no text output"), { code: "EMPTY_PROVIDER_RESPONSE" });
@@ -506,7 +519,7 @@ class AnthropicProvider extends HttpProvider {
     const payload = await fetchJson<{ content?: Array<{ type?: string; text?: string }>; model?: unknown; usage?: unknown }>("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": this.key!, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-      body: JSON.stringify({ model: this.model, max_tokens: outputTokenLimit(this.useCase), system: systemInstruction(this.useCase), messages: [{ role: "user", content: userText }] }),
+      body: JSON.stringify({ model: this.model, max_tokens: outputTokenLimit(this.useCase, input.maxOutputTokens), system: systemInstruction(this.useCase), messages: [{ role: "user", content: userText }] }),
     });
     const answer = normaliseAIAnswer(payload.content?.filter((item) => item.type === "text").map((item) => item.text ?? "").join("\n").trim() || "", this.useCase);
     if (!answer) throw Object.assign(new Error("Anthropic returned no text output"), { code: "EMPTY_PROVIDER_RESPONSE" });
@@ -608,7 +621,7 @@ export function getAvailableAssessmentAIProvider() {
 }
 
 export function getRulaPostureImageAIProvider() {
-  return getAIProvider("gapgpt", "risk");
+  return getAIProvider("gapgpt", "risk", "gpt-5-mini");
 }
 
 export function getRoutedAIProvider(useCase: AIUseCase, requestedProvider?: string) {

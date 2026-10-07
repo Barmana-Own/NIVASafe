@@ -7,8 +7,7 @@ export const FMEA_PROCESS_ITEM_LENGTH_MAX = 160;
 export const FMEA_JOB_TITLE_MAX = 180;
 export const FMEA_JOB_TITLE_SUGGESTION_MAX = 8;
 export const FMEA_SPECIAL_CONDITIONS_MAX = 1_200;
-export const FMEA_PROCESS_RISK_ROW_SUGGESTION_MIN = 5;
-export const FMEA_PROCESS_RISK_ROW_SUGGESTION_MAX = 5;
+export const FMEA_PROCESS_RISK_ROW_SUGGESTION_MAX = 20;
 export const FMEA_RISK_AI_SUGGESTION_MAX_TOTAL = 15;
 
 export type ProcessSuggestionCategory = "equipment" | "materials" | "controls";
@@ -223,6 +222,12 @@ export function parseFmeaRiskScoreSuggestion(answer: string): FmeaRiskScoreSugge
   const detection = score("detection");
   if (severity === null || occurrence === null || detection === null) return null;
   return { severity, occurrence, detection, rationale: cleanText(suggestion.rationale, 320) || "Review the suggested scores against the actual work conditions before confirming them." };
+}
+
+export function hasExplicitlyEmptyFmeaRiskRows(answer: string): boolean {
+  const parsed = parseJsonObject(answer);
+  const rows = parsed?.riskRows ?? parsed?.rows;
+  return Array.isArray(rows) && rows.length === 0;
 }
 
 export function parseFmeaRiskRows(answer: string): FmeaRiskRowSuggestion[] {
@@ -463,7 +468,7 @@ export function buildFmeaRiskRowsPrompt(input: {
   return [
     "NIVASAFE_FMEA_RISK_ROWS",
     'Return only valid JSON: {"riskRows":[{"processStep":"","failureMode":"","effect":"","cause":"","preventiveControls":"","detectionControls":"","recommendation":"","severity":1,"occurrence":1,"detection":1}]}.' ,
-    `Use ${language}. Return exactly ${FMEA_PROCESS_RISK_ROW_SUGGESTION_MIN} distinct, concise editable FMEA risk-row drafts. Every text field must be no more than 1,200 characters. Do not add markdown, introductions, or explanations outside JSON.`,
+    `Use ${language}. Analyze the supplied activity and choose the number of relevant, distinct editable FMEA risk-row drafts yourself, up to ${FMEA_PROCESS_RISK_ROW_SUGGESTION_MAX} rows. Do not target a fixed count, pad the list, or duplicate hazards to reach the limit. Every text field must be no more than 1,200 characters; prefer concise wording. Do not add markdown, introductions, or explanations outside JSON.`,
     "This is an FMEA risk assessment, not a RULA ergonomic assessment. Each row must represent a plausible failure mode in the supplied process/activity, with a cause, effect, and controls that are causally connected to that row.",
     "Use the stage-one project, job, department, activity description, special conditions, and process step as the primary context. Do not invent exact measurements, equipment specifications, organization-specific facts, or unprovided incidents.",
     "Scores are advisory integers from 1 to 10 and must be reviewed by a qualified HSE assessor before final registration. These rows are defaults for the review table, not approved results.",

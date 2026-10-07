@@ -6,6 +6,7 @@ import { EmptyState, Icon, LocalizedDateInput, PageHeader, SectionCard, StatusBa
 import { AutoSaveForm, clearAutoSaveDraft } from "../../forms/AutoSaveForm";
 import { scopedDraftKey } from "../../forms/autoSave";
 import { useI18n } from "../../i18n";
+import { NOTIFICATIONS_CHANGED, notificationLink, notifyNotificationsChanged, type NotificationSummary } from "../notifications/notificationModel";
 
 export function LoadState<T>({ state, children, empty }: { state: ReturnType<typeof useLoad<T>>; children: (data: T) => ReactNode; empty?: string }) {
   const { t } = useI18n();
@@ -413,20 +414,22 @@ export function KnowledgePage() {
   </section>;
 }
 
-type Notification = { id: string; title: string; message: string; readAt?: string; createdAt: string };
 type NotificationPreferences = { emailEnabled: boolean; pushEnabled: boolean; riskAlerts: boolean; dueReminders: boolean };
 export function NotificationsPage() {
-  const state = useLoad<Notification[]>("/notifications"); const preferences = useLoad<NotificationPreferences>("/notifications/preferences"); const unread = state.data?.filter((x) => !x.readAt).length ?? 0; const [error, setError] = useState("");
+  const { session, orgId } = getSession();
+  const state = useLoad<NotificationSummary>("/notifications/summary?limit=100", [session?.user.id, orgId]); const preferences = useLoad<NotificationPreferences>("/notifications/preferences", [session?.user.id, orgId]); const unread = state.data?.unreadCount ?? 0; const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const { locale, t } = useI18n();
   const numberLocale = locale === "en" ? "en-US" : "fa-IR";
-  async function markOne(id: string) { try { setError(""); await api(`/notifications/${id}/read`, { method: "PATCH" }); state.reload(); } catch (reason) { setError((reason as Error).message); } }
-  async function markAll() { try { setError(""); await api("/notifications/read-all", { method: "POST" }); state.reload(); } catch (reason) { setError((reason as Error).message); } }
+  useEffect(() => { const changed = () => state.reload(); window.addEventListener(NOTIFICATIONS_CHANGED, changed); return () => window.removeEventListener(NOTIFICATIONS_CHANGED, changed); });
+  async function markOne(id: string) { if (busy) return; try { setBusy(true); setError(""); await api(`/notifications/${id}/read`, { method: "PATCH" }); notifyNotificationsChanged(); } catch (reason) { setError((reason as Error).message); } finally { setBusy(false); } }
+  async function markAll() { if (busy) return; try { setBusy(true); setError(""); await api("/notifications/read-all", { method: "POST" }); notifyNotificationsChanged(); } catch (reason) { setError((reason as Error).message); } finally { setBusy(false); } }
   async function togglePreference(key: keyof NotificationPreferences, value: boolean) { try { setError(""); await api("/notifications/preferences", { method: "PATCH", body: JSON.stringify({ [key]: value }) }); preferences.reload(); } catch (reason) { setError((reason as Error).message); } }
   const preferenceData = preferences.data;
-  return <section className="page-shell"><PageHeader eyebrow={t("notifications.eyebrow")} title={t("notifications.title")} description={`${unread.toLocaleString(numberLocale)} ${t("notifications.unread")}`} actions={<button className="ghost" disabled={!unread} onClick={() => void markAll()}><Icon name="check"/> {t("notifications.readAll")}</button>}/>
+  return <section className="page-shell"><PageHeader eyebrow={t("notifications.eyebrow")} title={t("notifications.title")} description={state.error ? t("common.loadFailed") : state.loading ? t("common.loading") : `${unread.toLocaleString(numberLocale)} ${t("notifications.unread")}`} actions={<button className="ghost" disabled={!unread || busy || state.loading || Boolean(state.error)} onClick={() => void markAll()}><Icon name="check"/> {t("notifications.readAll")}</button>}/>
      {error && <div className="alert error"><Icon name="warning"/>{error}</div>}
      {preferenceData && <SectionCard title={t("notifications.settings")} description={t("notifications.settingsDescription")} icon="notifications"><div className="preference-grid">{([ ["emailEnabled", "notifications.email", "notifications.emailDescription"], ["pushEnabled", "notifications.browser", "notifications.browserDescription"], ["riskAlerts", "notifications.risk", "notifications.riskDescription"], ["dueReminders", "notifications.due", "notifications.dueDescription"] ] as const).map(([key, labelKey, descriptionKey]) => <label className="checkbox-card" key={key}><input type="checkbox" checked={preferenceData[key]} onChange={(event) => void togglePreference(key, event.target.checked)}/><span><strong>{t(labelKey)}</strong><small>{t(descriptionKey)}</small></span></label>)}</div></SectionCard>}
-     <LoadState state={state} empty={t("notifications.none")}>{(data) => <div className="notification-list">{data.map((item) => <article className={`notification-card ${item.readAt ? "read" : "unread"}`} key={item.id}><span className="notification-icon"><Icon name={item.title.includes("بحرانی") || item.title.toLowerCase().includes("critical") ? "warning" : "notifications"}/></span><div><div className="notification-title"><h3>{item.title}</h3>{!item.readAt && <span>{t("notifications.new")}</span>}</div><p>{item.message}</p><small>{formatDate(item.createdAt, true)}</small></div>{!item.readAt && <button className="icon-button" title={t("notifications.markRead")} onClick={() => void markOne(item.id)}><Icon name="check"/></button>}</article>)}</div>}</LoadState>
+     <LoadState state={state} empty={t("notifications.none")}>{(data) => !data.items.length ? <EmptyState title={t("notifications.none")} icon="notifications"/> : <><p className="muted">{t("notifications.showing")} {data.items.length.toLocaleString(numberLocale)} / {data.total.toLocaleString(numberLocale)}</p><div className="notification-list">{data.items.map((item) => <article className={`notification-card ${item.readAt ? "read" : "unread"}`} key={item.id}><span className="notification-icon"><Icon name={item.title.includes("بحرانی") || item.title.toLowerCase().includes("critical") ? "warning" : "notifications"}/></span><div><div className="notification-title"><h3>{item.title}</h3>{!item.readAt && <span>{t("notifications.new")}</span>}</div><p>{item.message}</p><small>{formatDate(item.createdAt, true)}</small>{notificationLink(item.link) && <Link className="notification-details-link" to={notificationLink(item.link)!}>{t("notifications.openDetails")}</Link>}</div>{!item.readAt && <button className="icon-button" disabled={busy} title={t("notifications.markRead")} aria-label={t("notifications.markRead")} onClick={() => void markOne(item.id)}><Icon name="check"/></button>}</article>)}</div></>}</LoadState>
   </section>;
 }
 

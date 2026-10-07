@@ -85,3 +85,37 @@ export function buildRulaOverviewMetrics(results: readonly RulaOverviewResult[],
 
   return { riskDistribution, totalResults };
 }
+
+/** Priority-based distribution, not a replacement for the clinical RULA score.
+ * The caller supplies one inventory entry per action, even when it affects
+ * multiple posture rows. Pending posture review does not hide AI priorities.
+ */
+export function buildRulaPriorityDistribution(
+  actions: readonly RulaOverviewCorrectiveAction[],
+): RulaOverviewMetrics {
+  const priorityLevels: Readonly<Record<string, RulaActionLevel>> = {
+    CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1,
+  };
+  const results: RulaOverviewResult[] = [];
+  for (const action of actions) {
+    if (["CANCELLED", "REJECTED"].includes(action.status ?? "")) continue;
+    const level = Object.hasOwn(priorityLevels, action.priority) ? priorityLevels[action.priority] : undefined;
+    if (level !== undefined) results.push({ actionLevel: level });
+  }
+  return buildRulaOverviewMetrics(results, true);
+}
+
+/** Workflow inventory includes unselected recommendations as well as saved actions. */
+export function summarizeRulaActionWorkflow(actions: readonly RulaOverviewCorrectiveAction[]): RulaCorrectiveActionSummary {
+  const inventory = actions.filter((action) => !["CANCELLED", "REJECTED"].includes(action.status ?? ""));
+  const completedCount = inventory.filter((action) => action.status === "COMPLETED").length;
+  const remainingCount = inventory.filter((action) => action.status === "UNSELECTED").length;
+  return {
+    totalCount: inventory.length,
+    firstPriorityCount: inventory.filter((action) => ["HIGH", "CRITICAL"].includes(action.priority)).length,
+    completedCount,
+    remainingCount,
+    inProgressCount: inventory.length - completedCount - remainingCount,
+    completionPercent: inventory.length ? Math.round(completedCount / inventory.length * 100) : 0,
+  };
+}

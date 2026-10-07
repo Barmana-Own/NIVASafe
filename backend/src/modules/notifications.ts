@@ -2,8 +2,21 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { authenticate } from "../auth-guard.js";
 import { envelope, parse, prisma, requireOrg } from "../core.js";
+import { refreshOperationalNotifications } from "../notification-feed.js";
 
 export async function registerNotificationRoutes(app: FastifyInstance) {
+  app.get("/api/v1/notifications/summary", { preHandler: authenticate }, async (request) => {
+    const organizationId = requireOrg(request);
+    const { limit } = parse(z.object({ limit: z.coerce.number().int().min(1).max(100).default(8) }), request.query);
+    const where = { organizationId, userId: request.actor!.userId };
+    await refreshOperationalNotifications(organizationId, where.userId);
+    const [items, unreadCount, total] = await prisma.$transaction([
+      prisma.notification.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: limit, select: { id: true, title: true, message: true, link: true, readAt: true, createdAt: true } }),
+      prisma.notification.count({ where: { ...where, readAt: null } }),
+      prisma.notification.count({ where }),
+    ]);
+    return envelope({ items, unreadCount, total });
+  });
   app.get("/api/v1/notifications", { preHandler: authenticate }, async (request) => { const organizationId = requireOrg(request); return envelope(await prisma.notification.findMany({ where: { organizationId, userId: request.actor!.userId }, orderBy: { createdAt: "desc" }, take: 100 })); });
   app.patch("/api/v1/notifications/:id/read", { preHandler: authenticate }, async (request) => { const organizationId = requireOrg(request); const { id } = parse(z.object({ id: z.string().uuid() }), request.params); const result = await prisma.notification.updateMany({ where: { id, organizationId, userId: request.actor!.userId }, data: { readAt: new Date() } }); if (!result.count) throw Object.assign(new Error("Notification not found"), { statusCode: 404 }); return envelope({ success: true }); });
   app.post("/api/v1/notifications/read-all", { preHandler: authenticate }, async (request) => { const organizationId = requireOrg(request); await prisma.notification.updateMany({ where: { organizationId, userId: request.actor!.userId, readAt: null }, data: { readAt: new Date() } }); return envelope({ success: true }); });

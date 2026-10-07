@@ -6,6 +6,7 @@ const readSource = (path: string) => readFileSync(new URL(path, import.meta.url)
 const appSource = readSource("./App.tsx");
 const apiClientSource = readSource("./api/client.ts");
 const appLayoutSource = readSource("./layout/AppLayout.tsx");
+const headerNotificationsSource = readSource("./features/notifications/HeaderNotifications.tsx");
 const uiSource = readSource("./components/UI.tsx");
 const generalPagesSource = readSource("./features/general/GeneralPages.tsx");
 const accountPagesSource = readSource("./features/account/AccountPages.tsx");
@@ -90,9 +91,9 @@ describe("authenticated header controls", () => {
     expect(appLayoutSource).not.toContain("<StyledSelect");
     expect(appLayoutSource).not.toContain('className="ghost logout"');
     expect(appLayoutSource).toContain('className="side-logout"');
-    expect(appLayoutSource).toContain("function NotificationBell()");
-    expect(appLayoutSource).toContain('useLoad<HeaderNotification[]>("/notifications")');
-    expect(appLayoutSource).toContain('data-testid="header-notifications"');
+    expect(appLayoutSource).toContain('<HeaderNotifications key={`${session.user.id}:${orgId}`}');
+    expect(headerNotificationsSource).toContain('useLoad<NotificationSummary>("/notifications/summary")');
+    expect(headerNotificationsSource).toContain('data-testid="header-notifications"');
     expect(stylesSource).toContain(".header-notifications");
     expect(stylesSource).toContain(".notification-badge");
     expect(stylesSource).not.toContain(".header-actions .logout");
@@ -701,14 +702,14 @@ describe("FMEA creation stepper", () => {
 
   });
 
-  it("seeds five persisted details and renders the report details card before the manual add-row control", () => {
+  it("preserves up to twenty model-selected details and renders them before the manual add-row control", () => {
     expect(assessmentPagesSource).toContain('const [reviewDetailSeedLoading, setReviewDetailSeedLoading] = useState(false)');
     expect(assessmentPagesSource).toContain('body: JSON.stringify({ locale, autoCreate: true })');
     expect(assessmentPagesSource).toContain('detail-suggestions');
     expect(assessmentPagesSource).toContain('function FmeaStageTwoDetailsCard');
     expect(assessmentPagesSource).toContain('className="report-details-card"');
     expect(assessmentPagesSource).toContain('mode: "risk-rows"');
-    expect(assessmentPagesSource).toContain('riskRows?.slice(0, 5)');
+    expect(assessmentPagesSource).toContain('riskRows?.slice(0, 20)');
     expect(assessmentPagesSource).toContain('items={stageTwoDetailsItems}');
     expect(assessmentPagesSource).toContain('report.items.length === 0');
     expect(assessmentPagesSource).toContain('<FmeaStageTwoDetailsCard items={stageTwoDetailsItems}');
@@ -1357,15 +1358,12 @@ describe("assistant AI connectivity UX", () => {
   it("keeps the mobile shell inline and keeps the chat composer reachable", () => {
     expect(stylesSource).toContain(".topbar { flex-wrap: nowrap; row-gap: 0; }");
     expect(stylesSource).toContain(".header-actions { width: auto; flex: 0 0 auto; justify-content: flex-end; gap: .4rem; flex-wrap: nowrap; }");
-    expect(stylesSource).toContain(".topbar .language-menu { position: absolute;");
+    expect(stylesSource).toContain(".language-menu { position: absolute;");
     expect(stylesSource).toContain("inset-block-start: calc(100% + .5rem);");
     expect(stylesSource).toContain("inset-inline-start: auto; inset-inline-end: 0;");
     expect(stylesSource).not.toContain(".topbar .language-menu { position: fixed;");
-    expect(stylesSource).toContain(".login-toolbar .language-menu");
-    expect(stylesSource).toContain('[dir="rtl"] .login-toolbar .language-menu');
-
     expect(stylesSource).toContain("width: min(174px, calc(100vw - 1rem));");
-    expect(stylesSource).toContain('[dir="rtl"] .language-picker .language-menu { inset-inline-start: 0; inset-inline-end: auto; }');
+    expect(stylesSource).not.toContain('[dir="rtl"] .language-picker .language-menu { inset-inline-start: 0; inset-inline-end: auto; }');
     expect(stylesSource).toContain(".assistant-layout { position: relative; display: block; flex: 1 1 auto; min-height: 0; gap: 0; overflow: hidden; }");
     expect(stylesSource).toContain(".composer input { min-height: 44px; }");
     expect(stylesSource).toContain(".composer .primary { min-width: 44px; min-height: 44px; }");

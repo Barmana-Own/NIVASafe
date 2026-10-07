@@ -1,5 +1,62 @@
 {
   "project": "NIVASafe",
+  "latestRulaActionCompletionWorkflow": {
+    "classification": "focused-workflow-correction",
+    "status": "PASS_LOCAL_WITH_BROWSER_VERIFICATION_LIMITATION",
+    "scope": "Remaining unselected recommendations, in-progress selected actions, persisted per-action completion controls and three-segment chart with completed/total percentage; stage-three local preview statuses persist on submission.",
+    "validation": {
+      "backendTests": "PASS — 206 tests across 29 files",
+      "frontendTests": "PASS — 153 tests across 19 files",
+      "frontendBuildLintTypecheck": "PASS — existing large-bundle warning remains",
+      "backendBuildLintTypecheck": "PASS",
+      "apiContract": "PASS — 70 frontend paths, 123 backend routes",
+      "frontendStaticRender": "PASS — actual React overview markup and legend counts in Persian/English",
+      "security": "PASS — HTTP negative-access, invalid input and tenant scoping tests; permission gates and audit paths preserved",
+      "browserInteraction": "NOT_RUN",
+      "databaseIntegration": "NOT_RUN — route tests use a mocked database adapter",
+      "deployment": "NOT_PERFORMED"
+    },
+    "documentation": "docs/rula-action-completion-workflow.md",
+    "preservation": "No database, scoring, export, route or role removal; prior local work preserved."
+  },
+  "latestFmeaExportReadabilityChange": {
+    "classification": "focused-export-generator-correction",
+    "status": "IMPLEMENTED_WITH_VISUAL_VERIFICATION_LIMITATION",
+    "scope": "FMEA PDF executive summary first, interpretation guide and action due dates; editable proportional DOCX tables and untruncated supplied recommendations; numeric XLSX percentages; Persian/Arabic numeric token direction in PDF and DOCX.",
+    "validation": {
+      "backendTests": "PASS — 203 tests across 28 files",
+      "backendBuild": "PASS",
+      "backendTypecheckLint": "PASS",
+      "apiContract": "PASS — 70 frontend paths, 123 backend routes",
+      "pdfVisual": "PASS — six report and two final-table pages inspected; corrected dates and headers re-rendered",
+      "xlsx": "PASS — save/reopen, data, formats and RTL properties; five worksheet previews inspected with renderer RTL limitations documented",
+      "docxStructure": "PASS",
+      "docxVisual": "NOT_RUN — bundled LibreOffice unavailable",
+      "securityReview": "PASS — XML escaping, formula neutralization and authenticated tenant-scoped exports preserved",
+      "deployment": "NOT_PERFORMED"
+    },
+    "preservation": "Original samples, all workbook sheets, full risk tables, scoring rules and prior local work preserved; no new dependency or migration.",
+    "documentation": "docs/fmea-export-readability.md"
+  },
+  "latestRulaExportReadabilityChange": {
+    "classification": "focused-export-generator-correction",
+    "status": "IMPLEMENTED_WITH_VISUAL_VERIFICATION_LIMITATION",
+    "scope": "Persian PDF word layout, readable tables and compact charts; DOCX bidirectional runs and complex-script styles; XLSX adaptive row heights and explicit reading order; consistent posture score-share denominator and truthful recommendation-selection labels.",
+    "validation": {
+      "backendTests": "PASS — 201 tests across 28 files",
+      "backendBuild": "PASS",
+      "backendTypecheckLint": "PASS",
+      "apiContract": "PASS — 70 frontend paths, 123 backend routes",
+      "pdfVisual": "PASS — all four pages of the updated regression fixture inspected",
+      "xlsx": "PASS — save/reopen, RTL properties, content and row heights verified; PROCESS preview inspected",
+      "docxStructure": "PASS — run directions, styles, text preservation and escaping",
+      "docxVisual": "NOT_RUN — bundled LibreOffice unavailable",
+      "securityReview": "PASS — existing XML escaping, formula neutralization and protected report boundaries preserved",
+      "deployment": "NOT_PERFORMED"
+    },
+    "preservation": "No routes, data, scoring rules, permissions or source samples removed; no migration or new dependency.",
+    "documentation": "docs/rula-export-readability.md"
+  },
   "version": "0.1.0",
   "task": "Bilingual interface with explicit language selection, locale-aware brand alignment, preserved form auto-save, reliable registration account-type selection, secure registration contact and username validation, direct login with a server-assigned workspace, multi-company workspace management with independent subscriptions and tenant isolation, dedicated administrator workspaces, role-specific ArvanCloud AI integration with per-user token accounting, complete FMEA reporting, structured RULA process-information capture, editable RULA posture analysis, RULA results/corrective-action prediction reporting, a three-stage FMEA creation stepper with explicit process-information to review/register transition and report/results labels, a production-ready installable PWA with controlled updates, selectable blue/dark and white/light authenticated shell themes, removal of PDF download controls from authenticated assessment panels, automatic FMEA risk-row numbering/process context, three-visible expandable FMEA risk-row AI suggestions, PDF-reference aligned FMEA score panels, automatic editable FMEA risk-row text and S/O/D autofill for empty/untouched fields, database-backed job/process title suggestions with explicit user selection and expanded organization/global catalog search, project-scoped editable FMEA process-information autofill with a local assistant toggle, FMEA report manual-action form scroll-to-entry behavior, separate FMEA report view/edit operations with AI-generated editable detail drafts, requested RULA creation-step labels, optional RULA assessment title and both-body-side selection, a blue-theme sidebar logo with a white surround preserving original logo colors, site-wide styled native select controls and option states, and a consolidated project creation form with atomic initial process/activity bootstrap, global Enter-to-next-field navigation and automatic inline add/edit panel scroll/focus behavior, and a database-backed fast FMEA job-title catalog with local filtering and expanded industrial roles",
   "classification": "focused-cross-cutting-change",
@@ -1062,5 +1119,25 @@
     "security": "PASS_STATIC_REVIEW — authentication, assessments.create permission, rate limiting, MIME/signature/size checks, per-assessment limit, tenant ownership and RULA-only GapGPT image purpose are enforced; audit events exclude prompts and image bytes.",
     "migration": "NOT_APPLICABLE — existing RulaAssessment and Attachment models reused.",
     "deployment": "NOT_PERFORMED — local source only; no external provider request or production deployment."
+  },
+  "latestRulaPriorityDistribution": {
+    "status": "PASS_LOCAL_WITH_BROWSER_QA_LIMITATION",
+    "scope": "Risk-distribution donut uses AI corrective suggestions and selected/manual row-action priorities from the active-side inventory, counting each action once.",
+    "mapping": "CRITICAL=4, HIGH=3, MEDIUM=2, LOW=1; no change to clinical RULA score.",
+    "validation": "161 frontend tests passed including FA/EN pending-review rendering, all priority bands and invalid-priority handling; typecheck/lint, production build and API contract passed. Existing large-chunk warning remains.",
+    "security": "Pure presentation calculation; React escaping preserved, own-property enum validation, no secret or authorization change.",
+    "limitations": "Authenticated browser QA NOT_RUN; production deployment NOT_PERFORMED.",
+    "artifact": "docs/rula-priority-distribution.md"
+  },
+  "latestMobileAssessmentReportTables": {
+    "status": "PASS_LOCAL_WITH_AUTHENTICATED_QA_LIMITATION",
+    "scope": "RULA suggested actions, RULA report data and FMEA full details: labeled mobile record tables without horizontal scrolling; shared across wizard previews and saved reports.",
+    "validation": "PASS — frontend 156/156 tests, lint/typecheck, production build, API contract 70 paths/123 routes, browser synthetic-fixture layout at 320/375px RTL, 414px LTR and 1280px desktop, expanded details at 320px. Existing large-chunk build warning remains.",
+    "security": "Reviewed changed presentation trust boundaries: escaped data-labels, no new unsafe HTML, network, secrets or permission changes.",
+    "integrity": "No existing field, action, page, route or feature removed; desktop and print retained.",
+    "limitations": "Authenticated full-app browser QA NOT_RUN; fixture QA does not verify persisted mutations.",
+    "artifact": "docs/assessment-mobile-report-tables.md",
+    "migration": "NOT_APPLICABLE",
+    "deployment": "NOT_PERFORMED"
   }
 }

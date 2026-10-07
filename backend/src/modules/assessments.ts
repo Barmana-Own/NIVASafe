@@ -9,6 +9,7 @@ import { getAvailableAssessmentAIProvider, getRulaPostureImageAIProvider } from 
 import { allowedMime, hasValidFileSignature, MAX_ATTACHMENT_FILE_BYTES } from "./files.js";
 import { assertFmeaProcessItemSelectionLimit, buildDescriptionPrompt, buildFmeaImageAnalysisPrompt, buildFmeaProcessAutofillPrompt, buildFmeaRiskRowsPrompt, buildFmeaRiskSuggestionsPrompt, buildJobTitleSuggestionsPrompt, buildProcessSuggestionsPrompt, catalogSuggestions, cleanDescription, cleanJobTitleList, cleanTextList, defaultFmeaProcessStep, emptyFmeaRiskSuggestions, emptyProcessSuggestions, fallbackProcessDescription, FMEA_PROCESS_DESCRIPTION_MAX, FMEA_PROCESS_ITEM_LENGTH_MAX, FMEA_PROCESS_ITEM_MAX, FMEA_PROCESS_AI_SUGGESTION_MAX, FMEA_PROCESS_RISK_ROW_SUGGESTION_MAX, FMEA_PROCESS_SUGGESTION_MAX, isValidShortActivityDescription, limitProcessSuggestions, nextFmeaRowNumber, normalizeJobTitle, parseFmeaImageAnalysis, parseFmeaProcessAutofill, parseFmeaRiskRows, parseFmeaRiskScoreSuggestion, parseFmeaRiskSuggestions, parseJobTitleSuggestions, parseProcessSuggestions, type FmeaImageAnalysis, type FmeaProcessAutofill, type FmeaRiskRowSuggestion, type FmeaRiskScoreSuggestion, type FmeaRiskSuggestions, type ProcessSuggestions } from "../fmea-process.js";
 import { fallbackFmeaReportDetailSuggestions } from "../fmea-report.js";
+import { hasExplicitlyEmptyFmeaRiskRows } from "../fmea-process.js";
 import { buildRulaSideResults, primaryRulaResult } from "../rula-report.js";
 import { resolveRulaTitle, rulaActivityInfoSchema, rulaBodySideSchema, rulaTitleSchema } from "../rula-process.js";
 import { buildRulaPostureImageAnalysisPrompt, buildRulaPostureTextAnalysisPrompt, buildRulaTaskDescriptionPrompt, cleanRulaTaskDescription, fallbackRulaPostureTextAnalysis, parseRulaPostureImageAnalysis, parseRulaPostureTextAnalysis, rulaPostureImageAnalysisResponseSchema, rulaPostureTextAnalysisResponseSchema, RULA_TASK_DESCRIPTION_MAX_LENGTH, type RulaPostureImageAnalysis, type RulaPostureTextAnalysisInput } from "../rula-posture-ai.js";
@@ -192,24 +193,11 @@ async function persistAiJobTitles(input: { organizationId: string; titles: strin
 }
 
 function suggestionResponse(databaseSuggestions: ProcessSuggestions, aiSuggestions: ProcessSuggestions, provider: string, aiStatus: "connected" | "fallback" | "unavailable", descriptionSuggestion: string | null = null, riskSuggestions: FmeaRiskSuggestions = emptyFmeaRiskSuggestions(), scoreSuggestion: FmeaRiskScoreSuggestion | null = null, jobTitleSuggestions: string[] = [], autofill: FmeaProcessAutofill | null = null, aiJobCatalogSuggestions: JobCatalogRecord[] = [], riskRows: FmeaRiskRowSuggestion[] = []) {
-  return { databaseSuggestions, aiSuggestions, provider, aiStatus, descriptionSuggestion, riskSuggestions, scoreSuggestion, riskRows, jobTitleSuggestions, aiJobCatalogSuggestions: aiJobCatalogSuggestions.map((job) => ({ ...serializeJobCatalog(job), source: "AI" as const })), autofill };
+  return { databaseSuggestions, aiSuggestions, provider, aiStatus, descriptionSuggestion, riskSuggestions, scoreSuggestion, riskRows, maximumRiskRows: FMEA_PROCESS_RISK_ROW_SUGGESTION_MAX, jobTitleSuggestions, aiJobCatalogSuggestions: aiJobCatalogSuggestions.map((job) => ({ ...serializeJobCatalog(job), source: "AI" as const })), autofill };
 }
 
 function fallbackRiskRows(input: { projectName?: string | null; jobTitle: string; activityDescription?: string | null; locale: "fa" | "en" }) {
-  return fallbackFmeaReportDetailSuggestions({ processName: input.activityDescription?.trim() || input.jobTitle, projectName: input.projectName, locale: input.locale, limit: FMEA_PROCESS_RISK_ROW_SUGGESTION_MAX });
-}
-
-function mergeRiskRows(primary: FmeaRiskRowSuggestion[], fallback: FmeaRiskRowSuggestion[]) {
-  const result: FmeaRiskRowSuggestion[] = [];
-  const keys = new Set<string>();
-  for (const row of [...primary, ...fallback]) {
-    const key = [row.processStep, row.failureMode, row.effect, row.cause].map((value) => value.trim().toLocaleLowerCase()).join("\u0000");
-    if (!key || keys.has(key)) continue;
-    keys.add(key);
-    result.push(row);
-    if (result.length >= FMEA_PROCESS_RISK_ROW_SUGGESTION_MAX) break;
-  }
-  return result;
+  return fallbackFmeaReportDetailSuggestions({ processName: input.activityDescription?.trim() || input.jobTitle, projectName: input.projectName, locale: input.locale, limit: 5 });
 }
 
 async function getFmea(id: string, organizationId: string) {
@@ -378,13 +366,15 @@ export async function registerAssessmentRoutes(app: FastifyInstance) {
         userId: request.actor!.userId,
         imagePurpose: "rula-posture",
         message: buildRulaPostureImageAnalysisPrompt(body),
+        includeKnowledge: false,
+        maxOutputTokens: body.bodySide === "BOTH" ? 5_000 : 3_000,
         image: { mimeType: file.mimetype, base64: buffer.toString("base64") },
       });
       const analysis: RulaPostureImageAnalysis = parseRulaPostureImageAnalysis(result.answer, body.bodySide);
       await recordAIUsage(prisma, { organizationId, userId: request.actor!.userId, useCase: "risk", sourceType: "RULA_IMAGE_REVIEW", sourceId: request.id, result });
       const overlayPointCount = Object.values(analysis.sides).reduce((count, side) => count + (side ? Object.keys(side.overlay.points).length : 0), 0);
       await audit(request, "RULA_POSTURE_IMAGE_ANALYSIS", "RulaPostureImage", undefined, { provider: result.provider, aiStatus: result.usedFallback ? "fallback" : "connected", mimeType: file.mimetype, size: buffer.length, overlayPointCount });
-      const response = rulaPostureImageAnalysisResponseSchema.parse({ ...analysis, provider: result.provider, aiStatus: result.usedFallback ? "fallback" : "connected" });
+      const response = rulaPostureImageAnalysisResponseSchema.parse({ ...analysis, provider: result.provider, model: result.model, aiStatus: result.usedFallback ? "fallback" : "connected" });
       return envelope(response);
     } catch {
       await audit(request, "RULA_POSTURE_IMAGE_ANALYSIS_FAILED", "RulaPostureImage", undefined, { provider: provider.name, mimeType: file.mimetype, size: buffer.length });
@@ -425,15 +415,15 @@ export async function registerAssessmentRoutes(app: FastifyInstance) {
         ? (await prisma.jobCatalog.findMany({ where: { active: true, OR: [{ organizationId: null }, { organizationId }], AND: [{ OR: [{ titleFa: { contains: body.jobTitle } }, { titleEn: { contains: body.jobTitle } }] }] }, select: { titleFa: true, titleEn: true }, take: 20 })).flatMap((item) => [item.titleFa, item.titleEn])
         : [];
       const message = body.mode === "description" ? buildDescriptionPrompt(body) : body.mode === "risk-row" ? buildFmeaRiskSuggestionsPrompt(body) : body.mode === "risk-rows" ? buildFmeaRiskRowsPrompt({ ...body, projectName }) : body.mode === "job-titles" ? buildJobTitleSuggestionsPrompt({ ...body, existingJobTitles: [...matchingJobTitles, ...(job ? [job.titleFa, job.titleEn] : [])] }) : body.mode === "autofill" ? buildFmeaProcessAutofillPrompt({ ...body, projectName, databaseSuggestions }) : buildProcessSuggestionsPrompt({ ...body, databaseSuggestions });
-      const result = await provider.analyze({ organizationId, userId: request.actor!.userId, message });
+      const result = await provider.analyze({ organizationId, userId: request.actor!.userId, message, ...(body.mode === "risk-rows" ? { maxOutputTokens: 8000 } : {}) });
       if (body.mode === "description") descriptionSuggestion = cleanDescription(result.answer) || fallbackProcessDescription(body.jobTitle, body.department, body.locale);
       else if (body.mode === "risk-row") {
         riskSuggestions = parseFmeaRiskSuggestions(result.answer);
         scoreSuggestion = parseFmeaRiskScoreSuggestion(result.answer);
       } else if (body.mode === "risk-rows") {
         const parsed = parseFmeaRiskRows(result.answer);
-        riskRows = mergeRiskRows(parsed, defaultRiskRows);
-        riskRowsUsedFallback = parsed.length < FMEA_PROCESS_RISK_ROW_SUGGESTION_MAX;
+        riskRowsUsedFallback = parsed.length === 0 && !hasExplicitlyEmptyFmeaRiskRows(result.answer);
+        riskRows = riskRowsUsedFallback ? defaultRiskRows : parsed;
       } else if (body.mode === "job-titles") {
         jobTitleSuggestions = cleanJobTitleList(parseJobTitleSuggestions(result.answer));
         const currentTitle = normalizeJobTitle(body.jobTitle);

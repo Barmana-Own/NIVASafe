@@ -22,8 +22,9 @@ export function AssistantPage() {
   const [pendingResponse, setPendingResponse] = useState<Message | null>(null);
   const [mobileConversationsOpen, setMobileConversationsOpen] = useState(false);
   const sendingRef = useRef(false);
+  const newChatDraftId = useRef(crypto.randomUUID());
   const { session, orgId } = getSession();
-  const composerDraftKey = scopedDraftKey(`chat-composer:${selected || "new"}`, session?.user.id, orgId);
+  const composerDraftKey = scopedDraftKey(`chat-composer:${selected || `new:${newChatDraftId.current}`}`, session?.user.id, orgId);
   const configuredChatProvider = providers.data?.find((provider) => provider.configuredForChat) ?? providers.data?.find((provider) => provider.name === "arvancloud" && provider.available);
   const activeChatProvider = configuredChatProvider?.available ? configuredChatProvider : providers.data?.find((provider) => provider.name === "fallback" && provider.available);
   const messages = useLoad<Message[]>(selected ? `/chat/conversations/${selected}/messages` : null, [selected]);
@@ -40,7 +41,6 @@ export function AssistantPage() {
     ? t("assistant.lastResponse", { provider: connectionStatus.provider === "arvancloud" ? "ArvanCloud AI" : connectionStatus.provider })
     : t(connectionStatus.kind === "fallback" ? "assistant.fallbackActive" : `assistant.${connectionStatus.kind}`);
   const logRef = useRef<HTMLDivElement>(null);
-  useEffect(() => { if (!selected && conversations.data?.length) setSelected(conversations.data[0]!.id); }, [conversations.data, selected]);
   useEffect(() => { if (pendingResponse && messages.data?.some((item) => item.id === pendingResponse.id)) setPendingResponse(null); }, [messages.data, pendingResponse]);
   useEffect(() => {
     if (!mobileConversationsOpen) return;
@@ -53,6 +53,9 @@ export function AssistantPage() {
   useEffect(() => { logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" }); }, [messages.data, pendingMessage, pendingResponse, sending]);
 
   function selectConversation(id: string) {
+    if (sendingRef.current) return;
+    setError("");
+    setPendingMessage(null);
     setPendingResponse(null);
     setSelected(id);
     setMobileConversationsOpen(false);
@@ -60,18 +63,13 @@ export function AssistantPage() {
 
   async function createConversation() {
     if (sendingRef.current) return;
-    try {
-      const result = await api<Conversation>("/chat/conversations", {
-        method: "POST",
-        body: JSON.stringify({ title: t("assistant.newConversation") }),
-      });
-      setPendingResponse(null);
-      setSelected(result.data.id);
-      setMobileConversationsOpen(false);
-      conversations.reload();
-    } catch (reason) {
-      setError((reason as Error).message);
-    }
+    setPendingResponse(null);
+    setPendingMessage(null);
+    setError("");
+    setSelected("");
+    newChatDraftId.current = crypto.randomUUID();
+    setMobileConversationsOpen(false);
+    void clearAutoSaveDraft(composerDraftKey);
   }
   async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -82,6 +80,7 @@ export function AssistantPage() {
     const content = String(form.get("content") || "").trim();
     if (!content) return;
     if (content.length < 2) { setError(t("assistant.messageTooShort")); return; }
+    if (content.length > 32_000) return;
     sendingRef.current = true;
     setSending(true);
     setPendingMessage(content);
@@ -116,9 +115,10 @@ export function AssistantPage() {
       } else {
         setError(failure.message);
       }
-      if (input instanceof HTMLInputElement && !input.value.trim()) {
-        input.value = content;
-        input.dispatchEvent(new Event("input", { bubbles: true }));
+      const currentInput = document.querySelector<HTMLTextAreaElement>('.assistant-page textarea[name="content"]') ?? input;
+      if ((currentInput instanceof HTMLInputElement || currentInput instanceof HTMLTextAreaElement) && !currentInput.value.trim()) {
+        currentInput.value = content;
+        currentInput.dispatchEvent(new Event("input", { bubbles: true }));
       }
       if (id) messages.reload();
     } finally {
@@ -128,7 +128,7 @@ export function AssistantPage() {
   }
 
   function fillSuggestion(value: string) {
-    const input = document.querySelector<HTMLInputElement>('input[name="content"]');
+    const input = document.querySelector<HTMLTextAreaElement>('textarea[name="content"]');
     if (input) {
       input.value = value;
       input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -159,7 +159,7 @@ export function AssistantPage() {
           <span className="ai-orb"><Icon name="sparkles"/></span><div><h3>{t("assistant.chatTitle")}</h3></div><span className={`online ${connectionStatus.tone}`} role="status" aria-live="polite"><span className="online-dot"/>{chatStatus}</span>
         </div>
         <div className="chat-log" ref={logRef} aria-busy={sending}>{!selected && !pendingMessage && !pendingResponse ? <EmptyState title={t("assistant.chooseConversation")} description={t("assistant.chooseConversationDescription")} icon="assistant"/> : selected && messages.loading && !pendingMessage && !pendingResponse ? <div className="state"><div className="spinner"/></div> : !messages.data?.length && !pendingMessage && !pendingResponse ? <div className="chat-welcome"><span className="ai-orb large"><Icon name="sparkles" size={28}/></span><h3>{t("assistant.welcome")}</h3><p>{t("assistant.welcomeDescription")}</p><div className="suggestions"><button type="button" onClick={() => fillSuggestion(t("assistant.suggestionOneText"))}>{t("assistant.suggestionOne")}</button><button type="button" onClick={() => fillSuggestion(t("assistant.suggestionTwoText"))}>{t("assistant.suggestionTwo")}</button></div></div> : <>{messages.data?.map(renderMessage)}{pendingResponse && renderMessage(pendingResponse)}{pendingMessage && <div className="message user pending-message"><div className="message-avatar">{locale === "en" ? "Y" : "ش"}</div><div className="message-bubble"><strong>{t("assistant.you")}</strong><p>{pendingMessage}</p><small>{t("assistant.sending")}</small></div></div>}{sending && <div className="message assistant pending-message"><div className="message-avatar"><Icon name="sparkles" size={16}/></div><div className="message-bubble"><strong>{t("assistant.assistant")}</strong><p>{t("assistant.waitingForResponse")}</p><span className="assistant-typing" aria-hidden="true"><i/><i/><i/></span></div></div>}</>}</div>
-        <AutoSaveForm storageKey={composerDraftKey} className="composer" onSubmit={send}><input name="content" placeholder={t("assistant.questionPlaceholder")} autoComplete="off" minLength={2} maxLength={4000} required aria-busy={sending}/><button type="submit" className="primary" aria-label={t("assistant.send")} disabled={sending}><Icon name="arrow"/></button>{sending && <small className="composer-send-status" role="status"><span className="composer-spinner" aria-hidden="true"/>{t("assistant.waitingForResponse")}</small>}</AutoSaveForm>
+        <AutoSaveForm key={composerDraftKey} storageKey={composerDraftKey} className="composer" onSubmit={send}><textarea name="content" placeholder={t("assistant.questionPlaceholder")} autoComplete="off" minLength={2} maxLength={32_000} rows={3} required aria-label={t("assistant.questionPlaceholder")} aria-busy={sending}/><button type="submit" className="primary" aria-label={t("assistant.send")} disabled={sending}><Icon name="arrow"/></button>{sending && <small className="composer-send-status" role="status"><span className="composer-spinner" aria-hidden="true"/>{t("assistant.waitingForResponse")}</small>}</AutoSaveForm>
         <small className="assistant-note">{t("assistant.disclaimer")}</small>
       </section>
     </div>

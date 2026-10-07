@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { isSubscriptionActive } from "@nivasafe/domain";
-import { api, clearSession, getCurrentRole, getSession, isSessionRemembered, saveSession, useLoad, type Locale } from "../api/client";
+import { api, clearSession, getCurrentRole, getSession, isSessionRemembered, saveSession, type Locale } from "../api/client";
+import { HeaderNotifications } from "../features/notifications/HeaderNotifications";
 import { Icon, roleLabel, ThemeSwitcher, type IconName } from "../components/UI";
 import { LanguageSwitcher, useI18n } from "../i18n";
 import { persistAppTheme, readAppTheme, type AppTheme } from "../theme";
@@ -30,24 +31,6 @@ const nav = [
 
 const groupLabels: Record<string, string> = { main: "group.management", assessment: "group.assessment", actions: "group.actions", safety: "group.safety", reports: "group.reports", guidance: "group.guidance", organization: "group.organization", settings: "group.settings", tools: "group.tools", admin: "group.admin", account: "group.account" };
 const allowed = (role: string, scope: string) => scope === "all" || (scope === "admin" && ["SUPER_ADMIN", "ORG_ADMIN"].includes(role)) || (scope === "members" && ["SUPER_ADMIN", "ORG_ADMIN", "HSE_MANAGER"].includes(role)) || (scope === "manager" && ["SUPER_ADMIN", "ORG_ADMIN", "HSE_MANAGER"].includes(role)) || (scope === "superadmin" && ["SUPER_ADMIN", "ORG_ADMIN"].includes(role));
-type HeaderNotification = { readAt?: string | null };
-
-function NotificationBell() {
-  const { locale, t } = useI18n();
-  const state = useLoad<HeaderNotification[]>("/notifications");
-  const unread = state.data?.filter((item) => !item.readAt).length ?? 0;
-  const countLabel = unread > 99 ? "99+" : unread.toLocaleString(locale === "en" ? "en-US" : "fa-IR");
-
-  useEffect(() => {
-    const timer = window.setInterval(() => state.reload(), 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  return <Link className="header-notifications" to="/notifications" aria-label={`${t("nav.notifications")}${unread ? `، ${countLabel} ${t("notifications.unread")}` : ""}`} title={t("nav.notifications")} data-testid="header-notifications">
-    <Icon name="notifications" size={19}/>{unread > 0 && <span className="notification-badge" aria-hidden="true">{countLabel}</span>}
-  </Link>;
-}
-
 export function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -138,7 +121,7 @@ export function AppLayout() {
           {isAdministrator && !organizationInactive && subscriptionBlocked && <Link className="subscription-pill" to="/organizations"><Icon name="warning" size={15}/> {t("shell.activateSubscription")}</Link>}
           <ThemeSwitcher theme={theme} onChange={changeTheme}/>
           <LanguageSwitcher className="topbar-language-switch" onChange={persistLocale}/>
-          <NotificationBell/>
+          <HeaderNotifications key={`${session.user.id}:${orgId}`}/>
         </div>
       </header>
       <main className="workspace"><Outlet /></main>

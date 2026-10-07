@@ -1,6 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("AI provider adapters", () => {
+  it("keeps chat connected when supplementary knowledge retrieval fails without exposing the failure", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ choices: [{ message: { content: "Connected response" } }] }), { status: 200 })));
+    vi.doMock("./core.js", () => ({ prisma: { knowledgeDocument: { findMany: vi.fn().mockRejectedValue(new Error("private database diagnostic")) } } }));
+    const { getAIProvider } = await import("./ai-provider.js");
+    const result = await getAIProvider("gapgpt", "chat").analyze({ organizationId: "org", message: "Question" });
+    expect(result.answer).toBe("Connected response");
+    expect(result.citations).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(JSON.stringify({ event: "CHAT_KNOWLEDGE_UNAVAILABLE", provider: "gapgpt" }));
+  });
   beforeEach(() => {
     vi.resetModules();
     vi.unstubAllGlobals();
@@ -53,6 +63,17 @@ describe("AI provider adapters", () => {
     expect(result.answer).toBe(expected);
     expect(result.provider).toBe(name);
     expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it.each([8000, 9000, 64])("bounds the server-selected output budget %i for larger assessment batches", async (requested) => {
+    process.env.AI_MAX_OUTPUT_TOKENS = "1600";
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ choices: [{ message: { content: "Assessment answer" } }] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.doMock("./core.js", () => ({ prisma: { knowledgeDocument: { findMany: vi.fn().mockResolvedValue([]) } } }));
+    const { getAvailableAssessmentAIProvider } = await import("./ai-provider.js");
+    await getAvailableAssessmentAIProvider().analyze({ organizationId: "org", message: "FMEA detail hazards", maxOutputTokens: requested });
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(body.max_tokens).toBe(Math.min(8000, Math.max(128, requested)));
   });
 
   it("forces GPT-5-Mini for assessment AI even when the risk default differs", async () => {
@@ -212,7 +233,24 @@ describe("AI provider adapters", () => {
     expect(fetchMock.mock.calls[0]?.[1]?.headers).toMatchObject({ Authorization: "Bearer test-gapgpt" });
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
     expect(body.model).toBe("gpt-5-mini");
+    expect(body.max_completion_tokens).toBe(1600);
+    expect(body.max_tokens).toBeUndefined();
+    expect(body.reasoning_effort).toBe("low");
+    expect(body.response_format).toEqual({ type: "json_object" });
     expect(body.messages[1].content[1]).toEqual({ type: "image_url", image_url: { url: "data:image/jpeg;base64,dGVzdA==" } });
+  });
+
+  it("pins RULA vision to GPT-5 mini independently of generic risk configuration and never retries or fails over images", async () => {
+    process.env.AI_RISK_MODEL = "other-model";
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 503 }));
+    const knowledge = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    vi.doMock("./core.js", () => ({ prisma: { knowledgeDocument: { findMany: knowledge } } }));
+    const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
+    await expect(getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "JSON posture", imagePurpose: "rula-posture", includeKnowledge: false, maxOutputTokens: 5000, image: { mimeType: "image/png", base64: "test" } })).rejects.toMatchObject({ code: "PROVIDER_REQUEST_FAILED" });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(knowledge).not.toHaveBeenCalled();
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({ model: "gpt-5-mini", max_completion_tokens: 5000 });
   });
 
   it("retries a transient provider response with bounded attempts", async () => {

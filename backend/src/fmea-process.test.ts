@@ -95,15 +95,22 @@ describe("FMEA process-information helpers", () => {
     expect(parseFmeaRiskScoreSuggestion('{"scoreSuggestion":{"severity":2,"occurrence":2,"detection":2}}')).toMatchObject({ severity: 2, occurrence: 2, detection: 2 });
   });
 
-  it("normalizes exactly five complete default FMEA risk rows", () => {
+  it("preserves the model's variable count of complete distinct FMEA risk rows", () => {
     const rows = parseFmeaRiskRows(JSON.stringify({ riskRows: [
       { processStep: "شرح فعالیت", failureMode: "  نشت روغن ", effect: "آسیب به محصول", cause: "شل بودن اتصال", preventiveControls: "بازرسی دوره‌ای", detectionControls: "چک‌لیست", recommendation: "ایمن‌سازی", severity: "۸", occurrence: 3, detection: 4 },
       { processStep: "شرح فعالیت", failureMode: "نشت روغن", effect: "آسیب به محصول", cause: "شل بودن اتصال", severity: 8, occurrence: 3, detection: 4 },
       ...Array.from({ length: 6 }, (_, index) => ({ processStep: "شرح فعالیت", failureMode: `خطر ${index + 1}`, effect: `پیامد ${index + 1}`, cause: `علت ${index + 1}`, severity: 5, occurrence: 4, detection: 3 })),
     ] }));
-    expect(rows).toHaveLength(5);
+    expect(rows).toHaveLength(7);
     expect(rows[0]).toMatchObject({ processStep: "شرح فعالیت", failureMode: "نشت روغن", severity: 8, occurrence: 3, detection: 4 });
     expect(parseFmeaRiskRows(JSON.stringify({ riskRows: [{ processStep: "شرح", failureMode: "خرابی", effect: "پیامد", cause: "علت", severity: 11, occurrence: 2, detection: 2 }] }))).toEqual([]);
+  });
+
+  it.each([0, 1, 3, 8, 20, 24])("keeps the model's %i risk rows, subject only to the twenty-row cap", (count) => {
+    const rows = Array.from({ length: count }, (_, index) => ({ processStep: "Packing", failureMode: `Failure ${index}`, effect: "Injury", cause: "Missing guard", recommendation: "Fit guard", severity: 7, occurrence: 3, detection: 4 }));
+    const parsed = parseFmeaRiskRows(JSON.stringify({ riskRows: rows }));
+    expect(parsed).toHaveLength(Math.min(count, 20));
+    expect(parsed.map(row => row.failureMode)).toEqual(rows.slice(0, 20).map(row => row.failureMode));
   });
 
   it("normalizes image-review risk rows and rejects unsafe scores", () => {
@@ -200,7 +207,8 @@ describe("FMEA process-information helpers", () => {
     expect(riskRows).toContain("NIVASAFE_FMEA_RISK_ROWS");
     expect(riskRows).toContain("This is an FMEA risk assessment, not a RULA ergonomic assessment");
     expect(riskRows).toContain('"riskRows"');
-    expect(riskRows).toContain("Return exactly 5 distinct");
+    expect(riskRows).toContain("up to 20 rows");
+    expect(riskRows).toContain("Do not target a fixed count");
     expect(riskRows).toContain("defaults for the review table");
     expect(riskRows).toContain("Project: Assembly line upgrade");
 
