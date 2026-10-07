@@ -1,5 +1,40 @@
 {
   "project": "NIVASafe",
+  "latestArvanModelProfile": {
+    "status": "IMPLEMENTED_SECRET_PROVISIONING_REQUIRED",
+    "scope": "Arvan DeepSeek-V4-Flash chat and GPT-5-Mini assessments, including RULA photos; aligned runtime defaults, PM2 and Docker templates.",
+    "security": "Supplied live key was not persisted or committed; attempted local persistence rejected by security reviewer. Rotate it and provision ARVAN_API_KEY once in protected server environment.",
+    "validation": {
+      "backendTests": "PASS — 233 tests across 31 files",
+      "frontendTests": "PASS — 166 tests across 22 files from preceding unchanged-frontend verification",
+      "buildLintTypecheck": "PASS",
+      "releaseChecks": "PASS — 28 checks",
+      "liveArvan": "NOT_RUN — safe server-side credential provisioning required",
+      "productionDeployment": "NOT_PERFORMED"
+    },
+    "preservation": "Explicit alternate provider configurations remain supported; no schema, route, authorization, export or report removal.",
+    "documentation": "docs/arvan-production-ai.md"
+  },
+  "latestRulaCorrectiveAiReport": {
+    "classification": "focused-existing-workflow-repair",
+    "status": "IMPLEMENTED_WITH_LIVE_AI_VERIFICATION",
+    "scope": "Real draft/saved corrective AI generation capped at 20 model-chosen suggestions; same-report posture/action editing, completion controls and unified priority/workflow inventory.",
+    "validation": {
+      "frontendTests": "PASS — 166 tests across 22 files",
+      "backendTests": "PASS — 229 tests across 30 files",
+      "domainTests": "PASS — 12 tests",
+      "buildLintTypecheck": "PASS — existing frontend bundle-size warning remains",
+      "apiContract": "PASS — 70 frontend paths and 124 backend routes",
+      "releaseChecks": "PASS — 28 checks",
+      "liveAI": "PASS — synthetic RULA context returned 7 parsed AI actions from openai/gpt-5-mini through GapGPT in 13221ms, without fallback",
+      "securityReview": "PASS — bounded inputs/output, auth/permission/tenant/rate-limit gates, safe provider errors and React text escaping reviewed",
+      "browserInteraction": "NOT_RUN — component SSR and source-contract tests only",
+      "databaseIntegration": "NOT_RUN — route tests mock persistence",
+      "productionDeployment": "NOT_PERFORMED"
+    },
+    "preservation": "Seven anatomical rows, independent body sides, clinical scoring, exports, existing routes/roles/schema and user report samples preserved; no dependency or migration added.",
+    "documentation": "docs/rula-corrective-ai-report.md"
+  },
   "latestRulaActionCompletionWorkflow": {
     "classification": "focused-workflow-correction",
     "status": "PASS_LOCAL_WITH_BROWSER_VERIFICATION_LIMITATION",

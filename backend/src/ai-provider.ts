@@ -20,7 +20,7 @@ export interface AIUsage {
 
 export type AIConversationTurn = { role: "user" | "assistant"; content: string };
 export type AIImagePurpose = "fmea-process" | "rula-posture";
-export type AIProviderInput = { organizationId: string; userId?: string; message: string; locale?: "fa" | "en"; history?: AIConversationTurn[]; imagePurpose?: AIImagePurpose; image?: { mimeType: string; base64: string }; includeKnowledge?: boolean; maxOutputTokens?: number };
+export type AIProviderInput = { organizationId: string; userId?: string; message: string; locale?: "fa" | "en"; history?: AIConversationTurn[]; imagePurpose?: AIImagePurpose; image?: { mimeType: string; base64: string }; includeKnowledge?: boolean; maxOutputTokens?: number; structuredOutput?: boolean };
 
 export interface AIProvider {
   readonly name: string;
@@ -409,7 +409,7 @@ class ArvanCloudProvider extends HttpProvider {
         messages: [{ role: "system", content: systemInstruction(this.useCase) }, { role: "user", content: messageContent }],
         max_tokens: outputTokenLimit(this.useCase, input.maxOutputTokens),
       }),
-    });
+    }, input.imagePurpose === "rula-posture" ? { maxAttempts: 1, timeoutMs: 45_000 } : this.useCase === "chat" ? { maxAttempts: 1, timeoutMs: 60_000 } : undefined);
     const answer = normaliseAIAnswer(extractChatCompletionText(payload), this.useCase);
     if (!answer) throw Object.assign(new Error("ArvanCloud AI returned no text output"), { code: "EMPTY_PROVIDER_RESPONSE" });
     const model = normaliseModel(payload.model, this.model);
@@ -452,7 +452,7 @@ class GapGptProvider extends HttpProvider {
         model: this.model,
         messages: [{ role: "system", content: systemInstruction(this.useCase) }, { role: "user", content: messageContent }],
         ...(this.model?.toLowerCase().startsWith("gpt-5")
-          ? { max_completion_tokens: outputTokenLimit(this.useCase, input.maxOutputTokens), ...(input.imagePurpose === "rula-posture" ? { reasoning_effort: "low", response_format: { type: "json_object" } } : {}) }
+          ? { max_completion_tokens: outputTokenLimit(this.useCase, input.maxOutputTokens), ...(input.imagePurpose === "rula-posture" || input.structuredOutput ? { reasoning_effort: "low", response_format: { type: "json_object" } } : {}) }
           : { max_tokens: outputTokenLimit(this.useCase, input.maxOutputTokens) }),
       }),
     }, input.imagePurpose === "rula-posture" ? { maxAttempts: 1, timeoutMs: 45_000 } : this.useCase === "chat" ? { maxAttempts: 1, timeoutMs: 60_000 } : undefined);
@@ -563,7 +563,7 @@ const providerNames = ["fallback", "arvancloud", "gapgpt", "openai", "gemini", "
 
 function configuredProviderName(useCase: AIUseCase) {
   const configured = useCase === "risk" ? process.env.AI_RISK_PROVIDER : process.env.AI_CHAT_PROVIDER;
-  return (configured ?? process.env.AI_DEFAULT_PROVIDER ?? "fallback").trim().toLowerCase();
+  return (configured ?? process.env.AI_DEFAULT_PROVIDER ?? "arvancloud").trim().toLowerCase();
 }
 
 function modelFor(provider: "gapgpt" | "openai" | "gemini" | "anthropic", useCase: AIUseCase) {
@@ -581,7 +581,7 @@ function configuredRiskFallbackProviderName() {
 
 function createProvider(name: string, useCase: AIUseCase, modelOverride?: string): AIProvider {
   switch (name) {
-    case "arvancloud": return new ArvanCloudProvider(process.env.ARVAN_API_KEY, modelOverride ?? (useCase === "risk" ? process.env.AI_RISK_MODEL : process.env.AI_CHAT_MODEL), process.env.ARVAN_BASE_URL ?? "https://api.arvancloudai.ir/v1", useCase);
+    case "arvancloud": return new ArvanCloudProvider(process.env.ARVAN_API_KEY, modelOverride ?? (useCase === "risk" ? process.env.AI_RISK_MODEL ?? "GPT-5-Mini" : process.env.AI_CHAT_MODEL ?? "DeepSeek-V4-Flash"), process.env.ARVAN_BASE_URL ?? "https://api.arvancloudai.ir/v1", useCase);
     case "gapgpt": return new GapGptProvider(process.env.GAPGPT_API_KEY, modelOverride ?? modelFor("gapgpt", useCase), process.env.GAPGPT_BASE_URL, useCase);
     case "openai": return new OpenAIProvider(process.env.OPENAI_API_KEY, modelOverride ?? modelFor("openai", useCase), useCase);
     case "gemini": return new GeminiProvider(process.env.GEMINI_API_KEY, modelOverride ?? modelFor("gemini", useCase), useCase);
@@ -621,6 +621,7 @@ export function getAvailableAssessmentAIProvider() {
 }
 
 export function getRulaPostureImageAIProvider() {
+  if (getConfiguredAIProviderName("risk") === "arvancloud") return getAIProvider("arvancloud", "risk", ASSESSMENT_AI_MODEL);
   return getAIProvider("gapgpt", "risk", "gpt-5-mini");
 }
 

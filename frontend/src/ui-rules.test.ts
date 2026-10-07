@@ -12,6 +12,21 @@ const generalPagesSource = readSource("./features/general/GeneralPages.tsx");
 const accountPagesSource = readSource("./features/account/AccountPages.tsx");
 const registrationPagesSource = readSource("./features/account/RegistrationPage.tsx");
 const assessmentPagesSource = readSource("./features/assessments/AssessmentPages.tsx");
+
+describe("RULA corrective AI report integration", () => {
+  it("requests draft recommendations only in the active report step and cancels stale requests", () => {
+    expect(assessmentPagesSource).toContain('if (!active) return;');
+    expect(assessmentPagesSource).toContain('"/rula/action-suggestions", { method: "POST", body: requestBody, signal: controller.signal }');
+    expect(assessmentPagesSource).toContain('return () => controller.abort();');
+    expect(assessmentPagesSource).toContain('active={wizardStep === 3}');
+  });
+  it("preserves successful empty model output and distinguishes alternate AI from local failure", () => {
+    expect(assessmentPagesSource).toContain('const loadedSuggestions = aiSuggestedActions ?? report?.suggestedActions ?? [];');
+    expect(assessmentPagesSource).toContain('if (aiSuggestedActions !== null || loadedSuggestions.length || !report)');
+    expect(assessmentPagesSource).toContain('if (result.data.reasonCode) setAiActionError');
+    expect(assessmentPagesSource).toContain('if (response.data.reasonCode) setAiError');
+  });
+});
 const rulaOverviewSource = readSource("./features/assessments/RulaReportOverview.tsx");
 const rulaOverviewModelSource = readSource("./features/assessments/rulaOverviewModel.ts");
 const filesPageSource = readSource("./features/files/FilesPage.tsx");
@@ -191,7 +206,7 @@ describe("corrective-action body-side scope", () => {
     expect(assessmentPagesSource).toContain('const actionSide = action.bodySide ?? payload.bodySide');
     expect(assessmentPagesSource).toContain('bodySide: actionSide');
     expect(assessmentPagesSource).toContain("buildLocalRulaSuggestionsForAssessment");
-    expect(assessmentPagesSource).toContain("const RULA_CORRECTIVE_SUGGESTION_MAX = 6;");
+    expect(assessmentPagesSource).toContain("const RULA_CORRECTIVE_SUGGESTION_MAX = 20;");
     expect(assessmentPagesSource).toContain("suggestions.slice(0, RULA_CORRECTIVE_SUGGESTION_MAX)");
     expect(assessmentPagesSource).toContain('t("assessment.rulaActionBodySide")');
     expect(reportsSource).toContain('localizedRulaBodySide(action.bodySide ?? undefined, locale)');
@@ -1812,7 +1827,8 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain('rulaManualActionBodySideHint');
     expect(assessmentPagesSource).toContain("function rulaActionForDataTable");
     expect(assessmentPagesSource).toContain("const tableSelectedActions = visibleSelectedActions.map");
-    expect(assessmentPagesSource).toContain("selectedActions={tableSelectedActions}");
+    expect(assessmentPagesSource).toContain("selectedActions={reportActionInventory}");
+    expect(assessmentPagesSource).toContain("actions={reportActionInventory}");
     expect(assessmentPagesSource).toContain("busyActionId");
     expect(assessmentPagesSource).toContain("rulaActionLevelForScore");
     expect(assessmentPagesSource).toContain("rulaPredictionEstimate");
@@ -1897,7 +1913,9 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain('navigate(`/rula?edit=${encodeURIComponent(id)}&step=2`)');
     expect(assessmentPagesSource).toContain('onEdit={reportPostureEditHandler}');
     expect(assessmentPagesSource).toContain('t("assessment.editPostureResult")');
-    expect(assessmentPagesSource).toContain('part=${encodeURIComponent(part)}');
+    expect(assessmentPagesSource).toContain("setEditingPart(part)");
+    expect(assessmentPagesSource).toContain("RulaPostureEditDialog key={editingPart}");
+    expect(assessmentPagesSource).toContain("onSaveAnalysis");
     expect(assessmentPagesSource).toContain('const editingAssessmentId = searchParams.get("edit")?.trim() ?? ""');
     expect(assessmentPagesSource).toContain('await api<{ id: string; score: number }>(`/rula/${editingAssessmentId}`, { method: "PATCH"');
     expect(assessmentPagesSource).toContain('t("assessment.editRula")');

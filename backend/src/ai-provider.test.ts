@@ -1,6 +1,42 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("AI provider adapters", () => {
+  it("has safe Arvan defaults for both use cases without embedding a credential", async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ choices: [{ message: { content: "Response" } }] }), { status: 200 })));
+    vi.stubGlobal("fetch", fetchMock);
+    const { getAIProvider, getConfiguredAIProviderName } = await import("./ai-provider.js");
+    // The test runtime imports local environment values during module loading.
+    // Remove them afterwards to exercise the adapter's missing-config defaults.
+    delete process.env.AI_DEFAULT_PROVIDER;
+    delete process.env.AI_RISK_PROVIDER;
+    delete process.env.AI_CHAT_PROVIDER;
+    delete process.env.AI_RISK_MODEL;
+    delete process.env.AI_CHAT_MODEL;
+    expect(getConfiguredAIProviderName("chat")).toBe("arvancloud");
+    for (const useCase of ["chat", "risk"] as const) await getAIProvider(undefined, useCase).analyze({ organizationId: "org", message: "Synthetic example", includeKnowledge: false });
+    expect(fetchMock.mock.calls.map(call => JSON.parse(call[1]?.body ?? "{}").model)).toEqual(["DeepSeek-V4-Flash", "GPT-5-Mini"]);
+    delete process.env.ARVAN_API_KEY;
+    expect(getAIProvider("arvancloud").available()).toBe(false);
+  });
+  it("uses the configured Arvan GPT-5 Mini for RULA photos without sending them to GapGPT", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ choices: [{ message: { content: '{"sides":{}}' } }] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
+    const provider = getRulaPostureImageAIProvider();
+    expect(provider.name).toBe("arvancloud");
+    await provider.analyze({ organizationId: "org", message: "JSON posture", includeKnowledge: false, imagePurpose: "rula-posture", image: { mimeType: "image/png", base64: "synthetic" } });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("https://api.arvancloudai.ir/v1/chat/completions");
+    expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body ?? "{}").model).toBe("GPT-5-Mini");
+  });
+  it("requests bounded JSON with low reasoning for RULA corrective GPT-5 text analysis", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ choices: [{ message: { content: '{"actions":[]}' } }] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { getAIProvider } = await import("./ai-provider.js");
+    await getAIProvider("gapgpt", "risk", "gpt-5-mini").analyze({ organizationId: "org", message: "Return JSON corrective actions", includeKnowledge: false, maxOutputTokens: 6000, structuredOutput: true });
+    const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body ?? "{}");
+    expect(body).toMatchObject({ max_completion_tokens: 6000, reasoning_effort: "low", response_format: { type: "json_object" } });
+    expect(body).not.toHaveProperty("max_tokens");
+  });
   it("keeps chat connected when supplementary knowledge retrieval fails without exposing the failure", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ choices: [{ message: { content: "Connected response" } }] }), { status: 200 })));
@@ -241,6 +277,7 @@ describe("AI provider adapters", () => {
   });
 
   it("pins RULA vision to GPT-5 mini independently of generic risk configuration and never retries or fails over images", async () => {
+    process.env.AI_RISK_PROVIDER = "gapgpt";
     process.env.AI_RISK_MODEL = "other-model";
     const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 503 }));
     const knowledge = vi.fn();

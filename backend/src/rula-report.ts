@@ -23,7 +23,7 @@ export const rulaImpactSchema = z.object({
 export type RulaImpact = z.infer<typeof rulaImpactSchema>;
 export type RulaActionPriority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 export type RulaSideResults = Record<"LEFT" | "RIGHT", RulaResult>;
-export const RULA_CORRECTIVE_SUGGESTION_MAX = 6;
+export const RULA_CORRECTIVE_SUGGESTION_MAX = 20;
 
 export type RulaReportFactor = {
   key: Extract<RulaPosturePart, "neck" | "upperArm" | "trunk">;

@@ -4750,3 +4750,18 @@ details.optional-fields > :not(summary),
     background: #f1fbf9;
   }
 }
+
+.rula-action-register-table { width: 100%; min-width: 0; table-layout: fixed; }
+.rula-action-register-table th:nth-child(1) { width: 6%; }
+.rula-action-register-table th:nth-child(2) { width: 49%; }
+.rula-action-register-table th:nth-child(3) { width: 13%; }
+.rula-action-register-table th:nth-child(4) { width: 15%; }
+.rula-action-register-table th:nth-child(5) { width: 17%; }
+.rula-action-register-table td { vertical-align: top; overflow-wrap: anywhere; }
+.rula-inline-action-editor { display: grid; gap: .75rem; padding: .8rem; min-width: 0; background: #f3f8fc; border-radius: 10px; }
+.rula-inline-action-editor label { display: grid; gap: .35rem; min-width: 0; }
+.rula-inline-action-editor :is(input, textarea, select) { width: 100%; min-width: 0; }
+@media screen and (max-width: 760px) {
+  .table-wrap .assessment-mobile-table tbody > tr.rula-action-editor-row > td { display: block; }
+  .table-wrap .assessment-mobile-table tbody > tr.rula-action-editor-row > td::before { content: none; }
+}

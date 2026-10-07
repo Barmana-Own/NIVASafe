@@ -145,9 +145,9 @@ describe("assessment corrective action suggestions", () => {
     expect(suggestions[0]).toMatchObject({ priority: "CRITICAL", scoreReduction: 6, affectedParts: ["trunk"], bodySide: "RIGHT", source: "AI" });
   });
 
-  it("limits RULA corrective suggestions to six items", () => {
+  it("limits RULA corrective suggestions to twenty items", () => {
     const suggestions = parseRulaActionSuggestions(JSON.stringify({
-      actions: Array.from({ length: 8 }, (_, index) => ({
+      actions: Array.from({ length: 25 }, (_, index) => ({
         titleFa: `اقدام ${index + 1}`,
         titleEn: `Action ${index + 1}`,
         descriptionFa: "شرح",
@@ -157,7 +157,7 @@ describe("assessment corrective action suggestions", () => {
         affectedParts: ["neck"],
       })),
     }), "RIGHT");
-    expect(suggestions).toHaveLength(6);
+    expect(suggestions).toHaveLength(20);
   });
 
   it("provides a non-empty low-risk RULA fallback", () => {

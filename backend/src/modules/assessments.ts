@@ -6,6 +6,7 @@ import { authenticate } from "../auth-guard.js";
 import { recordAIUsage } from "../ai-usage.js";
 import { audit, envelope, parse, prisma, requireOrg, requirePermission } from "../core.js";
 import { getAvailableAssessmentAIProvider, getRulaPostureImageAIProvider } from "../ai-provider.js";
+import { generateRulaActionSuggestions, rulaActionSuggestionBodySchema } from "../rula-action-generation.js";
 import { allowedMime, hasValidFileSignature, MAX_ATTACHMENT_FILE_BYTES } from "./files.js";
 import { assertFmeaProcessItemSelectionLimit, buildDescriptionPrompt, buildFmeaImageAnalysisPrompt, buildFmeaProcessAutofillPrompt, buildFmeaRiskRowsPrompt, buildFmeaRiskSuggestionsPrompt, buildJobTitleSuggestionsPrompt, buildProcessSuggestionsPrompt, catalogSuggestions, cleanDescription, cleanJobTitleList, cleanTextList, defaultFmeaProcessStep, emptyFmeaRiskSuggestions, emptyProcessSuggestions, fallbackProcessDescription, FMEA_PROCESS_DESCRIPTION_MAX, FMEA_PROCESS_ITEM_LENGTH_MAX, FMEA_PROCESS_ITEM_MAX, FMEA_PROCESS_AI_SUGGESTION_MAX, FMEA_PROCESS_RISK_ROW_SUGGESTION_MAX, FMEA_PROCESS_SUGGESTION_MAX, isValidShortActivityDescription, limitProcessSuggestions, nextFmeaRowNumber, normalizeJobTitle, parseFmeaImageAnalysis, parseFmeaProcessAutofill, parseFmeaRiskRows, parseFmeaRiskScoreSuggestion, parseFmeaRiskSuggestions, parseJobTitleSuggestions, parseProcessSuggestions, type FmeaImageAnalysis, type FmeaProcessAutofill, type FmeaRiskRowSuggestion, type FmeaRiskScoreSuggestion, type FmeaRiskSuggestions, type ProcessSuggestions } from "../fmea-process.js";
 import { fallbackFmeaReportDetailSuggestions } from "../fmea-report.js";
@@ -214,6 +215,20 @@ async function getRula(id: string, organizationId: string) {
 }
 
 export async function registerAssessmentRoutes(app: FastifyInstance) {
+  app.post("/api/v1/rula/action-suggestions", { preHandler: authenticate, config: { rateLimit: { max: 8, timeWindow: "1 minute" } } }, async (request) => {
+    const organizationId = requireOrg(request);
+    requirePermission(request, "assessments.create");
+    const body = parse(rulaActionSuggestionBodySchema, request.body);
+    const { response, providerResult } = await generateRulaActionSuggestions({
+      organizationId, userId: request.actor!.userId,
+      bodySide: body.bodySide, inputs: body.inputs, analysis: body.postureAnalysis,
+      jobTitle: body.activityInfo?.jobTitle, taskDescription: body.activityInfo?.taskDescription,
+      postureDescription: body.activityInfo?.postureDescription, locale: body.locale,
+    });
+    if (providerResult) await recordAIUsage(prisma, { organizationId, userId: request.actor!.userId, useCase: "risk", sourceType: "RULA_ACTION_SUGGESTIONS", sourceId: request.id, result: providerResult });
+    await audit(request, "RULA_DRAFT_ACTION_SUGGESTIONS", "RulaDraft", undefined, { useCase: "risk", provider: response.provider, model: response.model, aiStatus: response.aiStatus, reasonCode: response.reasonCode, bodySide: body.bodySide, suggestionCount: response.suggestions.length });
+    return envelope(response);
+  });
   app.get("/api/v1/fmea", { preHandler: authenticate }, async (request) => envelope(await prisma.fmeaAssessment.findMany({ where: { organizationId: requireOrg(request), deletedAt: null }, include: { items: true, project: { select: { name: true, code: true } }, jobCatalog: { select: jobCatalogSelect } }, orderBy: { updatedAt: "desc" } })));
   app.get("/api/v1/fmea/job-catalog", { preHandler: authenticate }, async (request) => {
     const organizationId = requireOrg(request);
