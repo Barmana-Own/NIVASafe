@@ -514,9 +514,7 @@ describe("FMEA risk register", () => {
     expect(assessmentPagesSource).toContain("formatFmeaRiskPercentage");
     expect(assessmentPagesSource).toContain("onMouseEnter={() => activate(entry.level)}");
     expect(assessmentPagesSource).toContain('t("report.ofTotal")');
-    expect(assessmentPagesSource).toContain("completedActionCount");
-    expect(assessmentPagesSource).toContain("inProgressActionCount");
-    expect(assessmentPagesSource).toContain("remainingActionCount");
+    expect(assessmentPagesSource).toContain("<FmeaActionProgressChart completedCount={rowWorkflow.completedCount} inProgressCount={rowWorkflow.inProgressCount} remainingCount={rowWorkflow.remainingCount}");
     expect(assessmentPagesSource).toContain('fmea-risk-donut-label');
     expect(stylesSource).toContain(".fmea-risk-donut {");
     expect(stylesSource).toContain("background: transparent");
@@ -1848,7 +1846,7 @@ describe("form auto-save contract", () => {
     expect(rulaOverviewSource).toContain('title={t("assessment.rulaRiskDistributionTitle")}');
     expect(rulaOverviewSource).toContain('className="fmea-risk-donut-svg"');
     expect(rulaOverviewSource).toContain('className={`fmea-risk-legend-item');
-    expect(rulaOverviewSource).toContain('t("report.inProgress")');
+    expect(rulaOverviewSource).toContain('<FmeaActionProgressChart completedCount={correctiveActionSummary.completedCount} inProgressCount={correctiveActionSummary.inProgressCount} remainingCount={correctiveActionSummary.remainingCount}');
     expect(rulaOverviewModelSource).toContain("results: readonly RulaOverviewResult[]");
     expect(rulaOverviewModelSource).toContain("action.progress");
     expect(reportsSource).toContain("const predictedScore = sideResults");

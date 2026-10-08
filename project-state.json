@@ -1,5 +1,31 @@
 {
   "project": "NIVASafe",
+  "latestRulaProgressChartStyle": {
+    "status": "IMPLEMENTED_WITH_BROWSER_VERIFICATION_LIMITATION",
+    "scope": "Stage-three RULA shares FMEA's three-state risk-styled interactive progress chart without changing workflow counts or clinical scores.",
+    "validation": {
+      "frontendTests": "PASS — 175 tests / 24 files",
+      "frontendBuildLintTypecheck": "PASS — existing bundle-size warning remains",
+      "securityReview": "PASS — presentation-only changes; escaped labels, existing data and permission boundaries preserved",
+      "browserInteraction": "NOT_RUN — SSR/model/source regression tests only",
+      "gitPush": "NOT_PERFORMED",
+      "productionDeployment": "NOT_PERFORMED"
+    },
+    "documentation": "docs/rula-progress-chart-style.md"
+  },
+  "latestFmeaThreeStateChart": {
+    "status": "IMPLEMENTED_WITH_BROWSER_VERIFICATION_LIMITATION",
+    "scope": "Three proportional workflow slices with risk-distribution styling, localized count/percentage legends and mouse/focus/touch selection.",
+    "validation": {
+      "frontendTests": "PASS — 175 tests / 24 files",
+      "frontendBuildLintTypecheck": "PASS — existing bundle-size warning remains",
+      "securityReview": "PASS — presentation-only changes, escaped labels and finite-count normalization; existing data and permission boundaries preserved",
+      "browserInteraction": "NOT_RUN — SSR/model/source regression tests only",
+      "gitPush": "NOT_PERFORMED",
+      "productionDeployment": "NOT_PERFORMED"
+    },
+    "documentation": "docs/fmea-three-state-progress-chart.md"
+  },
   "latestFmeaIndependentRegistration": {
     "status": "IMPLEMENTED_WITH_DATABASE_INTEGRATION_LIMITATION",
     "scope": "Selected report suggestions create separate persisted risk-context rows and actions without modifying source rows; retry-safe registration and pending-suggestion removal.",

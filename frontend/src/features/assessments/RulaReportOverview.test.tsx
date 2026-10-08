@@ -18,6 +18,9 @@ describe("RULA workflow overview rendering", () => {
     expect(markup).toContain(`<span>${number(3)}</span><small>${translate("assessment.rulaTotalResults", locale)}</small>`);
     expect(markup).toContain(`${translate("assessment.rulaAcceptable", locale)}: ${number(3)}`);
     expect(markup).not.toContain(translate("assessment.rulaPriorityDistributionEmpty", locale));
+    expect(markup).toContain('data-status="remaining"');
+    expect(markup).toContain('stroke="#bdcdd6" stroke-dasharray="100 0"');
+    expect(markup).toContain(`${translate("report.remaining", locale)}: ${number(3)}`);
     // Clinical score stays unknown; priorities do not fabricate a RULA score.
     expect(markup).toContain('<strong>—</strong>');
   });
@@ -35,11 +38,14 @@ describe("RULA workflow overview rendering", () => {
       ]}
     /></LocaleProvider>);
     expect(markup).toContain('aria-valuenow="25"');
-    expect(markup).toContain("#138a61 0% 25%");
-    expect(markup).toContain("#e19a31 25% 50%");
+    expect(markup).toContain('data-status="completed"');
+    expect(markup).toContain('stroke="#138a61" stroke-dasharray="25 75" stroke-dashoffset="0"');
+    expect(markup).toContain('stroke="#e19a31" stroke-dasharray="25 75" stroke-dashoffset="-25"');
+    expect(markup).toContain('stroke="#bdcdd6" stroke-dasharray="50 50" stroke-dashoffset="-50"');
+    expect(markup).toContain("fmea-risk-distribution-visual fmea-workflow-visual");
     const number = (value: number) => value.toLocaleString(locale === "fa" ? "fa-IR" : "en-US");
     for (const [key, count] of [["completed", 1], ["inProgress", 1], ["remaining", 2]] as const) {
-      expect(markup).toContain(`${translate(`report.${key}`, locale)}<strong>${number(count)}</strong>`);
+      expect(markup).toContain(`${translate(`report.${key}`, locale)}: ${number(count)}`);
     }
   });
 });

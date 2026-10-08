@@ -2,7 +2,7 @@ import { Icon, SectionCard, StatusBadge } from "../../components/UI";
 import { useI18n } from "../../i18n";
 import { useState } from "react";
 import { buildRulaPriorityDistribution, rulaActionLevels, summarizeRulaActionWorkflow, type RulaOverviewCorrectiveAction, type RulaOverviewMetrics, type RulaOverviewResult } from "./rulaOverviewModel";
-import type { CSSProperties } from "react";
+import { FmeaActionProgressChart } from "./FmeaActionProgressChart";
 
 const actionLevelColors: Record<(typeof rulaActionLevels)[number], string> = {
   4: "#cf4a4d",
@@ -81,14 +81,7 @@ export function RulaReportOverview({
 }: RulaReportOverviewProps) {
   const { locale, t } = useI18n();
   const correctiveActionSummary = summarizeRulaActionWorkflow(actions);
-  const inProgressPercent = correctiveActionSummary.totalCount ? correctiveActionSummary.inProgressCount / correctiveActionSummary.totalCount * 100 : 0;
-  const completedPercent = correctiveActionSummary.totalCount ? correctiveActionSummary.completedCount / correctiveActionSummary.totalCount * 100 : 0;
   const metrics = buildRulaPriorityDistribution(actions);
-  const completionProgressLabel = t("assessment.rulaCompletedActionsProgressAria", {
-    completed: numberText(correctiveActionSummary.completedCount, locale),
-    total: numberText(correctiveActionSummary.totalCount, locale),
-    percent: numberText(correctiveActionSummary.completionPercent, locale),
-  });
 
   return <>
     <div className={`rula-report-score-card ${actionLevelClassName}`}>
@@ -119,16 +112,7 @@ export function RulaReportOverview({
     </SectionCard>
 
     <SectionCard className="rula-overview-panel rula-overview-actions-panel" title={t("assessment.rulaActionProgressTitle")} description={t("assessment.rulaActionProgressDescription")} icon="actions">
-      <div className="fmea-action-progress-layout rula-overview-actions">
-        <div className="fmea-action-progress-ring" style={{ background: `conic-gradient(#138a61 0% ${completedPercent}%, #e19a31 ${completedPercent}% ${completedPercent + inProgressPercent}%, #e6eef2 ${completedPercent + inProgressPercent}% 100%)` } as CSSProperties} role="progressbar" aria-label={completionProgressLabel} aria-valuemin={0} aria-valuemax={100} aria-valuenow={correctiveActionSummary.completionPercent}>
-          <div><strong>{percentText(correctiveActionSummary.completionPercent, locale)}</strong><small>{t("assessment.rulaCompletedActionsLabel")}</small></div>
-        </div>
-        <div className="fmea-action-progress-list">
-          <div><span className="completed-dot"/>{t("report.completed")}<strong>{numberText(correctiveActionSummary.completedCount, locale)}</strong></div>
-          <div><span className="in-progress-dot"/>{t("report.inProgress")}<strong>{numberText(correctiveActionSummary.inProgressCount, locale)}</strong></div>
-          <div><span className="remaining-dot"/>{t("report.remaining")}<strong>{numberText(correctiveActionSummary.remainingCount, locale)}</strong></div>
-        </div>
-      </div>
+      <FmeaActionProgressChart completedCount={correctiveActionSummary.completedCount} inProgressCount={correctiveActionSummary.inProgressCount} remainingCount={correctiveActionSummary.remainingCount}/>
     </SectionCard>
     </div>
   </>;
