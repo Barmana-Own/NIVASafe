@@ -4,6 +4,8 @@ import { z } from "zod";
 import { authenticate } from "../auth-guard.js";
 import { audit, envelope, pageParams, parse, prisma, requireOrg, requirePermission } from "../core.js";
 import { progressForActionStatus } from "../action-progress.js";
+import { completeFmeaRowCorrection } from "../fmea-row-completion.js";
+import { registerFmeaSuggestion } from "../fmea-suggestion-registration.js";
 import { rulaImpactSchema } from "../rula-report.js";
 import { rulaBodySideSchema } from "../rula-process.js";
 
@@ -54,6 +56,22 @@ async function validateLinks(organizationId: string, projectId: string, fmeaId?:
 }
 
 export async function registerActionRoutes(app: FastifyInstance) {
+  app.post("/api/v1/fmea/:id/items/:itemId/register-action", { preHandler: authenticate }, async (request, reply) => {
+    const organizationId = requireOrg(request); requirePermission(request, "assessments.update");
+    const { id, itemId } = parse(z.object({ id: z.string().uuid(), itemId: z.string().uuid() }), request.params);
+    const body = parse(correctiveActionBodySchema.pick({ title: true, description: true, priority: true, status: true, assigneeName: true, dueDate: true }).extend({ title: z.string().trim().min(2).max(191), description: z.string().trim().min(2).max(20000) }).strict(), request.body);
+    const action = await registerFmeaSuggestion(prisma, organizationId, id, itemId, body);
+    await audit(request, "FMEA_SUGGESTION_REGISTER", "CorrectiveAction", action.id, { assessmentId: id, sourceItemId: itemId });
+    return reply.code(201).send(envelope(action));
+  });
+  app.post("/api/v1/fmea/:id/items/:itemId/complete", { preHandler: authenticate }, async request => {
+    const organizationId = requireOrg(request); requirePermission(request, "assessments.update");
+    const { id, itemId } = parse(z.object({ id: z.string().uuid(), itemId: z.string().uuid() }), request.params);
+    parse(z.object({}).strict(), request.body ?? {});
+    const result = await completeFmeaRowCorrection(prisma, organizationId, id, itemId);
+    await audit(request, "FMEA_ROW_CORRECTION_COMPLETED", "FmeaItem", itemId, { assessmentId: id });
+    return envelope(result);
+  });
   app.get("/api/v1/actions", { preHandler: authenticate }, async (request) => {
     const organizationId = requireOrg(request); requirePermission(request, "projects.read"); const q = pageParams(request.query);
     const extra = parse(z.object({ status: z.nativeEnum(ActionStatus).optional(), projectId: z.string().uuid().optional(), fmeaId: z.string().uuid().optional() }), request.query);

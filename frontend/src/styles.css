@@ -4627,6 +4627,7 @@ details.optional-fields > :not(summary),
   }
 
   .table-wrap .assessment-mobile-table tbody > tr > td {
+    direction: inherit;
     display: grid;
     grid-template-columns: minmax(0, 36%) minmax(0, 1fr);
     align-items: start;

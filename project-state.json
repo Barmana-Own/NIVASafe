@@ -1,5 +1,41 @@
 {
   "project": "NIVASafe",
+  "latestFmeaIndependentRegistration": {
+    "status": "IMPLEMENTED_WITH_DATABASE_INTEGRATION_LIMITATION",
+    "scope": "Selected report suggestions create separate persisted risk-context rows and actions without modifying source rows; retry-safe registration and pending-suggestion removal.",
+    "validation": {
+      "backendTests": "PASS — 246 tests across 33 files",
+      "frontendTests": "PASS — 170 tests across 23 files",
+      "domainTests": "PASS — 12 tests",
+      "buildLintTypecheck": "PASS — existing frontend bundle-size warning remains",
+      "apiContract": "PASS — 71 client paths / 126 backend routes",
+      "releaseChecks": "PASS — 28 checks",
+      "databaseIntegration": "NOT_RUN — persistence mocked",
+      "browserInteraction": "NOT_RUN — source contract and model tests only",
+      "securityReview": "PASS — auth, permissions, strict body, bounded inputs, tenant-scoped parameterized lock and atomic row/action persistence reviewed",
+      "productionDeployment": "NOT_PERFORMED",
+      "gitPush": "NOT_PERFORMED"
+    },
+    "documentation": "docs/fmea-independent-suggestion-registration.md"
+  },
+  "latestFmeaMobileRowCompletion": {
+    "status": "IMPLEMENTED_WITH_DATABASE_INTEGRATION_LIMITATION",
+    "scope": "Mobile score/risk labels inherit RTL; persisted same-report row completion and row-based workflow chart with unregistered recommendations counted as remaining.",
+    "validation": {
+      "frontendTests": "PASS — 169 tests across 23 files",
+      "backendTests": "PASS — 239 tests across 32 files",
+      "domainTests": "PASS — 12 tests",
+      "buildLintTypecheck": "PASS — existing bundle-size warning remains",
+      "apiContract": "PASS — 71 client paths / 125 server routes",
+      "releaseChecks": "PASS — 28 checks",
+      "mobileVisual": "PASS — production CSS on representative local fixtures at 320px and 390px; RTL cell direction confirmed in browser",
+      "databaseIntegration": "NOT_RUN — local MySQL EXPLAIN attempt failed; HTTP transaction adapter tests are mocked",
+      "securityReview": "PASS — auth/permission/tenant boundaries, UUID validation, strict command body, parameterized SQL row lock, transaction and idempotent retry behavior reviewed",
+      "productionDeployment": "NOT_PERFORMED"
+    },
+    "preservation": "No scoring, export, route, database schema or action-status removal; cancelled/rejected controls excluded without mutation.",
+    "documentation": "docs/fmea-row-completion-mobile.md"
+  },
   "latestArvanModelProfile": {
     "status": "IMPLEMENTED_SECRET_PROVISIONING_REQUIRED",
     "scope": "Arvan DeepSeek-V4-Flash chat and GPT-5-Mini assessments, including RULA photos; aligned runtime defaults, PM2 and Docker templates.",

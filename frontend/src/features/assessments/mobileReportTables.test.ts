@@ -14,6 +14,7 @@ describe("Mobile report table contract", () => {
     expect(mobileRules).not.toContain(".rula-report-page");
     expect(mobileRules).toContain("min-width: 0 !important");
     expect(mobileRules).toContain("content: attr(data-label)");
+    expect(mobileRules).toContain("direction: inherit;");
   });
 
   it("labels every FMEA field, including scores and optional operations", () => {
@@ -26,6 +27,8 @@ describe("Mobile report table contract", () => {
       expect(interactiveRow).toContain(`data-label={t("assessment.${field}")}`);
     }
     expect(interactiveRow).toContain('data-label={"RPN"}');
+    expect(interactiveRow).toContain('assessment.fmeaConfirmRowCompletion');
+    expect(interactiveRow).toContain('isFmeaRowCompleted(item)');
   });
 
   it("keeps accessible headers, wrapping actions and inline details without clipping", () => {
