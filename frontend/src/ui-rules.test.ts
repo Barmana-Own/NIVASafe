@@ -14,6 +14,12 @@ const registrationPagesSource = readSource("./features/account/RegistrationPage.
 const assessmentPagesSource = readSource("./features/assessments/AssessmentPages.tsx");
 
 describe("RULA corrective AI report integration", () => {
+  it("separates main-factor names from source captions without inline text collisions", () => {
+    expect(stylesSource).toContain('.rula-factor-title > div { display: grid; gap: .18rem; min-width: 0; text-align: start; }');
+    expect(stylesSource).toContain('.rula-factor-title > div > strong, .rula-factor-title > div > small { display: block; margin: 0; line-height: 1.55; overflow-wrap: anywhere; }');
+    expect(stylesSource).toContain('.rula-factor-title small { color: var(--rula-result-muted); font-size: .64rem; font-weight: 400; }');
+    expect(assessmentPagesSource).toContain('factor.source !== "AI" && <small>');
+  });
   it("does not label input validation as an AI outage and uses a localized explanation", () => {
     expect(assessmentPagesSource).toContain('setAiStatus(invalidInput ? undefined : "unavailable")');
     expect(assessmentPagesSource).toContain('t("assessment.rulaAiSuggestionInputInvalid")');

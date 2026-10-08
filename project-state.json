@@ -1,5 +1,18 @@
 {
   "project": "NIVASafe",
+  "latestRulaMainFactorTypography": {
+    "status": "IMPLEMENTED_WITH_BROWSER_VERIFICATION_LIMITATION",
+    "scope": "Separate factor name and source caption onto two spaced rows, improve caption readability and preserve responsive RTL/LTR wrapping.",
+    "validation": {
+      "frontendTests": "PASS — 178 tests / 24 files",
+      "frontendBuildLintTypecheck": "PASS — existing bundle-size warning remains",
+      "securityReview": "PASS — scoped CSS and regression test only; scores, source labels, React escaping and permissions unchanged",
+      "browserVisual": "NOT_RUN — source-contract regression test only",
+      "gitPush": "NOT_PERFORMED",
+      "productionDeployment": "NOT_PERFORMED"
+    },
+    "documentation": "docs/rula-main-factor-typography.md"
+  },
   "latestRulaAdvisoryContextValidation": {
     "status": "IMPLEMENTED_WITH_LIVE_PROVIDER_VERIFICATION_LIMITATION",
     "scope": "Repair pre-provider draft suggestion rejection for incomplete optional job/task context; keep strict save validation and distinguish HTTP 400 from AI outage.",
