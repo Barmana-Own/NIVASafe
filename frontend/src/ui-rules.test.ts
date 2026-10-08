@@ -14,6 +14,11 @@ const registrationPagesSource = readSource("./features/account/RegistrationPage.
 const assessmentPagesSource = readSource("./features/assessments/AssessmentPages.tsx");
 
 describe("RULA corrective AI report integration", () => {
+  it("does not label input validation as an AI outage and uses a localized explanation", () => {
+    expect(assessmentPagesSource).toContain('setAiStatus(invalidInput ? undefined : "unavailable")');
+    expect(assessmentPagesSource).toContain('t("assessment.rulaAiSuggestionInputInvalid")');
+    expect(assessmentPagesSource).toContain('.status === 400');
+  });
   it("requests draft recommendations only in the active report step and cancels stale requests", () => {
     expect(assessmentPagesSource).toContain('if (!active) return;');
     expect(assessmentPagesSource).toContain('"/rula/action-suggestions", { method: "POST", body: requestBody, signal: controller.signal }');
@@ -1360,6 +1365,19 @@ describe("assistant AI connectivity UX", () => {
     expect(stylesSource).toContain("@keyframes assistant-typing-bounce");
     expect(i18nSource).toContain('"assistant.waitingForResponse": "در حال دریافت پاسخ..."');
     expect(i18nSource).toContain('"assistant.waitingForResponse": "Waiting for the assistant response..."');
+  });
+
+  it("keeps the send control inside the multiline field with accessible responsive styling", () => {
+    expect(assistantPageSource).toContain('<div className="composer-field"><textarea name="content"');
+    expect(assistantPageSource).toContain('className="primary composer-send-button"');
+    expect(assistantPageSource).toContain('title={t("assistant.send")} disabled={sending}');
+    expect(assistantPageSource).toContain('<Icon name="arrow"/>}</button></div>');
+    expect(stylesSource).toContain('.assistant-page .composer-field { position: relative; width: 100%; min-width: 0; }');
+    expect(stylesSource).toContain('padding-block-end: 66px');
+    expect(stylesSource).toContain('inset-inline-end: 12px; inset-block-end: 12px');
+    expect(stylesSource).toContain('width: 44px; height: 44px; min-width: 44px; min-height: 44px');
+    expect(stylesSource).toContain('.composer-send-button:focus-visible');
+    expect(stylesSource).toContain('.composer-send-button:hover:not(:disabled)');
   });
 
   it("shows conversation topics instead of generated date-only labels", () => {

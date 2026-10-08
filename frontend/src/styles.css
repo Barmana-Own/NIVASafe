@@ -2561,7 +2561,13 @@ details.optional-fields > :not(summary),
 .rula-analysis-image-switcher .rula-posture-image-select img { object-fit: contain; }
 .rula-analysis-image-switcher .rula-posture-image-card-meta small { overflow-wrap: anywhere; }
 .rula-analysis-image-switcher > p { margin-block: .75rem 0; }
-.assistant-page .composer textarea { min-width: 0; width: 100%; min-height: 74px; max-height: 220px; resize: vertical; line-height: 1.7; white-space: pre-wrap; }
+.assistant-page .composer-field { position: relative; width: 100%; min-width: 0; }
+.assistant-page .composer textarea { display: block; min-width: 0; width: 100%; min-height: 116px; max-height: 220px; padding-block-end: 66px; resize: vertical; line-height: 1.7; white-space: pre-wrap; }
+.assistant-page .composer .composer-send-button { position: absolute; inset-inline-end: 12px; inset-block-end: 12px; display: inline-grid; place-items: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0; border-radius: 13px; box-shadow: 0 4px 12px rgba(27, 77, 125, .18); transition: box-shadow .18s ease, filter .18s ease; }
+.assistant-page .composer .composer-send-button:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 6px 16px rgba(27, 77, 125, .24); }
+.assistant-page .composer .composer-send-button:focus-visible { outline: 2px solid var(--green-600); outline-offset: 3px; }
+.assistant-page .composer .composer-send-button:disabled { cursor: wait; opacity: .65; box-shadow: none; }
+.assistant-page .composer .composer-send-button .composer-spinner { border-color: rgba(255, 255, 255, .4); border-top-color: #fff; }
 .rula-posture-image-select { display: grid; gap: .32rem; width: 100%; min-width: 0; padding: 0; border: 0; background: transparent; text-align: start; cursor: pointer; }
 .rula-posture-image-select img { display: block; width: 100%; height: 104px; border-radius: 7px; background: #edf5fa; object-fit: cover; }
 .rula-posture-image-select > span, .rula-saved-posture-image > span { min-width: 0; overflow: hidden; color: #365d78; font-size: .58rem; text-overflow: ellipsis; white-space: nowrap; direction: ltr; text-align: start; }

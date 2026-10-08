@@ -3391,7 +3391,11 @@ function RulaReportPreview({ result, analysis, force, muscleUse, bodySide, local
         setAiStatus(response.data.aiStatus);
         if (response.data.reasonCode) setAiError(t("assessment.rulaAiSuggestionsUnavailable"));
       })
-      .catch((reason) => { if (!controller.signal.aborted) { setAiStatus("unavailable"); setAiError((reason as Error).message); } })
+      .catch((reason) => { if (!controller.signal.aborted) {
+        const invalidInput = (reason as Error & { status?: number }).status === 400;
+        setAiStatus(invalidInput ? undefined : "unavailable");
+        setAiError(invalidInput ? t("assessment.rulaAiSuggestionInputInvalid") : (reason as Error).message);
+      } })
       .finally(() => { if (!controller.signal.aborted) setAiLoading(false); });
     return () => controller.abort();
   }, [active, requestBody, refresh]);

@@ -1,5 +1,35 @@
 {
   "project": "NIVASafe",
+  "latestRulaAdvisoryContextValidation": {
+    "status": "IMPLEMENTED_WITH_LIVE_PROVIDER_VERIFICATION_LIMITATION",
+    "scope": "Repair pre-provider draft suggestion rejection for incomplete optional job/task context; keep strict save validation and distinguish HTTP 400 from AI outage.",
+    "validation": {
+      "backendTests": "PASS — 251 tests / 33 files; AI provider mocked",
+      "frontendTests": "PASS — 177 tests / 24 files",
+      "apiContract": "PASS — 71 client paths / 126 backend routes",
+      "releaseChecks": "PASS — 28 checks",
+      "buildLintTypecheck": "PASS — backend and frontend; existing frontend bundle warning remains",
+      "securityReview": "PASS — bounded advisory context, posture/measurement validation, auth/tenant/permission/rate-limit and strict saved-assessment validation preserved",
+      "liveProvider": "NOT_RUN — no external provider request or production access",
+      "browserInteraction": "NOT_RUN",
+      "gitPush": "NOT_PERFORMED",
+      "productionDeployment": "NOT_PERFORMED"
+    },
+    "documentation": "docs/rula-advisory-context-validation.md"
+  },
+  "latestAssistantEmbeddedSendButton": {
+    "status": "IMPLEMENTED_WITH_BROWSER_VERIFICATION_LIMITATION",
+    "scope": "Send button inside multiline prompt field, 44px touch target, logical RTL/LTR placement, reserved text padding and sending/focus/hover states.",
+    "validation": {
+      "frontendTests": "PASS — 176 tests / 24 files",
+      "frontendBuildLintTypecheck": "PASS — existing bundle-size warning remains",
+      "securityReview": "PASS — presentation-only changes; autosave, validation, send guard and escaped content preserved",
+      "browserVisual": "NOT_RUN — source-contract tests only",
+      "gitPush": "NOT_PERFORMED",
+      "productionDeployment": "NOT_PERFORMED"
+    },
+    "documentation": "docs/assistant-embedded-send-button.md"
+  },
   "latestRulaProgressChartStyle": {
     "status": "IMPLEMENTED_WITH_BROWSER_VERIFICATION_LIMITATION",
     "scope": "Stage-three RULA shares FMEA's three-state risk-styled interactive progress chart without changing workflow counts or clinical scores.",

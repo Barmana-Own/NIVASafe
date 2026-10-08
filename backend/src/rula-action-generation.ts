@@ -10,7 +10,16 @@ export const rulaActionSuggestionBodySchema = z.object({
   bodySide: rulaBodySideSchema,
   inputs: rulaInputSchema,
   postureAnalysis: rulaPostureAnalysisSchema,
-  activityInfo: rulaActivityInfoSchema.optional(),
+  // Advisory generation can use validated posture/score data before the task
+  // form is complete. Do not weaken the required fields for saving assessments.
+  activityInfo: z.preprocess(value => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+    const fields = value as Record<string, unknown>;
+    return { ...fields, jobTitle: fields.jobTitle ?? "", taskDescription: fields.taskDescription ?? "" };
+  }, rulaActivityInfoSchema.safeExtend({
+    jobTitle: z.string().trim().max(180),
+    taskDescription: z.string().trim().max(500),
+  })).optional(),
   locale: z.enum(["fa", "en"]).default("fa"),
 }).strict().superRefine((value, context) => {
   if (value.bodySide === "BOTH" && (!value.postureAnalysis.sideAnalyses?.LEFT || !value.postureAnalysis.sideAnalyses.RIGHT)) {

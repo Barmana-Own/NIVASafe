@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { calculateRula } from "@nivasafe/domain";
 import { fallbackRulaPostureAnalysis, rulaInputsForAnalysis } from "./rula-report.js";
+import { rulaActivityInfoSchema } from "./rula-process.js";
 
 const mocks = vi.hoisted(() => ({ analyze: vi.fn(), audit: vi.fn(), usage: vi.fn(), permission: vi.fn(), findFirst: vi.fn() }));
 vi.mock("./core.js", () => ({
@@ -91,6 +92,7 @@ describe("RULA corrective generation", () => {
     expect(parsed.filter((action) => action.titleEn.toLowerCase() === "action 0").map((action) => action.bodySide)).toEqual(["RIGHT", "LEFT"]);
   });
   it("validates existing input/posture/activity schemas and BOTH sides", () => {
+    expect(rulaActivityInfoSchema.safeParse({ jobTitle: "", taskDescription: "" }).success).toBe(false);
     expect(rulaActionSuggestionBodySchema.parse({ ...payload, locale: undefined }).locale).toBe("fa");
     for (const invalid of [
       { ...payload, score: 1 }, { ...payload, inputs: { ...inputs, force: 4 } },
@@ -109,6 +111,30 @@ describe("RULA draft and saved routes", () => {
     await app.register(registerReportRoutes);
     return app;
   }
+  it.each([
+    { jobTitle: "", taskDescription: "" },
+    { jobTitle: "   ", taskDescription: "   ", postureDescription: "Neck flexion" },
+    { jobTitle: "م", taskDescription: "ک" },
+    { postureDescription: "Standing assembly" },
+  ])("reaches AI when advisory task context is incomplete: %j", async activityInfo => {
+    const app = await appForRoutes();
+    try {
+      const response = await app.inject({ method: "POST", url: "/api/v1/rula/action-suggestions", headers, payload: { ...payload, activityInfo } });
+      expect(response.statusCode).toBe(200);
+      expect(response.json().data).toMatchObject({ aiStatus: "connected", reasonCode: null });
+      expect(response.json().data.suggestions).toHaveLength(2);
+      expect(mocks.analyze).toHaveBeenCalledTimes(1);
+    } finally { await app.close(); }
+  });
+  it("still rejects oversized or malformed optional context before contacting AI", async () => {
+    const app = await appForRoutes();
+    try {
+      for (const activityInfo of [{ jobTitle: "x".repeat(181) }, { taskDescription: "x".repeat(501) }, { jobTitle: {} }, { durationPerOccurrence: 3 }]) {
+        expect((await app.inject({ method: "POST", url: "/api/v1/rula/action-suggestions", headers, payload: { ...payload, activityInfo } })).statusCode).toBe(400);
+      }
+      expect(mocks.analyze).not.toHaveBeenCalled();
+    } finally { await app.close(); }
+  });
   it.each(["draft", "saved"])("routes %s generation through actual AI with server-calculated score and usage/audit", async (route) => {
     const app = await appForRoutes();
     const adjustedAnalysis = { ...analysis, neck: { ...analysis.neck, score: 5 } };

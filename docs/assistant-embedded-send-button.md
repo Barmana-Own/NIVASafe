@@ -1,0 +1,5 @@
+# Embedded assistant send control
+
+The chat composer now places the submit button inside a positioned wrapper around its existing multiline textarea. The field reserves 66px below the text to avoid overlap; the send control has a stable 44px square touch target, rounded corners, shadow, hover/focus feedback and a white spinner while sending. Logical inline placement follows RTL/LTR automatically. The resize handle remains available and draft status stays outside the field.
+
+The form, content field name, length validation, send handler, sending guard, autosave and message recovery remain unchanged. This is a presentation-only change without a dependency, endpoint, persistence or permission modification. Security review found no new untrusted rendering or network/data boundary. A source-contract regression checks wrapper nesting, button behavior, responsive sizing, reserved text space and focus/hover styling. Live browser visual verification is NOT_RUN. Git push and deployment are NOT_PERFORMED; executable validation is recorded in project-state.json.
