@@ -27,18 +27,22 @@ const authGuard = read("backend/src/auth-guard.ts");
 const organizationModule = read("backend/src/modules/organizations.ts");
 const appRoutes = read("frontend/src/App.tsx");
 const appLayout = read("frontend/src/layout/AppLayout.tsx");
+const navigation = read("frontend/src/layout/navigation.ts");
 const apiClient = read("frontend/src/api/client.ts");
 const webPackage = JSON.parse(read("frontend/package.json"));
 const apiPackage = JSON.parse(read("backend/package.json"));
 const migrationDir = join(root, "backend/prisma/migrations");
 const migrationFiles = readdirSync(migrationDir, { recursive: true }).filter((file) => String(file).endsWith("migration.sql"));
 const migrationSql = migrationFiles.map((file) => read(`backend/prisma/migrations/${file}`)).join("\n");
+const migrationTables = new Set([...migrationSql.matchAll(/CREATE TABLE\s+`([^`]+)`/gi)].map((match) => match[1]));
+const manualSchemaTables = new Set([...manualSchema.matchAll(/CREATE TABLE\s+`([^`]+)`/gi)].map((match) => match[1]));
 
 check("Prisma provider is MySQL", /provider\s*=\s*"mysql"/.test(schema));
 check("No PostgreSQL configuration remains", !/postgres(?:ql)?/i.test([schema, compose, migrationSql].join("\n")));
 check("Docker Compose uses MySQL 8", /image:\s*mysql:8\.4/.test(compose));
 check("Frontend is React", Boolean(webPackage.dependencies?.react && webPackage.dependencies?.vite));
 check("Backend is Node/Fastify", Boolean(apiPackage.dependencies?.fastify && apiPackage.scripts?.start?.includes("node")));
+check("Windows build and Vitest scripts use the Vite runner config loader", webPackage.scripts?.build?.includes("--configLoader runner") && webPackage.scripts?.test?.includes("--configLoader runner") && apiPackage.scripts?.test?.includes("--configLoader runner"));
 check("Frontend port is 5043", /port:\s*5043/.test(read("frontend/vite.config.ts")));
 check("Backend port is 5044", /5044/.test(read("backend/src/config.ts")));
 check("Production environment templates exist", existsSync(join(root, ".env.production.example")) && existsSync(join(root, ".env.docker.example")));
@@ -46,7 +50,7 @@ check("Docker DATABASE_URL uses mysql service hostname", /@mysql:3306\/nivasafe/
 check("Production requires SMTP for invitations and password reset", /SMTP_URL:\s*\$\{SMTP_URL:\?/.test(compose));
 check("Demo login credentials are not shipped", !/admin@nivasafe\.local|Demo123!/.test(accountPages));
 check("MySQL migration exists", migrationFiles.length > 0 && /CREATE TABLE `User`/.test(migrationSql));
-check("All 30 Prisma tables are in migration", (migrationSql.match(/CREATE TABLE/g) ?? []).length === 30, String((migrationSql.match(/CREATE TABLE/g) ?? []).length));
+check("Manual MySQL schema matches migration table inventory", migrationTables.size > 0 && migrationTables.size === manualSchemaTables.size && [...migrationTables].every((table) => manualSchemaTables.has(table)), `${migrationTables.size} migration tables; ${manualSchemaTables.size} schema tables`);
 check("Production provisioning script exists", existsSync(join(root, "backend/prisma/provision.ts")));
 check("Manual MySQL schema export exists", existsSync(join(root, "database/nivasafe-mysql-schema.sql")) && /CREATE TABLE `User`/.test(manualSchema) && /CREATE TABLE `AIUsageRecord`/.test(manualSchema) && /`employeeCount`/.test(manualSchema) && /`visibleUserIds`/.test(manualSchema));
 check("External AI adapters are implemented", /api\.arvancloudai\.ir\/v1/.test(aiProvider) && /api\.openai\.com\/v1\/responses/.test(aiProvider) && /generativelanguage\.googleapis\.com/.test(aiProvider) && /api\.anthropic\.com\/v1\/messages/.test(aiProvider));
@@ -60,7 +64,7 @@ check("IIS serves PWA metadata with safe cache headers", /\.webmanifest/.test(ii
 check("Registration input security is enforced in API and shared domain", /isValidEmail/.test(validation) && /isValidPhone/.test(validation) && /isForbiddenDisplayName/.test(validation) && /isStrongPassword/.test(validation) && /timeWindow: "1 hour"/.test(authModule));
 check("Username authentication and member provisioning are present", /username\s+String\?/.test(schema) && /MemberAccessRequest/.test(schema) && /checkedLoginIdentifier/.test(authModule) && /member-requests/.test(read("backend/src/modules/users.ts")) && /admin\/member-requests/.test(read("backend/src/modules/admin.ts")));
 check("Multi-organization subscriptions are independently modeled and gated", /subscriptionPlan/.test(subscriptionSchema) && /subscriptionStatus/.test(subscriptionSchema) && /SUBSCRIPTION_REQUIRED/.test(authGuard) && /subscription\/checkout/.test(subscriptionModule));
-check("Multi-organization account switching and creation are membership-scoped", /OrganizationMember/.test(subscriptionSchema) && /app\.post\("\/api\/v1\/organizations"[\s\S]*allowUnsubscribed: true/.test(organizationModule) && /selectOrganization/.test(apiClient) && /path: "\/organizations"[\s\S]*scope: "all"/.test(appLayout) && /<Route path="organizations" element={<OrganizationsPage \/>}/.test(appRoutes));
+check("Multi-organization account switching and creation are admin-scoped", /OrganizationMember/.test(subscriptionSchema) && /app\.post\("\/api\/v1\/organizations"[\s\S]*requirePermission\(request, "organizations\.manage"\)/.test(organizationModule) && /selectOrganization/.test(apiClient) && /path: "\/organizations"[\s\S]*scope: "administrators"/.test(navigation) && /<Route path="organizations" element={<AccessGuard roles={\["SUPER_ADMIN", "ORG_ADMIN"\]}><OrganizationsPage \/><\/AccessGuard>} \/>/.test(appRoutes));
 
 const contract = spawnSync(process.execPath, [join(root, "scripts/check-api-contract.mjs")], { encoding: "utf8" });
 check("Frontend API paths match backend routes", contract.status === 0, `${contract.stdout}${contract.stderr}`.trim());

@@ -54,3 +54,12 @@ The authenticated shell exposes a compact organization selector and a dedicated 
 ## Localization and responsive rules
 
 Persian labels and content are RTL; English content is LTR. The grid stacks on narrow screens, the description AI action moves below the textarea, and add-item controls stack to preserve usable touch targets.
+
+
+## Scoped checkpoint rula-image-experience-20261019-01 — 2026-10-19 / 1405-07-27
+
+Scoped status: PASS — safe code release with public image processing disabled.
+
+Compact image cards retain per-image edit/remove/retry and controlled status. Filename duplication, support link inside each card and giant fallback block intentionally replaced. Versioned bilingual disclosure is in a separate consent dialog; mobile/desktop and RTL/LTR verified.
+
+Evidence: C:/NIVASafe/reports/evidence/rula-image-experience-20261019-01. Full-product status is not COMPLETE.

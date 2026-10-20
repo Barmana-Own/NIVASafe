@@ -1,0 +1,10 @@
+import { readFileSync } from "node:fs";
+import { renderToStaticMarkup } from "react-dom/server";
+import { MemoryRouter } from "react-router-dom";
+import { afterEach, expect, it, vi } from "vitest";
+import { LocaleProvider } from "../../i18n";
+import { PolicyAcceptanceFields } from "./ImageProcessingConsent";
+import { ACCOUNT_IMAGE_CONSENT_VERSION, TERMS_VERSION, imageProcessingCopy } from "./imageProcessingPolicy";
+afterEach(()=>vi.unstubAllGlobals());
+it.each(['fa','en'] as const)('keeps terms and optional external image consent separate, unchecked and linked in %s',locale=>{vi.stubGlobal('localStorage',{getItem:()=>locale});const html=renderToStaticMarkup(<LocaleProvider><MemoryRouter><PolicyAcceptanceFields termsAccepted={false} onTermsChange={()=>undefined} imageAccepted={false} onImageChange={()=>undefined}/></MemoryRouter></LocaleProvider>);expect(html.match(/type="checkbox"/gu)).toHaveLength(2);expect(html).not.toContain('checked=""');expect(html).toContain('href="/terms"');expect(html).toContain('href="/privacy#assessment-images"');expect(html).toContain(imageProcessingCopy[locale].imageAgreement);expect(html).not.toMatch(/ArvanCloud|اروان|آروان/iu);});
+it('keeps account and terms versions aligned with the server contract without inferring registration consent',()=>{const source=readFileSync(new URL('../../../../backend/src/image-processing-consent.ts',import.meta.url),'utf8');expect(source).toContain(ACCOUNT_IMAGE_CONSENT_VERSION);expect(source).toContain(TERMS_VERSION);expect(imageProcessingCopy.en.termsParagraphs.join(' ')).toContain('does not grant');});

@@ -12,7 +12,8 @@ export function getOverlayRoot() {
     document.body.appendChild(root);
   }
   const themedApp = document.querySelector<HTMLElement>(".app[data-theme]");
-  if (themedApp?.dataset.theme) root.dataset.theme = themedApp.dataset.theme;
+  const theme = themedApp?.dataset.theme ?? document.documentElement.dataset.theme;
+  if (theme) root.dataset.theme = theme;
   else delete root.dataset.theme;
   const direction = document.documentElement.dir || themedApp?.dir;
   if (direction) root.dir = direction;
@@ -33,18 +34,25 @@ export type FloatingPosition = { top: number; left: number; width: number; maxHe
 export function getFloatingPosition(trigger: HTMLElement, options: { minWidth?: number; maxHeight?: number; placement?: FloatingPlacement; gap?: number; margin?: number } = {}): FloatingPosition {
   const { minWidth = 0, maxHeight: requestedMaxHeight = 320, placement = "auto", gap = 6, margin = 8 } = options;
   const rect = trigger.getBoundingClientRect();
-  const viewportWidth = window.visualViewport?.width || window.innerWidth || document.documentElement.clientWidth;
-  const viewportHeight = window.visualViewport?.height || window.innerHeight || document.documentElement.clientHeight;
-  const availableWidth = Math.max(0, viewportWidth - margin * 2);
+  const viewport = window.visualViewport;
+  const viewportLeft = viewport?.offsetLeft ?? 0;
+  const viewportTop = viewport?.offsetTop ?? 0;
+  const viewportRight = viewportLeft + (viewport?.width || window.innerWidth || document.documentElement.clientWidth);
+  const viewportBottom = viewportTop + (viewport?.height || window.innerHeight || document.documentElement.clientHeight);
+  const leftBound = viewportLeft + margin;
+  const topBound = viewportTop + margin;
+  const rightBound = Math.max(leftBound, viewportRight - margin);
+  const bottomBound = Math.max(topBound, viewportBottom - margin);
+  const availableWidth = Math.max(0, rightBound - leftBound);
   const width = Math.min(Math.max(rect.width, minWidth), availableWidth);
-  const below = Math.max(0, viewportHeight - rect.bottom - gap - margin);
-  const above = Math.max(0, rect.top - gap - margin);
-  const maxHeight = Math.max(96, Math.min(requestedMaxHeight, Math.max(below, above, 96)));
+  const below = Math.max(0, bottomBound - rect.bottom - gap);
+  const above = Math.max(0, rect.top - gap - topBound);
+  const maxHeight = Math.min(requestedMaxHeight, Math.max(below, above));
   const opensAbove = placement === "top" || (placement === "auto" && below < Math.min(180, maxHeight) && above > below);
   const top = opensAbove
-    ? Math.max(margin, rect.top - gap - maxHeight)
-    : Math.min(Math.max(margin, rect.bottom + gap), Math.max(margin, viewportHeight - margin - maxHeight));
-  const left = Math.min(Math.max(margin, rect.left), Math.max(margin, viewportWidth - margin - width));
+    ? Math.max(topBound, rect.top - gap - maxHeight)
+    : Math.min(Math.max(topBound, rect.bottom + gap), Math.max(topBound, bottomBound - maxHeight));
+  const left = Math.min(Math.max(leftBound, rect.left), Math.max(leftBound, rightBound - width));
   const direction = getComputedStyle(trigger).direction === "rtl" ? "rtl" : "ltr";
   return { top, left, width, maxHeight, direction };
 }

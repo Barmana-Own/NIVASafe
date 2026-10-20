@@ -141,18 +141,62 @@ export async function collectTouchTargetFindings(
     const isOpenDrawer = (element: Element) => Boolean(element.closest(".app-sidebar.open"));
     const isDrawerLayerOverlap = (first: Element, second: Element) =>
       isSidebarBackdrop(first) || isSidebarBackdrop(second) || isOpenDrawer(first) !== isOpenDrawer(second);
+    const isPartiallyClippedByScrollableAncestor = (element: Element) => {
+      const rect = element.getBoundingClientRect();
+      const pageCanScrollVertically = document.documentElement.scrollHeight > document.documentElement.clientHeight + 1
+        || document.body.scrollHeight > document.body.clientHeight + 1;
+      if (pageCanScrollVertically && (rect.top < 0 || rect.bottom > window.innerHeight)) return true;
+      for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+        const style = window.getComputedStyle(ancestor);
+        const scrollsX = /(auto|scroll)/.test(style.overflowX);
+        const scrollsY = /(auto|scroll)/.test(style.overflowY);
+        if (!scrollsX && !scrollsY) continue;
+        const bounds = ancestor.getBoundingClientRect();
+        const left = bounds.left + ancestor.clientLeft;
+        const top = bounds.top + ancestor.clientTop;
+        if ((scrollsX && (rect.left < left || rect.right > left + ancestor.clientWidth))
+          || (scrollsY && (rect.top < top || rect.bottom > top + ancestor.clientHeight))) return true;
+      }
+      return false;
+    };
     const rectFor = (element: Element) => {
       const rect = element.getBoundingClientRect();
-      if (element instanceof HTMLInputElement && (element.type === "checkbox" || element.type === "radio")) {
-        const label = associatedLabel(element);
-        if (label && !isVisuallyHidden(label)) return unionRect(rect, label.getBoundingClientRect());
+      let visible = element instanceof HTMLInputElement && (element.type === "checkbox" || element.type === "radio")
+        ? (() => {
+          const label = associatedLabel(element);
+          return label && !isVisuallyHidden(label) ? unionRect(rect, label.getBoundingClientRect()) : rect;
+        })()
+        : rect;
+      let left = visible.left;
+      let top = visible.top;
+      let right = visible.right;
+      let bottom = visible.bottom;
+      for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+        const style = window.getComputedStyle(ancestor);
+        if (!/(auto|scroll|hidden|clip)/.test(style.overflowX) && !/(auto|scroll|hidden|clip)/.test(style.overflowY)) continue;
+        const bounds = ancestor.getBoundingClientRect();
+        const clipLeft = bounds.left + ancestor.clientLeft;
+        const clipTop = bounds.top + ancestor.clientTop;
+        if (/(auto|scroll|hidden|clip)/.test(style.overflowX)) {
+          left = Math.max(left, clipLeft);
+          right = Math.min(right, clipLeft + ancestor.clientWidth);
+        }
+        if (/(auto|scroll|hidden|clip)/.test(style.overflowY)) {
+          top = Math.max(top, clipTop);
+          bottom = Math.min(bottom, clipTop + ancestor.clientHeight);
+        }
       }
-      return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
+      left = Math.max(left, 0);
+      top = Math.max(top, 0);
+      right = Math.min(right, window.innerWidth);
+      bottom = Math.min(bottom, window.innerHeight);
+      visible = { left, top, right, bottom, width: Math.max(0, right - left), height: Math.max(0, bottom - top) } as DOMRect;
+      return { left: visible.left, top: visible.top, right: visible.right, bottom: visible.bottom, width: visible.width, height: visible.height };
     };
     const allCandidates = Array.from(document.querySelectorAll(selector));
     const candidates = allCandidates.filter((element, index) => {
       if (candidateIndex !== undefined && index !== candidateIndex) return false;
-      if (!isActionable(element) || isInert(element) || isVisuallyHidden(element) || isDisabled(element) || isAllowed(element)) return false;
+      if (!isActionable(element) || isInert(element) || isVisuallyHidden(element) || isDisabled(element) || isAllowed(element) || isPartiallyClippedByScrollableAncestor(element)) return false;
       const rect = rectFor(element);
       return rect.width > 0 && rect.height > 0 && rect.right > 0 && rect.left < window.innerWidth && rect.bottom > 0 && rect.top < window.innerHeight;
     });

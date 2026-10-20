@@ -16,8 +16,9 @@ export type FmeaReportRisk = {
 
 export type FmeaRiskDistribution = Record<"CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "VERY_LOW", number>;
 
-export const FMEA_REPORT_DETAIL_SUGGESTION_MIN = 5;
-export const FMEA_REPORT_DETAIL_SUGGESTION_MAX = 8;
+export const FMEA_REPORT_DETAIL_SUGGESTION_MIN = 1;
+export const FMEA_REPORT_DETAIL_SUGGESTION_MAX = 20;
+const FMEA_REPORT_DETAIL_FALLBACK_COUNT = 5;
 
 export type FmeaReportDetailSuggestion = {
   processStep: string;
@@ -137,7 +138,7 @@ export function buildFmeaReportDetailSuggestionsPrompt(input: {
   return [
     "NIVASAFE_FMEA_REPORT_DETAIL_SUGGESTIONS",
     'Return only valid JSON: {"rows":[{"processStep":"","failureMode":"","effect":"","cause":"","preventiveControls":"","detectionControls":"","recommendation":"","severity":1,"occurrence":1,"detection":1}]}.' ,
-    `Use ${language}. Return ${FMEA_REPORT_DETAIL_SUGGESTION_MIN} to ${FMEA_REPORT_DETAIL_SUGGESTION_MAX} distinct, concise FMEA risk-row drafts. Each text field must be no more than 1,200 characters. Do not add markdown or explanations.`,
+    `Use ${language}. Analyze the supplied activity and choose the number of relevant, distinct FMEA risk-row drafts yourself, up to ${FMEA_REPORT_DETAIL_SUGGESTION_MAX} rows. Do not target a fixed count, pad the list, or duplicate hazards to reach the limit. Each text field must be no more than 1,200 characters; prefer concise wording. Do not add markdown or explanations.`,
     "Use the project and process context to propose plausible hazards, effects, causes, controls, and corrective recommendations. Do not claim exact measurements or organization-specific facts that are not supplied.",
     "Scores are advisory integers from 1 to 10 and must be reviewed by a qualified HSE assessor. These drafts must not be treated as approved results.",
     "These rows will be inserted automatically as editable defaults in the assessment table. Scores are advisory and must be reviewed by a qualified HSE assessor after insertion; do not claim that an unverified score is approved.",
@@ -163,7 +164,7 @@ export function fallbackFmeaReportDetailSuggestions(input: { processName: string
       { processStep, failureMode: "Manual handling beyond the safe limit", effect: "Strain injury or dropped material", cause: "Load weight and handling method are not assessed", preventiveControls: "Handling limit, mechanical aid and team-lift rule", detectionControls: "Task observation and review of handling deviations", recommendation: "Assess the load and use a mechanical aid or team lift when required", severity: 7, occurrence: 4, detection: 5 },
       { processStep, failureMode: "Poor housekeeping around the work area", effect: "Slip, trip or delayed emergency access", cause: "Waste, cables or materials are left in circulation paths", preventiveControls: "Housekeeping standard and designated storage points", detectionControls: "End-of-task inspection and supervisor walk-through", recommendation: "Clear circulation paths and verify housekeeping at task completion", severity: 6, occurrence: 4, detection: 4 },
     ];
-    return suggestions.slice(0, Math.max(FMEA_REPORT_DETAIL_SUGGESTION_MIN, Math.min(FMEA_REPORT_DETAIL_SUGGESTION_MAX, input.limit ?? FMEA_REPORT_DETAIL_SUGGESTION_MIN)));
+    return suggestions.slice(0, Math.max(0, Math.min(FMEA_REPORT_DETAIL_SUGGESTION_MAX, input.limit ?? FMEA_REPORT_DETAIL_FALLBACK_COUNT)));
   }
   const suggestions = [
     { processStep, failureMode: "اجرای ناقص مرحله کاری", effect: "انحراف کیفیت یا ایجاد مواجهه ناایمن", cause: "دستورالعمل کار روشن نیست یا به‌طور کامل اجرا نمی‌شود", preventiveControls: "دستورالعمل مصوب و جلسه توجیه پیش از کار", detectionControls: "مشاهده سرپرست و بررسی چک‌لیست", recommendation: "دستورالعمل را بازبینی و مراحل بحرانی را پیش از شروع تأیید کنید", severity: 6, occurrence: 4, detection: 5 },
@@ -175,20 +176,20 @@ export function fallbackFmeaReportDetailSuggestions(input: { processName: string
     { processStep, failureMode: "جابجایی دستی بیش از حد ایمن", effect: "آسیب کششی یا سقوط بار", cause: "وزن بار و روش جابجایی ارزیابی نشده است", preventiveControls: "حد مجاز جابجایی، وسیله کمکی و الزام جابجایی دونفره", detectionControls: "مشاهده کار و بررسی انحرافات جابجایی", recommendation: "بار را ارزیابی و در صورت نیاز از وسیله کمکی یا جابجایی دونفره استفاده کنید", severity: 7, occurrence: 4, detection: 5 },
     { processStep, failureMode: "نظم نامناسب اطراف محل کار", effect: "لغزش، زمین‌خوردن یا تأخیر در دسترسی اضطراری", cause: "ضایعات، کابل یا مواد در مسیر تردد رها شده است", preventiveControls: "استاندارد نظافت و محل‌های مشخص نگهداری", detectionControls: "بازرسی پایان کار و بازدید سرپرست", recommendation: "مسیرهای تردد را پاک‌سازی و نظافت پایان کار را تأیید کنید", severity: 6, occurrence: 4, detection: 4 },
   ];
-  return suggestions.slice(0, Math.max(FMEA_REPORT_DETAIL_SUGGESTION_MIN, Math.min(FMEA_REPORT_DETAIL_SUGGESTION_MAX, input.limit ?? FMEA_REPORT_DETAIL_SUGGESTION_MIN)));
+  return suggestions.slice(0, Math.max(0, Math.min(FMEA_REPORT_DETAIL_SUGGESTION_MAX, input.limit ?? FMEA_REPORT_DETAIL_FALLBACK_COUNT)));
 }
 
 export function ensureMinimumFmeaReportDetailSuggestions(primary: FmeaReportDetailSuggestion[], fallback: FmeaReportDetailSuggestion[]) {
   const result: FmeaReportDetailSuggestion[] = [];
   const seen = new Set<string>();
-  for (const row of [...primary, ...fallback]) {
+  for (const row of primary.length ? primary : fallback) {
     const key = detailSuggestionKey(row);
     if (seen.has(key)) continue;
     seen.add(key);
     result.push(row);
     if (result.length >= FMEA_REPORT_DETAIL_SUGGESTION_MAX) break;
   }
-  return result.slice(0, Math.max(FMEA_REPORT_DETAIL_SUGGESTION_MIN, Math.min(FMEA_REPORT_DETAIL_SUGGESTION_MAX, result.length)));
+  return result;
 }
 
 type FmeaReportDetailSeedRow = {
@@ -218,7 +219,7 @@ export function buildFmeaReportDetailSeedRows(input: {
   thresholds?: RiskThresholds;
 }): FmeaReportDetailSeedRow[] {
   const existingRows = input.existingRows ?? [];
-  const targetCount = Math.max(FMEA_REPORT_DETAIL_SUGGESTION_MIN, Math.min(FMEA_REPORT_DETAIL_SUGGESTION_MAX, input.targetCount ?? FMEA_REPORT_DETAIL_SUGGESTION_MIN));
+  const targetCount = Math.max(0, Math.min(FMEA_REPORT_DETAIL_SUGGESTION_MAX, input.targetCount ?? input.suggestions.length));
   const seedCount = input.additionalCount === undefined ? Math.max(0, targetCount - existingRows.length) : Math.max(0, Math.min(FMEA_REPORT_DETAIL_SUGGESTION_MAX, input.additionalCount));
   if (!seedCount) return [];
   const seen = new Set(existingRows.map((row) => detailSuggestionKey(row)));

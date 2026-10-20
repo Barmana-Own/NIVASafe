@@ -780,3 +780,32 @@ artifact frontend در `C:\ProgramData\NIVASafe\staging\release-20260921-fmea-pr
 ## آماده‌سازی PWA با نام و آیکون NIVASafe — 2026-09-25
 
 هویت نصب PWA به‌صورت صریح روی `NIVASafe` تنظیم شد: عنوان HTML و `application-name` همین مقدار را دارند، manifest از آیکون‌های PNG برندشده با `purpose: "any maskable"` و SVG self-contained استفاده می‌کند، و shortcutها نیز به همان آیکون برندشده اشاره دارند. service worker به v15 ارتقا یافت تا پنجره‌ها و نصب‌های stale پس از دریافت release جدید به shell و metadata تازه مهاجرت کنند. این تغییر فقط آماده‌سازی source/build است و انتشار واقعی انجام نشده است.
+
+## Checkpoint 2026-10-03 — خروجی گزارش‌های ارزیابی
+
+PDF/Word/Excel گزارش‌های FMEA و RULA در source و build محلی تغییر کرده‌اند. schema، migration، متغیر محیطی، image/container یا provider deployment تغییری نکرده است؛ migration لازم نیست. buildهای backend و frontend در محیط محلی موفق شدند. انتشار روی staging یا production انجام نشده و فایل‌های فعال سرور تغییری نکرده‌اند. بررسی بصری با نشست احرازشده، smoke روی سرویس مستقر و rollout/rollback این تغییر `NOT_PERFORMED` هستند.
+
+## آماده‌سازی انتشار اصلاحات UI/AI — 2026-10-15
+
+کاندیدای محلی backend و frontend در مسیر موقت و جدا از مسیرهای فعال build شد. آزمون backend شامل ۴۰۰ تست از ۶۰ فایل و آزمون unit frontend شامل ۳۲۱ تست از ۵۰ فایل PASS شدند؛ typecheck هر دو package، build هر دو package، تطبیق ۹۰ مسیر frontend با ۱۵۴ route backend و ۲۸ بررسی `verify:release` نیز PASS شدند. health محلی API با HTTP 200 پاسخ داد و MySQL `up` بود. اسکن bundle frontend نشانه‌ای از متغیرهای پایگاه‌داده، کلید provider، secret نشست یا private key پیدا نکرد.
+
+این کاندیدا به production منتشر نشد. پشتیبانی endpoint تنظیم‌شده از ورودی تصویری `GPT-5-Mini` و خروجی ساختاریافته و همچنین تأیید پردازش حریم خصوصی با شواهد معتبر تأیید نشده‌اند؛ در نتیجه gate تصویر RULA/FMEA باید fail-closed بماند. هیچ migration، تغییر داده، جابه‌جایی فایل فعال یا restart سرویس انجام نشد. Playwright E2E نیز اجرا نشد: Chromium مدیریت‌شده موجود نبود و dependency مستقیم `@playwright/test` در manifest فرانت‌اند تعریف نشده است. گزارش جزئی وضعیت در `docs/production-bug-fixes-ui-ux-cleanup-2026-10-15.md` است.
+
+
+## Integrated final release checkpoint — 16 October 2026 / 1405-07-24
+
+**STAGE_11_STATUS: BLOCKED — deployment not performed.** The latest candidate passed isolated TypeScript/Vite builds and 737 unit tests, but RULA provider acceptance remains blocked by upstream HTTP 401; support fixes are verified only in isolated staging. No production promotion is approved by the acceptance evidence.
+
+Observed runtime facts: local endpoint http://127.0.0.1:5044/api/v1/health returned HTTP 200, healthy, MySQL up, version 0.1.0. Static root is C:\inetpub\nivasafe\app-com and retains the prior JS/CSS bundle plus an existing sidebar stylesheet. Candidate assets were generated only in the isolated temporary copy. API/Nginx listeners were observed on 5044 and 80/443, but this restricted session could not inspect process command lines or scheduler tasks.
+
+Rollback references: prior release directory C:\ProgramData\NIVASafe\releases\release-20261015-project-source-update; timestamped backup C:\ProgramData\NIVASafe\backups\debug-phase02-20261016T133843Z. The SQL dump is 2,553,589 bytes with 38 CREATE TABLE statements and SHA-256 16940E05101B9312D9D73DBDB68E638CC995B446BF1929D3539B19B9AFB614FB. Restore verification is pending. Protected config and uploads were not inspectable under the current account. No migration, backup restore, service restart, cutover or rollback was executed.
+
+The release gate requires an authorized non-production ArvanCloud credential and GPT-5-Mini vision entitlement, followed by a successful synthetic RULA analysis/save/reopen/report run. Retain all current privacy and authorization controls.
+
+## Scoped checkpoint rula-image-experience-20261019-01 — 2026-10-19 / 1405-07-27
+
+Scoped status: PASS — safe code release with public image processing disabled.
+
+DEPLOYED_CODE_ONLY release-rula-image-experience-20261019-01; PID8960 SYSTEM via existing NIVASafe-API/PM2. Backup C:/ProgramData/NIVASafe/backups/release-rula-image-experience-20261019-01. Operational old/new/old rehearsal and static rollback passed;23 public hashes/health checks and8 anonymous401 checks passed. Both image gates remain empty; no migration, protected-env edit, worker/Nginx restart or production assessment write.
+
+Evidence: C:/NIVASafe/reports/evidence/rula-image-experience-20261019-01. Full-product status is not COMPLETE.

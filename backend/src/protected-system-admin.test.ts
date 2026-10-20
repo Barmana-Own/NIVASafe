@@ -1,0 +1,3 @@
+import {expect,it} from "vitest";
+import {assertProtectedSystemAdminChange} from "./protected-system-admin.js";
+it("keeps protection independent of names, email and caller identity",()=>{expect(()=>assertProtectedSystemAdminChange({protectedSystemAdmin:true},{globalRole:"USER"})).toThrow();expect(()=>assertProtectedSystemAdminChange({protectedSystemAdmin:true},{active:false})).toThrow();expect(()=>assertProtectedSystemAdminChange({protectedSystemAdmin:true},{globalRole:"SUPER_ADMIN",active:true})).not.toThrow();expect(()=>assertProtectedSystemAdminChange({protectedSystemAdmin:false},{globalRole:"USER"})).not.toThrow();});

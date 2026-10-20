@@ -1,11 +1,11 @@
-# بازبینی نهایی استقرار NIVASafe — نسخه فعلی
+# بازبینی تاریخی استقرار NIVASafe — گزارش ۲۱ سپتامبر ۲۰۲۶
 
 | مورد | مقدار |
 |---|---|
 | تاریخ میلادی | 2026-09-21 |
 | تاریخ شمسی | 1405-06-30 |
 | نشانی تحویل | https://app.nivasafe.com/login |
-| verdict | PASS — release `release-20260921-fmea-registered-assessments-button` فعال؛ ارزیابی‌های ثبت‌شده در مرحله ۱ جدا و دکمه دسترسی آن در page-header اضافه شده، API و MySQL پایدار، hashها تطبیق‌داده‌شده و smoke عمومی موفق است |
+| verdict | PASS در تاریخ گزارش اصلی؛ این نتیجه با پذیرش یکپارچهٔ ۱۶ اکتبر ۲۰۲۶ جایگزین شده است: BLOCKED — تحلیل زندهٔ RULA با HTTP 401 متوقف شد و cutover انجام نشد. |
 
 ## ماتریس اعتبارسنجی
 
@@ -439,6 +439,23 @@ release `release-20260922-rula-force-score` مستقل بررسی شد. گزین
 
 نتیجه release: PASS؛ امتیاز انتخاب نیروی واردشده اکنون در پیش‌نمایش زنده و ثبت/ویرایش server-authoritative RULA یکسان و قابل ردیابی اعمال می‌شود.
 
+## بررسی تغییر محلی خروجی گزارش‌های FMEA/RULA — 2026-10-03
+
+این مرور فقط دامنه تغییر خروجی گزارش‌ها را پوشش می‌دهد و به‌معنی PASS مجدد کل release یا اجرای کامل Stage 12 نیست.
+
+| بررسی | وضعیت |
+|---|---|
+| FMEA full report | PASS — PDF، DOCX و XLSX از read model گزارش با locale صفحه تغذیه می‌شوند و metadata، خلاصه، توزیع ریسک، top risks، پیشنهادها، اقدام‌ها و جدول کامل را نگه می‌دارند. |
+| FMEA final table | PASS — ستون‌های داده و ترتیب ردیف‌ها در PDF/DOCX/XLSX یکسان است؛ متن کنترل‌ها و اقدام اصلاحی مطابق stack رابط با شکست‌خط حفظ می‌شود. |
+| RULA report | PASS — PDF عوامل را در کارت‌های مشابه رابط با وضعیت تشخیص، زاویه، امتیاز و سهم نمایش می‌دهد؛ در Word/Excel داده عوامل، posture table، پیشنهادها، اثر تخمینی و اقدامات انتخاب‌شده حفظ می‌شوند. ستون سمت فقط برای تحلیل مستقل دوطرفه درج می‌شود. |
+| Animation parity | NOT_APPLICABLE — فایل‌های PDF/Office snapshot ثابت از ظاهر و داده گزارش هستند؛ انیمیشن و تعامل زنده وب قابل انتقال نیست. Word و Excel قابل ویرایش باقی می‌مانند. |
+| Security/regression | PASS — tenant/permission guards حفظ شده‌اند؛ DOCX XML escaping و Excel formula-injection regression پوشش دارند؛ dependency set تغییر نکرده است. |
+| Focused validation | PASS — ۱۰ تست export، تست‌های UI متمرکز گزارش، ۳ تست مدل overview RULA، lint/typecheck/build backend و frontend، API contract و ۲۸ بررسی release موفق شدند. |
+| Full suite / browser / deployment | FAIL / NOT_RUN / NOT_PERFORMED — ۹ شکست از ۱۰۹ frontend و یک شکست از ۱۴۵ backend خارج از مسیر export گزارش شده‌اند؛ نشست مرورگر احرازشده و انتشار واقعی اجرا نشدند. |
+| Migration | NOT_APPLICABLE — هیچ schema یا داده پایداری تغییر نکرده است. |
+
+نتیجه: خروجی محلی گزارش‌ها از نظر contract و ساخت فایل معتبر است؛ این checkpoint ادعای آمادگی یا انتشار production برای کل پروژه ندارد.
+
 ## بازبینی نهایی معیار استفاده تکراری از عضله RULA — 2026-09-22
 
 release `release-20260922-rula-muscle-score` مستقل بررسی شد. کنترل مرحله دوم RULA اکنون دو معیار صریح از مرجع ارزیابی را نمایش می‌دهد: پوسچر عمدتاً استاتیک یا بیش از چهار بار در دقیقه تکرارشونده با امتیاز ۱، و پوسچر نه استاتیک و نه به‌شدت تکراری با امتیاز صفر. انتخاب در draft/FormData حفظ می‌شود و `calculateRula` در preview و مسیرهای server-authoritative همان adjustment را به امتیاز نهایی اعمال می‌کند.
@@ -463,3 +480,50 @@ release `release-20260922-rula-muscle-score` مستقل بررسی شد. کنت�
 | stale-client migration | PASS — service worker به v15 ارتقا یافته و پنجره‌های باز را برای دریافت shell جدید migrate می‌کند. |
 | contract/syntax/release | PASS — تست اختصاصی PWA، syntax service worker و `verify:release` با ۲۸ بررسی موفق شدند. |
 | production deployment | NOT_PERFORMED — انتشار واقعی و به‌روزرسانی نصب موجود روی دستگاه کاربر در این checkpoint انجام نشده است. |
+
+
+## بازبینی نهایی یکپارچه — ۱۶ اکتبر ۲۰۲۶ / ۲۴ مهر ۱۴۰۵
+
+این گزارش تاریخی مربوط به انتشار سپتامبر است؛ نتیجهٔ آن پذیرش فعلی محسوب نمی‌شود.
+
+| دروازه | وضعیت فعلی | شواهد |
+|---|---|---|
+| build و typecheck ایزوله | PASS | TypeScript و Vite با exit code 0 |
+| آزمون واحد | PASS | ۷۳۷/۷۳۷ در کپی ایزوله |
+| قرارداد API / verifier | PASS | ۹۰ مسیر فرانت / ۱۵۴ route بک‌اند؛ ۲۹ بررسی انتشار |
+| تحلیل زندهٔ RULA | BLOCKED | درخواست مصنوعی به درگاه ArvanCloud رسید و HTTP 401 گرفت؛ نتیجه‌ای ذخیره نشد |
+| پشتیبانی | PASS در staging؛ production NOT RUN | چرخهٔ عضو و مدیر در MariaDB ایزوله، همراه با محدودیت سازمان و حریم یادداشت داخلی |
+| chat و تصویر FMEA | BLOCKED / NOT RUN | پاسخ مدل زنده و درخواست تصویر موفق تأیید نشد |
+| browser UAT | PARTIAL | Chromium و fixture مصنوعی؛ WebKit/Safari/iOS NOT RUN |
+| dependency audit | NOT RUN | registry با EACCES پاسخ نداد |
+| DB backup restore | NOT RUN | dump موجود است؛ restore verification برابر pending |
+| production deployment | NOT PERFORMED | هیچ فایل، سرویس یا دادهٔ زنده تغییر نکرد |
+| نتیجهٔ نهایی | BLOCKED | انتشار نهایی به علت عدم تأیید تحلیل زندهٔ RULA پذیرفته نشد |
+
+شواهد و لاگ‌ها: reports/NIVASafe-FINAL-TECHNICAL.md، reports/NIVASafe-FINAL-CHECKLIST.md و reports/evidence/phase03-final-validation-20261016/. پیش از پذیرش مجدد، مالک باید دسترسی غیرتولیدی مجاز به ArvanCloud و قابلیت بینایی GPT-5-Mini را فراهم کند تا تحلیل مصنوعی RULA همراه با ذخیره و بازخوانی دوباره آزموده شود. privacy و authorization gates production تا آن زمان بسته می‌مانند.
+
+
+## Scoped checkpoint rula-image-experience-20261019-01 — 2026-10-19 / 1405-07-27
+
+Scoped status: PASS — safe code release with public image processing disabled.
+
+PASS only for this closed-image-feature safe code release after source/artifact parity, secret/ACL/schema/auth/rollback/public runtime verification. Full product/image acceptance is BLOCKED pending real provider terms/platform decision, final notice revision and remaining provider stability/second-organization BOTH checks. No independent anatomical validation claimed.
+
+Evidence: C:/NIVASafe/reports/evidence/rula-image-experience-20261019-01. Full-product status is not COMPLETE.
+
+## Scoped checkpoint fmea-image-validation-20261020-01 — 2026-10-20
+
+This checkpoint verifies a focused FMEA image-response reliability fix. It is not a full product release review.
+
+| Area | Status | Evidence |
+|---|---|---|
+| Malformed FMEA provider response | PASS | Strict parsing rejects incomplete/invalid outputs, one retry is bounded, and failed analysis is not audited as successful. |
+| Backend validation | PASS | 658 backend tests, backend typecheck/build, and 53 focused image-analysis regression tests passed. |
+| Frontend and API integration | PASS | Frontend typecheck/build and contract verification passed; 94 frontend paths match 158 backend routes. |
+| Local runtime | PASS | Frontend `/rula` and backend `/api/v1/health` returned HTTP 200; database reported `up`. |
+| Security boundary | PASS | Auth, tenant/role, durable account-consent, exact-provider approval/capability, file signature, size, and rate-limit checks remain in place. FMEA failure auditing stores only allowlisted diagnostics and does not store provider response text or image content. |
+| Live image/provider verification | NOT_RUN | No image was transmitted to an external provider during this checkpoint. |
+| RULA image accuracy | BLOCKED | Existing benchmark evidence does not establish anatomical accuracy; qualified independent image annotations and a held-out reference set remain unavailable. |
+| Release verdict | BLOCKED | This scoped code fix does not establish end-to-end image-analysis accuracy or full production acceptance. |
+
+No claim of factual FMEA hazard accuracy or anatomical RULA accuracy is made from schema and unit-test validation alone. The durable per-user consent and provider approval gates were retained.

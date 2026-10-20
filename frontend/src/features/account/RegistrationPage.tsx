@@ -1,12 +1,16 @@
+import { AuthAppearanceControls } from "../../components/AuthAppearanceControls";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { SUBSCRIPTION_PLANS, USERNAME_MAX_LENGTH, detectContactInput, isForbiddenDisplayName, isStrongPassword, isValidContactInput, isValidDisplayName, isValidUsername, normalizeDigits, normalizeDisplayName, normalizeEmail, normalizePhone, normalizeUsername, PASSWORD_MIN_LENGTH, type ContactInputKind } from "@nivasafe/domain";
 import { api, ASSESSMENT_PATH_KEY, getCurrentLocale, getSession, type ApiError } from "../../api/client";
 import { Icon, PageHeader, StyledSelect } from "../../components/UI";
 import { AutoSaveStatus, clearAutoSaveDraft } from "../../forms/AutoSaveForm";
 import { assessmentDraftKey, clearAssessmentWizardStep } from "../../forms/autoSave";
-import { focusAndScrollToFirstInvalid } from "../../forms/requiredFieldValidation";
-import { LanguageSwitcher, brandAltForLocale, brandLogoForLocale, translate, useI18n } from "../../i18n";
+import { brandAltForLocale, brandLogoForLocale, translate, useI18n } from "../../i18n";
+import { AssessmentMethodSelection } from "../assessments/AssessmentMethodSelection";
+import { readAssessmentMethodSelection } from "../assessments/assessmentMethods";
+import { PolicyAcceptanceFields } from "./ImageProcessingConsent";
+import { ACCOUNT_IMAGE_CONSENT_VERSION, TERMS_VERSION, imageProcessingCopy } from "./imageProcessingPolicy";
 
 type RegistrationKind = "personal" | "organization";
 type RegistrationDraft = {
@@ -137,7 +141,7 @@ function readDraft(): RegistrationDraft {
     if (!value) return emptyDraft;
     const draft = { ...emptyDraft, ...(JSON.parse(value) as Partial<RegistrationDraft>) };
     const legacyName = !draft.firstName && !draft.lastName ? splitDisplayName(typeof draft.displayName === "string" ? draft.displayName : "") : { firstName: draft.firstName ?? "", lastName: draft.lastName ?? "" };
-    return { ...draft, ...legacyName, displayName: composeDisplayName(legacyName.firstName, legacyName.lastName), kind: isRegistrationKind(draft.kind) ? draft.kind : null, phone: typeof draft.phone === "string" ? normalizePhone(draft.phone) : "", password: "", confirmPassword: "" };
+    return { ...draft, ...legacyName, displayName: composeDisplayName(legacyName.firstName, legacyName.lastName), kind: isRegistrationKind(draft.kind) ? draft.kind : null, phone: typeof draft.phone === "string" ? normalizePhone(draft.phone) : "" };
   } catch {
     return emptyDraft;
   }
@@ -155,6 +159,8 @@ export function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [registrationPending, setRegistrationPending] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [imageProcessingConsent, setImageProcessingConsent] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const emailFeedback = contactFeedback(draft.email, "email", t);
   const phoneFeedback = contactFeedback(draft.phone, "phone", t);
@@ -162,11 +168,7 @@ export function RegisterPage() {
   useEffect(() => {
     // Never persist credentials in a browser draft; all other registration fields remain recoverable.
     if (registrationPending) return;
-    try {
-      const { password: _password, confirmPassword: _confirmPassword, ...safeDraft } = draft;
-      localStorage.setItem(draftKey, JSON.stringify(safeDraft));
-      setLastSaved(new Date());
-    } catch { setLastSaved(null); }
+    try { localStorage.setItem(draftKey, JSON.stringify({ ...draft, password: "", confirmPassword: "" })); setLastSaved(new Date()); } catch { setLastSaved(null); }
   }, [draft, registrationPending]);
 
   const progress = useMemo(() => `${Math.round((step / 4) * 100)}%`, [step]);
@@ -269,11 +271,12 @@ export function RegisterPage() {
       setError("");
       return true;
     }
+    const [firstField] = entries[0] as [RegistrationField, string];
     setFieldErrors(issues);
     setError(t("registration.validation"));
     window.setTimeout(() => {
-      const form = document.querySelector<HTMLFormElement>(".register-page form");
-      focusAndScrollToFirstInvalid(form);
+      const target = document.getElementById(`registration-${firstField}-error`)?.closest("label")?.querySelector("input,select");
+      if (target instanceof HTMLElement) target.focus();
     }, 0);
     return false;
   }
@@ -287,6 +290,7 @@ export function RegisterPage() {
     event.preventDefault();
     if (loading) return;
     if (!showValidationErrors(validateAllDetails())) return;
+    if (!termsAccepted) { setError(imageProcessingCopy[locale].required); return; }
     setLoading(true);
     setError("");
     try {
@@ -308,6 +312,10 @@ export function RegisterPage() {
           employeeCount: draft.kind === "organization" && draft.employees.trim() ? Number(draft.employees) : null,
           subscriptionPlan: draft.subscriptionPlan,
           locale,
+          termsAccepted,
+          termsVersion: TERMS_VERSION,
+          imageProcessingConsent,
+          ...(imageProcessingConsent ? { imageProcessingConsentVersion: ACCOUNT_IMAGE_CONSENT_VERSION } : {}),
         }),
       });
       localStorage.removeItem(draftKey);
@@ -319,7 +327,6 @@ export function RegisterPage() {
       if (field) {
         setFieldErrors((current) => ({ ...current, [field]: message }));
         setError(t("registration.validation"));
-        window.setTimeout(() => focusAndScrollToFirstInvalid(document.querySelector<HTMLFormElement>(".register-page form")), 0);
       } else setError(message);
     } finally {
       setLoading(false);
@@ -345,13 +352,13 @@ export function RegisterPage() {
     <label htmlFor="registration-last-name"><span className="field-label-line">{t("registration.lastName")}</span><input id="registration-last-name" value={draft.lastName} onChange={(event) => updateNamePart("lastName", event.target.value)} onBlur={() => { updateNamePart("lastName", normalizeDisplayName(draft.lastName)); onFieldBlur("lastName"); }} autoComplete="family-name" maxLength={40} aria-invalid={Boolean(fieldErrors.lastName)} aria-describedby={fieldErrors.lastName ? "registration-lastName-error" : undefined} required/>{errorFor("lastName")}</label>
   </>;
   const renderPasswordFields = () => <>
-    <label htmlFor="registration-password"><span className="field-label-line">{t("auth.password")}</span><div className="password-field"><input id="registration-password" value={draft.password} onChange={(event) => update("password", event.target.value)} onBlur={() => onFieldBlur("password")} type={showPassword ? "text" : "password"} dir="ltr" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} aria-describedby={fieldErrors.password ? "registration-password-error" : "registration-password-hint"} aria-invalid={Boolean(fieldErrors.password)} required/><button type="button" className="password-toggle" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")} title={showPassword ? t("auth.hidePassword") : t("auth.showPassword")} aria-controls="registration-password" aria-pressed={showPassword}><Icon name={showPassword ? "eyeOff" : "eye"} size={19}/></button></div>{errorFor("password")}{!fieldErrors.password && <small id="registration-password-hint" className="field-hint">{t("registration.passwordHint", { min: PASSWORD_MIN_LENGTH })}</small>}</label>
-    <label htmlFor="registration-confirm-password"><span className="field-label-line">{t("registration.confirmPassword")}</span><div className="password-field"><input id="registration-confirm-password" value={draft.confirmPassword} onChange={(event) => update("confirmPassword", event.target.value)} onBlur={() => onFieldBlur("confirmPassword")} type={showConfirmPassword ? "text" : "password"} dir="ltr" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} aria-describedby={fieldErrors.confirmPassword ? "registration-confirmPassword-error" : undefined} aria-invalid={Boolean(fieldErrors.confirmPassword)} required/><button type="button" className="password-toggle" onClick={() => setShowConfirmPassword((value) => !value)} aria-label={showConfirmPassword ? t("auth.hidePassword") : t("auth.showPassword")} title={showConfirmPassword ? t("auth.hidePassword") : t("auth.showPassword")} aria-controls="registration-confirm-password" aria-pressed={showConfirmPassword}><Icon name={showConfirmPassword ? "eyeOff" : "eye"} size={19}/></button></div>{errorFor("confirmPassword")}</label>
+    <label htmlFor="registration-password"><span className="field-label-line">{t("auth.password")}</span><div className="password-field"><input id="registration-password" value={draft.password} onChange={(event) => update("password", event.target.value)} onBlur={() => onFieldBlur("password")} type={showPassword ? "text" : "password"} dir="ltr" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} aria-describedby={fieldErrors.password ? "registration-password-error" : "registration-password-hint"} aria-invalid={Boolean(fieldErrors.password)} required/><button type="button" className="password-toggle" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")} title={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}><Icon name={showPassword ? "eyeOff" : "eye"} size={19}/></button></div>{errorFor("password")}{!fieldErrors.password && <small id="registration-password-hint" className="field-hint">{t("registration.passwordHint", { min: PASSWORD_MIN_LENGTH })}</small>}</label>
+    <label htmlFor="registration-confirm-password"><span className="field-label-line">{t("registration.confirmPassword")}</span><div className="password-field"><input id="registration-confirm-password" value={draft.confirmPassword} onChange={(event) => update("confirmPassword", event.target.value)} onBlur={() => onFieldBlur("confirmPassword")} type={showConfirmPassword ? "text" : "password"} dir="ltr" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} aria-describedby={fieldErrors.confirmPassword ? "registration-confirmPassword-error" : undefined} aria-invalid={Boolean(fieldErrors.confirmPassword)} required/><button type="button" className="password-toggle" onClick={() => setShowConfirmPassword((value) => !value)} aria-label={showConfirmPassword ? t("auth.hidePassword") : t("auth.showPassword")} title={showConfirmPassword ? t("auth.hidePassword") : t("auth.showPassword")}><Icon name={showConfirmPassword ? "eyeOff" : "eye"} size={19}/></button></div>{errorFor("confirmPassword")}</label>
   </>;
 
   return <main className="login simple register-page" dir={direction} lang={locale}>
     <section className="login-card register-card">
-      <div className="auth-header-row"><div className="auth-brand-lockup"><img className="login-card-logo" src="/brand/nivasafe-icon.png" alt=""/><img className="auth-brand-wordmark" src={brandLogoForLocale(locale)} alt={brandAltForLocale(locale)}/></div><div className="auth-header-actions"><LanguageSwitcher className="auth-language-switch"/><Link className="text-button" to="/login">{t("auth.login")}</Link></div></div>
+      <div className="auth-header-row"><div className="auth-brand-lockup"><img className="login-card-logo" src="/brand/nivasafe-icon.png" alt=""/><img className="auth-brand-wordmark" src={brandLogoForLocale(locale)} alt={brandAltForLocale(locale)}/></div><div className="auth-header-actions"><AuthAppearanceControls/><Link className="text-button" to="/login">{t("auth.login")}</Link></div></div>
       <div className="eyebrow">{t("registration.secureStart")}</div>
       {step === 1 && <h2>{t("registration.title")}</h2>}
       {step === 1 && <p className="muted">{t("registration.chooseType")}</p>}
@@ -359,7 +366,7 @@ export function RegisterPage() {
       <div className="wizard-steps">{stepLabels.map((label, index) => <span className={step >= index + 1 ? "active" : ""} key={label}>{label}</span>)}</div>
       {step > 1 && <button type="button" className="text-button registration-type-change" onClick={() => { setStep(1); setError(""); }}>{t("registration.changeType")}</button>}
       <AutoSaveStatus lastSaved={lastSaved}/>
-      {error && <div className="alert error" role="alert" aria-live="assertive"><Icon name="warning"/>{error}</div>}
+      {error && <div role="alert" className="alert error"><Icon name="warning"/>{error}</div>}
       {step === 1 && <>
         <div className="choice-grid" role="radiogroup" aria-label={t("registration.accountType")}>
         <button className={`choice-card ${draft.kind === "organization" ? "selected" : ""}`} onClick={() => chooseKind("organization")} role="radio" aria-checked={draft.kind === "organization"} type="button"><span className="choice-card-top"><span className="choice-icon"><Icon name="projects"/></span><span className="choice-radio" aria-hidden="true">{draft.kind === "organization" ? "●" : "○"}</span></span><strong>{t("registration.organization")}</strong><small>{t("registration.organizationDescription")}</small></button>
@@ -391,7 +398,7 @@ export function RegisterPage() {
           <label className="full" htmlFor="registration-company-name"><span className="field-label-line">{t("registration.companyName")}</span><input id="registration-company-name" value={draft.companyName} onChange={(event) => update("companyName", event.target.value)} onBlur={() => onFieldBlur("companyName")} autoComplete="organization" maxLength={191} aria-invalid={Boolean(fieldErrors.companyName)} required/>{errorFor("companyName")}</label>
           <label htmlFor="registration-industry"><span className="field-label-line">{t("registration.industry")}</span><input id="registration-industry" value={draft.industry} onChange={(event) => update("industry", event.target.value)} onBlur={() => onFieldBlur("industry")} placeholder={t("registration.industryPlaceholder")} maxLength={120} aria-invalid={Boolean(fieldErrors.industry)} required/>{errorFor("industry")}</label>
           <label htmlFor="registration-employees"><span className="field-label-line">{t("registration.employees")} <span className="muted">({t("registration.optional")})</span></span><input id="registration-employees" value={draft.employees} onChange={(event) => update("employees", normalizeDigits(event.target.value).replace(/\D/g, ""))} onBlur={() => onFieldBlur("employees")} inputMode="numeric" placeholder={t("registration.optional")} aria-invalid={Boolean(fieldErrors.employees)}/>{errorFor("employees")}</label>
-          <label className="full" htmlFor="registration-subscription"><span className="field-label-line">{t("registration.subscription")}</span><StyledSelect id="registration-subscription" value={draft.subscriptionPlan} onChange={(event) => update("subscriptionPlan", event.target.value)}>{SUBSCRIPTION_PLANS.map((plan) => <option key={plan.id} value={plan.id}>{t(planTranslationKeys[plan.id].title)} — {t(planTranslationKeys[plan.id].description)}</option>)}</StyledSelect><small className="field-hint">{t("registration.subscriptionNote")}</small></label>
+          <label className="full" htmlFor="registration-subscription"><span className="field-label-line">{t("registration.subscription")}</span><StyledSelect aria-label={t("registration.subscription")} id="registration-subscription" value={draft.subscriptionPlan} onChange={(event) => update("subscriptionPlan", event.target.value)}>{SUBSCRIPTION_PLANS.map((plan) => <option key={plan.id} value={plan.id}>{t(planTranslationKeys[plan.id].title)} — {t(planTranslationKeys[plan.id].description)}</option>)}</StyledSelect><small className="field-hint">{t("registration.subscriptionNote")}</small></label>
           <label className="full" htmlFor="registration-account-email"><span className="field-label-line">{t("registration.accountEmail")}</span><input id="registration-account-email" value={draft.email} type="text" dir="ltr" readOnly aria-describedby="registration-account-email-hint"/><small id="registration-account-email-hint" className="field-hint">{t("registration.accountEmailNote")}</small></label>
           {renderPasswordFields()}
         </div>
@@ -409,6 +416,7 @@ export function RegisterPage() {
           {draft.kind === "organization" ? <><div><small>{t("registration.accountEmail")}</small><strong dir="ltr">{draft.email}</strong></div><div><small>{t("registration.companyName")}</small><strong>{draft.companyName}</strong></div><div><small>{t("registration.industry")}</small><strong>{draft.industry}</strong></div><div><small>{t("registration.phone")}</small><strong dir="ltr">{draft.phone}</strong></div><div><small>{t("registration.jobTitle")}</small><strong>{draft.jobTitle || t("registration.notProvided")}</strong></div><div><small>{t("registration.employees")}</small><strong>{draft.employees || t("registration.notProvided")}</strong></div><div><small>{t("registration.subscription")}</small><strong>{draft.subscriptionPlan}</strong></div></> : <div><small>{t("registration.activityArea")}</small><strong>{draft.activityArea || t("registration.notProvided")}</strong></div>}
         </div>
         <div className="review-note"><Icon name="shield" size={18}/><span>{draft.kind === "organization" ? t("registration.companyConfirmation") : t("registration.personalWorkspace")}</span></div>
+        <PolicyAcceptanceFields termsAccepted={termsAccepted} onTermsChange={setTermsAccepted} imageAccepted={imageProcessingConsent} onImageChange={setImageProcessingConsent}/>
         <div className="wizard-actions"><button className="ghost" type="button" onClick={() => setStep(3)}>{t("registration.back")}</button><button className="primary" disabled={loading}>{loading ? t("registration.creatingAccount") : t("registration.createSecureAccount")}</button></div>
       </form>}
       <small className="login-hint">{t("registration.haveAccount")} <Link to="/login">{t("registration.signIn")}</Link></small>
@@ -417,7 +425,13 @@ export function RegisterPage() {
 }
 
 export function PathSelectionPage() {
-  const { t } = useI18n();
+  const [searchParams] = useSearchParams();
+  const selection = readAssessmentMethodSelection(searchParams.toString());
+  return selection ? <AssessmentMethodSelection category={selection.category} mode={selection.mode}/> : <LegacyAssessmentPathSelectionPage/>;
+}
+
+function LegacyAssessmentPathSelectionPage() {
+  const { locale, t } = useI18n();
   const navigate = useNavigate();
   const [selected, setSelected] = useState<AssessmentPath>(readAssessmentPath);
   function selectedAssessmentDraftKey(type: AssessmentPath) {
@@ -440,7 +454,7 @@ export function PathSelectionPage() {
   }
   return <section className="page-shell path-flow">
     <PageHeader eyebrow={t("path.eyebrow")} title={t("path.title")} description={t("path.description")}/>
-    <div className="path-stepper" aria-label={t("path.stepsLabel")}><div className="path-step current"><b>۱</b><span>{t("path.assessmentType")}</span></div><i/><div className="path-step"><b>۲</b><span>{t("path.assessmentInfo")}</span></div><i/><div className="path-step"><b>۳</b><span>{t("path.reviewConfirm")}</span></div></div>
+    <div className="path-stepper" aria-label={t("path.stepsLabel")}><div className="path-step current"><b>{(1).toLocaleString(locale === "en" ? "en-US" : "fa-IR")}</b><span>{t("path.assessmentType")}</span></div><i/><div className="path-step"><b>{(2).toLocaleString(locale === "en" ? "en-US" : "fa-IR")}</b><span>{t("path.assessmentInfo")}</span></div><i/><div className="path-step"><b>{(3).toLocaleString(locale === "en" ? "en-US" : "fa-IR")}</b><span>{t("path.reviewConfirm")}</span></div></div>
     <div className="path-notice" role="status"><Icon name="shield" size={17}/><span>{t("path.notice")}</span></div>
     <div className="path-title"><div><span className="eyebrow">{t("path.stepOneOfThree")}</span><h2>{t("path.selectType")}</h2><p>{t("path.selectDescription")}</p></div><span className="path-required">{t("path.required")}</span></div>
     <div className="path-choice-grid" role="group" aria-label={t("path.choiceGroupLabel")}>

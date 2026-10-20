@@ -31,6 +31,38 @@ enum MemberRequestStatus {
   REJECTED
 }
 
+enum SupportRequestCategory {
+  AI_QUOTA
+  PROFESSIONAL_PLAN
+  TECHNICAL_SUPPORT
+  OTHER
+}
+
+enum SupportRequestStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_USER
+  RESOLVED
+  CLOSED
+}
+
+enum SupportRequestPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum SupportReplyVisibility {
+  PUBLIC
+  INTERNAL
+}
+
+enum SupportAssessmentType {
+  RULA
+  FMEA
+}
+
 enum Status {
   DRAFT
   IN_PROGRESS
@@ -82,32 +114,49 @@ enum AttachmentKind {
 }
 
 model User {
-  id           String               @id @default(uuid()) @db.VarChar(36)
-  email        String               @unique
-  username     String?              @unique @db.VarChar(64)
-  passwordHash String
-  displayName  String
-  globalRole   GlobalRole          @default(USER)
-  active       Boolean              @default(true)
-  lastLoginAt  DateTime?
-  locale       String               @default("fa")
-  phone        String?
-  jobTitle     String?
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
-  memberships  OrganizationMember[]
-  sessions     Session[]
-  auditLogs    AuditLog[]
-  passwordResetTokens PasswordResetToken[]
-  uploadedAttachments Attachment[]
-  conversations ChatConversation[]
-  notifications Notification[]
-  notificationPreferences NotificationPreference[]
-  aiRequests AIAnalysisRequest[]
-  aiUsageRecords AIUsageRecord[]
-  requestedMemberRequests MemberAccessRequest[] @relation("MemberRequestRequester")
-  reviewedMemberRequests MemberAccessRequest[] @relation("MemberRequestReviewer")
-  provisionedMemberRequests MemberAccessRequest[] @relation("MemberRequestProvisionedUser")
+  id                           String                    @id @default(uuid()) @db.VarChar(36)
+  email                        String                    @unique
+  username                     String?                   @unique @db.VarChar(64)
+  passwordHash                 String
+  displayName                  String
+  globalRole                   GlobalRole                @default(USER)
+  active                       Boolean                   @default(true)
+  lastLoginAt                  DateTime?
+  locale                       String                    @default("fa")
+  phone                        String?
+  jobTitle                     String?
+  createdAt                    DateTime                  @default(now())
+  updatedAt                    DateTime                  @updatedAt
+  memberships                  OrganizationMember[]
+  sessions                     Session[]
+  auditLogs                    AuditLog[]
+  passwordResetTokens          PasswordResetToken[]
+  uploadedAttachments          Attachment[]
+  conversations                ChatConversation[]
+  notifications                Notification[]
+  notificationPreferences      NotificationPreference[]
+  aiRequests                   AIAnalysisRequest[]
+  aiUsageRecords               AIUsageRecord[]
+  protectedSystemAdmin         Boolean                   @default(false)
+  aiEnabled                    Boolean                   @default(true)
+  aiTokenLimit                 Int                       @default(1000000)
+  aiTokensUsed                 Int                       @default(0)
+  aiQuotaCycle                 Int                       @default(0)
+  aiQuotaReservations          AIQuotaReservation[]
+  supportRequests              SupportRequest[]          @relation("SupportRequester")
+  supportResponses             SupportRequest[]          @relation("SupportResponder")
+  supportAssignments           SupportRequest[]          @relation("SupportAssignee")
+  fmeaSuggestionDismissals     FmeaSuggestionDismissal[]
+  requestedMemberRequests      MemberAccessRequest[]     @relation("MemberRequestRequester")
+  reviewedMemberRequests       MemberAccessRequest[]     @relation("MemberRequestReviewer")
+  provisionedMemberRequests    MemberAccessRequest[]     @relation("MemberRequestProvisionedUser")
+  checklistTemplateCreations   ChecklistTemplate[]       @relation("ChecklistTemplateCreator")
+  assignedChecklistInspections ChecklistInspection[]     @relation("ChecklistInspectionAssignee")
+  startedChecklistInspections  ChecklistInspection[]     @relation("ChecklistInspectionStarter")
+  reviewedChecklistInspections ChecklistInspection[]     @relation("ChecklistInspectionReviewer")
+  reportedIncidents            IncidentReport[]          @relation("IncidentReporter")
+  reviewedIncidents            IncidentReport[]          @relation("IncidentReviewer")
+  supportReplies               SupportReply[]
 }
 
 model Session {
@@ -135,7 +184,7 @@ model PasswordResetToken {
 model Permission {
   id          String           @id @default(uuid()) @db.VarChar(36)
   key         String           @unique
-  description String? @db.Text
+  description String?          @db.Text
   roleLinks   RolePermission[]
 }
 
@@ -150,45 +199,51 @@ model RolePermission {
 }
 
 model Organization {
-  id             String               @id @default(uuid()) @db.VarChar(36)
-  nameFa         String
-  nameEn         String
-  nationalId     String?              @unique
-  industry       String?
-  employeeCount  Int?
-  timezone       String               @default("Asia/Tehran")
-  defaultLocale  String               @default("fa")
-  riskMedium     Int                  @default(101)
-  riskHigh       Int                  @default(201)
-  riskCritical   Int                  @default(401)
-  subscriptionPlan String              @default("STARTER") @db.VarChar(32)
-  subscriptionStatus String            @default("ACTIVE") @db.VarChar(32)
-  subscriptionProvider String          @default("legacy") @db.VarChar(32)
-  subscriptionStartedAt DateTime       @default(now())
-  subscriptionExpiresAt DateTime?
-  subscriptionExternalId String?       @db.VarChar(191)
-  active               Boolean          @default(true)
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
-  members        OrganizationMember[]
-  projects       Project[]
-  processes      Process[]
-  activities     Activity[]
-  fmeas          FmeaAssessment[]
-  rulas          RulaAssessment[]
-  actions        CorrectiveAction[]
-  knowledge      KnowledgeDocument[]
-  notifications  Notification[]
-  invitations    Invitation[]
-  attachments    Attachment[]
-  knowledgeCategories KnowledgeCategory[]
-  aiRequests     AIAnalysisRequest[]
-  conversations  ChatConversation[]
-  notificationPreferences NotificationPreference[]
-  emailOutbox    EmailOutbox[]
-  jobCatalogs    JobCatalog[]
-  aiUsageRecords AIUsageRecord[]
-  memberAccessRequests MemberAccessRequest[]
+  id                       String                    @id @default(uuid()) @db.VarChar(36)
+  nameFa                   String
+  nameEn                   String
+  nationalId               String?                   @unique
+  industry                 String?
+  employeeCount            Int?
+  timezone                 String                    @default("Asia/Tehran")
+  defaultLocale            String                    @default("fa")
+  riskMedium               Int                       @default(101)
+  riskHigh                 Int                       @default(201)
+  riskCritical             Int                       @default(401)
+  subscriptionPlan         String                    @default("STARTER") @db.VarChar(32)
+  subscriptionStatus       String                    @default("ACTIVE") @db.VarChar(32)
+  subscriptionProvider     String                    @default("legacy") @db.VarChar(32)
+  subscriptionStartedAt    DateTime                  @default(now())
+  subscriptionExpiresAt    DateTime?
+  subscriptionExternalId   String?                   @db.VarChar(191)
+  active                   Boolean                   @default(true)
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  members                  OrganizationMember[]
+  projects                 Project[]
+  processes                Process[]
+  activities               Activity[]
+  fmeas                    FmeaAssessment[]
+  rulas                    RulaAssessment[]
+  actions                  CorrectiveAction[]
+  knowledge                KnowledgeDocument[]
+  notifications            Notification[]
+  invitations              Invitation[]
+  attachments              Attachment[]
+  knowledgeCategories      KnowledgeCategory[]
+  aiRequests               AIAnalysisRequest[]
+  conversations            ChatConversation[]
+  notificationPreferences  NotificationPreference[]
+  emailOutbox              EmailOutbox[]
+  jobCatalogs              JobCatalog[]
+  aiUsageRecords           AIUsageRecord[]
+  memberAccessRequests     MemberAccessRequest[]
+  supportRequests          SupportRequest[]
+  fmeaSuggestionDismissals FmeaSuggestionDismissal[]
+  checklistTemplates       ChecklistTemplate[]
+  checklistInspections     ChecklistInspection[]
+  incidentReports          IncidentReport[]
+  supportReplies           SupportReply[]
 }
 
 model OrganizationMember {
@@ -205,26 +260,26 @@ model OrganizationMember {
 }
 
 model MemberAccessRequest {
-  id                    String              @id @default(uuid()) @db.VarChar(36)
-  organizationId        String              @db.VarChar(36)
-  requestedById         String              @db.VarChar(36)
-  reviewedById          String?             @db.VarChar(36)
-  provisionedUserId     String?             @unique @db.VarChar(36)
-  username              String              @db.VarChar(64)
-  email                 String              @db.VarChar(254)
-  displayName           String
-  phone                 String?
-  jobTitle              String?
-  role                  Role
-  status                MemberRequestStatus @default(PENDING)
-  rejectionReason       String?             @db.Text
-  reviewedAt            DateTime?
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
-  organization          Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  requestedBy           User                @relation("MemberRequestRequester", fields: [requestedById], references: [id], onDelete: Restrict)
-  reviewedBy            User?               @relation("MemberRequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
-  provisionedUser       User?               @relation("MemberRequestProvisionedUser", fields: [provisionedUserId], references: [id], onDelete: SetNull)
+  id                String              @id @default(uuid()) @db.VarChar(36)
+  organizationId    String              @db.VarChar(36)
+  requestedById     String              @db.VarChar(36)
+  reviewedById      String?             @db.VarChar(36)
+  provisionedUserId String?             @unique @db.VarChar(36)
+  username          String?             @db.VarChar(64)
+  email             String?             @db.VarChar(254)
+  displayName       String
+  phone             String?
+  jobTitle          String?
+  role              Role
+  status            MemberRequestStatus @default(PENDING)
+  rejectionReason   String?             @db.Text
+  reviewedAt        DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestedBy       User                @relation("MemberRequestRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  reviewedBy        User?               @relation("MemberRequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  provisionedUser   User?               @relation("MemberRequestProvisionedUser", fields: [provisionedUserId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, status, createdAt])
   @@index([status, createdAt])
@@ -247,23 +302,25 @@ model Invitation {
 }
 
 model Project {
-  id             String             @id @default(uuid()) @db.VarChar(36)
-  organizationId String             @db.VarChar(36)
-  name           String
-  code           String
-  status         String             @default("ACTIVE")
-  description    String? @db.Text
-  startDate      DateTime?
-  endDate        DateTime?
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  deletedAt      DateTime?
-  organization   Organization       @relation(fields: [organizationId], references: [id])
-  processes      Process[]
-  activities     Activity[]
-  fmeas          FmeaAssessment[]
-  rulas          RulaAssessment[]
-  actions        CorrectiveAction[]
+  id                   String                @id @default(uuid()) @db.VarChar(36)
+  organizationId       String                @db.VarChar(36)
+  name                 String
+  code                 String
+  status               String                @default("ACTIVE")
+  description          String?               @db.Text
+  startDate            DateTime?
+  endDate              DateTime?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  deletedAt            DateTime?
+  organization         Organization          @relation(fields: [organizationId], references: [id])
+  processes            Process[]
+  activities           Activity[]
+  fmeas                FmeaAssessment[]
+  rulas                RulaAssessment[]
+  actions              CorrectiveAction[]
+  checklistInspections ChecklistInspection[]
+  incidentReports      IncidentReport[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -274,7 +331,7 @@ model Process {
   organizationId String       @db.VarChar(36)
   projectId      String       @db.VarChar(36)
   name           String
-  description    String? @db.Text
+  description    String?      @db.Text
   parentId       String?      @db.VarChar(36)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -294,8 +351,8 @@ model Activity {
   title          String
   jobTitle       String?
   location       String?
-  description    String? @db.Text
-  hazards        String? @db.Text
+  description    String?          @db.Text
+  hazards        String?          @db.Text
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   deletedAt      DateTime?
@@ -309,60 +366,61 @@ model Activity {
 }
 
 model JobCatalog {
-    id             String        @id @default(uuid()) @db.VarChar(36)
-    organizationId String?       @db.VarChar(36)
-    titleFa        String
-    titleEn        String
-    keywords       Json?
+  id             String           @id @default(uuid()) @db.VarChar(36)
+  organizationId String?          @db.VarChar(36)
+  titleFa        String
+  titleEn        String
+  keywords       Json?
   departmentFa   String?
   departmentEn   String?
-  descriptionFa  String?       @db.Text
-  descriptionEn  String?       @db.Text
+  descriptionFa  String?          @db.Text
+  descriptionEn  String?          @db.Text
   equipment      Json
   materials      Json
   controls       Json
-  active         Boolean       @default(true)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  active         Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  organization   Organization?    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   fmeas          FmeaAssessment[]
 
-    @@index([organizationId, active])
-    @@index([organizationId, active, titleFa])
-    @@index([organizationId, active, titleEn])
-    @@index([titleFa])
-    @@index([titleEn])
+  @@index([organizationId, active])
+  @@index([organizationId, active, titleFa])
+  @@index([organizationId, active, titleEn])
+  @@index([titleFa])
+  @@index([titleEn])
 }
 
 model FmeaAssessment {
-  id             String             @id @default(uuid()) @db.VarChar(36)
-  organizationId String             @db.VarChar(36)
-  projectId      String             @db.VarChar(36)
-  activityId     String?            @db.VarChar(36)
-  jobCatalogId   String?            @db.VarChar(36)
-  title          String
-  code           String
-  status         Status             @default(DRAFT)
-  scope          String? @db.Text
-  department     String?
-  activityDescription String?       @db.Text
-  equipment      Json?
-  materials      Json?
-  existingControls Json?
-  specialConditions String?         @db.Text
-  version        Int                @default(1)
-  approvedAt     DateTime?
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  deletedAt      DateTime?
-  fmeaDetailSeededAt DateTime?
-  organization   Organization       @relation(fields: [organizationId], references: [id])
-  project        Project            @relation(fields: [projectId], references: [id])
-  activity       Activity?          @relation(fields: [activityId], references: [id])
-  jobCatalog     JobCatalog?        @relation(fields: [jobCatalogId], references: [id], onDelete: SetNull)
-  items          FmeaItem[]
-  actions        CorrectiveAction[]
-  versions       FmeaVersion[]
+  id                   String                    @id @default(uuid()) @db.VarChar(36)
+  organizationId       String                    @db.VarChar(36)
+  projectId            String                    @db.VarChar(36)
+  activityId           String?                   @db.VarChar(36)
+  jobCatalogId         String?                   @db.VarChar(36)
+  title                String
+  code                 String
+  status               Status                    @default(DRAFT)
+  scope                String?                   @db.Text
+  department           String?
+  activityDescription  String?                   @db.Text
+  equipment            Json?
+  materials            Json?
+  existingControls     Json?
+  specialConditions    String?                   @db.Text
+  version              Int                       @default(1)
+  approvedAt           DateTime?
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  deletedAt            DateTime?
+  fmeaDetailSeededAt   DateTime?
+  organization         Organization              @relation(fields: [organizationId], references: [id])
+  project              Project                   @relation(fields: [projectId], references: [id])
+  activity             Activity?                 @relation(fields: [activityId], references: [id])
+  jobCatalog           JobCatalog?               @relation(fields: [jobCatalogId], references: [id], onDelete: SetNull)
+  items                FmeaItem[]
+  actions              CorrectiveAction[]
+  suggestionDismissals FmeaSuggestionDismissal[]
+  versions             FmeaVersion[]
 
   @@unique([organizationId, code, version])
   @@index([organizationId, projectId])
@@ -382,56 +440,57 @@ model FmeaVersion {
 }
 
 model FmeaItem {
-  id                 String         @id @default(uuid()) @db.VarChar(36)
-  assessmentId       String         @db.VarChar(36)
-  rowNumber           Int
-  processStep         String @db.Text
-  failureMode         String @db.Text
-  effect              String @db.Text
-  cause               String @db.Text
-  preventiveControls  String? @db.Text
-  detectionControls   String? @db.Text
-  severity            Int
-  occurrence          Int
-  detection           Int
-  rpn                 Int
-  riskLevel           RiskLevel
-  recommendation      String? @db.Text
-  residualSeverity    Int?
-  residualOccurrence  Int?
-  residualDetection   Int?
-  residualRpn         Int?
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
-  assessment          FmeaAssessment @relation(fields: [assessmentId], references: [id])
-  actions             CorrectiveAction[]
+  id                   String                    @id @default(uuid()) @db.VarChar(36)
+  assessmentId         String                    @db.VarChar(36)
+  rowNumber            Int
+  processStep          String                    @db.Text
+  failureMode          String                    @db.Text
+  effect               String                    @db.Text
+  cause                String                    @db.Text
+  preventiveControls   String?                   @db.Text
+  detectionControls    String?                   @db.Text
+  severity             Int
+  occurrence           Int
+  detection            Int
+  rpn                  Int
+  riskLevel            RiskLevel
+  recommendation       String?                   @db.Text
+  residualSeverity     Int?
+  residualOccurrence   Int?
+  residualDetection    Int?
+  residualRpn          Int?
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  assessment           FmeaAssessment            @relation(fields: [assessmentId], references: [id])
+  actions              CorrectiveAction[]
+  suggestionDismissals FmeaSuggestionDismissal[]
 
   @@index([assessmentId])
 }
 
 model RulaAssessment {
-  id             String             @id @default(uuid()) @db.VarChar(36)
-  organizationId String             @db.VarChar(36)
-  projectId      String             @db.VarChar(36)
-  activityId     String?            @db.VarChar(36)
-  title          String
-  subjectCode    String?
-  bodySide       String             @default("RIGHT")
-  inputs         Json
-  activityInfo   Json?
+  id              String             @id @default(uuid()) @db.VarChar(36)
+  organizationId  String             @db.VarChar(36)
+  projectId       String             @db.VarChar(36)
+  activityId      String?            @db.VarChar(36)
+  title           String
+  subjectCode     String?
+  bodySide        String             @default("RIGHT")
+  inputs          Json
+  activityInfo    Json?
   postureAnalysis Json?
-  score          Int
-  actionLevel    Int
-  explanation    String @db.Text
-  status         Status             @default(DRAFT)
-  version        Int                @default(1)
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  organization   Organization       @relation(fields: [organizationId], references: [id])
-  project        Project            @relation(fields: [projectId], references: [id])
-  activity       Activity?          @relation(fields: [activityId], references: [id])
-  actions        CorrectiveAction[]
-  versions       RulaVersion[]
+  score           Int
+  actionLevel     Int
+  explanation     String             @db.Text
+  status          Status             @default(DRAFT)
+  version         Int                @default(1)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  organization    Organization       @relation(fields: [organizationId], references: [id])
+  project         Project            @relation(fields: [projectId], references: [id])
+  activity        Activity?          @relation(fields: [activityId], references: [id])
+  actions         CorrectiveAction[]
+  versions        RulaVersion[]
 
   @@index([organizationId, projectId])
 }
@@ -450,55 +509,56 @@ model RulaVersion {
 }
 
 model CorrectiveAction {
-  id             String          @id @default(uuid()) @db.VarChar(36)
-  organizationId String          @db.VarChar(36)
-  projectId      String          @db.VarChar(36)
-  fmeaId         String?         @db.VarChar(36)
-  fmeaItemId     String?         @db.VarChar(36)
-  rulaId         String?         @db.VarChar(36)
-  bodySide       String?         @db.VarChar(10)
-  title          String
-  description    String @db.Text
-  priority       String          @default("MEDIUM")
-  status         ActionStatus    @default(OPEN)
-  progress       Int             @default(0)
-  assigneeName   String?
-  dueDate        DateTime?
-  beforeRisk     Int?
-  afterRisk      Int?
-  rulaImpact     Json?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  organization   Organization    @relation(fields: [organizationId], references: [id])
-  project        Project         @relation(fields: [projectId], references: [id])
-  fmea           FmeaAssessment? @relation(fields: [fmeaId], references: [id])
-  fmeaItem       FmeaItem?       @relation(fields: [fmeaItemId], references: [id], onDelete: SetNull)
-  rula           RulaAssessment? @relation(fields: [rulaId], references: [id])
+  id                String          @id @default(uuid()) @db.VarChar(36)
+  organizationId    String          @db.VarChar(36)
+  projectId         String          @db.VarChar(36)
+  fmeaId            String?         @db.VarChar(36)
+  fmeaItemId        String?         @db.VarChar(36)
+  rulaId            String?         @db.VarChar(36)
+  bodySide          String?         @db.VarChar(10)
+  title             String
+  description       String          @db.Text
+  priority          String          @default("MEDIUM")
+  status            ActionStatus    @default(OPEN)
+  progress          Int             @default(0)
+  assigneeName      String?
+  dueDate           DateTime?
+  beforeRisk        Int?
+  afterRisk         Int?
+  rulaImpact        Json?
+  createRequestHash String?         @db.Char(64)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  organization      Organization    @relation(fields: [organizationId], references: [id])
+  project           Project         @relation(fields: [projectId], references: [id])
+  fmea              FmeaAssessment? @relation(fields: [fmeaId], references: [id])
+  fmeaItem          FmeaItem?       @relation(fields: [fmeaItemId], references: [id], onDelete: SetNull)
+  rula              RulaAssessment? @relation(fields: [rulaId], references: [id])
 
   @@index([organizationId, status])
   @@index([fmeaItemId])
 }
 
 model KnowledgeDocument {
-  id             String       @id @default(uuid()) @db.VarChar(36)
-  organizationId String       @db.VarChar(36)
-  title          String
-  content        String @db.LongText
-  tags           Json
-  published      Boolean      @default(true)
-  aiReadable     Boolean      @default(true)
-  aiOnly         Boolean      @default(false)
-  isGlobal       Boolean      @default(false)
-  visibility     String       @default("ALL")
-  visibleUserIds Json?
+  id                     String             @id @default(uuid()) @db.VarChar(36)
+  organizationId         String             @db.VarChar(36)
+  title                  String
+  content                String             @db.LongText
+  tags                   Json
+  published              Boolean            @default(true)
+  aiReadable             Boolean            @default(true)
+  aiOnly                 Boolean            @default(false)
+  isGlobal               Boolean            @default(false)
+  visibility             String             @default("ALL")
+  visibleUserIds         Json?
   visibleOrganizationIds Json?
-  version        Int          @default(1)
-  categoryId     String?      @db.VarChar(36)
-  deletedAt      DateTime?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  category       KnowledgeCategory? @relation(fields: [categoryId], references: [id])
+  version                Int                @default(1)
+  categoryId             String?            @db.VarChar(36)
+  deletedAt              DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  organization           Organization       @relation(fields: [organizationId], references: [id])
+  category               KnowledgeCategory? @relation(fields: [categoryId], references: [id])
 
   @@index([organizationId])
   @@index([isGlobal, published, deletedAt])
@@ -508,7 +568,7 @@ model KnowledgeCategory {
   id             String              @id @default(uuid()) @db.VarChar(36)
   organizationId String              @db.VarChar(36)
   name           String
-  description    String? @db.Text
+  description    String?             @db.Text
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
   organization   Organization        @relation(fields: [organizationId], references: [id])
@@ -542,8 +602,8 @@ model Notification {
   organizationId String       @db.VarChar(36)
   userId         String       @db.VarChar(36)
   title          String
-  message        String @db.Text
-  link           String? @db.Text
+  message        String       @db.Text
+  link           String?      @db.Text
   readAt         DateTime?
   createdAt      DateTime     @default(now())
   organization   Organization @relation(fields: [organizationId], references: [id])
@@ -568,18 +628,161 @@ model NotificationPreference {
   @@unique([organizationId, userId])
 }
 
-model EmailOutbox {
+model SupportRequest {
+  id             String                 @id @default(uuid()) @db.VarChar(36)
+  organizationId String                 @db.VarChar(36)
+  requesterId    String                 @db.VarChar(36)
+  responderId    String?                @db.VarChar(36)
+  idempotencyKey String                 @db.VarChar(36)
+  category       SupportRequestCategory
+  subject        String                 @db.VarChar(191)
+  message        String                 @db.Text
+  status         SupportRequestStatus   @default(OPEN)
+  priority       SupportRequestPriority @default(NORMAL)
+  assignedToId   String?                @db.VarChar(36)
+  relatedAssessmentType SupportAssessmentType?
+  relatedAssessmentId String?            @db.VarChar(36)
+  publicErrorCode String?                @db.VarChar(80)
+  response       String?                @db.Text
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  resolvedAt     DateTime?
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  requester      User                   @relation("SupportRequester", fields: [requesterId], references: [id], onDelete: Restrict)
+  responder      User?                  @relation("SupportResponder", fields: [responderId], references: [id], onDelete: SetNull)
+  assignedTo     User?                  @relation("SupportAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  replies        SupportReply[]
+
+  @@unique([organizationId, requesterId, idempotencyKey])
+  @@index([organizationId, status, createdAt])
+  @@index([requesterId, createdAt])
+  @@index([assignedToId, status, updatedAt])
+  @@index([organizationId, priority, updatedAt])
+  @@index([organizationId, relatedAssessmentType, relatedAssessmentId], map: "SupportRequest_org_related_assessment_idx")
+}
+
+model SupportReply {
+  id             String         @id @default(uuid()) @db.VarChar(36)
+  organizationId String         @db.VarChar(36)
+  requestId      String         @db.VarChar(36)
+  authorId       String         @db.VarChar(36)
+  idempotencyKey String?        @db.VarChar(36)
+  message        String         @db.Text
+  visibility     SupportReplyVisibility @default(PUBLIC)
+  createdAt      DateTime       @default(now()) @db.DateTime(3)
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  request        SupportRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  author         User           @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, requestId, authorId, idempotencyKey])
+  @@index([organizationId, requestId, createdAt])
+}
+
+model ChecklistTemplate {
+  id             String                @id @default(uuid()) @db.VarChar(36)
+  organizationId String                @db.VarChar(36)
+  familyId       String                @db.VarChar(36)
+  version        Int                   @default(1)
+  title          String                @db.VarChar(191)
+  description    String?               @db.Text
+  items          Json
+  status         String                @default("DRAFT") @db.VarChar(24)
+  createdById    String                @db.VarChar(36)
+  publishedAt    DateTime?             @db.DateTime(3)
+  createdAt      DateTime              @default(now()) @db.DateTime(3)
+  updatedAt      DateTime              @updatedAt @db.DateTime(3)
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy      User                  @relation("ChecklistTemplateCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  inspections    ChecklistInspection[]
+
+  @@unique([organizationId, familyId, version])
+  @@index([organizationId, status, updatedAt])
+}
+
+model ChecklistInspection {
+  id               String            @id @default(uuid()) @db.VarChar(36)
+  organizationId   String            @db.VarChar(36)
+  templateId       String            @db.VarChar(36)
+  templateVersion  Int
+  projectId        String?           @db.VarChar(36)
+  assignedToId     String            @db.VarChar(36)
+  startedById      String            @db.VarChar(36)
+  status           String            @default("IN_PROGRESS") @db.VarChar(24)
+  templateSnapshot Json
+  answers          Json
+  reviewDecision   String?           @db.VarChar(24)
+  reviewNote       String?           @db.Text
+  submittedAt      DateTime?         @db.DateTime(3)
+  reviewedById     String?           @db.VarChar(36)
+  reviewedAt       DateTime?         @db.DateTime(3)
+  createdAt        DateTime          @default(now()) @db.DateTime(3)
+  updatedAt        DateTime          @updatedAt @db.DateTime(3)
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  template         ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  project          Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  assignedTo       User              @relation("ChecklistInspectionAssignee", fields: [assignedToId], references: [id], onDelete: Restrict)
+  startedBy        User              @relation("ChecklistInspectionStarter", fields: [startedById], references: [id], onDelete: Restrict)
+  reviewedBy       User?             @relation("ChecklistInspectionReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, assignedToId, status])
+  @@index([organizationId, templateId, templateVersion])
+}
+
+model IncidentReport {
   id             String       @id @default(uuid()) @db.VarChar(36)
-  organizationId String?      @db.VarChar(36)
+  organizationId String       @db.VarChar(36)
+  reporterId     String       @db.VarChar(36)
+  projectId      String?      @db.VarChar(36)
+  kind           String       @db.VarChar(24)
+  occurredAt     DateTime     @db.DateTime(3)
+  location       String       @db.VarChar(191)
+  summary        String       @db.VarChar(191)
+  description    String       @db.Text
+  status         String       @default("REPORTED") @db.VarChar(24)
+  reviewedById   String?      @db.VarChar(36)
+  reviewedAt     DateTime?    @db.DateTime(3)
+  createdAt      DateTime     @default(now()) @db.DateTime(3)
+  updatedAt      DateTime     @updatedAt @db.DateTime(3)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  reporter       User         @relation("IncidentReporter", fields: [reporterId], references: [id], onDelete: Restrict)
+  project        Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  reviewedBy     User?        @relation("IncidentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status, occurredAt])
+  @@index([organizationId, reporterId, createdAt])
+}
+
+model FmeaSuggestionDismissal {
+  id             String         @id @default(uuid()) @db.VarChar(36)
+  organizationId String         @db.VarChar(36)
+  userId         String         @db.VarChar(36)
+  assessmentId   String         @db.VarChar(36)
+  fmeaItemId     String         @db.VarChar(36)
+  suggestionKey  String         @db.Char(64)
+  title          String         @db.VarChar(240)
+  createdAt      DateTime       @default(now())
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assessment     FmeaAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  fmeaItem       FmeaItem       @relation(fields: [fmeaItemId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId, assessmentId, suggestionKey])
+  @@index([organizationId, assessmentId, userId])
+}
+
+model EmailOutbox {
+  id             String        @id @default(uuid()) @db.VarChar(36)
+  organizationId String?       @db.VarChar(36)
   recipient      String
   subject        String
-  body           String @db.LongText
-  status         OutboxStatus @default(PENDING)
-  attempts       Int          @default(0)
-  lastError      String? @db.Text
+  body           String        @db.LongText
+  status         OutboxStatus  @default(PENDING)
+  attempts       Int           @default(0)
+  lastError      String?       @db.Text
   nextAttemptAt  DateTime?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
   organization   Organization? @relation(fields: [organizationId], references: [id])
 
   @@index([status, nextAttemptAt])
@@ -594,7 +797,7 @@ model AIAnalysisRequest {
   status         AIRequestStatus @default(PENDING)
   input          Json
   output         Json?
-  error          String? @db.Text
+  error          String?         @db.Text
   attempts       Int             @default(0)
   availableAt    DateTime        @default(now())
   startedAt      DateTime?
@@ -648,7 +851,7 @@ model ChatMessage {
   id             String           @id @default(uuid()) @db.VarChar(36)
   conversationId String           @db.VarChar(36)
   role           String
-  content        String @db.LongText
+  content        String           @db.LongText
   citations      Json?
   provider       String?
   feedback       Int?
@@ -675,4 +878,14 @@ model AuditLog {
   @@index([organizationId, createdAt])
   @@index([entityType, entityId, createdAt])
   @@index([userId, organizationId, createdAt])
+}
+
+model AIQuotaReservation {
+  id        String   @id @db.VarChar(36)
+  userId    String   @db.VarChar(36)
+  tokens    Int
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
 }

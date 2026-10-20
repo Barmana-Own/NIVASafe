@@ -14,6 +14,7 @@ import { FmeaFinalTableExportBar, FmeaRiskDistributionChart, type FmeaReport, ty
 import { fmeaPayloadFromDraft, fmeaRiskRowsFromDraft } from "./fmeaDraft";
 import { FmeaItemEditor, FmeaRiskAiAssist, FmeaReviewRiskRow, FmeaScoreField } from "./FmeaRiskEditor";
 import { FmeaInteractiveReportRiskTable, FmeaReportItemDetailsDialog, FmeaStageTwoDetailsCard } from "./FmeaRiskRegister";
+import { authorizeFmeaAutomaticImage, fmeaImagePolicyErrorKey, type FmeaImageAnalysisPolicy } from "../fmeaImageAnalysisPolicy";
 
 function FmeaAssessmentDetailsBar({ jobTitle, department, activityDescription, selectedItems }: { jobTitle: string; department: string; activityDescription: string; selectedItems: ProcessSuggestions }) {
   const { t } = useI18n();
@@ -121,6 +122,7 @@ function FmeaProcessPage() {
   const [department, setDepartment] = useState(() => draftValue(readLocalDraft(draftKey), "department"));
   const [activityDescription, setActivityDescription] = useState(() => draftValue(readLocalDraft(draftKey), "activityDescription"));
   const [processImages, setProcessImages] = useState<File[]>([]);
+  const fmeaImagePolicy = useLoad<FmeaImageAnalysisPolicy>(processImages.length ? "/fmea/image-analysis-policy" : null, [processImages.map(fmeaProcessImageFileKey).join("|")]);
   const [processImagePreviews, setProcessImagePreviews] = useState<string[]>([]);
   const [processImageError, setProcessImageError] = useState("");
   const [processImageAnalysis, setProcessImageAnalysis] = useState<FmeaProcessImageAnalysis | null>(null);
@@ -386,6 +388,11 @@ function FmeaProcessPage() {
 
   useEffect(() => {
     if (!processImages.length) return;
+    if (fmeaImagePolicy.loading || (!fmeaImagePolicy.data && !fmeaImagePolicy.error)) return;
+    if (!fmeaImagePolicy.data?.available) {
+      setProcessImageAnalysisError(fmeaImagePolicy.error || t(fmeaImagePolicyErrorKey(fmeaImagePolicy.data)));
+      return;
+    }
     const imageKey = processImages.map((file) => `${file.name}:${file.size}:${file.lastModified}`).join("|");
     const contextKey = `${imageKey}\u0000${locale}\u0000${jobQuery.trim()}\u0000${department.trim()}\u0000${activityDescription.trim()}`;
     if (processImageAnalysisContextKey.current === contextKey) return;
@@ -396,7 +403,7 @@ function FmeaProcessPage() {
     processImageAnalysisContextKey.current = contextKey;
     const analysisTimer = window.setTimeout(() => { void requestFmeaProcessImageAnalysis(processImages); }, 450);
     return () => { window.clearTimeout(analysisTimer); processImageAnalysisRequestId.current += 1; };
-  }, [activityDescription, department, jobQuery, locale, processImages]);
+  }, [activityDescription, department, fmeaImagePolicy.data, fmeaImagePolicy.error, fmeaImagePolicy.loading, jobQuery, locale, processImages]);
 
   useEffect(() => {
     setRiskPage(1);
@@ -777,6 +784,10 @@ function FmeaProcessPage() {
 
   async function requestFmeaProcessImageAnalysis(files = processImages) {
     if (!files.length) return;
+    if (!fmeaImagePolicy.data?.available) {
+      setProcessImageAnalysisError(t(fmeaImagePolicyErrorKey(fmeaImagePolicy.data)));
+      return;
+    }
     const title = jobQuery.trim();
     if (title.length < 2) return;
     const requestId = ++processImageAnalysisRequestId.current;
@@ -798,6 +809,7 @@ function FmeaProcessPage() {
         body.append("department", department.trim());
         body.append("activityDescription", activityDescription.trim());
         body.append("locale", locale);
+        authorizeFmeaAutomaticImage(body, fmeaImagePolicy.data);
         body.append("file", file);
         try {
           const result = await api<FmeaProcessImageAnalysis>("/fmea/process-image-analysis", { method: "POST", body });
@@ -1534,6 +1546,9 @@ function FmeaProcessPage() {
                 </div><span className="fmea-process-image-change">{t("assessment.fmeaProcessImageChange")}</span></> : <><Icon name="files" size={20}/><strong>{t("assessment.fmeaProcessImageChoose")}</strong><small>{t("assessment.fmeaProcessImageChooseHint")}</small><span className="ghost fake-button">{t("assessment.choosePhoto")}</span></>}
               </label>
               {processImages.length > 0 && <div className="fmea-process-image-meta"><span>{t("assessment.fmeaProcessImageCount", { count: processImages.length.toLocaleString(numberLocale), max: FMEA_PROCESS_IMAGE_MAX_COUNT.toLocaleString(numberLocale) })}</span><button type="button" className="text-button" onClick={() => removeFmeaProcessImage()}>{t("assessment.fmeaProcessImageRemove")}</button></div>}
+              {processImages.length > 0 && <div className="fmea-image-policy-status">
+                {fmeaImagePolicy.loading ? <small role="status">{t("assessment.fmeaImagePolicyChecking")}</small> : fmeaImagePolicy.data?.available ? null : <div className="fmea-image-policy-error"><small role="status">{t(fmeaImagePolicy.error ? "assessment.fmeaProcessImageUnavailable" : fmeaImagePolicyErrorKey(fmeaImagePolicy.data))}</small>{fmeaImagePolicy.data?.reasonCode === "account-consent-required" && <Link to="/profile#image-processing-consent">{t("assessment.fmeaImageAccountConsentLink")}</Link>}</div>}
+              </div>}
               {processImageError && <small id="fmea-process-image-error" className="field-error" role="alert">{processImageError}</small>}
               {processImageAnalysisError && <small className="field-error" role="status">{processImageAnalysisError}</small>}
             </div>

@@ -2,10 +2,11 @@ import { useEffect, useRef, useState, type FormEventHandler, type FormHTMLAttrib
 import { del as deleteIndexedDraft, get as getIndexedDraft, set as setIndexedDraft } from "idb-keyval";
 import { Icon } from "../components/UI";
 import { useI18n } from "../i18n";
-import { clearStoredDraft, readStoredDraft, restoreForm, sanitizeDraft, snapshotForm, writeStoredDraft, type AutoSaveDraft } from "./autoSave";
+import { clearStoredDraft, readStoredDraft, restoreForm, snapshotForm, writeStoredDraft, type AutoSaveDraft } from "./autoSave";
 
 type AutoSaveFormProps = Omit<FormHTMLAttributes<HTMLFormElement>, "children" | "onSubmit"> & {
   storageKey: string;
+  showSaveStatus?: boolean;
   children: ReactNode;
   className?: string;
   onSubmit?: FormEventHandler<HTMLFormElement>;
@@ -18,7 +19,7 @@ type SaveState = "idle" | "saving" | "saved" | "error";
  * Form-level autosave for uncontrolled forms. It persists on every input event,
  * restores the last draft on mount, and keeps credentials/files out of storage.
  */
-export function AutoSaveForm({ storageKey, children, className, onSubmit, excludeFields, ...rest }: AutoSaveFormProps) {
+export function AutoSaveForm({ storageKey, children, className, onSubmit, excludeFields, showSaveStatus = true, ...rest }: AutoSaveFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const draftRef = useRef<AutoSaveDraft | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
@@ -32,8 +33,7 @@ export function AutoSaveForm({ storageKey, children, className, onSubmit, exclud
     if (stored) { draftRef.current = stored; restoreForm(form, stored); }
     if (!stored) {
       void getIndexedDraft<AutoSaveDraft>(storageKey).then((draft) => {
-        const safeDraft = draft && typeof draft === "object" && !Array.isArray(draft) ? sanitizeDraft(draft) : null;
-        if (active && safeDraft && formRef.current) { draftRef.current = safeDraft; restoreForm(formRef.current, safeDraft); }
+        if (active && draft && typeof draft === "object" && !Array.isArray(draft) && formRef.current) { draftRef.current = draft; restoreForm(formRef.current, draft); }
       }).catch(() => { if (active) setSaveState("error"); });
     }
     const observer = typeof MutationObserver === "undefined" ? null : new MutationObserver(() => { if (draftRef.current) restoreForm(form, draftRef.current); });
@@ -54,7 +54,7 @@ export function AutoSaveForm({ storageKey, children, className, onSubmit, exclud
   const handleSubmit: FormEventHandler<HTMLFormElement> = (event) => { draftRef.current = null; setSaveState("idle"); setLastSaved(null); onSubmit?.(event); };
   return <form {...rest} ref={formRef} className={className} onSubmit={handleSubmit}>
     {children}
-    <AutoSaveStatus state={saveState} lastSaved={lastSaved}/>
+    {(showSaveStatus || saveState === "error") && <AutoSaveStatus state={saveState} lastSaved={lastSaved}/>}
   </form>;
 }
 

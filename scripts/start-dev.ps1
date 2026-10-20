@@ -71,6 +71,8 @@ $env:DATABASE_URL = "mysql://root@127.0.0.1:3306/nivasafe"
 $env:REDIS_URL = ""
 $env:S3_ENDPOINT = ""
 $env:LOCAL_UPLOAD_DIR = "uploads"
+# Use the shorter deterministic landmark response contract for local desktop image analysis only.
+$env:RULA_LANDMARK_EXPERIMENT_V2 = "1"
 Write-Host "Prisma environment prepared for XAMPP MySQL." -ForegroundColor Green
 
 if (-not (Get-Command node.exe -ErrorAction SilentlyContinue)) {

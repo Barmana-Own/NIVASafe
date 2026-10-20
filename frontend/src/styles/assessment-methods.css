@@ -1,0 +1,16 @@
+.assessment-methods-title { margin: 0 0 14px; color: var(--color-ink); font-size: .875rem; font-weight: 600; }
+.assessment-method-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; align-items: stretch; gap: 16px; }
+.assessment-method-card { min-width: 0; display: flex; flex-direction: column; gap: 28px; padding: 20px; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); }
+.assessment-method-card-head { min-width: 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.assessment-method-card h4 { margin: 0; color: var(--color-ink); font-size: 1rem; line-height: 1.5; }
+.assessment-method-icon { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 auto; border-radius: 10px; background: var(--color-accent-soft); color: var(--color-accent); }
+.assessment-method-status { margin-inline-start: auto; padding: 4px 8px; border-radius: 999px; background: var(--color-warning-soft); color: var(--color-warning); font-size: .6875rem; line-height: 1.6; }
+.assessment-method-action { width: 100%; min-height: 44px; margin-block-start: auto; justify-content: center; font-size: .8125rem; }
+.assessment-method-action:focus-visible { outline: 3px solid var(--color-focus, var(--color-accent)); outline-offset: 3px; }
+.assessment-method-card.coming-soon { background: var(--color-subtle); }
+.assessment-method-card.coming-soon .assessment-method-icon { color: var(--color-muted); background: var(--color-raised); }
+.assessment-method-card.coming-soon h4 { color: var(--color-secondary); }
+@media (max-width: 600px) {
+  .assessment-method-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .assessment-method-card { padding: 16px; gap: 20px; }
+}

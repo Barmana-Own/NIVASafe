@@ -1,0 +1,16 @@
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { LocaleProvider } from '../src/i18n';
+import { DialogProvider } from '../src/components/UI';
+import { FmeaPage } from '../src/features/assessments/AssessmentPages';
+import { ProjectsPage } from '../src/features/general/GeneralPages';
+import '../src/styles.css';
+const user={id:'test-user',email:'fixture@example.invalid',displayName:'Fixture',globalRole:'SUPER_ADMIN'};
+localStorage.setItem('nivasafe-session',JSON.stringify({accessToken:'synthetic',refreshToken:'synthetic',user,organizations:[{id:'test-org',nameFa:'تست',nameEn:'Fixture',role:'ORG_ADMIN'}]}));
+localStorage.setItem('nivasafe-org','test-org');
+localStorage.setItem('nivasafe-draft:v1:fmea:test-user:test-org',JSON.stringify({projectId:'old',title:'وظیفه محفوظ',activityDescription:'توضیحات محفوظ'}));
+const projects=[{id:'old',name:'پروژه قبلی',nameFa:'پروژه قبلی',nameEn:'Previous',code:'OLD',status:'ACTIVE',processes:[]}];
+const originalFetch=window.fetch.bind(window);
+window.fetch=async(input,init)=>{const url=String(input);if(!url.includes('/api/v1/'))return originalFetch(input,init);const path=url.split('/api/v1')[1].split('?')[0];let data:unknown=[];if(path==='/projects'){if(init?.method==='POST'){const body=JSON.parse(String(init.body));const project={...body,id:'created',nameFa:body.name,nameEn:body.name,code:'NEW',status:'ACTIVE',processes:[]};projects.push(project);data=project;}else data=projects;}return new Response(JSON.stringify({data}),{status:200,headers:{'Content-Type':'application/json'}});};
+createRoot(document.getElementById('root')!).render(<LocaleProvider><DialogProvider><MemoryRouter initialEntries={['/fmea']}><Routes><Route path="/fmea" element={<FmeaPage/>}/><Route path="/projects" element={<ProjectsPage/>}/></Routes></MemoryRouter></DialogProvider></LocaleProvider>);

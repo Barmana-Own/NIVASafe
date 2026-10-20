@@ -58,6 +58,7 @@ function postureAnalysisRowsFromValue(value: unknown): RulaSinglePostureAnalysis
       source: postureSource,
       confirmedByUser: candidate.confirmedByUser === true && postureSource !== "DEFAULT",
       confidence: typeof candidate.confidence === "number" && Number.isFinite(candidate.confidence) ? candidate.confidence : null,
+      ...(candidate.requiresReview === true ? { requiresReview: true } : {}),
     } satisfies RulaPostureRow];
   })) as RulaSinglePostureAnalysis;
 }
@@ -88,7 +89,7 @@ export function rulaAnalysisFromImageSide(value: unknown): { analysis: RulaSingl
     if (confidence !== null && (!Number.isFinite(confidence) || confidence < 0 || confidence > 1)) return null;
     const angle = candidate.detected ? postureAngle(candidate.angle) : null;
     const score = !candidate.detected ? 1 : angle === null ? postureScore(candidate.score, 1) : suggestedRulaPostureScore(key, angle, candidate.detected, postureScore(candidate.score, 1));
-    analysis[key] = { angle, score, detected: candidate.detected, source: "AI", confirmedByUser: false, confidence };
+    analysis[key] = { angle, score, detected: candidate.detected, source: "AI", confirmedByUser: false, confidence, ...(candidate.requiresReview === true ? { requiresReview: true } : {}) };
   }
   return { analysis: analysis as RulaSinglePostureAnalysis, overlay: postureOverlayFromValue(value.overlay) };
 }
@@ -145,7 +146,7 @@ export function withBothSideAnalyses(analysis: RulaPostureAnalysis): RulaPosture
 }
 
 export function isRulaPostureResultReviewed(row: RulaPostureRow) {
-  return row.source !== "DEFAULT";
+  return row.source !== "DEFAULT" && (row.requiresReview !== true || row.confirmedByUser);
 }
 
 export function isRulaSingleAnalysisReviewed(analysis: RulaSinglePostureAnalysis | undefined) {

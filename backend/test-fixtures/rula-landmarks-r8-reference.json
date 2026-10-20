@@ -1,0 +1,3735 @@
+{
+  "sourceManifestSha256": "b301ea06e5866eda00bcd32cc702d3cf7e9f059ab19e8d31186061b4a637c65c",
+  "source": "independent analytic generator; no model output",
+  "cases": [
+    {
+      "id": "rig-01-A",
+      "split": "development",
+      "frame": {
+        "width": 1100,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.27,
+            "y": 0.21763157894736845,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.27,
+            "y": 0.26368421052631585,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.27,
+            "y": 0.3031578947368421,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.27,
+            "y": 0.4347368421052632,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.1809090909090909,
+            "y": 0.4347368421052632,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.14636363636363636,
+            "y": 0.4347368421052632,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.27,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.27,
+            "y": 0.671578947368421,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.27,
+            "y": 0.7965789473684212,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 0,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 1
+        },
+        "lowerArm": {
+          "reference": 90,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 1
+        },
+        "wrist": {
+          "reference": 0,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 1
+        },
+        "neck": {
+          "reference": 0,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 1
+        },
+        "trunk": {
+          "reference": 0,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 1
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-01-B",
+      "split": "development",
+      "frame": {
+        "width": 1100,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.7036923961360444,
+            "y": 0.22467610239502323,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.7103077681166096,
+            "y": 0.26972237348144845,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.7159780869570939,
+            "y": 0.3083334629840987,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.677260184224975,
+            "y": 0.44035323801872495,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.7453898459633316,
+            "y": 0.549869317562762,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.7671300049268713,
+            "y": 0.5887266156356106,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.75,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.75,
+            "y": 0.671578947368421,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.75,
+            "y": 0.7965789473684212,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": -34.99999999999999,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "lowerArm": {
+          "reference": 114.99999999999999,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wrist": {
+          "reference": 3.000000000000045,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "neck": {
+          "reference": -6.558087388913727e-14,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 1
+        },
+        "trunk": {
+          "reference": -12.000000000000007,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-02-A",
+      "split": "development",
+      "frame": {
+        "width": 620,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.537960849424195,
+            "y": 0.2705865427235644,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.5205626634865925,
+            "y": 0.3075612411940457,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.5119108544170793,
+            "y": 0.3407667781663249,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.5303367128861092,
+            "y": 0.4631895100806111,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.6451066661936689,
+            "y": 0.39003920584125984,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.6932593525739272,
+            "y": 0.3725495301890004,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.45999999999999996,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.45999999999999996,
+            "y": 0.6531578947368422,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.45999999999999996,
+            "y": 0.7606578947368421,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 19.000000000000007,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 1
+        },
+        "lowerArm": {
+          "reference": 59,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wrist": {
+          "reference": 13.999999999999973,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "neck": {
+          "reference": 9.000000000000007,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 1
+        },
+        "trunk": {
+          "reference": 12.000000000000009,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-03-A",
+      "split": "development",
+      "frame": {
+        "width": 620,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_LEFT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.2866085065691061,
+            "y": 0.2156996220120701,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.32042883374342634,
+            "y": 0.258184907361937,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.3403675717800797,
+            "y": 0.2984442063102317,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.3440213175148529,
+            "y": 0.4692076679303628,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.5161089461378252,
+            "y": 0.3881550363514154,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.5629423653074802,
+            "y": 0.34859134733278957,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.45999999999999996,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.45999999999999996,
+            "y": 0.6847368421052633,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.45999999999999996,
+            "y": 0.8222368421052633,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 21,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "lowerArm": {
+          "reference": 61,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 1
+        },
+        "wrist": {
+          "reference": 16.00000000000004,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "neck": {
+          "reference": 11.000000000000002,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 2
+        },
+        "trunk": {
+          "reference": 21.999999999999996,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-04-A",
+      "split": "development",
+      "frame": {
+        "width": 1100,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.34308595104070105,
+            "y": 0.28339386747838485,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.32062270972513435,
+            "y": 0.3126683315065849,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.3076681642705889,
+            "y": 0.34514428414850135,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.32856141889056023,
+            "y": 0.4664312499330009,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.43094306490808,
+            "y": 0.45346683319928677,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.4636363636363636,
+            "y": 0.449326935418773,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.22994089154331618,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.22994089154331618,
+            "y": 0.665,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.22994089154331618,
+            "y": 0.7837500000000002,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 43.99999999999999,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "lowerArm": {
+          "reference": 98.99999999999999,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 1
+        },
+        "wrist": {
+          "reference": 0,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 1
+        },
+        "neck": {
+          "reference": 17.99999999999997,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 2
+        },
+        "trunk": {
+          "reference": 29.999999999999996,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-04-B",
+      "split": "development",
+      "frame": {
+        "width": 1100,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.7929064891759937,
+            "y": 0.2405844307950085,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.7907979412196373,
+            "y": 0.2842278579938758,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.7849696639025463,
+            "y": 0.3207667354233221,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.7751297344740322,
+            "y": 0.45627034366724933,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.6858255768713343,
+            "y": 0.4790616669860339,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.6532520168038327,
+            "y": 0.48485046079777844,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.75,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.75,
+            "y": 0.665,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.75,
+            "y": 0.7837500000000002,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 7.000000000000016,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 1
+        },
+        "lowerArm": {
+          "reference": 105.99999999999997,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wrist": {
+          "reference": 2.999999999999923,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "neck": {
+          "reference": -9.000000000000052,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 4
+        },
+        "trunk": {
+          "reference": 13.000000000000002,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-05-A",
+      "split": "development",
+      "frame": {
+        "width": 620,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.6009534438028513,
+            "y": 0.2419297053537547,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.5646670464818371,
+            "y": 0.27720806786581287,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.549714611270146,
+            "y": 0.31474977245641106,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.6322507408566977,
+            "y": 0.4413830456427572,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.50941154049737,
+            "y": 0.5225322539623415,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.4499418024352928,
+            "y": 0.5346283487423248,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.45999999999999996,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.45999999999999996,
+            "y": 0.671578947368421,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.45999999999999996,
+            "y": 0.7965789473684212,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 45.99999999999998,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "lowerArm": {
+          "reference": 101.00000000000001,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wrist": {
+          "reference": 25.00000000000004,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "neck": {
+          "reference": 21.999999999999996,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 3
+        },
+        "trunk": {
+          "reference": 18,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-06-A",
+      "split": "development",
+      "frame": {
+        "width": 1100,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.3361201875682339,
+            "y": 0.3727590402604943,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.3093545123117907,
+            "y": 0.3809934374889345,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.2919243882233209,
+            "y": 0.403708660704801,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.3524488157341906,
+            "y": 0.5044822504429679,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.4340900222357862,
+            "y": 0.4920626185573506,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.4636363636363636,
+            "y": 0.4965573424778597,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.18734364369250214,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.18734364369250214,
+            "y": 0.6531578947368422,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.18734364369250214,
+            "y": 0.7606578947368421,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 89,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "lowerArm": {
+          "reference": 124.99999999999999,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wrist": {
+          "reference": 12.000000000000018,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "neck": {
+          "reference": 30.000000000000014,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 3
+        },
+        "trunk": {
+          "reference": 47.99999999999998,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-06-B",
+      "split": "development",
+      "frame": {
+        "width": 1100,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.8421023279444068,
+            "y": 0.29823895848086207,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.8345598875715962,
+            "y": 0.33630998091210335,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.8224799036327968,
+            "y": 0.3654085550675172,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.8504977615063385,
+            "y": 0.4710505506974637,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.7591707379117622,
+            "y": 0.4967444883117211,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.729534016854952,
+            "y": 0.4937449599407237,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.75,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.75,
+            "y": 0.6531578947368422,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.75,
+            "y": 0.7606578947368421,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 52.00000000000002,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "lowerArm": {
+          "reference": 80,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 1
+        },
+        "wrist": {
+          "reference": 14.999999999999945,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "neck": {
+          "reference": -15.000000000000046,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 4
+        },
+        "trunk": {
+          "reference": 31.000000000000014,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-07-A",
+      "split": "development",
+      "frame": {
+        "width": 620,
+        "height": 900,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.9284891693357877,
+            "y": 0.3962258749937361,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.856560446149399,
+            "y": 0.406758243541741,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.7999089538423421,
+            "y": 0.4257927801786352,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.8952932056976374,
+            "y": 0.5547542507848463,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.903505549064304,
+            "y": 0.7167607637963629,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.8660235452612369,
+            "y": 0.7653228814036039,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.45999999999999996,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.45999999999999996,
+            "y": 0.6847368421052632,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.45999999999999996,
+            "y": 0.8222368421052632,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 91.00000000000003,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 4
+        },
+        "lowerArm": {
+          "reference": 154.99999999999997,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wrist": {
+          "reference": 30.00000000000003,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "neck": {
+          "reference": 14.000000000000005,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 2
+        },
+        "trunk": {
+          "reference": 64.00000000000001,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 4
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-08-A",
+      "split": "development",
+      "frame": {
+        "width": 620,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_LEFT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.4189586598555793,
+            "y": 0.2364112047564705,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.4152176876749467,
+            "y": 0.2800546319553378,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.42161516086424,
+            "y": 0.3171896845331467,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.5125786642123143,
+            "y": 0.43145854941571077,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.33422449282044864,
+            "y": 0.4005316854065691,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.27631765342884435,
+            "y": 0.40549678741178263,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.45999999999999996,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.45999999999999996,
+            "y": 0.665,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.45999999999999996,
+            "y": 0.7837500000000002,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": -25.00000000000001,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "lowerArm": {
+          "reference": 45.00000000000003,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wrist": {
+          "reference": 17.999999999999986,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "neck": {
+          "reference": -12.000000000000025,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 4
+        },
+        "trunk": {
+          "reference": 7.999999999999995,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-09-A",
+      "split": "development",
+      "frame": {
+        "width": 1100,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.3715562736183769,
+            "y": 0.25481648607171914,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.3506816681504971,
+            "y": 0.28957284831882046,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.33915571555756896,
+            "y": 0.3253481557018461,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.40810929550576136,
+            "y": 0.44428663502821375,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.32736551084249615,
+            "y": 0.4987821477263566,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.29432952836377313,
+            "y": 0.5134007329624934,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.27,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.27,
+            "y": 0.671578947368421,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.27,
+            "y": 0.7965789473684212,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 64.99999999999997,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "lowerArm": {
+          "reference": 75.00000000000001,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 1
+        },
+        "wrist": {
+          "reference": 7.9999999999999805,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "neck": {
+          "reference": 16,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 2
+        },
+        "trunk": {
+          "reference": 24.999999999999993,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-09-B",
+      "split": "development",
+      "frame": {
+        "width": 1100,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.7765694101832852,
+            "y": 0.22032066521614507,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.7765694101832852,
+            "y": 0.2663732967950925,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.7727737801571016,
+            "y": 0.30546282582436496,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.8038665204594352,
+            "y": 0.4291065917172477,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.8995443145758186,
+            "y": 0.47950956020734625,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.9291555486000734,
+            "y": 0.505261463952849,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.75,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.75,
+            "y": 0.671578947368421,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.75,
+            "y": 0.7965789473684212,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 28.00000000000004,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "lowerArm": {
+          "reference": 130.00000000000003,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wrist": {
+          "reference": 11.00000000000006,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "neck": {
+          "reference": -7.999999999999999,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 4
+        },
+        "trunk": {
+          "reference": 8.000000000000012,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-10-A",
+      "split": "development",
+      "frame": {
+        "width": 620,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.6777642683325091,
+            "y": 0.3310179701526898,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.6353028922278385,
+            "y": 0.35021898274402496,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.6102596219095759,
+            "y": 0.3773305566377357,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.6054187239798742,
+            "y": 0.4904195186425281,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.7047484851309122,
+            "y": 0.5773158860849111,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.7236379441488806,
+            "y": 0.6174598444242908,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.45999999999999996,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.45999999999999996,
+            "y": 0.6531578947368422,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.45999999999999996,
+            "y": 0.7606578947368421,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 34.99999999999999,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "lowerArm": {
+          "reference": 135,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wrist": {
+          "reference": 21.99999999999993,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "neck": {
+          "reference": 23.99999999999998,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 3
+        },
+        "trunk": {
+          "reference": 37,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-11-A",
+      "split": "development",
+      "frame": {
+        "width": 760,
+        "height": 620,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 1,
+          "y": 0
+        },
+        "points": {
+          "head": {
+            "x": 0.8116472682622404,
+            "y": 0.4081467962552014,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.7609893735253983,
+            "y": 0.4081467962552014,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.7179908915931985,
+            "y": 0.41555439679017264,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.5679492122461078,
+            "y": 0.475314296186231,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.40742154636589545,
+            "y": 0.5029693381834569,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.35295680258510903,
+            "y": 0.5123522988610871,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.45999999999999996,
+            "y": 0.45999999999999996,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.31526315789473675,
+            "y": 0.45999999999999996,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.17776315789473673,
+            "y": 0.45999999999999996,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 9.999999999999993,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 1
+        },
+        "lowerArm": {
+          "reference": 169.99999999999997,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wrist": {
+          "reference": 0,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 1
+        },
+        "neck": {
+          "reference": 7.999999999999999,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 1
+        },
+        "trunk": {
+          "reference": -8,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-12-A",
+      "split": "development",
+      "frame": {
+        "width": 1100,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.4204034473634977,
+            "y": 0.35543604964410797,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.40138080827040035,
+            "y": 0.38943618545785047,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.3801573234865492,
+            "y": 0.41094530182101474,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.4636363636363636,
+            "y": 0.49554782618279397,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.4284860207245756,
+            "y": 0.35576854884089015,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.4369799912047583,
+            "y": 0.3098870720921594,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.25281641478344224,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.25281641478344224,
+            "y": 0.665,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.25281641478344224,
+            "y": 0.7837500000000002,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 110,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 4
+        },
+        "lowerArm": {
+          "reference": 34.99999999999999,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wrist": {
+          "reference": 34.99999999999998,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "neck": {
+          "reference": -16.000000000000014,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 4
+        },
+        "trunk": {
+          "reference": 55.000000000000014,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-12-B",
+      "split": "development",
+      "frame": {
+        "width": 1100,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.8834022842624809,
+            "y": 0.30275587347065436,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.8616586039340626,
+            "y": 0.3331471771782355,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.8457073748006251,
+            "y": 0.36269758043848754,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.8952435215763972,
+            "y": 0.4650915859746116,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.9335673139478833,
+            "y": 0.5840444830231718,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.9261848293462347,
+            "y": 0.6303270611004705,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.75,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.75,
+            "y": 0.665,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.75,
+            "y": 0.7837500000000002,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 72.99999999999999,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "lowerArm": {
+          "reference": 169.9999999999999,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wrist": {
+          "reference": 38.00000000000005,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "neck": {
+          "reference": 8.000000000000016,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 1
+        },
+        "trunk": {
+          "reference": 37.999999999999986,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-13-A",
+      "split": "development",
+      "frame": {
+        "width": 620,
+        "height": 760,
+        "view": "FRONTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.5710160172544873,
+            "y": 0.23241716047035113,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.5419412872192423,
+            "y": 0.2718919703711063,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.5302353890450648,
+            "y": 0.31019311746094824,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.5692550496256564,
+            "y": 0.43786360776042155,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.41731368478379305,
+            "y": 0.4734063194315609,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.3571494380563556,
+            "y": 0.48294676920038815,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.45999999999999996,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.45999999999999996,
+            "y": 0.671578947368421,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.45999999999999996,
+            "y": 0.7965789473684212,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 28,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "lowerArm": {
+          "reference": 92,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "wrist": {
+          "reference": 4.999999999999992,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "neck": {
+          "reference": 17.000000000000025,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": null
+        },
+        "trunk": {
+          "reference": 14,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-14-A",
+      "split": "development",
+      "frame": {
+        "width": 620,
+        "height": 760,
+        "view": "OBLIQUE",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.6909897528310958,
+            "y": 0.3369042279833961,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.6549112701748545,
+            "y": 0.3634053217352403,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.6270668030070182,
+            "y": 0.3886331329159203,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.7026635772005666,
+            "y": 0.49545052943006934,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.7841073178189673,
+            "y": 0.39694777574359535,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.8262031379292019,
+            "y": 0.37106972974805724,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.45999999999999996,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.45999999999999996,
+            "y": 0.6531578947368422,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.45999999999999996,
+            "y": 0.7606578947368421,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 72.00000000000003,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "lowerArm": {
+          "reference": 64.00000000000001,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "wrist": {
+          "reference": 18.999999999999876,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "neck": {
+          "reference": 6.000000000000049,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": null
+        },
+        "trunk": {
+          "reference": 42.000000000000014,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-15-A",
+      "split": "development",
+      "frame": {
+        "width": 1100,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.34485218143019164,
+            "y": 0.20352064409655474,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.32788384472156984,
+            "y": 0.2478270371555899,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.3196147240470599,
+            "y": 0.2895660318476485,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.3175553400874604,
+            "y": 0.46032949346777957,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.2129943323197738,
+            "y": 0.5184228242361756,
+            "visibility": "OCCLUDED",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.17569249934876255,
+            "y": 0.5289173189818857,
+            "visibility": "OCCLUDED",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.27,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.27,
+            "y": 0.6847368421052633,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.27,
+            "y": 0.8222368421052633,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 14.99999999999999,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 1
+        },
+        "lowerArm": {
+          "reference": 112.00000000000001,
+          "measurable": false,
+          "reason": "LANDMARK_OCCLUDED",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "wrist": {
+          "reference": 9.999999999999902,
+          "measurable": false,
+          "reason": "LANDMARK_OCCLUDED",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "neck": {
+          "reference": 13.000000000000014,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 2
+        },
+        "trunk": {
+          "reference": 15.999999999999998,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-15-B",
+      "split": "development",
+      "frame": {
+        "width": 1100,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.7417665779204686,
+            "y": 0.18587441481050251,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.7463349946481704,
+            "y": 0.23609892423536002,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.7468585668412889,
+            "y": 0.2795133636303086,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.711021771886759,
+            "y": 0.4146368464127983,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.8005492267357339,
+            "y": 0.47232922815433936,
+            "visibility": "OCCLUDED",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.830897376117531,
+            "y": 0.505429054427702,
+            "visibility": "OCCLUDED",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.75,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.75,
+            "y": 0.6847368421052633,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.75,
+            "y": 0.8222368421052633,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": -21.999999999999975,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "lowerArm": {
+          "reference": 92.99999999999999,
+          "measurable": false,
+          "reason": "LANDMARK_OCCLUDED",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "wrist": {
+          "reference": 13.00000000000008,
+          "measurable": false,
+          "reason": "LANDMARK_OCCLUDED",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "neck": {
+          "reference": -6.500000000000041,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 4
+        },
+        "trunk": {
+          "reference": -0.9999999999999984,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-16-A",
+      "split": "development",
+      "frame": {
+        "width": 620,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.6544506319979874,
+            "y": 0.28251065208673604,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.6110638335093309,
+            "y": 0.30822625687453176,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.5894832858651408,
+            "y": 0.34133679160674146,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.6542393098415383,
+            "y": 0.4546252649863228,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.8071614190451354,
+            "y": 0.37361020852783744,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.8646703691991426,
+            "y": 0.3661795714384265,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.45999999999999996,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.45999999999999996,
+            "y": 0.665,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.45999999999999996,
+            "y": 0.7837500000000002,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 53.00000000000001,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "lowerArm": {
+          "reference": 82,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 1
+        },
+        "wrist": {
+          "reference": 24.000000000000036,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "neck": {
+          "reference": 25.999999999999964,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 3
+        },
+        "trunk": {
+          "reference": 28,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-17-A",
+      "split": "heldout",
+      "frame": {
+        "width": 1100,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_LEFT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.1658586298502408,
+            "y": 0.2563706510105404,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.18631096288572158,
+            "y": 0.2916490135225986,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.1982665396163328,
+            "y": 0.3271277258765131,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.18790871916526533,
+            "y": 0.46976310297538393,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.27354839753067917,
+            "y": 0.43422039130424456,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.30485721199194526,
+            "y": 0.4130894782172096,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.27,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.27,
+            "y": 0.671578947368421,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.27,
+            "y": 0.7965789473684212,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 31.999999999999996,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "lowerArm": {
+          "reference": 68,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 1
+        },
+        "wrist": {
+          "reference": 9.000000000000066,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "neck": {
+          "reference": 14,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 2
+        },
+        "trunk": {
+          "reference": 25.999999999999993,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-17-B",
+      "split": "heldout",
+      "frame": {
+        "width": 1100,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_LEFT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.7190247999608764,
+            "y": 0.2210615388544115,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.7201352384923196,
+            "y": 0.2670861164145014,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.7244016329934168,
+            "y": 0.3060738140695727,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.7503532545213811,
+            "y": 0.4567249926229511,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.7009908204599359,
+            "y": 0.5856163178855989,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.6908907070240595,
+            "y": 0.6334315556837505,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.75,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.75,
+            "y": 0.671578947368421,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.75,
+            "y": 0.7965789473684212,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": -4.999999999999987,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 1
+        },
+        "lowerArm": {
+          "reference": 137,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wrist": {
+          "reference": 12.00000000000008,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "neck": {
+          "reference": -7.000000000000061,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 4
+        },
+        "trunk": {
+          "reference": 9.000000000000004,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-18-A",
+      "split": "heldout",
+      "frame": {
+        "width": 620,
+        "height": 900,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.6835945377400835,
+            "y": 0.3548688904967449,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.6299215883474494,
+            "y": 0.36906214744584165,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.5956899088863757,
+            "y": 0.3934818406678643,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.7040774433935706,
+            "y": 0.5041801733821875,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.8744285287929059,
+            "y": 0.48559328891753895,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.9354838709677419,
+            "y": 0.4945334916227026,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.3902998321199337,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.3902998321199337,
+            "y": 0.6531578947368422,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.3902998321199337,
+            "y": 0.7606578947368421,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 78,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "lowerArm": {
+          "reference": 114.99999999999997,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wrist": {
+          "reference": 20.999999999999982,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "neck": {
+          "reference": 25.00000000000003,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 3
+        },
+        "trunk": {
+          "reference": 43.99999999999999,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-19-A",
+      "split": "heldout",
+      "frame": {
+        "width": 760,
+        "height": 620,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 1,
+          "y": 0
+        },
+        "points": {
+          "head": {
+            "x": 0.8114089573577374,
+            "y": 0.49355753549127757,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.761681790827823,
+            "y": 0.5054061585912727,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.718584392138134,
+            "y": 0.49891956450680514,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.6061027398219934,
+            "y": 0.3872659467398985,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.5533264284678858,
+            "y": 0.19938225558855036,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.5354201799727423,
+            "y": 0.13563600323362868,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.45999999999999996,
+            "y": 0.45999999999999996,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.31526315789473675,
+            "y": 0.45999999999999996,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.17776315789473673,
+            "y": 0.45999999999999996,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": -32,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "lowerArm": {
+          "reference": 148.00000000000003,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wrist": {
+          "reference": 0,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 1
+        },
+        "neck": {
+          "reference": -17.999999999999993,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 4
+        },
+        "trunk": {
+          "reference": 6.999999999999997,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-20-A",
+      "split": "heldout",
+      "frame": {
+        "width": 1100,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_LEFT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.15244726457971702,
+            "y": 0.40916660699577556,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.18221531711394967,
+            "y": 0.4167637147687038,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.20509168656529458,
+            "y": 0.4343688983731746,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.14458199839889357,
+            "y": 0.5387424537481355,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.06820697792596679,
+            "y": 0.43920927605225524,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.036363636363636355,
+            "y": 0.42771798601127103,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.3423499032733641,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.3423499032733641,
+            "y": 0.665,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.3423499032733641,
+            "y": 0.7837500000000002,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 102,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 4
+        },
+        "lowerArm": {
+          "reference": 87.99999999999999,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 1
+        },
+        "wrist": {
+          "reference": 27.999999999999968,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "neck": {
+          "reference": 18.000000000000018,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 2
+        },
+        "trunk": {
+          "reference": 62,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 4
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-20-B",
+      "split": "heldout",
+      "frame": {
+        "width": 1100,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_LEFT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.6039893977405083,
+            "y": 0.31898997643462734,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.6217565428666216,
+            "y": 0.35438446993853134,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.6400770367428186,
+            "y": 0.3809009742330268,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.6052220748639027,
+            "y": 0.5195056357989484,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.6670669261513883,
+            "y": 0.6154958091364644,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.6986137872635457,
+            "y": 0.6285885835377719,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.75,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.75,
+            "y": 0.665,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.75,
+            "y": 0.7837500000000002,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 65,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "lowerArm": {
+          "reference": 117,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wrist": {
+          "reference": 30.999999999999986,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "neck": {
+          "reference": -9.000000000000023,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 4
+        },
+        "trunk": {
+          "reference": 44.999999999999986,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-21-A",
+      "split": "heldout",
+      "frame": {
+        "width": 620,
+        "height": 760,
+        "view": "FRONTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.6112974897623793,
+            "y": 0.2429821408817273,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.5813826925879242,
+            "y": 0.2820369874152469,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.5640423079325064,
+            "y": 0.3188888463559259,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.5706844702081437,
+            "y": 0.47405742212994345,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.4180058718592265,
+            "y": 0.5074314568931632,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.3567528856870884,
+            "y": 0.5056864820580381,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.45999999999999996,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.45999999999999996,
+            "y": 0.671578947368421,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.45999999999999996,
+            "y": 0.7965789473684212,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 23,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "lowerArm": {
+          "reference": 102.99999999999997,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "wrist": {
+          "reference": 17.000000000000075,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "neck": {
+          "reference": 10.99999999999999,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": null
+        },
+        "trunk": {
+          "reference": 20.999999999999986,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-22-A",
+      "split": "heldout",
+      "frame": {
+        "width": 620,
+        "height": 760,
+        "view": "OBLIQUE",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.6682486324182377,
+            "y": 0.3243560144052482,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.6270772651693531,
+            "y": 0.3453436063176422,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.6032090844308741,
+            "y": 0.37315166255797905,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.6574072732213218,
+            "y": 0.47731405386970255,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.7280174485571996,
+            "y": 0.3733954228766927,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.7589994195973899,
+            "y": 0.33860769211856995,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.45999999999999996,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.45999999999999996,
+            "y": 0.6531578947368422,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.45999999999999996,
+            "y": 0.7606578947368421,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 58.00000000000002,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "lowerArm": {
+          "reference": 52.000000000000014,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "wrist": {
+          "reference": 7.000000000000025,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "neck": {
+          "reference": 23.000000000000025,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": null
+        },
+        "trunk": {
+          "reference": 35,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-23-A",
+      "split": "heldout",
+      "frame": {
+        "width": 1100,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.3292104264286101,
+            "y": 0.19623993307151733,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.3172397214122117,
+            "y": 0.24384278294027717,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.3104911897818957,
+            "y": 0.2861509568059519,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.3085888774802318,
+            "y": 0.4438900866075984,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.27771749362872783,
+            "y": 0.5997156667912837,
+            "visibility": "OCCLUDED",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.25987757424286395,
+            "y": 0.6482777843985247,
+            "visibility": "OCCLUDED",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.27,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.27,
+            "y": 0.6847368421052633,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.27,
+            "y": 0.8222368421052633,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 11.999999999999995,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 1
+        },
+        "lowerArm": {
+          "reference": 164.99999999999994,
+          "measurable": false,
+          "reason": "LANDMARK_OCCLUDED",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "wrist": {
+          "reference": 12.000000000000048,
+          "measurable": false,
+          "reason": "LANDMARK_OCCLUDED",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "neck": {
+          "reference": 6.9999999999999805,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 1
+        },
+        "trunk": {
+          "reference": 13.000000000000002,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-23-B",
+      "split": "heldout",
+      "frame": {
+        "width": 1100,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.7307827237860318,
+            "y": 0.18656852266722226,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.7353511405137336,
+            "y": 0.23679303209207975,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.7374438347260575,
+            "y": 0.28010831322178265,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.6951564166797121,
+            "y": 0.4395540229051205,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.7808691479793728,
+            "y": 0.37078760571754804,
+            "visibility": "OCCLUDED",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.8177403855778607,
+            "y": 0.3574819014595664,
+            "visibility": "OCCLUDED",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.75,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.75,
+            "y": 0.6847368421052633,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.75,
+            "y": 0.8222368421052633,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": -25.000000000000007,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "lowerArm": {
+          "reference": 39.99999999999999,
+          "measurable": false,
+          "reason": "LANDMARK_OCCLUDED",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "wrist": {
+          "reference": 15.000000000000018,
+          "measurable": false,
+          "reason": "LANDMARK_OCCLUDED",
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": null
+        },
+        "neck": {
+          "reference": -3.500000000000036,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 4
+        },
+        "trunk": {
+          "reference": -3.9999999999999942,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 2
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    },
+    {
+      "id": "rig-24-A",
+      "split": "heldout",
+      "frame": {
+        "width": 620,
+        "height": 760,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_LEFT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.295615830491261,
+            "y": 0.3715448548815046,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "neck": {
+            "x": 0.3485846003699518,
+            "y": 0.3783888627270147,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "shoulder": {
+            "x": 0.38480767533413185,
+            "y": 0.40147616805172687,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "elbow": {
+            "x": 0.2837019906904694,
+            "y": 0.5237592100035956,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "wrist": {
+            "x": 0.12270646589578929,
+            "y": 0.4539253150391943,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hand": {
+            "x": 0.06451612903225806,
+            "y": 0.4522675889458255,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "hip": {
+            "x": 0.6021461251192116,
+            "y": 0.54,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "knee": {
+            "x": 0.6021461251192116,
+            "y": 0.665,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          },
+          "ankle": {
+            "x": 0.6021461251192116,
+            "y": 0.7837500000000002,
+            "visibility": "VISIBLE",
+            "confidence": 0.99
+          }
+        }
+      },
+      "measurements": {
+        "upperArm": {
+          "reference": 85.99999999999999,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "lowerArm": {
+          "reference": 96,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 1
+        },
+        "wrist": {
+          "reference": 26.000000000000053,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "neck": {
+          "reference": 28.99999999999998,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "IMAGE_PLANE_HEAD_AXIS_PROXY_NOT_CERVICAL",
+          "baseScore": 3
+        },
+        "trunk": {
+          "reference": 51.999999999999986,
+          "measurable": true,
+          "reason": null,
+          "referenceType": "ANALYTIC_IMAGE_PLANE",
+          "baseScore": 3
+        },
+        "wristTwist": {
+          "reference": null,
+          "measurable": false,
+          "reason": "UNMEASURABLE_FROM_SINGLE_2D_VIEW",
+          "referenceType": "AXIAL_3D"
+        }
+      }
+    }
+  ]
+}

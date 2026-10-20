@@ -6,7 +6,19 @@
  * This file is deliberately last in the interactive cascade so legacy
  * feature selectors cannot silently shrink a control in a later breakpoint.
  */
-:where(
+:is(
+  .app[data-design="enterprise"] .side-nav-link,
+  .app[data-design="enterprise"] .side-nav-pending,
+  .app[data-design="enterprise"] .side-logout,
+  .app[data-design="enterprise"] .sidebar-toggle,
+  .app[data-design="enterprise"] .profile-menu-account-link,
+  .app[data-design="enterprise"] .profile-menu-more,
+  .app[data-design="enterprise"] .header-notifications,
+  .app[data-design="enterprise"] .language-switch,
+  .app[data-design="enterprise"] .theme-trigger,
+  .app[data-design="enterprise"] .mobile-menu,
+  .app[data-design="enterprise"] .rula-report-view .rula-side-tabs > button,
+  .app[data-design="enterprise"] :is(button.primary, button.ghost, .button-link, .text-link),
   button.fmea-add-risk-row-trigger,
   button.fmea-suggestion-ai-button,
   button.fmea-description-ai,
@@ -18,6 +30,8 @@
   button.report-collapse-toggle,
   button.fmea-search-clear,
   .fmea-process-image-dropzone .fake-button,
+  .dropzone .fake-button,
+  .styled-select-trigger,
   .fmea-assistant-toggle,
   .fmea-risk-ai-head > .ghost,
   .fmea-add-item > .ghost,
@@ -45,6 +59,7 @@
   a.text-button,
   .password-toggle,
   .widget-visibility-toggle,
+  .widget-order-actions > .icon-button,
   .widget-remove-toggle,
   .widget-restore-toggle,
   .rula-edit-button,
@@ -52,6 +67,7 @@
   .report-table-actions > .icon-button,
   .report-inline-details > .report-inline-trigger,
   .fmea-report-ai-detail-card-head > .icon-button,
+  .mobile-menu,
   .localized-date-day,
   .localized-date-clear,
   .styled-select-option,
@@ -60,11 +76,28 @@
   .side-logout,
   .dashboard-widget .text-link
 ) {
-  min-inline-size: var(--touch-target);
-  min-block-size: var(--control-height-compact);
+  min-inline-size: var(--touch-target) !important;
+  min-block-size: var(--touch-target-min) !important;
 }
 
-:where(
+.app[data-design="enterprise"] .breadcrumbs > a {
+  display: inline-flex;
+  align-items: center;
+  min-inline-size: var(--touch-target) !important;
+  min-block-size: var(--touch-target-min) !important;
+}
+
+.app[data-design="enterprise"] .widget-order-actions > .icon-button {
+  inline-size: var(--touch-target) !important;
+  block-size: var(--touch-target) !important;
+}
+
+.app[data-design="enterprise"].sidebar-collapsed .side-logout {
+  align-self: center;
+  margin-inline: auto !important;
+}
+
+:is(
   button.fmea-suggestion-ai-button,
   .fmea-report-page .page-actions-inline > .primary
 ) {
@@ -89,7 +122,7 @@
 
 .wizard-stepper > button {
   min-inline-size: var(--touch-target);
-  min-block-size: var(--control-height-compact);
+  min-block-size: var(--touch-target-min);
 }
 
 /* Full-width action controls still satisfy the inline target through their
@@ -108,6 +141,6 @@
     .wizard-actions,
     .page-actions-inline
   ) > :is(button, a, .fake-button) {
-    min-block-size: var(--control-height-compact);
+    min-block-size: var(--touch-target-min);
   }
 }

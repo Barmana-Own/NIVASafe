@@ -35,7 +35,7 @@ describe("FMEA report calculations", () => {
     expect(topFailureModes(extendedRows).map((item) => item.rowNumber)).toEqual([1, 2, 3, 4, 5]);
   });
 
-  it("parses bounded editable report-detail drafts and guarantees a five-row fallback", () => {
+  it("preserves short model output without adding generic fallback hazards", () => {
     const parsed = parseFmeaReportDetailSuggestions(JSON.stringify({ rows: [
       { processStep: "مونتاژ", failureMode: "گیرکردن قطعه", effect: "توقف خط", cause: "تنظیم نامناسب", preventiveControls: "بازرسی", detectionControls: "چک‌لیست", recommendation: "تنظیم مجدد", severity: 7, occurrence: "3", detection: 4 },
       { processStep: "", failureMode: "نامعتبر", effect: "", cause: "", severity: 11 },
@@ -44,13 +44,37 @@ describe("FMEA report calculations", () => {
     expect(parsed[0]).toMatchObject({ processStep: "مونتاژ", failureMode: "گیرکردن قطعه", occurrence: 3 });
     const fallback = fallbackFmeaReportDetailSuggestions({ processName: "اپراتور خط تولید", projectName: "پروژه نمونه", locale: "fa" });
     expect(fallback).toHaveLength(5);
-    expect(ensureMinimumFmeaReportDetailSuggestions(parsed, fallback)).toHaveLength(6);
+    expect(ensureMinimumFmeaReportDetailSuggestions(parsed, fallback)).toEqual(parsed);
+    expect(ensureMinimumFmeaReportDetailSuggestions([], fallback)).toEqual(fallback);
+  });
+
+  it.each([1, 3, 8, 20, 25])("parses and persists a variable batch of %i model-selected hazards", (count) => {
+    const candidates = Array.from({ length: count }, (_, index) => ({ processStep: "Assembly", failureMode: `Failure ${index}`, effect: "Injury", cause: "Fault", preventiveControls: "Guard", detectionControls: "Inspection", recommendation: "Adjust guard", severity: 7, occurrence: 3, detection: 4 }));
+    const parsed = parseFmeaReportDetailSuggestions(JSON.stringify({ rows: candidates }));
+    const resolved = ensureMinimumFmeaReportDetailSuggestions(parsed, fallbackFmeaReportDetailSuggestions({ processName: "Assembly", locale: "en" }));
+    const seeded = buildFmeaReportDetailSeedRows({ assessmentId: "assessment-1", suggestions: resolved });
+    expect(resolved).toHaveLength(Math.min(count, 20));
+    expect(seeded).toHaveLength(Math.min(count, 20));
+    expect(seeded.map(row => row.failureMode)).toEqual(candidates.slice(0, 20).map(row => row.failureMode));
+    expect(seeded.every(row => row.rpn === 84)).toBe(true);
+  });
+
+  it("caps additional automatic rows at twenty and does not duplicate existing rows", () => {
+    const candidates = Array.from({ length: 25 }, (_, index) => ({ processStep: "Assembly", failureMode: `Failure ${index}`, effect: "Injury", cause: "Fault", preventiveControls: "Guard", detectionControls: "Inspection", recommendation: "Adjust guard", severity: 7, occurrence: 3, detection: 4 }));
+    const existingRows = candidates.slice(0, 7).map((row, index) => ({ ...row, rowNumber: index + 1 }));
+    const seeded = buildFmeaReportDetailSeedRows({ assessmentId: "assessment-1", suggestions: candidates, existingRows, additionalCount: Math.min(candidates.length, Math.max(0, 20 - existingRows.length)) });
+    expect(seeded).toHaveLength(13);
+    expect(seeded[0]?.rowNumber).toBe(8);
+    expect(seeded.at(-1)?.rowNumber).toBe(20);
+    expect(seeded.some(row => existingRows.some(existing => existing.failureMode === row.failureMode))).toBe(false);
   });
 
   it("builds a context-bounded report-detail prompt", () => {
     const prompt = buildFmeaReportDetailSuggestionsPrompt({ processName: "Welder", projectName: "Plant upgrade", department: "Fabrication", existingRows: [], locale: "en" });
     expect(prompt).toContain("NIVASAFE_FMEA_REPORT_DETAIL_SUGGESTIONS");
     expect(prompt).toContain('"rows"');
+    expect(prompt).toContain("up to 20 rows");
+    expect(prompt).toContain("Do not target a fixed count");
     expect(prompt).toContain("inserted automatically as editable defaults");
   });
 

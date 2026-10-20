@@ -31,7 +31,7 @@ test.describe("bounded route readiness", () => {
     expect(finished).toBe(true);
   });
 
-  test("waits for delayed file image content and verifies it decodes", async ({ page }) => {
+  test("does not open a delayed file image preview until its content is downloaded", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     const requestStarted = deferred<void>();
     const releaseResponse = deferred<void>();
@@ -43,23 +43,22 @@ test.describe("bounded route readiness", () => {
 
     await authenticate(page, "/files", { waitForReady: false });
     await expect(page.locator(".file-card")).toBeVisible();
-    await page.locator(".file-card .file-actions button").first().click();
-    const ready = waitForPageReady(page, {
-      expectedRoute: "/files",
-      expectedContent: page.locator(".file-preview-dialog img"),
-      expectedDescription: "file preview image",
+    let popupOpened = false;
+    const popupPromise = page.waitForEvent("popup").then((popup) => {
+      popupOpened = true;
+      return popup;
     });
-    let finished = false;
-    void ready.finally(() => { finished = true; }).catch(() => undefined);
+    await page.locator(".file-card .file-actions button").first().click();
     await requestStarted.promise;
-    expect(finished).toBe(false);
+    expect(popupOpened).toBe(false);
     releaseResponse.resolve();
-    await ready;
+    const preview = await popupPromise;
+    await expect(preview).toHaveURL(/^blob:/);
+    await expect.poll(() => preview.evaluate(() => document.contentType)).toBe("image/png");
 
-    const dimensions = await page.locator(".file-preview-dialog img").evaluate((image: HTMLImageElement) => ({ width: image.naturalWidth, height: image.naturalHeight }));
-    expect(dimensions.width).toBeGreaterThan(0);
-    expect(dimensions.height).toBeGreaterThan(0);
-    expect(finished).toBe(true);
+    const contentType = await preview.evaluate(() => document.contentType);
+    expect(contentType).toBe("image/png");
+    await preview.close();
   });
 
   test("reports a bounded stuck-loader failure with route and geometry diagnostics", async ({ page }) => {

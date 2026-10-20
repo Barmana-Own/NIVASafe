@@ -5,13 +5,13 @@ import { describeAIProviderError, getAvailableAIProvider, getConfiguredAIProvide
 import { authenticate } from "../auth-guard.js";
 import { recordAIUsage } from "../ai-usage.js";
 import { conversationTitleFromMessage, isGenericConversationTitle } from "../chat-text.js";
+import { chatMessageSchema, chatHistory } from "../chat-input.js";
 import { audit, envelope, pageParams, parse, prisma, requireOrg } from "../core.js";
 import { enqueueAI } from "../queue.js";
 
-const providerSchema = z.enum(["fallback", "arvancloud", "openai", "gemini", "anthropic"]);
+const providerSchema = z.enum(["fallback", "arvancloud", "gapgpt", "openai", "gemini", "anthropic"]);
 const analysisSchema = z.object({ type: z.string().trim().min(2).default("GENERAL"), provider: providerSchema.optional(), message: z.string().trim().min(3).max(12_000), context: z.record(z.string(), z.unknown()).optional() });
 const conversationSchema = z.object({ title: z.string().trim().min(2), projectId: z.preprocess((value) => typeof value === "string" && value.trim() === "" ? null : value, z.string().uuid().nullable().optional()) });
-const chatMessageSchema = z.object({ content: z.string().trim().min(2).max(4_000) });
 async function runInline(id: string, organizationId: string, userId: string, providerName: string, message: string) {
   const provider = getRoutedAIProvider("risk", providerName);
   if (!provider.available()) { await prisma.aIAnalysisRequest.update({ where: { id }, data: { status: AIRequestStatus.WAITING_FOR_PROVIDER, error: "AI provider is not configured", attempts: { increment: 1 } } }); return; }
@@ -22,13 +22,47 @@ async function runInline(id: string, organizationId: string, userId: string, pro
 export async function registerAIRoutes(app: FastifyInstance) {
   app.get("/api/v1/ai/providers", { preHandler: authenticate }, async (request) => { requireOrg(request); return envelope(listAIProviders()); });
   app.get("/api/v1/ai/requests", { preHandler: authenticate }, async (request) => { const organizationId = requireOrg(request); const q = pageParams(request.query); const [data, total] = await Promise.all([prisma.aIAnalysisRequest.findMany({ where: { organizationId }, skip: (q.page - 1) * q.limit, take: q.limit, orderBy: { createdAt: "desc" } }), prisma.aIAnalysisRequest.count({ where: { organizationId } })]); return envelope(data, { page: q.page, limit: q.limit, total }); });
-  app.post("/api/v1/ai/requests", { preHandler: authenticate }, async (request, reply) => { const organizationId = requireOrg(request); const body = parse(analysisSchema, request.body); const provider = body.provider ?? getConfiguredAIProviderName("risk"); const input = { ...body, provider, role: "risk" as const }; const item = await prisma.aIAnalysisRequest.create({ data: { organizationId, userId: request.actor!.userId, type: body.type, provider, input: input as unknown as Prisma.InputJsonValue } }); const queued = await enqueueAI(item.id); if (!queued) await runInline(item.id, organizationId, request.actor!.userId, provider, body.message); await audit(request, "AI_REQUEST_CREATE", "AIAnalysisRequest", item.id); return reply.code(202).send(envelope(await prisma.aIAnalysisRequest.findUniqueOrThrow({ where: { id: item.id } }))); });
+  app.post("/api/v1/ai/requests", { preHandler: authenticate }, async (request, reply) => {
+    const organizationId = requireOrg(request);
+    const body = parse(analysisSchema, request.body);
+    const configuredProvider = getConfiguredAIProviderName("risk");
+    if (body.provider && body.provider !== configuredProvider) {
+      throw Object.assign(new Error("Only the configured assessment provider can be selected"), { statusCode: 400, code: "AI_PROVIDER_NOT_CONFIGURED" });
+    }
+    const provider = configuredProvider;
+    const input = { ...body, provider, role: "risk" as const };
+    const item = await prisma.aIAnalysisRequest.create({ data: { organizationId, userId: request.actor!.userId, type: body.type, provider, input: input as unknown as Prisma.InputJsonValue } });
+    const queued = await enqueueAI(item.id);
+    if (!queued) await runInline(item.id, organizationId, request.actor!.userId, provider, body.message);
+    await audit(request, "AI_REQUEST_CREATE", "AIAnalysisRequest", item.id);
+    return reply.code(202).send(envelope(await prisma.aIAnalysisRequest.findUniqueOrThrow({ where: { id: item.id } })));
+  });
   app.get("/api/v1/ai/requests/:id", { preHandler: authenticate }, async (request) => { const organizationId = requireOrg(request); const { id } = parse(z.object({ id: z.string().uuid() }), request.params); const item = await prisma.aIAnalysisRequest.findFirst({ where: { id, organizationId } }); if (!item) throw Object.assign(new Error("AI request not found"), { statusCode: 404 }); return envelope(item); });
   app.post("/api/v1/ai/requests/:id/retry", { preHandler: authenticate }, async (request, reply) => { const organizationId = requireOrg(request); const { id } = parse(z.object({ id: z.string().uuid() }), request.params); const item = await prisma.aIAnalysisRequest.findFirst({ where: { id, organizationId } }); if (!item) throw Object.assign(new Error("AI request not found"), { statusCode: 404 }); const input = item.input as { message?: string }; await prisma.aIAnalysisRequest.update({ where: { id }, data: { status: AIRequestStatus.PENDING, availableAt: new Date(), error: null } }); const queued = await enqueueAI(id); if (!queued) await runInline(id, organizationId, item.userId, item.provider, input.message ?? "retry"); await audit(request, "AI_REQUEST_RETRY", "AIAnalysisRequest", id); return reply.code(202).send(envelope(await prisma.aIAnalysisRequest.findUniqueOrThrow({ where: { id } }))); });
 
   app.get("/api/v1/chat/conversations", { preHandler: authenticate }, async (request) => { const organizationId = requireOrg(request); const conversations = await prisma.chatConversation.findMany({ where: { organizationId, userId: request.actor!.userId, archivedAt: null }, include: { messages: { where: { role: "user" }, orderBy: { createdAt: "asc" }, take: 1 } }, orderBy: { updatedAt: "desc" } }); return envelope(conversations.map((conversation) => { const firstMessage = conversation.messages[0]; const title = firstMessage && isGenericConversationTitle(conversation.title) ? conversationTitleFromMessage(firstMessage.content) : conversation.title; return { ...conversation, title }; })); });
   app.post("/api/v1/chat/conversations", { preHandler: authenticate }, async (request, reply) => { const organizationId = requireOrg(request); const body = parse(conversationSchema, request.body); if (body.projectId) { const project = await prisma.project.findFirst({ where: { id: body.projectId, organizationId, deletedAt: null } }); if (!project) throw Object.assign(new Error("Project not found"), { statusCode: 404, code: "NOT_FOUND" }); } return reply.code(201).send(envelope(await prisma.chatConversation.create({ data: { organizationId, userId: request.actor!.userId, ...body } }))); });
   app.get("/api/v1/chat/conversations/:id/messages", { preHandler: authenticate }, async (request) => { const organizationId = requireOrg(request); const { id } = parse(z.object({ id: z.string().uuid() }), request.params); const conversation = await prisma.chatConversation.findFirst({ where: { id, organizationId, userId: request.actor!.userId } }); if (!conversation) throw Object.assign(new Error("Conversation not found"), { statusCode: 404 }); return envelope(await prisma.chatMessage.findMany({ where: { conversationId: id }, orderBy: { createdAt: "asc" } })); });
-  app.post("/api/v1/chat/conversations/:id/messages", { preHandler: authenticate }, async (request, reply) => { const organizationId = requireOrg(request); const { id } = parse(z.object({ id: z.string().uuid() }), request.params); const { content } = parse(chatMessageSchema, request.body); const conversation = await prisma.chatConversation.findFirst({ where: { id, organizationId, userId: request.actor!.userId } }); if (!conversation) throw Object.assign(new Error("Conversation not found"), { statusCode: 404 }); const history = await prisma.chatMessage.findMany({ where: { conversationId: id }, orderBy: { createdAt: "desc" }, take: 6, select: { role: true, content: true } }); await prisma.$transaction(async (tx) => { await tx.chatMessage.create({ data: { conversationId: id, role: "user", content } }); if (isGenericConversationTitle(conversation.title)) await tx.chatConversation.update({ where: { id }, data: { title: conversationTitleFromMessage(content) } }); }); const result = await getAvailableAIProvider("chat").analyze({ organizationId, userId: request.actor!.userId, message: content, history: history.reverse().map((item) => ({ role: item.role === "assistant" ? "assistant" as const : "user" as const, content: item.content })) }); const assistant = await prisma.$transaction(async (tx) => { const message = await tx.chatMessage.create({ data: { conversationId: id, role: "assistant", content: result.answer, citations: result.citations as unknown as Prisma.InputJsonValue, provider: result.provider } }); await recordAIUsage(tx, { organizationId, userId: request.actor!.userId, useCase: "chat", sourceType: "CHAT_MESSAGE", sourceId: message.id, result }); await tx.auditLog.create({ data: { userId: request.actor!.userId, organizationId, action: "CHAT_MESSAGE", entityType: "ChatMessage", entityId: message.id, metadata: { conversationId: id, provider: result.provider }, requestId: request.id, ipAddress: request.ip?.slice(0, 64), userAgent: request.headers["user-agent"]?.slice(0, 2000) } }); await tx.chatConversation.update({ where: { id }, data: { updatedAt: new Date() } }); return message; }); return reply.code(201).send(envelope(assistant)); });
+  app.post("/api/v1/chat/conversations/:id/messages", { preHandler: authenticate, config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (request, reply) => {
+    const organizationId = requireOrg(request);
+    const { id } = parse(z.object({ id: z.string().uuid() }), request.params);
+    const { content, locale } = parse(chatMessageSchema, request.body);
+    const conversation = await prisma.chatConversation.findFirst({ where: { id, organizationId, userId: request.actor!.userId, archivedAt: null } });
+    if (!conversation) throw Object.assign(new Error("Conversation not found"), { statusCode: 404 });
+    const history = await prisma.chatMessage.findMany({ where: { conversationId: id }, orderBy: { createdAt: "desc" }, take: 12, select: { role: true, content: true, provider: true } });
+    await prisma.$transaction(async (tx) => {
+      await tx.chatMessage.create({ data: { conversationId: id, role: "user", content } });
+      if (isGenericConversationTitle(conversation.title)) await tx.chatConversation.update({ where: { id }, data: { title: conversationTitleFromMessage(content) } });
+    });
+    const result = await getAvailableAIProvider("chat").analyze({ organizationId, userId: request.actor!.userId, message: content, locale, history: chatHistory(history), maxOutputTokens: 4_000 });
+    const assistant = await prisma.$transaction(async (tx) => {
+      const message = await tx.chatMessage.create({ data: { conversationId: id, role: "assistant", content: result.answer, citations: result.citations as unknown as Prisma.InputJsonValue, provider: result.provider } });
+      await recordAIUsage(tx, { organizationId, userId: request.actor!.userId, useCase: "chat", sourceType: "CHAT_MESSAGE", sourceId: message.id, result });
+      await tx.auditLog.create({ data: { userId: request.actor!.userId, organizationId, action: "CHAT_MESSAGE", entityType: "ChatMessage", entityId: message.id, metadata: { conversationId: id, provider: result.provider }, requestId: request.id, ipAddress: request.ip?.slice(0, 64), userAgent: request.headers["user-agent"]?.slice(0, 2000) } });
+      await tx.chatConversation.update({ where: { id }, data: { updatedAt: new Date() } });
+      return message;
+    });
+    return reply.code(201).send(envelope(assistant));
+  });
   app.patch("/api/v1/chat/messages/:id/feedback", { preHandler: authenticate }, async (request) => { const organizationId = requireOrg(request); const { id } = parse(z.object({ id: z.string().uuid() }), request.params); const { feedback } = parse(z.object({ feedback: z.number().int().min(-1).max(1) }), request.body); const message = await prisma.chatMessage.findFirst({ where: { id, conversation: { organizationId, userId: request.actor!.userId } } }); if (!message) throw Object.assign(new Error("Message not found"), { statusCode: 404 }); return envelope(await prisma.chatMessage.update({ where: { id }, data: { feedback } })); });
 }

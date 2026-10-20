@@ -12,6 +12,7 @@ export const rulaInputSchema = z.object({
   legs: z.number().int().min(1).max(6),
   muscleUse: z.boolean(),
   force: z.number().int().min(0).max(3),
+  algorithmVersion: z.enum(['legacy-average-v1','cornell-worksheet-2001-tables-v1']).optional(),
 }).strict();
 
 export const rulaImpactSchema = z.object({
@@ -23,7 +24,7 @@ export const rulaImpactSchema = z.object({
 export type RulaImpact = z.infer<typeof rulaImpactSchema>;
 export type RulaActionPriority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 export type RulaSideResults = Record<"LEFT" | "RIGHT", RulaResult>;
-export const RULA_CORRECTIVE_SUGGESTION_MAX = 6;
+export const RULA_CORRECTIVE_SUGGESTION_MAX = 20;
 
 export type RulaReportFactor = {
   key: Extract<RulaPosturePart, "neck" | "upperArm" | "trunk">;
@@ -50,7 +51,8 @@ export type RulaCorrectionSuggestion = {
 };
 
 export function parseRulaInputs(value: unknown): RulaInput {
-  return rulaInputSchema.parse(value);
+  const inputs = rulaInputSchema.parse(value);
+  return { ...inputs, algorithmVersion: inputs.algorithmVersion ?? 'legacy-average-v1' };
 }
 
 export function fallbackRulaPostureAnalysis(inputs: RulaInput): RulaPostureAnalysis {

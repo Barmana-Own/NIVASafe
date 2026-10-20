@@ -1,0 +1,44 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {sha,inventory,clone,verify} from '../controlled-20261019/artifact-tools.mjs';
+const root='C:/NIVASafe',work=`${root}/.local/rula-image-autoflow-20261019-01`,e=`${root}/reports/evidence/rula-image-autoflow-20261019-01`,id='release-rula-image-autoflow-20261019-01-r2';
+const backup='C:/ProgramData/NIVASafe/backups/release-rula-image-autoflow-20261019-01',release=`C:/ProgramData/NIVASafe/releases/${id}/backend`,stage=`C:/inetpub/nivasafe/staging/${id}`;
+const read=p=>JSON.parse(fs.readFileSync(p,'utf8').replace(/^\uFEFF/u,'')),assert=(v,m)=>{if(!v)throw Error(m);};
+const before=read(`${e}/runtime-before.json`),candidate=read(`${e}/runtime-candidate.json`),live=before.static.root;
+assert(!fs.existsSync(`${e}/prepared.json`),'Preparation already exists; do not replace rollback artifacts');
+const backupOnly=process.argv[2]==='backup';
+// This script only backs up and stages files. The publishing script separately
+// requires exact-candidate provider/browser/DB acceptance and rollback evidence.
+assert(read(`${e}/schema-compatibility.json`).status==='PASS','Schema compatibility missing');
+assert(read(`${e}/validation.json`).length===12&&read(`${e}/validation.json`).every(c=>c.exitCode===0),'Full package validation failed');
+assert(sha(`${live}/index.html`)===before.static.indexSha256,'Live frontend drifted');
+assert(sha(`${before.backend.root}/dist/server.js`)===before.backend.hashes['server.js'],'Live backend drifted');
+const steps=[];
+const preserveClone=(source,target)=>fs.existsSync(target)?verify(source,target):clone(source,target);
+const snapshot=await inventory(before.backend.root);fs.writeFileSync(`${e}/backup-backend-manifest.json`,JSON.stringify(snapshot,null,2));
+steps.push({name:'backend-backup',status:'PASS',source:before.backend.root,target:`${backup}/backend`,...await preserveClone(before.backend.root,`${backup}/backend`)});
+steps.push({name:'backend-reconstructed',status:'PASS',...await preserveClone(`${backup}/backend`,`${work}/rollback-reconstructed/backend`)});
+const staticBefore=await inventory(live);fs.writeFileSync(`${e}/backup-frontend-manifest.json`,JSON.stringify(staticBefore,null,2));
+steps.push({name:'frontend-backup',status:'PASS',target:`${backup}/frontend`,...await preserveClone(live,`${backup}/frontend`)});
+steps.push({name:'frontend-reconstructed',status:'PASS',...await preserveClone(`${backup}/frontend`,`${work}/rollback-reconstructed/frontend`)});
+fs.mkdirSync(`${backup}/config`,{recursive:true});if(!fs.existsSync(`${backup}/config/ecosystem.config.cjs`))fs.copyFileSync(`${root}/deployment/ecosystem.config.cjs`,`${backup}/config/ecosystem.config.cjs`,fs.constants.COPYFILE_EXCL);
+assert(sha(`${backup}/config/ecosystem.config.cjs`)===before.configuration.ecosystemSha256,'Boot config backup mismatch');
+if(backupOnly){fs.writeFileSync(`${e}/backup-artifacts.json`,JSON.stringify({status:'PASS',timestamp:new Date().toISOString(),backup,steps,liveChanged:false},null,2));console.log(JSON.stringify({status:'BACKED UP',steps:steps.length,backup,liveChanged:false}));process.exit(0);}
+steps.push({name:'candidate-backend-staged',status:'PASS',target:release,...await clone(candidate.runtime,release)});
+steps.push({name:'candidate-frontend-staged',status:'PASS',target:stage,...await clone(`${work}/candidate/frontend/dist`,stage)});
+const finalBackend=await inventory(release);fs.writeFileSync(`${e}/release-backend-manifest.json`,JSON.stringify(finalBackend,null,2));
+const finalFrontend=await inventory(stage);fs.writeFileSync(`${e}/release-frontend-manifest.json`,JSON.stringify(finalFrontend,null,2));
+for(const f of finalFrontend.files.filter(f=>f.path!=='index.html'&&!f.path.startsWith('assets/')))assert(fs.existsSync(path.join(live,f.path))&&sha(path.join(live,f.path))===f.sha256,'Unrelated public file differs '+f.path);
+const changes=finalFrontend.files.filter(f=>f.path==='index.html'||f.path.startsWith('assets/')).filter(f=>!fs.existsSync(path.join(live,f.path))||sha(path.join(live,f.path))!==f.sha256);
+assert(changes.some(f=>f.path==='index.html'),'No frontend change built');
+for(const f of changes.filter(f=>f.path.startsWith('assets/')))assert(!fs.existsSync(path.join(live,f.path)),'Hashed asset collision');
+const simulation=`${work}/frontend-swap-rehearsal`;await clone(`${backup}/frontend`,simulation);
+for(const f of changes){const to=path.join(simulation,f.path);fs.mkdirSync(path.dirname(to),{recursive:true});fs.copyFileSync(path.join(stage,f.path),to);}
+assert(sha(`${simulation}/index.html`)===sha(`${stage}/index.html`),'Frontend switch rehearsal failed');
+fs.copyFileSync(`${backup}/frontend/index.html`,`${simulation}/index.html`);
+for(const f of staticBefore.files)assert(sha(path.join(simulation,f.path))===f.sha256,'Frontend rollback failed '+f.path);
+steps.push({name:'frontend-old-new-old-swap',status:'PASS',oldFilesPreserved:staticBefore.files.length,newAssetsRetained:true});
+for(const f of finalBackend.files.filter(f=>f.path.startsWith('dist/')))assert(sha(path.join(candidate.runtime,f.path))===f.sha256,'Runtime staging drift');
+const references=dir=>[...fs.readFileSync(`${dir}/index.html`,'utf8').matchAll(/(?:src|href)="(\/assets\/[^"?#]+)[^"]*"/g)].map(x=>({url:x[1],sha256:sha(path.join(dir,x[1]))}));
+const result={status:'PASS',id,timestamp:new Date().toISOString(),backup,release,stage,live,steps,staticChanges:changes,oldIndex:before.static.indexSha256,newIndex:sha(`${stage}/index.html`),oldReferences:references(`${backup}/frontend`),newReferences:references(stage),schemaSha256:candidate.schemaSha256,noMigration:true,protectedEnvChanged:false,operationalRollback:'Named PM2 API old/new/old rehearsal plus real backend old/new/old/new with disposable DB; separate evidence required before cutover'};
+fs.writeFileSync(`${e}/prepared.json`,JSON.stringify(result,null,2));console.log(JSON.stringify({status:'PASS',backup,release,stage,steps:steps.length,staticFilesChanged:changes.length,noMigration:true}));

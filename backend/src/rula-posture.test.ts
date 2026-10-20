@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertRulaPostureAnalysisReviewed, isRulaPostureAnalysisReviewed, isRulaPostureResultReviewed, rulaPostureAnalysisSchema } from "./rula-posture.js";
+import { assertRulaFinalStatusReviewed, assertRulaPostureAnalysisReviewed, isRulaPostureAnalysisReviewed, isRulaPostureResultReviewed, rulaPostureAnalysisSchema } from "./rula-posture.js";
 
 const validAnalysis = {
   upperArm: { angle: 52, score: 3, detected: true, source: "AI", confirmedByUser: true },
@@ -12,6 +12,19 @@ const validAnalysis = {
 } as const;
 
 describe("RULA posture analysis", () => {
+  it("retains geometry provenance but does not accept confirmation-only for an AI conflict",()=>{
+    const measurement={version:"image-plane-audit-v1",state:"CONFLICT",basis:"IMAGE_PLANE",aiAngle:180,aiScore:2,geometryAngle:90,qualityCodes:["ANGLE_LANDMARK_CONFLICT"],view:"SAGITTAL",width:1000,height:700,landmarks:[]} as const;
+    const row={...validAnalysis.lowerArm,measurement:{...measurement,qualityCodes:[...measurement.qualityCodes],landmarks:[]},source:"AI" as const,angle:null,requiresReview:true};
+    expect(isRulaPostureResultReviewed(row)).toBe(false);
+    expect(isRulaPostureResultReviewed({...row,source:"USER",angle:90,detected:true})).toBe(true);
+    expect(rulaPostureAnalysisSchema.parse({...validAnalysis,lowerArm:row}).lowerArm.measurement).toEqual(measurement);
+  });
+  it("persists independent image observations and rejects unbounded or nested collections", () => {
+    const image = { imageKey: "one", fileName: "one.png", analysis: validAnalysis, force: 0, muscleUse: false };
+    expect(rulaPostureAnalysisSchema.parse({ ...validAnalysis, imageAssessments: [image, { ...image, imageKey: "two", fileName: "two.png", analysis: { ...validAnalysis, trunk: { ...validAnalysis.trunk, score: 4 } } }] }).imageAssessments).toHaveLength(2);
+    expect(rulaPostureAnalysisSchema.safeParse({ ...validAnalysis, imageAssessments: Array(5).fill(image) }).success).toBe(false);
+    expect(rulaPostureAnalysisSchema.safeParse({ ...validAnalysis, imageAssessments: [{ ...image, analysis: { ...validAnalysis, imageAssessments: [image] } }] }).success).toBe(false);
+  });
   it("accepts reviewable posture observations for both groups", () => {
     expect(rulaPostureAnalysisSchema.safeParse(validAnalysis).success).toBe(true);
   });
@@ -47,6 +60,27 @@ describe("RULA posture analysis", () => {
     expect(isRulaPostureAnalysisReviewed("RIGHT", { ...validAnalysis, neck: baseResult })).toBe(false);
     expect(() => assertRulaPostureAnalysisReviewed("RIGHT")).toThrow();
     expect(() => assertRulaPostureAnalysisReviewed("RIGHT", { ...validAnalysis, neck: baseResult })).toThrow();
+  });
+
+  it("requires explicit confirmation before an unseen AI body part can enter a final RULA score", () => {
+    const unseen = { ...validAnalysis.wristTwist, confirmedByUser: false, requiresReview: true };
+    expect(isRulaPostureResultReviewed(unseen)).toBe(false);
+    expect(isRulaPostureAnalysisReviewed("RIGHT", { ...validAnalysis, wristTwist: unseen })).toBe(false);
+    expect(() => assertRulaPostureAnalysisReviewed("RIGHT", { ...validAnalysis, wristTwist: unseen })).toThrow();
+    expect(isRulaPostureResultReviewed({ ...unseen, confirmedByUser: true })).toBe(true);
+  });
+
+  it("requires explicit confirmation before a low-confidence AI observation enters a final RULA score", () => {
+    const uncertain = { ...validAnalysis.neck, confidence: 0.3, confirmedByUser: false, requiresReview: true };
+    expect(isRulaPostureResultReviewed(uncertain)).toBe(false);
+    expect(isRulaPostureResultReviewed({ ...uncertain, confirmedByUser: true })).toBe(true);
+  });
+
+  it("blocks approving a RULA record with uncertain observations while preserving in-progress drafts", () => {
+    const uncertain = { ...validAnalysis, neck: { ...validAnalysis.neck, confidence: 0.3, confirmedByUser: false, requiresReview: true } };
+    expect(() => assertRulaFinalStatusReviewed("APPROVED", "RIGHT", uncertain)).toThrow();
+    expect(() => assertRulaFinalStatusReviewed("IN_PROGRESS", "RIGHT", uncertain)).not.toThrow();
+    expect(() => assertRulaFinalStatusReviewed("APPROVED", "RIGHT", validAnalysis)).not.toThrow();
   });
 
   it("requires independent reviewed observations for both-side assessments", () => {

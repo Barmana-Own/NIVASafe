@@ -1,0 +1,15 @@
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router-dom';
+import { LocaleProvider } from '../src/i18n';
+import { DialogProvider } from '../src/components/UI';
+import { FmeaPage, RulaPage } from '../src/features/assessments/AssessmentPages';
+import '../src/styles.css';
+localStorage.setItem('nivasafe-session',JSON.stringify({accessToken:'synthetic',refreshToken:'synthetic',user:{id:'test-user',email:'fixture@example.invalid',displayName:'Fixture',globalRole:'SUPER_ADMIN'},organizations:[{id:'test-org',nameFa:'تست',nameEn:'Fixture',role:'ORG_ADMIN'}]}));
+localStorage.setItem('nivasafe-org','test-org');
+const originalFetch=window.fetch.bind(window);
+const images=Array.from({length:4},(_,i)=>({id:`photo-${i}`,originalName:`synthetic-${i}.png`,mimeType:'image/png',size:68,createdAt:'2026-10-09T10:00:00Z'}));
+const binary=Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jZAAAAABJRU5ErkJggg=='),c=>c.charCodeAt(0));
+window.fetch=async(input,init)=>{const url=String(input);if(!url.includes('/api/v1/'))return originalFetch(input,init);const path=url.split('/api/v1')[1].split('?')[0];if(path.endsWith('/download'))return new Response(binary,{status:200,headers:{'Content-Type':'image/png'}});const data=path==='/files'?[...images,{...images[0],id:'document',mimeType:'application/pdf'}]:[];return new Response(JSON.stringify({data,meta:{page:1,limit:8,total:5}}),{status:200,headers:{'Content-Type':'application/json'}});};
+const rula=new URLSearchParams(location.search).get('mode')==='rula';
+createRoot(document.getElementById('root')!).render(<LocaleProvider><DialogProvider><MemoryRouter initialEntries={[rula?'/rula':'/fmea']}>{rula?<RulaPage/>:<FmeaPage/>}</MemoryRouter></DialogProvider></LocaleProvider>);

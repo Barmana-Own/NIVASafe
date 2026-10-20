@@ -28,7 +28,10 @@ class LocalStorageAdapter implements StorageAdapter {
   }
 
   private pathFor(key: string) { return resolveStoragePath(this.root, key); }
-  async put(key: string, body: Buffer) { await fs.writeFile(this.pathFor(key), body); }
+  async put(key: string, body: Buffer) {
+    const bytes = new Uint8Array(body.buffer, body.byteOffset, body.byteLength);
+    await fs.writeFile(this.pathFor(key), bytes);
+  }
   async downloadUrl(key: string) { return `/api/v1/files/content/${encodeURIComponent(key)}`; }
   async delete(key: string) { await fs.rm(this.pathFor(key), { force: true }); }
   localPath(key: string) { return this.pathFor(key); }

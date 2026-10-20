@@ -1,0 +1,1144 @@
+{
+  "schemaVersion": 1,
+  "referenceBasis": "Independent mathematical 2D coordinates; no inference was used as a label.",
+  "cases": [
+    {
+      "id": "neutral-right",
+      "side": "RIGHT",
+      "frame": {
+        "width": 700,
+        "height": 650,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.42857142857142855,
+            "y": 0.2692307692307692,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "neck": {
+            "x": 0.42857142857142855,
+            "y": 0.3384615384615385,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "shoulder": {
+            "x": 0.42857142857142855,
+            "y": 0.38461538461538464,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "elbow": {
+            "x": 0.42857142857142855,
+            "y": 0.5384615384615384,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "wrist": {
+            "x": 0.5642857142857143,
+            "y": 0.5384615384615384,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hand": {
+            "x": 0.6142857142857143,
+            "y": 0.5384615384615384,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hip": {
+            "x": 0.42857142857142855,
+            "y": 0.6615384615384615,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "knee": {
+            "x": 0.42857142857142855,
+            "y": 0.7846153846153846,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "ankle": {
+            "x": 0.42857142857142855,
+            "y": 0.9076923076923077,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          }
+        }
+      },
+      "expected": {
+        "upperArm": 0,
+        "lowerArm": 90,
+        "wrist": 0,
+        "neck": 0,
+        "trunk": 0
+      },
+      "hidden": [],
+      "reference": "analytic segment construction from predeclared angles, not model predictions",
+      "imagePlaneOnly": true,
+      "ergonomistReviewed": false
+    },
+    {
+      "id": "flexed-right",
+      "side": "RIGHT",
+      "frame": {
+        "width": 700,
+        "height": 650,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.6278171427719343,
+            "y": 0.3372449581067286,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "neck": {
+            "x": 0.5785714285714286,
+            "y": 0.3817456387773352,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "shoulder": {
+            "x": 0.5571428571428572,
+            "y": 0.42171604202892465,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "elbow": {
+            "x": 0.5941170064432172,
+            "y": 0.570320015304166,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "wrist": {
+            "x": 0.7252069400110194,
+            "y": 0.5324926164045668,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hand": {
+            "x": 0.766164542225469,
+            "y": 0.5016077313702796,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hip": {
+            "x": 0.42857142857142855,
+            "y": 0.6615384615384615,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "knee": {
+            "x": 0.42857142857142855,
+            "y": 0.7846153846153846,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "ankle": {
+            "x": 0.42857142857142855,
+            "y": 0.9076923076923077,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          }
+        }
+      },
+      "expected": {
+        "upperArm": 45,
+        "lowerArm": 90,
+        "wrist": 20,
+        "neck": 20,
+        "trunk": 30
+      },
+      "hidden": [],
+      "reference": "analytic segment construction from predeclared angles, not model predictions",
+      "imagePlaneOnly": true,
+      "ergonomistReviewed": false
+    },
+    {
+      "id": "extension-right",
+      "side": "RIGHT",
+      "frame": {
+        "width": 700,
+        "height": 650,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.4119330613862665,
+            "y": 0.27158975048767986,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "neck": {
+            "x": 0.42857142857142855,
+            "y": 0.3384615384615385,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "shoulder": {
+            "x": 0.42857142857142855,
+            "y": 0.38461538461538464,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "elbow": {
+            "x": 0.35714285714285715,
+            "y": 0.517850062120683,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "wrist": {
+            "x": 0.425,
+            "y": 0.6444230057507163,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hand": {
+            "x": 0.43368240888334647,
+            "y": 0.6974511155282968,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hip": {
+            "x": 0.42857142857142855,
+            "y": 0.6615384615384615,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "knee": {
+            "x": 0.42857142857142855,
+            "y": 0.7846153846153846,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "ankle": {
+            "x": 0.42857142857142855,
+            "y": 0.9076923076923077,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          }
+        }
+      },
+      "expected": {
+        "upperArm": -30,
+        "lowerArm": 120,
+        "wrist": 20,
+        "neck": -15,
+        "trunk": 0
+      },
+      "hidden": [],
+      "reference": "analytic segment construction from predeclared angles, not model predictions",
+      "imagePlaneOnly": true,
+      "ergonomistReviewed": false
+    },
+    {
+      "id": "raised-right",
+      "side": "RIGHT",
+      "frame": {
+        "width": 700,
+        "height": 650,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.42857142857142855,
+            "y": 0.2692307692307692,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "neck": {
+            "x": 0.42857142857142855,
+            "y": 0.3384615384615385,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "shoulder": {
+            "x": 0.42857142857142855,
+            "y": 0.38461538461538464,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "elbow": {
+            "x": 0.5692582504303154,
+            "y": 0.3579002803589338,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "wrist": {
+            "x": 0.48202278911571367,
+            "y": 0.24593993867231392,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hand": {
+            "x": 0.4498834086313867,
+            "y": 0.20469139173513817,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hip": {
+            "x": 0.42857142857142855,
+            "y": 0.6615384615384615,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "knee": {
+            "x": 0.42857142857142855,
+            "y": 0.7846153846153846,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "ankle": {
+            "x": 0.42857142857142855,
+            "y": 0.9076923076923077,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          }
+        }
+      },
+      "expected": {
+        "upperArm": 100,
+        "lowerArm": 60,
+        "wrist": 0,
+        "neck": 0,
+        "trunk": 0
+      },
+      "hidden": [],
+      "reference": "analytic segment construction from predeclared angles, not model predictions",
+      "imagePlaneOnly": true,
+      "ergonomistReviewed": false
+    },
+    {
+      "id": "asymmetric-left",
+      "side": "LEFT",
+      "frame": {
+        "width": 700,
+        "height": 650,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_LEFT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.4666145410716274,
+            "y": 0.28672573240407134,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "neck": {
+            "x": 0.49378285789781523,
+            "y": 0.3494701176604548,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "shoulder": {
+            "x": 0.5048751026879232,
+            "y": 0.3940513096430272,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "elbow": {
+            "x": 0.4924242822954007,
+            "y": 0.5473120324263727,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "wrist": {
+            "x": 0.35722643041152097,
+            "y": 0.5600501794433381,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hand": {
+            "x": 0.30893013909706757,
+            "y": 0.5739865895642431,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hip": {
+            "x": 0.5714285714285714,
+            "y": 0.6615384615384615,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "knee": {
+            "x": 0.5714285714285714,
+            "y": 0.7846153846153846,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "ankle": {
+            "x": 0.5714285714285714,
+            "y": 0.9076923076923077,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          }
+        }
+      },
+      "expected": {
+        "upperArm": 20,
+        "lowerArm": 100,
+        "wrist": 10,
+        "neck": 10,
+        "trunk": 15
+      },
+      "hidden": [],
+      "reference": "analytic segment construction from predeclared angles, not model predictions",
+      "imagePlaneOnly": true,
+      "ergonomistReviewed": false
+    },
+    {
+      "id": "mirrored-flexion",
+      "side": "LEFT",
+      "frame": {
+        "width": 700,
+        "height": 650,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_LEFT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.3721828572280657,
+            "y": 0.3372449581067286,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "neck": {
+            "x": 0.42142857142857143,
+            "y": 0.3817456387773352,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "shoulder": {
+            "x": 0.44285714285714284,
+            "y": 0.42171604202892465,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "elbow": {
+            "x": 0.40588299355678276,
+            "y": 0.570320015304166,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "wrist": {
+            "x": 0.2747930599889807,
+            "y": 0.5324926164045668,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hand": {
+            "x": 0.23383545777453102,
+            "y": 0.5016077313702796,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hip": {
+            "x": 0.5714285714285714,
+            "y": 0.6615384615384615,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "knee": {
+            "x": 0.5714285714285714,
+            "y": 0.7846153846153846,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "ankle": {
+            "x": 0.5714285714285714,
+            "y": 0.9076923076923077,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          }
+        }
+      },
+      "expected": {
+        "upperArm": 45,
+        "lowerArm": 90,
+        "wrist": 20,
+        "neck": 20,
+        "trunk": 30
+      },
+      "hidden": [],
+      "reference": "analytic segment construction from predeclared angles, not model predictions",
+      "imagePlaneOnly": true,
+      "ergonomistReviewed": false
+    },
+    {
+      "id": "small-person",
+      "side": "RIGHT",
+      "frame": {
+        "width": 350,
+        "height": 325,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.6278171427719343,
+            "y": 0.3372449581067286,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "neck": {
+            "x": 0.5785714285714286,
+            "y": 0.3817456387773352,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "shoulder": {
+            "x": 0.5571428571428572,
+            "y": 0.42171604202892465,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "elbow": {
+            "x": 0.5941170064432172,
+            "y": 0.570320015304166,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "wrist": {
+            "x": 0.7252069400110194,
+            "y": 0.5324926164045668,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hand": {
+            "x": 0.7735032313254727,
+            "y": 0.5185562062836617,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hip": {
+            "x": 0.42857142857142855,
+            "y": 0.6615384615384615,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "knee": {
+            "x": 0.42857142857142855,
+            "y": 0.7846153846153846,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "ankle": {
+            "x": 0.42857142857142855,
+            "y": 0.9076923076923077,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          }
+        }
+      },
+      "expected": {
+        "upperArm": 45,
+        "lowerArm": 90,
+        "wrist": 0,
+        "neck": 20,
+        "trunk": 30
+      },
+      "hidden": [],
+      "reference": "analytic segment construction from predeclared angles, not model predictions",
+      "imagePlaneOnly": true,
+      "ergonomistReviewed": false
+    },
+    {
+      "id": "large-resolution",
+      "side": "RIGHT",
+      "frame": {
+        "width": 1400,
+        "height": 1300,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.6278171427719343,
+            "y": 0.3372449581067286,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "neck": {
+            "x": 0.5785714285714286,
+            "y": 0.3817456387773352,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "shoulder": {
+            "x": 0.5571428571428572,
+            "y": 0.42171604202892465,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "elbow": {
+            "x": 0.5941170064432172,
+            "y": 0.570320015304166,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "wrist": {
+            "x": 0.7252069400110194,
+            "y": 0.5324926164045668,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hand": {
+            "x": 0.7735032313254727,
+            "y": 0.5185562062836617,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hip": {
+            "x": 0.42857142857142855,
+            "y": 0.6615384615384615,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "knee": {
+            "x": 0.42857142857142855,
+            "y": 0.7846153846153846,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "ankle": {
+            "x": 0.42857142857142855,
+            "y": 0.9076923076923077,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          }
+        }
+      },
+      "expected": {
+        "upperArm": 45,
+        "lowerArm": 90,
+        "wrist": 0,
+        "neck": 20,
+        "trunk": 30
+      },
+      "hidden": [],
+      "reference": "analytic segment construction from predeclared angles, not model predictions",
+      "imagePlaneOnly": true,
+      "ergonomistReviewed": false
+    },
+    {
+      "id": "rotated-plane",
+      "side": "RIGHT",
+      "frame": {
+        "width": 650,
+        "height": 700,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 1,
+          "y": 0
+        },
+        "points": {
+          "head": {
+            "x": 0.6627550418932714,
+            "y": 0.6278171427719343,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "neck": {
+            "x": 0.6182543612226648,
+            "y": 0.5785714285714286,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "shoulder": {
+            "x": 0.5782839579710753,
+            "y": 0.5571428571428572,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "elbow": {
+            "x": 0.42967998469583407,
+            "y": 0.5941170064432172,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "wrist": {
+            "x": 0.46750738359543326,
+            "y": 0.7252069400110194,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hand": {
+            "x": 0.4814437937163383,
+            "y": 0.7735032313254727,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hip": {
+            "x": 0.3384615384615385,
+            "y": 0.42857142857142855,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "knee": {
+            "x": 0.2153846153846154,
+            "y": 0.42857142857142855,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "ankle": {
+            "x": 0.09230769230769231,
+            "y": 0.42857142857142855,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          }
+        }
+      },
+      "expected": {
+        "upperArm": 45,
+        "lowerArm": 90,
+        "wrist": 0,
+        "neck": 20,
+        "trunk": 30
+      },
+      "hidden": [],
+      "reference": "analytic segment construction from predeclared angles, not model predictions",
+      "imagePlaneOnly": true,
+      "ergonomistReviewed": false
+    },
+    {
+      "id": "elbow-occluded",
+      "side": "RIGHT",
+      "frame": {
+        "width": 700,
+        "height": 650,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.42857142857142855,
+            "y": 0.2692307692307692,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "neck": {
+            "x": 0.42857142857142855,
+            "y": 0.3384615384615385,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "shoulder": {
+            "x": 0.42857142857142855,
+            "y": 0.38461538461538464,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "elbow": {
+            "x": 0.42857142857142855,
+            "y": 0.5384615384615384,
+            "visibility": "OCCLUDED",
+            "confidence": null
+          },
+          "wrist": {
+            "x": 0.5642857142857143,
+            "y": 0.5384615384615384,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hand": {
+            "x": 0.6142857142857143,
+            "y": 0.5384615384615384,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hip": {
+            "x": 0.42857142857142855,
+            "y": 0.6615384615384615,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "knee": {
+            "x": 0.42857142857142855,
+            "y": 0.7846153846153846,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "ankle": {
+            "x": 0.42857142857142855,
+            "y": 0.9076923076923077,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          }
+        }
+      },
+      "expected": {
+        "upperArm": 0,
+        "lowerArm": 90,
+        "wrist": 0,
+        "neck": 0,
+        "trunk": 0
+      },
+      "hidden": [
+        "elbow"
+      ],
+      "reference": "analytic segment construction from predeclared angles, not model predictions",
+      "imagePlaneOnly": true,
+      "ergonomistReviewed": false
+    },
+    {
+      "id": "hand-occluded",
+      "side": "RIGHT",
+      "frame": {
+        "width": 700,
+        "height": 650,
+        "view": "SAGITTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.42857142857142855,
+            "y": 0.2692307692307692,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "neck": {
+            "x": 0.42857142857142855,
+            "y": 0.3384615384615385,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "shoulder": {
+            "x": 0.42857142857142855,
+            "y": 0.38461538461538464,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "elbow": {
+            "x": 0.42857142857142855,
+            "y": 0.5384615384615384,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "wrist": {
+            "x": 0.5642857142857143,
+            "y": 0.5384615384615384,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hand": {
+            "x": 0.6142857142857143,
+            "y": 0.5384615384615384,
+            "visibility": "OCCLUDED",
+            "confidence": null
+          },
+          "hip": {
+            "x": 0.42857142857142855,
+            "y": 0.6615384615384615,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "knee": {
+            "x": 0.42857142857142855,
+            "y": 0.7846153846153846,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "ankle": {
+            "x": 0.42857142857142855,
+            "y": 0.9076923076923077,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          }
+        }
+      },
+      "expected": {
+        "upperArm": 0,
+        "lowerArm": 90,
+        "wrist": 0,
+        "neck": 0,
+        "trunk": 0
+      },
+      "hidden": [
+        "hand"
+      ],
+      "reference": "analytic segment construction from predeclared angles, not model predictions",
+      "imagePlaneOnly": true,
+      "ergonomistReviewed": false
+    },
+    {
+      "id": "frontal-unmeasurable",
+      "side": "RIGHT",
+      "frame": {
+        "width": 700,
+        "height": 650,
+        "view": "FRONTAL",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.42857142857142855,
+            "y": 0.2692307692307692,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "neck": {
+            "x": 0.42857142857142855,
+            "y": 0.3384615384615385,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "shoulder": {
+            "x": 0.42857142857142855,
+            "y": 0.38461538461538464,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "elbow": {
+            "x": 0.42857142857142855,
+            "y": 0.5384615384615384,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "wrist": {
+            "x": 0.5642857142857143,
+            "y": 0.5384615384615384,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hand": {
+            "x": 0.6142857142857143,
+            "y": 0.5384615384615384,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hip": {
+            "x": 0.42857142857142855,
+            "y": 0.6615384615384615,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "knee": {
+            "x": 0.42857142857142855,
+            "y": 0.7846153846153846,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "ankle": {
+            "x": 0.42857142857142855,
+            "y": 0.9076923076923077,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          }
+        }
+      },
+      "expected": {
+        "upperArm": 0,
+        "lowerArm": 90,
+        "wrist": 0,
+        "neck": 0,
+        "trunk": 0
+      },
+      "hidden": [],
+      "reference": "analytic segment construction from predeclared angles, not model predictions",
+      "imagePlaneOnly": true,
+      "ergonomistReviewed": false
+    },
+    {
+      "id": "oblique-unmeasurable",
+      "side": "RIGHT",
+      "frame": {
+        "width": 700,
+        "height": 650,
+        "view": "OBLIQUE",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.42857142857142855,
+            "y": 0.2692307692307692,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "neck": {
+            "x": 0.42857142857142855,
+            "y": 0.3384615384615385,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "shoulder": {
+            "x": 0.42857142857142855,
+            "y": 0.38461538461538464,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "elbow": {
+            "x": 0.42857142857142855,
+            "y": 0.5384615384615384,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "wrist": {
+            "x": 0.5642857142857143,
+            "y": 0.5384615384615384,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hand": {
+            "x": 0.6142857142857143,
+            "y": 0.5384615384615384,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hip": {
+            "x": 0.42857142857142855,
+            "y": 0.6615384615384615,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "knee": {
+            "x": 0.42857142857142855,
+            "y": 0.7846153846153846,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "ankle": {
+            "x": 0.42857142857142855,
+            "y": 0.9076923076923077,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          }
+        }
+      },
+      "expected": {
+        "upperArm": 0,
+        "lowerArm": 90,
+        "wrist": 0,
+        "neck": 0,
+        "trunk": 0
+      },
+      "hidden": [],
+      "reference": "analytic segment construction from predeclared angles, not model predictions",
+      "imagePlaneOnly": true,
+      "ergonomistReviewed": false
+    },
+    {
+      "id": "unknown-camera",
+      "side": "RIGHT",
+      "frame": {
+        "width": 700,
+        "height": 650,
+        "view": "UNKNOWN",
+        "facing": "IMAGE_RIGHT",
+        "up": {
+          "x": 0,
+          "y": -1
+        },
+        "points": {
+          "head": {
+            "x": 0.42857142857142855,
+            "y": 0.2692307692307692,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "neck": {
+            "x": 0.42857142857142855,
+            "y": 0.3384615384615385,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "shoulder": {
+            "x": 0.42857142857142855,
+            "y": 0.38461538461538464,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "elbow": {
+            "x": 0.42857142857142855,
+            "y": 0.5384615384615384,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "wrist": {
+            "x": 0.5642857142857143,
+            "y": 0.5384615384615384,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hand": {
+            "x": 0.6142857142857143,
+            "y": 0.5384615384615384,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "hip": {
+            "x": 0.42857142857142855,
+            "y": 0.6615384615384615,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "knee": {
+            "x": 0.42857142857142855,
+            "y": 0.7846153846153846,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          },
+          "ankle": {
+            "x": 0.42857142857142855,
+            "y": 0.9076923076923077,
+            "visibility": "VISIBLE",
+            "confidence": 1
+          }
+        }
+      },
+      "expected": {
+        "upperArm": 0,
+        "lowerArm": 90,
+        "wrist": 0,
+        "neck": 0,
+        "trunk": 0
+      },
+      "hidden": [],
+      "reference": "analytic segment construction from predeclared angles, not model predictions",
+      "imagePlaneOnly": true,
+      "ergonomistReviewed": false
+    }
+  ]
+}

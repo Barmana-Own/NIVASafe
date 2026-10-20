@@ -1,0 +1,10 @@
+import React, { useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { LocaleProvider } from '../src/i18n';
+import { RulaCorrectionSuggestionsTable, RulaReportDataTable } from '../src/features/assessments/AssessmentPages';
+import '../src/styles.css';
+localStorage.setItem('locale','fa');
+const row={angle:25,score:2,detected:true,source:'AI' as const,confirmedByUser:false};
+const analysis={upperArm:row,lowerArm:row,wrist:row,wristTwist:row,neck:row,trunk:row,legs:row};
+const suggestions=Array.from({length:8},(_,i)=>({id:String(i),titleFa:`پیشنهاد ${i+1}`,titleEn:`Action ${i+1}`,descriptionFa:'تنظیم موقعیت کار و کاهش خم شدن گردن و تنه. '.repeat(30),descriptionEn:'Adjust work posture. '.repeat(30),priority:'HIGH' as const,scoreReduction:1,affectedParts:['neck']}));
+function Fixture(){const [selected,setSelected]=useState<typeof suggestions>([]);return <LocaleProvider><main className="rula-report-page" style={{margin:20,minWidth:0}}><RulaCorrectionSuggestionsTable suggestions={suggestions} selectedActions={selected} bodySide="RIGHT" locale="fa" onToggleAction={action=>setSelected(current=>current.some(row=>row.id===action.id)?current.filter(row=>row.id!==action.id):[...current,{...action,status:'IN_PROGRESS'}] as typeof suggestions)}/><RulaReportDataTable analysis={analysis} factors={[]} selectedActions={suggestions} locale="fa"/></main></LocaleProvider>};createRoot(document.getElementById('root')!).render(<Fixture/>);

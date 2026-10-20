@@ -18,16 +18,16 @@ describe("FMEA", () => {
 });
 describe("RULA", () => {
   it("returns a bounded transparent result", () => { const result = calculateRula({upperArm:4,lowerArm:3,wrist:3,wristTwist:2,neck:4,trunk:5,legs:2,muscleUse:true,force:2}); expect(result.score).toBeGreaterThanOrEqual(1); expect(result.score).toBeLessThanOrEqual(7); expect(result.trace).toHaveLength(4); });
-  it("adds the selected force points directly to the final score", () => {
+  it("applies force points to both groups before the final table lookup", () => {
     const posture = { upperArm: 1, lowerArm: 1, wrist: 1, wristTwist: 1, neck: 1, trunk: 1, legs: 1, muscleUse: false } as const;
     const scores = [0, 1, 2, 3].map((force) => calculateRula({ ...posture, force }).score);
-    expect(scores).toEqual([2, 3, 4, 5]);
+    expect(scores).toEqual([1, 2, 3, 4]);
     expect(calculateRula({ ...posture, force: 3 }).trace).toContain("Adjustment: muscle use 0 + force 3 = 3");
   });
   it("adds the repetitive-muscle criterion score to the final result", () => {
     const posture = { upperArm: 1, lowerArm: 1, wrist: 1, wristTwist: 1, neck: 1, trunk: 1, legs: 1, force: 0 } as const;
-    expect(calculateRula({ ...posture, muscleUse: false }).score).toBe(2);
-    expect(calculateRula({ ...posture, muscleUse: true }).score).toBe(3);
+    expect(calculateRula({ ...posture, muscleUse: false }).score).toBe(1);
+    expect(calculateRula({ ...posture, muscleUse: true }).score).toBe(2);
     expect(calculateRula({ ...posture, muscleUse: true }).trace).toContain("Adjustment: muscle use 1 + force 0 = 1");
   });
   it("recalculates group and final scores after a reviewed angle change", () => {
@@ -37,8 +37,8 @@ describe("RULA", () => {
     const after = calculateRula({ ...baseline, upperArm: editedUpperArm });
     expect(editedUpperArm).toBe(3);
     expect(suggestedRulaPostureScore("wristTwist", 0, true, 2)).toBe(1);
-    expect(before.groupA).toBe(2);
-    expect(after.groupA).toBe(3);
+    expect(before.groupA).toBe(1);
+    expect(after.groupA).toBe(2);
     expect(after.groupB).toBe(before.groupB);
     expect(after.score).toBeGreaterThan(before.score);
   });

@@ -1,4 +1,4 @@
-const VERSION = "v16";
+const VERSION = "v55";
 // One-time production migration: move already-open windows from the previous
 // v15 shell so the latest frontend assets cannot remain active in a stale client.
 const FORCE_MIGRATION = VERSION === "v16";

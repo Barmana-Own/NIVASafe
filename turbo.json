@@ -5,6 +5,10 @@
     "dev": {"cache": false, "persistent": true},
     "lint": {"dependsOn": ["^lint"]},
     "typecheck": {"dependsOn": ["^typecheck"]},
-    "test": {"dependsOn": ["^build"], "outputs": ["coverage/**"]}
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"],
+      "env": ["NIVASAFE_PDF_FONT_PATH", "NIVASAFE_PDF_FONT_BOLD_PATH"]
+    }
   }
 }

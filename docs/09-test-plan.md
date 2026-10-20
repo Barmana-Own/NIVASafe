@@ -11,7 +11,7 @@
 | FR-FMEA-RISK-002 | Frontend contract | Search, filter, sort, detail, edit and confirmed-delete interactions |
 | FR-FMEA-RISK-003 | Frontend contract + score-guide review | Pagination and criteria for every S/O/D score from 1 to 10 |
 | FR-FMEA-RISK-004 | Frontend/backend contract + helper unit | Bounded risk-row AI suggestions with explicit accept-only behavior |
-| FR-FMEA-RISK-005 | Frontend contract + backend compatibility/export tests | Panel exposes structured Excel and real Word DOCX exports; PDF compatibility route remains covered without a panel download control |
+| FR-FMEA-RISK-005 | Frontend contract + backend export tests | Full FMEA report and final risk table are available in PDF, editable DOCX and XLSX; table columns, row order, controls and corrective actions match the visible report |
 | FR-FMEA-RISK-006 | Frontend add-form contract + backend helper/unit tests | Add-row form omits manual row number/process stage; API derives sequential row number and parent assessment process context |
 | FR-FMEA-RISK-007 | Frontend contract + responsive/accessibility review | Each of failure mode/effect/cause/recommendation categories renders three AI suggestions initially and exposes an independent reversible plus/minus control for additional suggestions |
 | FR-FMEA-RISK-008 | Frontend contract + responsive CSS/build smoke | Add/edit score panels align S/O/D selectors, RPN preview and calculate/save action; supplied 1–10 reference criteria remain localized |
@@ -19,7 +19,8 @@
 | FR-FMEA-RISK-010 | Shared-domain boundary + backend report + frontend contract + migration verification | RPN boundaries 50/51, 100/101, 200/201 and 400/401; server recalculation, score-panel badge, filters and five-level report distribution remain aligned |
 | FR-FMEA-REPORT-001 | Frontend contract + backend helper unit | Report header, executive metrics, distribution and top failure-mode ranking |
 | FR-FMEA-REPORT-002 | Frontend/backend contract | Suggested/manual action flow, tenant link validation and action register |
-| FR-FMEA-REPORT-003 | Frontend contract + API review | Collapsible full details, save audit and no-PDF panel action set |
+| FR-FMEA-REPORT-003 | Frontend contract + API review | Collapsible full details, save audit and parity between visible table fields and final-table exports |
+| FR-FMEA-REPORT-004 | Backend binary export tests + frontend contract | Styled full-report PDF/DOCX/XLSX sections use the same report read model and localized suggestions; Word remains editable and Excel preserves report sections |
 | FR-FMEA-WIZARD-001 | Frontend contract + production static smoke | Three localized FMEA creation-step labels: process information, review and register, and report and results; the first two states retain existing form behavior and successful registration opens the real report/results route |
 | FR-FMEA-WIZARD-003 | Frontend contract + API/navigation smoke | Stage 1 advances to review/register, duplicate submission is guarded, offline/API failure keeps the draft on stage 2, and successful registration navigates to `/fmea/:id/report` as stage 3 |
 | FR-FMEA-WIZARD-002 | Frontend contract + responsive CSS review + production static smoke | Assessment code and scope controls share an aligned row; the code auto-generation hint remains below its own input |
@@ -34,6 +35,7 @@
 | FR-RULA-REPORT-001 | Backend helper + frontend contract | RULA score/risk result, neck/upper-arm/trunk factors, angles and contribution |
 | FR-RULA-REPORT-002 | Backend schema/helper + frontend contract | Suggested action selection, priority, manual action entry and persisted `rulaImpact` |
 | FR-RULA-REPORT-003 | Backend helper + frontend contract | Dynamic bounded prediction, removal recalculation, explicit non-definitive prediction notice and exports |
+| FR-RULA-REPORT-004 | Backend binary export tests + frontend contract | Styled PDF/DOCX/XLSX include the result summary, process context, side-specific score/factor data, posture table, predicted impact and selected actions |
 | NFR-AI-USAGE-001 | Backend provider/helper + integration + admin contract | Provider-reported token normalization, idempotent risk/chat accounting, no estimation when usage is absent, and global/organization-scoped administrator visibility |
 | FR-AUTH-001 | Frontend contract | Visible personal/organization selector with malformed-draft normalization and explicit change-type access |
 | FR-AUTH-002 | Frontend contract + API/auth review | Direct post-login navigation, first server-returned organization persistence and membership-checked in-panel company switching |
@@ -48,5 +50,13 @@
 
 | FR-RULA-SCORE-004 | Shared-domain regression + frontend contract + production smoke | Applied-force choices display and contribute exactly 0/1/2/3 points to the final bounded RULA score in both live preview and server-authoritative registration/update paths |
 | FR-RULA-SCORE-005 | Shared-domain regression + frontend contract + production smoke | Repetitive-muscle use opens two localized criterion options, displays the reference text and 1/0 scores, preserves the selected boolean in draft/FormData, and contributes exactly 1 or 0 to the final bounded RULA score in live preview and server-authoritative registration/update paths |
+| FR-RULA-PROC-002/005 | Frontend unit + backend contract/integration | Accept at most four JPG/PNG/WEBP images of at most 10 MB each; count saved attachments; reject a fifth upload under concurrent requests and canonicalize attachment entity aliases before enforcing the limit |
+| FR-RULA-PROC-003 / FR-RULA-ANALYSIS-003 | Frontend unit + backend provider/API integration | Submit each image separately; verify dedicated GapGPT routing has no cross-provider image fallback, FMEA purpose is rejected, per-image results remain distinct, and failures preserve manual scoring |
+| NFR-RULA-IMAGE-001 | Static/security review + API tests | Require authentication, tenant scope, `assessments.create`, signature and size checks, rate limiting, bounded upload count, no image/base64 in audit logs, and no FMEA-to-GapGPT routing |
 
 Database integration and browser end-to-end tests require a running application database and are run separately when that environment is available.
+
+
+## Scoped checkpoint rula-image-experience-20261019-01 — 2026-10-19 / 1405-07-27
+
+Risk matrix: consent/auth/tenant boundaries -> backend registered-member tests; model identity -> provider/routing tests; compact UI/consent reset -> component tests; actual upload/review/save/GET/PDF -> two isolated ordinary-user organizations. Paid tests capped10; no full-run replay; remaining BOTH for organization B NOT_RUN.

@@ -32,6 +32,12 @@ const fmeaCandidates: FmeaActionCandidate[] = [
 ];
 
 describe("assessment corrective action suggestions", () => {
+  it("bounds a five-card automatic batch without changing the default eight-action contract", () => {
+    const input = { processName: "Synthetic", locale: "en" as const, candidates: fmeaCandidates, existingActionTitles: [] };
+    expect(buildFmeaActionSuggestionsPrompt({ ...input, limit: 5 })).toContain("Return at most 5 concise corrective actions");
+    expect(buildFmeaActionSuggestionsPrompt(input)).toContain("Return at most 8 concise corrective actions");
+  });
+
   it("builds a bounded FMEA prompt with JSON-only output instructions", () => {
     const prompt = buildFmeaActionSuggestionsPrompt({
       processName: "پمپاژ",
@@ -43,6 +49,8 @@ describe("assessment corrective action suggestions", () => {
     expect(prompt).toContain("NIVASAFE_FMEA_ACTION_SUGGESTIONS");
     expect(prompt).toContain("Return only valid JSON");
     expect(prompt).toContain("نشتی اتصال");
+    expect(prompt).toContain("This is an FMEA risk assessment, not a RULA ergonomic assessment");
+    expect(prompt).toContain("failure mode, cause, effect, process step, and current controls");
     expect(prompt).toContain("qualified HSE");
   });
 
@@ -87,7 +95,10 @@ describe("assessment corrective action suggestions", () => {
     expect(prompt).toContain("NIVASAFE_RULA_ACTION_SUGGESTIONS");
     expect(prompt).toContain("Return only valid JSON");
     expect(prompt).toContain("بازرسی خط");
-    expect(prompt).toContain("qualified HSE");
+    expect(prompt).toContain("corrective-action request for a RULA ergonomic posture assessment");
+    expect(prompt).toContain("elevated or observed RULA body-part score");
+    expect(prompt).toContain("Do not return generic PPE");
+    expect(prompt).toContain("qualified ergonomics/HSE professional");
   });
 
   it("includes independent side posture data in BOTH prompts and preserves AI side labels", () => {
@@ -140,9 +151,9 @@ describe("assessment corrective action suggestions", () => {
     expect(suggestions[0]).toMatchObject({ priority: "CRITICAL", scoreReduction: 6, affectedParts: ["trunk"], bodySide: "RIGHT", source: "AI" });
   });
 
-  it("limits RULA corrective suggestions to six items", () => {
+  it("limits RULA corrective suggestions to twenty items", () => {
     const suggestions = parseRulaActionSuggestions(JSON.stringify({
-      actions: Array.from({ length: 8 }, (_, index) => ({
+      actions: Array.from({ length: 25 }, (_, index) => ({
         titleFa: `اقدام ${index + 1}`,
         titleEn: `Action ${index + 1}`,
         descriptionFa: "شرح",
@@ -152,7 +163,7 @@ describe("assessment corrective action suggestions", () => {
         affectedParts: ["neck"],
       })),
     }), "RIGHT");
-    expect(suggestions).toHaveLength(6);
+    expect(suggestions).toHaveLength(20);
   });
 
   it("provides a non-empty low-risk RULA fallback", () => {

@@ -9,7 +9,7 @@ type AIUsageWriter = {
   };
 };
 
-export type AIUsageSourceType = "AI_ANALYSIS_REQUEST" | "CHAT_MESSAGE" | "FMEA_IMAGE_REVIEW" | "FMEA_REPORT_DETAILS" | "FMEA_ACTION_SUGGESTIONS" | "RULA_IMAGE_REVIEW" | "RULA_TEXT_REVIEW" | "RULA_ACTION_SUGGESTIONS";
+export type AIUsageSourceType = "AI_ANALYSIS_REQUEST" | "CHAT_MESSAGE" | "FMEA_IMAGE_REVIEW" | "FMEA_REPORT_DETAILS" | "FMEA_ACTION_SUGGESTIONS" | "RULA_IMAGE_REVIEW" | "RULA_TEXT_REVIEW" | "RULA_ACTION_SUGGESTIONS" | "RULA_TASK_DESCRIPTION_SUGGESTION";
 
 export type AIUsageRecordInput = {
   organizationId: string;
@@ -19,6 +19,24 @@ export type AIUsageRecordInput = {
   sourceId: string;
   result: AIProviderResult;
 };
+
+/** Combines usage reported by multiple application-level validation attempts into one request record. */
+export function aggregateAIProviderUsage(results: readonly AIProviderResult[]): AIProviderResult | null {
+  const reported = results.filter((result) => result.usage !== undefined);
+  if (!reported.length) return null;
+  const providers = [...new Set(reported.map((result) => result.provider))];
+  const models = [...new Set(reported.flatMap((result) => result.model ? [result.model] : []))];
+  return {
+    ...reported[reported.length - 1]!,
+    provider: providers.join("+").slice(0, 64),
+    model: models.length === 1 ? models[0] : undefined,
+    usage: {
+      inputTokens: reported.reduce((sum, result) => sum + result.usage!.inputTokens, 0),
+      outputTokens: reported.reduce((sum, result) => sum + result.usage!.outputTokens, 0),
+      totalTokens: reported.reduce((sum, result) => sum + result.usage!.totalTokens, 0),
+    },
+  };
+}
 
 function boundedText(value: string | undefined, maxLength: number, fallback: string) {
   const normalized = value?.trim();

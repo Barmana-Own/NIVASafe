@@ -1,0 +1,1130 @@
+/* FMEA and RULA preserve their calculations, complete records and mobile details. */
+.app[data-design="enterprise"] :is(.fmea-job-search, .fmea-process-image-field, .field-label-line, .risk-score-label) { color: var(--color-ink); }
+.app[data-design="enterprise"] .fmea-assistant-toggle { min-height: 44px; background: var(--color-subtle); color: var(--color-secondary); border: 1px solid var(--color-border); box-shadow: none; border-radius: 8px; }
+.app[data-design="enterprise"] .fmea-assistant-toggle.enabled { background: var(--color-accent-soft); color: var(--color-accent); border-color: var(--color-accent); }
+.app[data-design="enterprise"] .fmea-assistant-toggle :is(strong, small) { color: inherit; }
+.app[data-design="enterprise"] .fmea-assistant-toggle-mark { background: var(--color-surface); border-color: var(--color-control-border); color: var(--color-accent); }
+.app[data-design="enterprise"] .fmea-search-control { background: var(--color-surface); color: var(--color-secondary); border: 1px solid var(--color-control-border); border-radius: 8px; padding-inline: 12px; }
+.app[data-design="enterprise"] .fmea-search-control:focus-within { border-color: var(--color-focus); outline: 2px solid var(--color-focus); outline-offset: 2px; box-shadow: none; }
+.app[data-design="enterprise"] .fmea-search-control input { border: 0; border-radius: 0; background: transparent; padding-inline: 0; outline: none; }
+.app[data-design="enterprise"] .fmea-search-clear { width: 32px; height: 32px; background: var(--color-subtle); color: var(--color-secondary); }
+.app[data-design="enterprise"] .fmea-job-option small { color: var(--color-secondary); }
+.app[data-design="enterprise"] .fmea-job-option.highlighted { background: var(--color-accent-soft); color: var(--color-accent); }
+.app[data-design="enterprise"] :is(.assessment-report-table, .risk-table) :is(td, td strong) { color: var(--color-ink); font-size: .8125rem; }
+.app[data-design="enterprise"] :is(.assessment-report-table, .risk-table) :is(td small, td p) { color: var(--color-secondary); font-size: .75rem; }
+.app[data-design="enterprise"] .report-meta-grid :is(small, span) { font-size: .75rem; color: var(--color-secondary); }
+.app[data-design="enterprise"] .report-meta-grid strong { font-size: .875rem; }
+:is(.fmea-report-dialog, .fmea-report-editor-dialog, .rula-edit-dialog) :is(.fmea-report-dialog-head, .rula-edit-dialog-head) strong { font-size: 1rem; }
+:is(.fmea-report-dialog, .rula-edit-dialog) :is(.fmea-report-detail-grid, .fmea-report-detail-scores, .rula-edit-form) { font-size: .875rem; }
+.fmea-report-detail-grid > div > span { color: var(--color-secondary); font-size: .75rem; }
+.fmea-report-detail-grid > div > strong { color: var(--color-ink); font-size: .875rem; line-height: 1.9; }
+.fmea-report-detail-scores > span { color: var(--color-ink); background: var(--color-subtle); border: 1px solid var(--color-border); border-radius: 6px; font-size: .875rem; padding: 8px 12px; }
+.fmea-report-detail-scores > span b { color: var(--color-secondary); }
+.app[data-design="enterprise"] .rula-report-score-card { padding: 0; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; overflow: hidden; box-shadow: none; gap: 0; }
+.app[data-design="enterprise"] .rula-report-score { background: var(--color-accent-soft); color: var(--color-accent); border-radius: 0; box-shadow: none; padding: 24px; gap: 12px; }
+.app[data-design="enterprise"] .rula-report-score > strong { color: var(--color-ink); font-size: 3.5rem; line-height: 1.1; font-weight: 750; }
+.app[data-design="enterprise"] .rula-report-score :is(small, span) { color: var(--color-secondary); font-size: .8125rem; opacity: 1; }
+.app[data-design="enterprise"] .rula-report-score-icon { background: var(--color-accent-soft); color: var(--color-accent); box-shadow: none; border-radius: 8px; }
+.app[data-design="enterprise"] .rula-report-risk { border: 0; border-radius: 0; background: var(--color-surface); padding: 24px; gap: 12px; }
+.app[data-design="enterprise"] .rula-report-risk :is(small, p, .rula-report-status-line, .rula-report-review-line) { color: var(--color-secondary); font-size: .8125rem; opacity: 1; }
+.app[data-design="enterprise"] .rula-report-risk strong { color: var(--color-ink); font-size: .9375rem; }
+.app[data-design="enterprise"] :is(.rula-overview-priority-stat, .rula-report-context-grid > div, .rula-factor-card, .rula-manual-action, .rula-action-scope) { background: var(--color-subtle); border: 1px solid var(--color-border); border-radius: 8px; box-shadow: none; padding: 16px; color: var(--color-ink); }
+.app[data-design="enterprise"] .rula-overview-priority-stat span { color: var(--color-secondary); font-size: .75rem; }
+.app[data-design="enterprise"] .rula-overview-priority-stat strong { color: var(--color-ink); font-size: 1.75rem; }
+.app[data-design="enterprise"] .rula-overview-priority-stat.urgent { background: var(--color-danger-soft); border-color: color-mix(in srgb, var(--color-danger) 30%, var(--color-border)); }
+.app[data-design="enterprise"] .rula-overview-priority-stat.urgent strong { color: var(--color-danger); }
+.app[data-design="enterprise"] .rula-overview-priority-stat.complete strong { color: var(--color-success); }
+.app[data-design="enterprise"] :is(.rula-report-context-grid strong, .rula-factor-card strong, .rula-manual-action strong, .rula-action-scope strong) { color: var(--color-ink); font-size: .875rem; }
+.app[data-design="enterprise"] :is(.rula-report-context-grid small, .rula-factor-card small, .rula-manual-action small, .rula-action-scope small, .rula-report-context-description p) { color: var(--color-secondary); font-size: .75rem; }
+.app[data-design="enterprise"] .rula-factor-value strong { color: var(--color-ink); font-size: 1.75rem; }
+.app[data-design="enterprise"] :is(.fmea-action-progress-legend-item, .fmea-risk-legend-item) { background: transparent; border-color: var(--color-border); color: var(--color-secondary); }
+.app[data-design="enterprise"] :is(.fmea-action-progress-legend-item, .fmea-risk-legend-item):hover { background: var(--color-subtle); }
+.app[data-design="enterprise"] :is(.rula-report-risk-badge, .rula-prediction-badge, .rula-risk-level-badge) { border-radius: 6px; font-size: .75rem; }
+.app[data-design="enterprise"] :is(.rula-report-risk-badge, .rula-prediction-badge).immediate,
+.app[data-design="enterprise"] .rula-risk-level-badge.action-level-4 { color: var(--color-danger); background: var(--color-danger-soft); }
+.app[data-design="enterprise"] :is(.rula-report-risk-badge, .rula-prediction-badge).review,
+.app[data-design="enterprise"] .rula-risk-level-badge.action-level-3 { color: var(--color-warning); background: var(--color-warning-soft); }
+.app[data-design="enterprise"] :is(.rula-report-risk-badge, .rula-prediction-badge).investigation,
+.app[data-design="enterprise"] .rula-risk-level-badge.action-level-2 { color: var(--color-accent); background: var(--color-accent-soft); }
+.app[data-design="enterprise"] :is(.rula-report-risk-badge, .rula-prediction-badge).acceptable,
+.app[data-design="enterprise"] .rula-risk-level-badge.action-level-1 { color: var(--color-success); background: var(--color-success-soft); }
+/* Native mobile dialogs sit in the top layer; their palette follows the root. */
+:root[data-theme] .rula-mobile-ui { --rm-bg: var(--color-canvas); --rm-surface: var(--color-surface); --rm-text: var(--color-ink); --rm-ink: var(--color-ink); --rm-muted: var(--color-secondary); --rm-border: var(--color-border); --rm-brand: var(--color-accent); --rm-canvas: var(--color-canvas); color: var(--color-ink); }
+:root[data-theme] .rula-mobile-ui :is(button, input, select) { background: var(--color-surface); color: var(--color-ink); border-color: var(--color-control-border); }
+:root[data-theme] .rula-mobile-ui button:is(.rm-primary, .rm-confirm) { color: var(--color-on-primary); background: var(--color-primary); border-color: var(--color-primary); }
+:root[data-theme] .rula-mobile-ui .rm-danger-outline { background: var(--color-danger-soft); color: var(--color-danger); border-color: var(--color-danger); }
+:root[data-theme] .rula-mobile-ui:is(.rm-detail, .compact-assessment-dialog),
+:root[data-theme] .rula-mobile-ui :is(.rm-table, .rm-row, .rm-card, .rm-detail-body) { background: var(--color-surface); border-color: var(--color-border); color: var(--color-ink); box-shadow: none; }
+:root[data-theme] .rula-mobile-ui :is(.rm-header, .rm-table-head, .rm-detail-footer, .rm-navigation, .rm-icon, .rm-pill, .rm-metrics > div) { background: var(--color-subtle); border-color: var(--color-border); color: var(--color-secondary); }
+:root[data-theme] .rula-mobile-ui :is(.rm-header h3, .rm-part strong, .rm-score, .rm-card h4, .rm-card dd, .rm-identity h3, .rm-metrics strong) { color: var(--color-ink); }
+:root[data-theme] .rula-mobile-ui :is(.rm-preview, .rm-part small, .rm-row-copy > small, .rm-card dt, .rm-identity small, .rm-metrics small, .rm-full-text) { color: var(--color-secondary); }
+/* Complete the theme mapping for mobile-only surfaces and semantic states. */
+:root[data-theme] .rula-mobile-ui.rm-list { background: var(--color-canvas); color: var(--color-ink); }
+:root[data-theme] .rula-mobile-ui .rm-summary { background: var(--color-surface); color: var(--color-secondary); border-color: var(--color-border); }
+:root[data-theme] .rula-mobile-ui .rm-summary strong { color: var(--color-accent); }
+:root[data-theme] .rula-mobile-ui .rm-search label { background: var(--color-surface); color: var(--color-secondary); border-color: var(--color-control-border); }
+:root[data-theme] .rula-mobile-ui .rm-choices { background: var(--color-subtle); }
+:root[data-theme] .rula-mobile-ui .rm-choices button { min-height: 44px; background: transparent; color: var(--color-secondary); border-color: transparent; }
+:root[data-theme] .rula-mobile-ui .rm-choices .selected { background: var(--color-accent-soft); color: var(--color-accent); border-color: var(--color-accent); }
+:root[data-theme] .rula-mobile-ui .rm-group { background: var(--color-accent-soft); color: var(--color-accent); }
+:root[data-theme] .rula-mobile-ui .rm-group-b { background: var(--color-violet-soft); color: var(--color-violet); }
+:root[data-theme] .rula-mobile-ui .rm-score { background: var(--color-accent-soft); color: var(--color-accent); }
+:root[data-theme] .rula-mobile-ui .rm-share { color: var(--color-success); }
+:root[data-theme] .rula-mobile-ui .rm-sheet { background: var(--color-surface); color: var(--color-ink); border-color: var(--color-border); }
+:root[data-theme] .rula-mobile-ui .rm-sheet:before { background: var(--color-control-border); }
+:root[data-theme] .rula-mobile-ui .rm-sheet-body .rm-choices { background: var(--color-subtle); }
+:root[data-theme] .rula-mobile-ui .rm-sheet-body .rm-choices .selected { background: var(--color-accent-soft); border-color: var(--color-accent); }
+:root[data-theme] .rula-mobile-ui .rm-metrics > div:first-child { background: var(--color-accent-soft); }
+:root[data-theme] .rula-mobile-ui .rm-metrics > div:nth-child(2) { background: var(--color-success-soft); }
+:root[data-theme] .rula-mobile-ui .rm-metrics > div:first-child strong { color: var(--color-accent); }
+:root[data-theme] .rula-mobile-ui .rm-metrics > div:nth-child(2) strong { color: var(--color-success); }
+:root[data-theme] .rula-mobile-ui .rm-undo { background: var(--color-success-soft); color: var(--color-success); }
+:root[data-theme] .rula-mobile-ui .rm-undo button { background: var(--color-surface); color: var(--color-success); border-color: var(--color-border); }
+:root[data-theme] .rula-mobile-ui .rm-danger { background: var(--color-danger); color: var(--color-canvas); border-color: var(--color-danger); }
+:root[data-theme] .rula-mobile-ui .rm-error { color: var(--color-danger); }
+:root[data-theme] .rula-mobile-ui .rm-search label:focus-within { border-color: var(--color-focus); outline-color: var(--color-focus); }
+:root[data-theme] .rula-mobile-ui button:focus-visible,
+:root[data-theme] .rula-mobile-ui input:focus-visible { outline-color: var(--color-focus); }
+:root[data-theme] .rula-mobile-ui .rm-pagination button[aria-current="page"] { background: var(--color-primary); color: var(--color-on-primary); border-color: var(--color-primary); }
+@media (min-width: 761px) {
+  .app[data-design="enterprise"] :is(.fmea-report-data-table, .rula-report-data-table, .risk-table) { min-width: 1280px; table-layout: auto; }
+  .app[data-design="enterprise"] :is(.fmea-report-data-table, .risk-table) :is(th, td) { min-width: 52px; }
+  .app[data-design="enterprise"] .fmea-report-data-table :is(th, td):nth-child(2) { min-width: 170px; }
+  .app[data-design="enterprise"] .fmea-report-data-table :is(th, td):nth-child(11) { min-width: 190px; }
+}
+.app[data-design="enterprise"] :is(.wizard-stepper, .path-stepper) { padding: 16px; margin: 0; gap: 12px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-subtle); }
+.app[data-design="enterprise"] .wizard-stepper > :is(button, span) { min-height: 44px; padding: 8px 10px; border-radius: 8px; color: var(--color-secondary); background: transparent; font-size: .8125rem; font-weight: 550; }
+.app[data-design="enterprise"] .wizard-stepper > :is(button, span).current { background: var(--color-surface); color: var(--color-accent); box-shadow: var(--elevation-surface); }
+.app[data-design="enterprise"] .wizard-stepper b { width: 28px; height: 28px; border-radius: 8px; border-color: var(--color-border); color: var(--color-secondary); background: var(--color-surface); font-size: .75rem; }
+.app[data-design="enterprise"] .wizard-stepper > :is(button, span):is(.current, .done) b { background: var(--color-primary); color: white; border-color: var(--color-primary); }
+.app[data-design="enterprise"] .wizard-stepper > :is(button, span).done { color: var(--color-accent); }
+.app[data-design="enterprise"] :is(.assessment-wizard, .rula-form) { gap: 24px; }
+.app[data-design="enterprise"] .wizard-actions { gap: 12px; padding-block-start: 20px; border-color: var(--color-border); }
+.app[data-design="enterprise"] :is(.fmea-process-grid, .rula-process-form-grid) { gap: 20px; }
+.app[data-design="enterprise"] :is(.fmea-suggestion-board, .fmea-special-conditions, .fmea-process-review, .fmea-stage-two-review, .rula-process-fields, .rula-posture-panel, .rula-analysis-table-card, .rula-analysis-visual, .rula-manual-factors) { border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); box-shadow: none; }
+.app[data-design="enterprise"] :is(.fmea-suggestion-board-head, .fmea-suggestion-heading, .rula-process-heading, .rula-posture-heading, .rula-analysis-table-head, .rula-analysis-visual-head) { padding: 16px; background: var(--color-subtle); border-color: var(--color-border); color: var(--color-ink); }
+.app[data-design="enterprise"] :is(.fmea-suggestion-board-head, .rula-process-heading, .rula-posture-heading, .rula-analysis-table-head, .rula-analysis-visual-head) :is(h3, h4, strong) { color: var(--color-ink); font-weight: 650; }
+.app[data-design="enterprise"] :is(.fmea-suggestion-board-head, .rula-process-heading, .rula-posture-heading, .rula-analysis-visual-head) :is(p, small) { color: var(--color-secondary); font-size: .75rem; }
+.app[data-design="enterprise"] :is(.fmea-suggestion-icon, .fmea-assessment-details-icon, .rula-process-icon, .rula-posture-icon, .rula-analysis-heading-icon) { color: var(--color-accent); background: var(--color-accent-soft); border-color: transparent; border-radius: 9px; box-shadow: none; }
+.app[data-design="enterprise"] :is(.fmea-suggestion-picker, .fmea-risk-ai-group, .fmea-review-risk-card, .fmea-review-grid > div, .wizard-review > div) { background: var(--color-surface); color: var(--color-ink); border-color: var(--color-border); border-radius: 8px; }
+.app[data-design="enterprise"] :is(.fmea-suggestion-picker h4, .fmea-risk-ai-group h4, .fmea-review-grid h3, .fmea-review-grid strong, .wizard-review strong) { color: var(--color-ink); }
+.app[data-design="enterprise"] :is(.fmea-suggestion-picker small, .fmea-review-grid small, .wizard-review small) { color: var(--color-secondary); }
+.app[data-design="enterprise"] :is(.fmea-suggestion-chip, .fmea-risk-ai-suggestion, .fmea-selected-chip) { color: var(--color-secondary); background: var(--color-subtle); border-color: var(--color-border); border-radius: 6px; font-weight: 500; }
+.app[data-design="enterprise"] :is(.fmea-suggestion-chip, .fmea-risk-ai-suggestion):hover { background: var(--color-accent-soft); color: var(--color-accent); border-color: var(--color-accent); }
+.app[data-design="enterprise"] :is(.fmea-suggestion-chip.selected, .fmea-selected-chip) { background: var(--color-accent-soft); color: var(--color-accent); }
+.app[data-design="enterprise"] :is(.fmea-selected-items, .fmea-no-suggestion, .fmea-add-item, .fmea-description-meta) { color: var(--color-secondary); border-color: var(--color-border); }
+.app[data-design="enterprise"] :is(.fmea-job-options, .rula-job-options) { background: var(--color-raised); border-color: var(--color-border); border-radius: 10px; box-shadow: var(--elevation-float); }
+.app[data-design="enterprise"] :is(.fmea-job-option, .rula-job-option) { color: var(--color-ink); border-color: var(--color-border); background: transparent; }
+.app[data-design="enterprise"] :is(.fmea-job-option, .rula-job-option):hover, .app[data-design="enterprise"] :is(.fmea-job-option.active, .rula-job-option.active) { color: var(--color-accent); background: var(--color-accent-soft); }
+.app[data-design="enterprise"] :is(.fmea-selected-job, .fmea-autofill-banner, .fmea-score-ai-suggestion, .fmea-description-suggestion) { background: var(--color-accent-soft); color: var(--color-accent); border-color: var(--color-border); border-radius: 8px; }
+.app[data-design="enterprise"] .fmea-autofill-banner :is(p, small) { color: var(--color-secondary); }
+.app[data-design="enterprise"] .score-panel { padding: 20px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-subtle); box-shadow: none; }
+.app[data-design="enterprise"] .risk-score-label { color: var(--color-ink); font-weight: 600; font-size: .8125rem; }
+.app[data-design="enterprise"] .score-panel .rpn-preview { min-width: 110px; border: 1px solid var(--color-border); border-radius: 9px; padding: 10px 16px; background: var(--color-surface); color: var(--color-ink); box-shadow: none; }
+.app[data-design="enterprise"] .rpn-preview strong { color: var(--color-accent); font-size: 1.75rem; font-variant-numeric: tabular-nums; line-height: 1.3; }
+.app[data-design="enterprise"] .rpn-preview-copy { color: var(--color-secondary); }
+.app[data-design="enterprise"] .rpn-number { display: inline-flex; justify-content: center; min-width: 40px; padding: 3px 8px; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-subtle); color: var(--color-ink); font-variant-numeric: tabular-nums; font-size: .875rem; font-weight: 700; }
+.app[data-design="enterprise"] :is(.risk-table-toolbar, .fmea-final-table-export-bar) { gap: 12px; padding: 12px 16px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-subtle); }
+.app[data-design="enterprise"] :is(.fmea-final-table-export-copy strong, .fmea-final-table-export-copy small) { color: var(--color-secondary); }
+.app[data-design="enterprise"] :is(.risk-table-controls, .fmea-final-table-export-actions) { gap: 8px; }
+.app[data-design="enterprise"] :is(.risk-row-actions, .report-table-actions, .rula-row-actions) { gap: 6px; }
+.app[data-design="enterprise"] :is(.risk-score-guide, .risk-detail-panel, .risk-item-editor-form, .fmea-assessment-details-bar, .fmea-assessment-details-grid) { background: var(--color-subtle); color: var(--color-ink); border-color: var(--color-border); border-radius: 8px; }
+.app[data-design="enterprise"] :is(.risk-detail-grid > div, .risk-detail-scores > div, .fmea-report-detail-grid > div, .fmea-report-detail-scores > div) { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; padding: 12px; }
+.app[data-design="enterprise"] :is(.risk-detail-grid, .risk-detail-scores, .fmea-report-detail-grid, .fmea-report-detail-scores) { gap: 12px; }
+.app[data-design="enterprise"] :is(.risk-detail-grid, .risk-detail-scores, .fmea-report-detail-grid, .fmea-report-detail-scores) :is(strong, p) { color: var(--color-ink); }
+.app[data-design="enterprise"] :is(.risk-detail-grid, .fmea-report-detail-grid) small { color: var(--color-secondary); }
+.app[data-design="enterprise"] :is(.assessment-card, .rula-assessment-card) { background: var(--color-surface); color: var(--color-ink); border: 1px solid var(--color-border); border-radius: 10px; box-shadow: none; }
+.app[data-design="enterprise"] .assessment-card:hover { border-color: var(--color-accent); box-shadow: var(--elevation-surface); transform: none; }
+.app[data-design="enterprise"] :is(.assessment-card-head h3, .assessment-metrics strong) { color: var(--color-ink); }
+.app[data-design="enterprise"] .assessment-metrics { border-color: var(--color-border); background: var(--color-subtle); }
+.app[data-design="enterprise"] .assessment-metrics small { color: var(--color-secondary); }
+.app[data-design="enterprise"] .report-meta-grid { gap: 12px; }
+.app[data-design="enterprise"] .report-meta-grid > div { padding: 12px 16px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-subtle); }
+.app[data-design="enterprise"] .report-meta-grid :is(small, dt) { color: var(--color-secondary); font-size: .75rem; }
+.app[data-design="enterprise"] .report-meta-grid :is(strong, dd) { color: var(--color-ink); font-weight: 600; }
+.app[data-design="enterprise"] .report-summary-grid { gap: 16px; }
+.app[data-design="enterprise"] .report-stat { padding: 20px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); box-shadow: none; position: relative; overflow: hidden; }
+.app[data-design="enterprise"] .report-stat::before { content: ""; position: absolute; inset-block: 16px; inset-inline-start: 0; width: 3px; background: var(--color-accent); border-radius: 3px; }
+.app[data-design="enterprise"] .report-stat :is(span, small) { color: var(--color-secondary); font-size: .75rem; }
+.app[data-design="enterprise"] .report-stat strong { color: var(--color-ink); font-size: 1.75rem; font-variant-numeric: tabular-nums; font-weight: 750; }
+.app[data-design="enterprise"] .report-stat:is(.critical, .danger)::before { background: var(--color-danger); }
+.app[data-design="enterprise"] .report-stat.warning::before { background: var(--color-warning); }
+.app[data-design="enterprise"] :is(.fmea-report-dashboard-panel, .report-top-item, .report-action-row, .report-team-member, .fmea-report-ai-detail-card) { background: var(--color-surface); border-color: var(--color-border); border-radius: 10px; box-shadow: none; color: var(--color-ink); }
+.app[data-design="enterprise"] :is(.fmea-report-dashboard-panel h3, .report-top-copy strong, .report-action-row strong, .fmea-report-ai-detail-card h4) { color: var(--color-ink); font-weight: 650; }
+.app[data-design="enterprise"] :is(.fmea-report-dashboard-panel p, .report-top-copy small, .report-action-description, .fmea-report-ai-detail-card p) { color: var(--color-secondary); }
+.app[data-design="enterprise"] :is(.report-top-index, .report-action-icon, .report-team-avatar) { color: var(--color-accent); background: var(--color-accent-soft); border-radius: 8px; }
+.app[data-design="enterprise"] .fmea-risk-donut-track { stroke: var(--color-border); }
+.app[data-design="enterprise"] .fmea-risk-donut-label { color: var(--color-ink); }
+.app[data-design="enterprise"] .fmea-risk-donut-label small { color: var(--color-secondary); }
+.app[data-design="enterprise"] .fmea-risk-legend-item { background: transparent; border-color: var(--color-border); color: var(--color-ink); }
+.app[data-design="enterprise"] .fmea-risk-legend-item:hover { background: var(--color-subtle); }
+.app[data-design="enterprise"] .fmea-risk-legend-value :is(strong, small) { color: var(--color-secondary); }
+.app[data-design="enterprise"] :is(.report-action-form, .report-ai-action-status, .report-details-card, .report-details-card > summary, .fmea-report-table-context, .fmea-report-ai-details, .fmea-report-ai-details-head) { background: var(--color-subtle); color: var(--color-ink); border-color: var(--color-border); border-radius: 8px; box-shadow: none; }
+.app[data-design="enterprise"] .report-details-card > summary { min-height: 52px; padding: 16px; color: var(--color-ink); font-weight: 650; }
+.app[data-design="enterprise"] :is(.report-action-form-anchor, .report-ai-action-status, .fmea-report-ai-details-note) { color: var(--color-secondary); }
+.app[data-design="enterprise"] :is(.history-row, .history-list) { background: var(--color-surface); border-color: var(--color-border); color: var(--color-ink); }
+.app[data-design="enterprise"] .report-bottom-actions { border-color: var(--color-border); }
+.app[data-design="enterprise"] :is(.dropzone, .fmea-process-image-dropzone, .rula-posture-dropzone) { border: 1px dashed var(--color-control-border); border-radius: 10px; background: var(--color-subtle); color: var(--color-secondary); box-shadow: none; }
+.app[data-design="enterprise"] :is(.dropzone, .fmea-process-image-dropzone, .rula-posture-dropzone):hover { background: var(--color-accent-soft); border-color: var(--color-accent); }
+.app[data-design="enterprise"] :is(.rula-posture-image-card, .rula-image-analysis-card, .fmea-process-image-field, .rula-image-result-card) { border-color: var(--color-border); border-radius: 10px; background: var(--color-surface); box-shadow: none; }
+.app[data-design="enterprise"] :is(.rula-posture-image-card-meta, .rula-photo-guidance, .rula-analysis-intro, .rula-review-notice, .rula-analysis-summary) { background: var(--color-subtle); border-color: var(--color-border); color: var(--color-secondary); border-radius: 8px; }
+.app[data-design="enterprise"] .rula-report-view {
+  --rula-result-ink: var(--color-ink);
+  --rula-result-muted: var(--color-secondary);
+  --rula-result-border: var(--color-border);
+  --rula-result-surface: var(--color-surface);
+  --rula-result-canvas: var(--color-subtle);
+  --rula-result-blue: var(--color-accent);
+  --rula-result-navy: var(--color-ink);
+  --rula-result-shadow: var(--elevation-surface);
+  color: var(--color-ink);
+}
+.app[data-design="enterprise"] :is(.rula-report-surface, .rula-report-section, .rula-report-impact-panel, .rula-factor-card, .rula-group-summary, .rula-report-context, .rula-result-hero, .rula-report-risk, .rula-action-register) { background: var(--color-surface); color: var(--color-ink); border: 1px solid var(--color-border); border-radius: 10px; box-shadow: none; }
+.app[data-design="enterprise"] :is(.rula-result-hero h3, .rula-report-section-heading h3, .rula-report-context strong, .rula-report-risk-head strong, .rula-factor-title strong, .rula-report-score strong) { color: var(--color-ink); }
+.app[data-design="enterprise"] :is(.rula-result-hero p, .rula-report-context p, .rula-factor-title small, .rula-report-score-label, .rula-report-status-line, .rula-report-context-description) { color: var(--color-secondary); }
+.app[data-design="enterprise"] :is(.rula-side-tabs, .rula-body-side-toggle) { padding: 4px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-subtle); gap: 4px; }
+.app[data-design="enterprise"] :is(.rula-side-tabs, .rula-body-side-toggle) > button { min-height: 40px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--color-secondary); font-size: .8125rem; box-shadow: none; }
+.app[data-design="enterprise"] :is(.rula-side-tabs, .rula-body-side-toggle) > button:is(.active, [aria-selected="true"], [aria-pressed="true"]) { background: var(--color-surface); border-color: var(--color-border); color: var(--color-accent); box-shadow: var(--elevation-surface); }
+.app[data-design="enterprise"] :is(.rula-factor-figure, .rula-report-score-icon, .rula-impact-panel-icon, .rula-result-hero-icon) { background: var(--color-accent-soft); color: var(--color-accent); border-color: transparent; border-radius: 10px; }
+.app[data-design="enterprise"] :is(.rula-factor-meter, .rula-score-gauge-track) { background: var(--color-border); }
+.app[data-design="enterprise"] :is(.rula-factor-value, .rula-factor-impact-label, .rula-group-summary h4) { color: var(--color-ink); }
+.app[data-design="enterprise"] :is(.rula-manual-action-form, .rula-suggested-actions-panel, .rula-action-preview, .rula-manual-action, .rula-selected-actions-preview) { background: var(--color-subtle); border-color: var(--color-border); border-radius: 10px; color: var(--color-ink); }
+.app[data-design="enterprise"] :is(.rula-manual-action-heading, .rula-manual-action-title-row, .rula-suggested-actions-heading) :is(h3, h4, strong) { color: var(--color-ink); }
+.app[data-design="enterprise"] :is(.rula-correction-table-factor small, .rula-text-more, .rula-manual-action-scope-note, .rula-ai-suggestions-status) { color: var(--color-secondary); }
+.app[data-design="enterprise"] :is(.rula-detection-badge, .rula-source-badge, .rula-confirmed-badge, .rula-awaiting-badge, .rula-selected-badge, .rula-ai-chip) { border-radius: 6px; background: var(--color-accent-soft); color: var(--color-accent); border-color: transparent; font-weight: 550; }
+.app[data-design="enterprise"] :is(.rula-awaiting-badge, .rula-detection-badge.pending) { background: var(--color-warning-soft); color: var(--color-warning); }
+.app[data-design="enterprise"] .rula-confirmed-badge { background: var(--color-success-soft); color: var(--color-success); }
+.app[data-design="enterprise"] .rula-suggested-score { color: var(--color-accent); background: var(--color-accent-soft); border-color: transparent; border-radius: 6px; font-variant-numeric: tabular-nums; }
+.app[data-design="enterprise"] .rula-risk-level-badge { border-radius: 6px; }
+.app[data-design="enterprise"] .rula-risk-level-badge.action-level-1 { color: var(--color-success); background: var(--color-success-soft); }
+.app[data-design="enterprise"] .rula-risk-level-badge.action-level-2 { color: var(--color-warning); background: var(--color-warning-soft); }
+.app[data-design="enterprise"] .rula-risk-level-badge.action-level-3 { color: var(--color-high); background: var(--color-high-soft); }
+.app[data-design="enterprise"] .rula-risk-level-badge.action-level-4 { color: var(--color-danger); background: var(--color-danger-soft); }
+.app[data-design="enterprise"] :is(.path-notice, .path-session-note) { color: var(--color-secondary); background: var(--color-subtle); border-color: var(--color-border); border-radius: 8px; }
+.app[data-design="enterprise"] .path-choice-card { padding: 24px; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); box-shadow: var(--elevation-surface); }
+.app[data-design="enterprise"] .path-choice-card.selected { background: var(--color-surface); border-color: var(--color-accent); box-shadow: 0 0 0 1px var(--color-accent); }
+.app[data-design="enterprise"] .path-choice-card:hover { transform: none; border-color: var(--color-accent); }
+.app[data-design="enterprise"] .path-choice-card :is(h3, em) { color: var(--color-ink); font-weight: 700; }
+.app[data-design="enterprise"] .path-choice-card :is(p, li) { color: var(--color-secondary); font-size: .875rem; }
+.app[data-design="enterprise"] :is(.path-choice-icon, .path-choice-tag, .path-choice-status) { color: var(--color-accent); background: var(--color-accent-soft); border-color: transparent; border-radius: 8px; box-shadow: none; }
+.app[data-design="enterprise"] .path-title h2 { color: var(--color-ink); font-size: 1.125rem; }
+.app[data-design="enterprise"] .path-title p, .app[data-design="enterprise"] .path-step { color: var(--color-secondary); }
+.app[data-design="enterprise"] .path-step b { border-radius: 8px; background: var(--color-surface); color: var(--color-secondary); border-color: var(--color-border); }
+.app[data-design="enterprise"] .path-step.current b { background: var(--color-primary); color: white; }
+.app[data-design="enterprise"] .path-step.current { color: var(--color-accent); }
+/* Small-screen records remain complete through the existing detail controls. */
+.app[data-design="enterprise"] :is(.rm-table, .rm-row, .rm-card, .rm-details, .rula-mobile-evaluation-table, .rula-mobile-evaluation-row) { background: var(--color-surface); color: var(--color-ink); border-color: var(--color-border); border-radius: 8px; }
+.app[data-design="enterprise"] :is(.rm-row strong, .rm-card h4, .rm-card dd, .rm-identity h3, .rm-metrics strong) { color: var(--color-ink); }
+.app[data-design="enterprise"] :is(.rm-card dt, .rm-identity small, .rm-metrics small) { color: var(--color-secondary); }
+.app[data-design="enterprise"] .rm-primary { color: white; background: var(--color-primary); }
+.app[data-design="enterprise"] .rm-danger-outline { color: var(--color-danger); border-color: var(--color-danger); }
+.app[data-design="enterprise"] .rm-buttons button { border-color: var(--color-border); border-radius: 8px; background: var(--color-subtle); color: var(--color-ink); }
+@media (max-width: 1024px) {
+  .app[data-design="enterprise"] .report-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app[data-design="enterprise"] .risk-table-toolbar { flex-wrap: wrap; }
+}
+@media (max-width: 760px) {
+  .app[data-design="enterprise"] .wizard-stepper { padding: 8px; gap: 4px; }
+  .app[data-design="enterprise"] .wizard-stepper > :is(button, span) { display: grid; justify-items: center; gap: 6px; padding: 8px 4px; text-align: center; font-size: .6875rem; line-height: 1.7; }
+  .app[data-design="enterprise"] .wizard-stepper b { width: 26px; height: 26px; }
+  .app[data-design="enterprise"] :is(.fmea-process-grid, .rula-process-form-grid, .rula-process-layout, .rula-analysis-layout, .fmea-report-dashboard-grid, .report-two-column, .fmea-report-primary-grid, .fmea-report-detail-grid, .risk-detail-grid) { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .app[data-design="enterprise"] :is(.score-panel, .fmea-suggestion-board) { padding: 16px; }
+  .app[data-design="enterprise"] .score-panel-fields { width: 100%; gap: 6px; }
+  .app[data-design="enterprise"] .score-panel .risk-score-field { min-width: 0; }
+  .app[data-design="enterprise"] .score-panel .risk-score-field .styled-select-trigger { padding-inline: 8px; font-size: .8125rem; }
+  .app[data-design="enterprise"] .score-panel-actions { width: 100%; display: flex; flex-wrap: wrap; align-items: stretch; gap: 12px; }
+  .app[data-design="enterprise"] .score-panel .rpn-preview { flex: 1; min-width: 96px; }
+  .app[data-design="enterprise"] .report-stat { padding: 16px; }
+  .app[data-design="enterprise"] .report-stat strong { font-size: 1.5rem; }
+  .app[data-design="enterprise"] :is(.risk-table-toolbar, .fmea-final-table-export-bar) { padding: 12px; }
+  .app[data-design="enterprise"] .risk-table-controls { width: 100%; flex-wrap: wrap; }
+  .app[data-design="enterprise"] .risk-table-controls > label { flex: 1 1 120px; }
+  .app[data-design="enterprise"] .path-choice-grid { grid-template-columns: minmax(0, 1fr); }
+  .app[data-design="enterprise"] .path-choice-card { padding: 20px; }
+  .app[data-design="enterprise"] .path-choice-card :is(p, li) { font-size: .8125rem; }
+  .app[data-design="enterprise"] .assessment-mobile-table tbody tr { background: var(--color-surface); border-color: var(--color-border); border-radius: 8px; }
+  .app[data-design="enterprise"] .assessment-mobile-table tbody td::before { color: var(--color-secondary); }
+}
+.app[data-design="enterprise"] :is(.path-flow, .path-stepper) { direction: inherit; }
+.app[data-design="enterprise"] .path-choice-copy ul { padding-inline-start: 20px; padding-inline-end: 0; }
+
+/* Compact desktop report tables without removing columns or cutting off cell data. */
+@media (min-width: 761px) {
+  .app[data-design="enterprise"] .surface-body:has(.report-data-table-wrap) {
+    min-width: 0;
+    max-width: 100%;
+    padding: 10px 12px;
+  }
+
+  .app[data-design="enterprise"] .report-details-card .surface-body > details > summary {
+    padding: 8px 10px;
+    font-size: .6875rem;
+  }
+
+  .app[data-design="enterprise"] .table-wrap.report-data-table-wrap {
+    min-width: 0;
+    max-width: 100%;
+    scrollbar-width: thin;
+  }
+
+  .app[data-design="enterprise"] .table-wrap.report-data-table-wrap .assessment-report-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .app[data-design="enterprise"] .table-wrap.report-data-table-wrap .assessment-report-table :is(th, td) {
+    min-width: 0;
+    padding: 6px 8px;
+    line-height: 1.45;
+    vertical-align: middle;
+  }
+
+  .app[data-design="enterprise"] .table-wrap.report-data-table-wrap .assessment-report-table th {
+    font-size: .6875rem;
+    line-height: 1.4;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .app[data-design="enterprise"] .table-wrap.report-data-table-wrap .assessment-report-table td {
+    font-size: .75rem;
+    overflow-wrap: break-word;
+    word-break: normal;
+    hyphens: none;
+  }
+
+  .app[data-design="enterprise"] .table-wrap.report-data-table-wrap .report-table-stack {
+    gap: 3px;
+  }
+
+  .app[data-design="enterprise"] .table-wrap.report-data-table-wrap .report-table-stack > span {
+    line-height: 1.45;
+  }
+
+  .app[data-design="enterprise"] .table-wrap.report-data-table-wrap .report-table-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(28px, 1fr));
+    justify-items: center;
+    gap: 4px;
+    width: 100%;
+    min-width: 0;
+    margin-inline: auto;
+  }
+
+  .app[data-design="enterprise"] .fmea-report-data-table :is(th, td):nth-child(1) { width: 4%; }
+  .app[data-design="enterprise"] .fmea-report-data-table :is(th, td):nth-child(2) { width: 10%; }
+  .app[data-design="enterprise"] .fmea-report-data-table :is(th, td):nth-child(3) { width: 10%; }
+  .app[data-design="enterprise"] .fmea-report-data-table :is(th, td):nth-child(4) { width: 10%; }
+  .app[data-design="enterprise"] .fmea-report-data-table :is(th, td):nth-child(5) { width: 12%; }
+  .app[data-design="enterprise"] .fmea-report-data-table :is(th, td):nth-child(6),
+  .app[data-design="enterprise"] .fmea-report-data-table :is(th, td):nth-child(7),
+  .app[data-design="enterprise"] .fmea-report-data-table :is(th, td):nth-child(8) { width: 4%; }
+  .app[data-design="enterprise"] .fmea-report-data-table :is(th, td):nth-child(9) { width: 6%; }
+  .app[data-design="enterprise"] .fmea-report-data-table :is(th, td):nth-child(10) { width: 9%; }
+  .app[data-design="enterprise"] .fmea-report-data-table :is(th, td):nth-child(11) { width: 19%; }
+  .app[data-design="enterprise"] .fmea-report-data-table :is(th, td):nth-child(12) { width: 8%; }
+  .app[data-design="enterprise"] .fmea-report-data-table:not(:has(th:nth-child(12))) :is(th, td):nth-child(11) { width: 27%; }
+
+  .app[data-design="enterprise"] .rula-report-data-table.rula-unified-evaluation-table :is(th, td):nth-child(1) { width: 4%; }
+  .app[data-design="enterprise"] .rula-report-data-table.rula-unified-evaluation-table :is(th, td):nth-child(2) { width: 5%; }
+  .app[data-design="enterprise"] .rula-report-data-table.rula-unified-evaluation-table :is(th, td):nth-child(3) { width: 9%; }
+  .app[data-design="enterprise"] .rula-report-data-table.rula-unified-evaluation-table :is(th, td):nth-child(4) { width: 8%; }
+  .app[data-design="enterprise"] .rula-report-data-table.rula-unified-evaluation-table :is(th, td):nth-child(5) { width: 11%; }
+  .app[data-design="enterprise"] .rula-report-data-table.rula-unified-evaluation-table :is(th, td):nth-child(6) { width: 7%; }
+  .app[data-design="enterprise"] .rula-report-data-table.rula-unified-evaluation-table :is(th, td):nth-child(7) { width: 7%; }
+  .app[data-design="enterprise"] .rula-report-data-table.rula-unified-evaluation-table :is(th, td):nth-child(8) { width: 24%; }
+  .app[data-design="enterprise"] .rula-report-data-table.rula-unified-evaluation-table :is(th, td):nth-child(9) { width: 8%; }
+  .app[data-design="enterprise"] .rula-report-data-table.rula-unified-evaluation-table :is(th, td):nth-child(10) { width: 8%; }
+  .app[data-design="enterprise"] .rula-report-data-table.rula-unified-evaluation-table :is(th, td):nth-child(11) { width: 9%; }
+}
+
+/* Assessment reports keep chart content inside each card at every panel width. */
+.app[data-design="enterprise"] .rula-report-overview-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 12px;
+}
+.app[data-design="enterprise"] .rula-overview-panel {
+  min-width: 0;
+  max-width: 100%;
+  container-type: inline-size;
+}
+.app[data-design="enterprise"] .rula-overview-panel .surface-head,
+.app[data-design="enterprise"] .rula-overview-panel .surface-body,
+.app[data-design="enterprise"] .rula-overview-panel .surface-title {
+  min-width: 0;
+  max-width: 100%;
+}
+.app[data-design="enterprise"] .rula-overview-panel .surface-title :is(h3, p) {
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
+}
+.app[data-design="enterprise"] .rula-overview-panel .surface-body {
+  align-items: stretch;
+  padding: 12px;
+}
+
+.app[data-design="enterprise"] .rula-overview-panel .fmea-action-progress-ring {
+  width: 96px;
+  height: 96px;
+  justify-self: center;
+}
+.app[data-design="enterprise"] .rula-overview-panel .fmea-action-progress-ring strong {
+  font-size: 1.125rem;
+  line-height: 1.15;
+  white-space: nowrap;
+  word-break: normal;
+}
+.app[data-design="enterprise"] .rula-overview-panel .fmea-action-progress-ring small {
+  max-width: 100%;
+  font-size: .625rem;
+  line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+/* All report donuts use the FMEA risk chart's intrinsic flex layout and legend. */
+.app[data-design="enterprise"] .rula-overview-distribution-panel .fmea-risk-legend .status-badge { font-size: .6875rem; }
+.app[data-design="enterprise"] .report-action-progress { display: block; }
+.app[data-design="enterprise"] .rula-overview-panel .report-action-progress { display: block; }
+.app[data-design="enterprise"] :is(.rula-overview-distribution-panel, .rula-overview-actions-panel) .surface-body {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+}
+
+.app[data-design="enterprise"] .rula-overview-panel .fmea-action-progress-list {
+  width: 100%;
+  min-width: 0;
+  gap: 8px;
+  color: var(--color-secondary);
+  font-size: .75rem;
+  line-height: 1.5;
+}
+.app[data-design="enterprise"] .rula-overview-panel .fmea-action-progress-list > div {
+  min-width: 0;
+  gap: 6px;
+}
+.app[data-design="enterprise"] .rula-overview-panel .fmea-action-progress-list > div > span:nth-child(2) {
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
+}
+.app[data-design="enterprise"] .rula-overview-panel .fmea-action-progress-list strong {
+  color: var(--color-ink);
+  font-size: .75rem;
+  white-space: nowrap;
+}
+.app[data-design="enterprise"] .rula-overview-priority-grid { gap: 8px; }
+.app[data-design="enterprise"] .rula-overview-priority-stat {
+  min-width: 0;
+  min-height: 62px;
+  padding: 10px;
+  gap: 6px;
+}
+.app[data-design="enterprise"] .rula-overview-priority-stat > span {
+  min-width: 0;
+  line-height: 1.55;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
+}
+.app[data-design="enterprise"] .rula-overview-priority-stat > strong { white-space: nowrap; word-break: normal; }
+
+/* RULA process inputs retain visible separation and comfortable inline padding. */
+.app[data-design="enterprise"] .rula-process-layout {
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, .9fr);
+  gap: 16px;
+  min-width: 0;
+}
+.app[data-design="enterprise"] .rula-process-fields,
+.app[data-design="enterprise"] .rula-posture-panel { min-width: 0; }
+.app[data-design="enterprise"] .rula-process-fields { gap: 14px; }
+.app[data-design="enterprise"] .rula-process-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+  min-width: 0;
+}
+.app[data-design="enterprise"] .rula-process-form-grid > label {
+  min-width: 0;
+  gap: 7px;
+}
+.app[data-design="enterprise"] .rula-process-form-grid > label > :is(input, textarea, select, .styled-select, .styled-select-trigger) {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.app[data-design="enterprise"] .rula-process-form-grid > label > :is(input, textarea, select, .styled-select-trigger) { padding-inline: 14px; }
+.app[data-design="enterprise"] .rula-process-form-grid .field-label-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  line-height: 1.6;
+}
+.app[data-design="enterprise"] .rula-process-form-grid .field-label-line > :first-child { min-width: 0; }
+.app[data-design="enterprise"] .rula-process-heading,
+.app[data-design="enterprise"] .rula-posture-heading { min-width: 0; gap: 12px; }
+.app[data-design="enterprise"] .rula-process-heading > div,
+.app[data-design="enterprise"] .rula-posture-heading > div { min-width: 0; }
+.app[data-design="enterprise"] .rula-process-heading :is(strong, small),
+.app[data-design="enterprise"] .rula-posture-heading :is(strong, small) {
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
+}
+.app[data-design="enterprise"] .rula-posture-panel { gap: 12px; padding: 14px; }
+.app[data-design="enterprise"] .rula-posture-description-field {
+  min-width: 0;
+  padding: 12px;
+  border-color: var(--color-border);
+  background: var(--color-subtle);
+  color: var(--color-ink);
+}
+.app[data-design="enterprise"] .rula-photo-guidance { padding: 10px 12px; }
+.app[data-design="enterprise"] .rula-photo-guidance strong,
+.app[data-design="enterprise"] .rula-posture-dropzone strong { color: var(--color-ink); }
+.app[data-design="enterprise"] .rula-posture-dropzone.has-image img { background: var(--color-subtle); }
+.app[data-design="enterprise"] .rula-ai-image-note {
+  border-color: var(--color-border);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+.app[data-design="enterprise"] .rula-ai-image-note strong { color: var(--color-ink); }
+.app[data-design="enterprise"] .rula-ai-image-note small { color: var(--color-secondary); }
+.app[data-design="enterprise"] .fmea-action-progress-ring::after {
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}
+.app[data-design="enterprise"] .rula-report-data-table.rula-unified-evaluation-table :is(th, td) {
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
+}
+.app[data-design="enterprise"] .rula-posture-image-card { min-width: 0; gap: 8px; padding: 10px; border-color: var(--color-border); background: var(--color-surface); }
+.app[data-design="enterprise"] .rula-posture-image-card.is-selected { border-color: var(--color-focus); box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-focus) 24%, transparent); }
+.app[data-design="enterprise"] .rula-analysis-image-switcher { display: grid; gap: 12px; border-color: var(--color-border); background: var(--color-subtle); }
+.app[data-design="enterprise"] .rula-posture-image-select { min-height: 44px; color: var(--color-ink); }
+.app[data-design="enterprise"] .rula-posture-image-select img { background: var(--color-subtle); }
+.app[data-design="enterprise"] .rula-posture-image-select > span { color: var(--color-ink); font-size: .75rem; overflow-wrap: anywhere; white-space: normal; }
+.app[data-design="enterprise"] .rula-saved-image-select { grid-template-columns: auto minmax(0, 1fr); align-items: center; color: var(--color-accent); }
+.app[data-design="enterprise"] .rula-saved-image-select > span { direction: ltr; text-align: start; }
+.app[data-design="enterprise"] .rula-posture-image-card-meta { gap: 6px; color: var(--color-secondary); }
+.app[data-design="enterprise"] .rula-posture-image-card-meta small { font-size: .72rem; line-height: 1.65; overflow-wrap: anywhere; }
+.app[data-design="enterprise"] .rula-image-review-status { width: fit-content; max-width: 100%; color: var(--color-secondary); font-size: .75rem; font-weight: 650; }
+.app[data-design="enterprise"] .rula-image-review-status.queued,
+.app[data-design="enterprise"] .rula-image-review-status.loading { color: var(--color-warning); }
+.app[data-design="enterprise"] .rula-image-review-status.ready,
+.app[data-design="enterprise"] .rula-manual-review-complete { color: var(--color-success); }
+.app[data-design="enterprise"] .rula-image-review-status.error { color: var(--color-danger); }
+.app[data-design="enterprise"] .rula-image-review-status.cancelled { color: var(--color-warning); }
+.app[data-design="enterprise"] .rula-image-review-error { color: var(--color-danger) !important; }
+.app[data-design="enterprise"] .rula-model-confidence { display: block; margin-block-start: 3px; color: var(--color-secondary); font-size: .68rem; font-weight: 500; line-height: 1.6; }
+.app[data-design="enterprise"] .rula-image-recovery-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.app[data-design="enterprise"] .rula-image-recovery-actions .text-button { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 7px 9px; border: 1px solid var(--color-border); border-radius: 7px; color: var(--color-accent); font-size: .75rem; line-height: 1.5; text-align: center; text-decoration: none; }
+.app[data-design="enterprise"] .rula-image-recovery-actions .text-button:hover { background: var(--color-accent-soft); }
+.app[data-design="enterprise"] .rula-manual-fallback-note,
+.app[data-design="enterprise"] .rula-manual-fallback-summary { display: flex; align-items: flex-start; gap: 10px; min-width: 0; padding: 12px 14px; border: 1px solid var(--color-border); border-inline-start: 3px solid var(--color-warning); border-radius: 9px; background: var(--color-subtle); color: var(--color-secondary); }
+.app[data-design="enterprise"] .rula-manual-fallback-note { flex-wrap: wrap; justify-content: space-between; }
+.app[data-design="enterprise"] .rula-manual-fallback-note > div { flex: 1 1 250px; min-width: 0; }
+.app[data-design="enterprise"] .rula-manual-fallback-note strong { color: var(--color-ink); font-size: .84rem; }
+.app[data-design="enterprise"] .rula-manual-fallback-note p,
+.app[data-design="enterprise"] .rula-manual-fallback-summary span { margin: 4px 0 0; color: var(--color-secondary); font-size: .78rem; line-height: 1.8; overflow-wrap: anywhere; }
+.app[data-design="enterprise"] .rula-manual-fallback-note > p { flex: 1 1 100%; }
+.app[data-design="enterprise"] .rula-manual-fallback-note > button,
+.app[data-design="enterprise"] .rula-image-cancel { min-height: 44px; }
+.app[data-design="enterprise"] .rula-manual-fallback-summary > .icon { flex: 0 0 auto; color: var(--color-warning); }
+.app[data-design="enterprise"] .rula-analysis-image-switcher > p { color: var(--color-secondary); font-size: .78rem; line-height: 1.75; overflow-wrap: anywhere; }
+
+@container (max-width: 330px) {
+
+  .app[data-design="enterprise"] .rula-overview-panel .fmea-action-progress-ring {
+    width: 80px;
+    height: 80px;
+  }
+  .app[data-design="enterprise"] .rula-overview-panel .fmea-action-progress-ring::after { inset: 10px; }
+}
+@container (max-width: 260px) {
+
+  .app[data-design="enterprise"] .rula-overview-panel .fmea-action-progress-list { width: 100%; }
+}
+@media (max-width: 980px) {
+  .app[data-design="enterprise"] .rula-report-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app[data-design="enterprise"] .rula-overview-actions-panel { grid-column: 1 / -1; }
+}
+@media (max-width: 760px) {
+  .app[data-design="enterprise"] .rula-report-overview-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .app[data-design="enterprise"] .rula-overview-actions-panel { grid-column: auto; }
+  .app[data-design="enterprise"] .rula-process-layout { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .app[data-design="enterprise"] .rula-process-fields { gap: 12px; }
+  .app[data-design="enterprise"] .rula-process-form-grid { gap: 12px; }
+  .app[data-design="enterprise"] .rula-posture-panel { padding: 12px; }
+}
+@media (max-width: 520px) {
+  .app[data-design="enterprise"] .rula-process-form-grid { grid-template-columns: minmax(0, 1fr); }
+  .app[data-design="enterprise"] .rula-process-form-grid > label.span-two { grid-column: auto; }
+  .app[data-design="enterprise"] .rula-process-form-grid .fmea-description-field { grid-column: auto; }
+  .app[data-design="enterprise"] .rula-overview-priority-stat { padding: 9px; }
+}
+
+@media (min-width: 761px) and (hover: hover) and (pointer: fine) {
+  .app[data-design="enterprise"] .table-wrap.report-data-table-wrap .report-table-actions :is(.icon-button, summary.icon-button) {
+    width: 32px;
+    height: 32px;
+    min-height: 32px;
+    padding: 4px;
+  }
+}
+
+/* Field spacing is shared by both themes; control states come from foundations. */
+.app[data-design="enterprise"] .rula-process-fields > .rula-process-form-grid {
+  box-sizing: border-box;
+  padding-inline: 16px;
+  padding-block-end: 16px;
+}
+/* No broad field override here: it would erase invalid/readonly/disabled states. */
+.app[data-design="enterprise"][data-theme="blue"] .rula-process-form-grid .ghost {
+  border-color: var(--color-border);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-process-form-grid .fmea-description-ai {
+  border-color: var(--color-border);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-process-form-grid .fmea-description-ai:is(:hover, :focus-visible) {
+  border-color: var(--color-focus);
+  background: var(--color-raised);
+  color: var(--color-ink);
+  box-shadow: none;
+}
+.app[data-design="enterprise"][data-theme="blue"] .optional-label {
+  border: 1px solid var(--color-border);
+  background: var(--color-raised);
+  color: var(--color-secondary);
+}
+
+.app[data-design="enterprise"][data-theme="blue"] :is(.assessment-metrics > span, .rula-assessment-context > span) {
+  border: 1px solid var(--color-border);
+  background: var(--color-subtle);
+  color: var(--color-secondary);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-assessment-context { border-color: var(--color-border); }
+
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis .rula-group-summary > div {
+  border-color: var(--color-border);
+  background: var(--color-subtle);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis .rula-group-summary :is(span, strong) {
+  color: var(--color-ink);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis .rula-group-summary strong {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis :is(.rula-analysis-table-card, .rula-analysis-visual) {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  box-shadow: none;
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis :is(.rula-analysis-table-head, .rula-analysis-visual-head) {
+  border-color: var(--color-border);
+  background: var(--color-subtle);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis :is(.rula-analysis-table-head, .rula-analysis-visual-head) :is(strong, small) {
+  color: var(--color-ink);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis .rula-ai-chip {
+  border-color: var(--color-border);
+  background: var(--color-raised);
+  color: var(--color-accent);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis .rula-analysis-table :is(th, td) {
+  border-color: var(--color-border);
+  color: var(--color-secondary);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis .rula-analysis-table td strong { color: var(--color-ink); }
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis .rula-analysis-table tbody > tr {
+  border-color: var(--color-border);
+  background: var(--color-subtle);
+  box-shadow: none;
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis .rula-analysis-table tbody > tr:is(:nth-child(even), :hover) {
+  background: var(--color-subtle);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis .rula-analysis-table tbody > tr > td:nth-child(n+2):nth-child(-n+5) {
+  border-color: var(--color-border) !important;
+  background: var(--color-raised) !important;
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis .rula-analysis-table tbody > tr > td::before {
+  color: var(--color-secondary);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis .rula-suggested-score {
+  background: var(--color-accent-soft);
+  color: var(--color-accent) !important;
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis .rula-detection-badge.detected {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis .rula-detection-badge.pending,
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis .rula-source-badge.source-default {
+  background: var(--color-raised);
+  color: var(--color-secondary);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis .rula-source-badge.source-ai {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis .rula-source-badge.source-user {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis .rula-awaiting-badge { color: var(--color-warning); }
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis .rula-confirmed-badge { color: var(--color-success); }
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis .rula-review-notice {
+  border-color: color-mix(in srgb, var(--color-warning) 38%, var(--color-border));
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis .rula-review-notice small { color: var(--color-secondary); }
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis :is(.rula-analysis-canvas, .rula-analysis-summary) {
+  border-color: var(--color-border);
+  background: var(--color-subtle);
+  color: var(--color-ink);
+  box-shadow: none;
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis :is(.rula-summary-score small, .rula-analysis-summary p, .rula-analysis-visual-note) {
+  color: var(--color-secondary);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-smart-analysis .rula-summary-score strong { color: var(--color-ink); }
+
+.app[data-design="enterprise"][data-theme="blue"] :is(.fmea-report-page, .rula-report-page) .report-details-card .surface-body > details {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+}
+.app[data-design="enterprise"][data-theme="blue"] :is(.fmea-report-page, .rula-report-page) .report-details-card .surface-body > details > summary {
+  border-color: var(--color-border);
+  background: var(--color-subtle);
+  color: var(--color-ink);
+}
+.app[data-design="enterprise"][data-theme="blue"] .fmea-report-page :is(.report-score-trio > span, .fmea-report-header .report-meta-grid > div, .fmea-report-table-context, .fmea-report-table-context > div, .fmea-final-table-export-bar) {
+  border-color: var(--color-border);
+  background: var(--color-subtle);
+  color: var(--color-ink);
+}
+.app[data-design="enterprise"][data-theme="blue"] .fmea-report-page .report-score-trio > span { color: var(--color-ink); }
+.app[data-design="enterprise"][data-theme="blue"] .fmea-report-page :is(.fmea-report-table-context small, .fmea-report-table-context strong) {
+  color: var(--color-secondary);
+}
+.app[data-design="enterprise"][data-theme="blue"] .fmea-full-details-section :is(.risk-table-search, .risk-table-search input, .risk-table-controls .styled-select-trigger, .risk-table-controls select) {
+  border-color: var(--color-control-border);
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+.app[data-design="enterprise"][data-theme="blue"] .fmea-full-details-section .risk-table-search input { background: transparent; }
+.app[data-design="enterprise"][data-theme="blue"] .fmea-full-details-section .risk-table-search input::placeholder { color: var(--color-muted); opacity: 1; }
+.app[data-design="enterprise"][data-theme="blue"] .fmea-full-details-section .fmea-report-table-wrap {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+}
+.app[data-design="enterprise"][data-theme="blue"] :is(.fmea-report-page, .rula-report-page) .assessment-report-table :is(th, td) {
+  border-color: var(--color-border);
+  color: var(--color-secondary);
+}
+.app[data-design="enterprise"][data-theme="blue"] :is(.fmea-report-page, .rula-report-page) .assessment-report-table th {
+  background: var(--color-subtle);
+  color: var(--color-ink);
+}
+.app[data-design="enterprise"][data-theme="blue"] :is(.fmea-report-page, .rula-report-page) .assessment-report-table tbody tr td {
+  background: var(--color-surface);
+}
+.app[data-design="enterprise"][data-theme="blue"] :is(.fmea-report-page, .rula-report-page) .assessment-report-table tbody tr:nth-child(even) td {
+  background: var(--color-subtle);
+}
+.app[data-design="enterprise"][data-theme="blue"] :is(.fmea-report-page, .rula-report-page) .assessment-report-table tbody tr:hover td {
+  background: var(--color-raised);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-report-page .rula-report-data-table-wrap {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+}
+
+.app[data-design="enterprise"][data-theme="blue"] .rula-report-page :is(.rula-correction-table-wrap, .rula-suggested-actions-panel, .rula-report-impact-panel, .rula-action-scope, .rula-prediction-score-pair, .rula-selected-actions-preview > div) {
+  border-color: var(--color-border);
+  background: var(--color-subtle);
+  color: var(--color-ink);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-report-page .rula-correction-table tbody tr:hover td,
+.app[data-design="enterprise"][data-theme="blue"] .rula-report-page .rula-correction-table tbody tr.selected td,
+.app[data-design="enterprise"][data-theme="blue"] .rula-report-page .rula-general-action-row td {
+  border-color: var(--color-border) !important;
+  background: var(--color-raised) !important;
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-report-page :is(.rula-action-scope, .rula-selected-actions-preview, .rula-prediction-score-pair) :is(strong, small, span) {
+  color: var(--color-secondary);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-report-page .rula-prediction-score-pair strong { color: var(--color-danger); }
+.app[data-design="enterprise"][data-theme="blue"] .rula-report-page .rula-prediction-score-pair strong.predicted { color: var(--color-success); }
+.app[data-design="enterprise"][data-theme="blue"] .rula-report-page .report-ai-action-error {
+  border-color: color-mix(in srgb, var(--color-danger) 38%, var(--color-border));
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+.app[data-design="enterprise"][data-theme="blue"] .required-label {
+  border: 1px solid color-mix(in srgb, var(--color-danger) 38%, var(--color-border));
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+.app[data-design="enterprise"][data-theme="blue"] .status-badge.success,
+.app[data-design="enterprise"][data-theme="blue"] .fmea-workflow-badge.completed,
+.app[data-design="enterprise"][data-theme="blue"] .rula-result-complete {
+  border-color: color-mix(in srgb, var(--color-success) 32%, var(--color-border));
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+.app[data-design="enterprise"][data-theme="blue"] .status-badge.warning,
+.app[data-design="enterprise"][data-theme="blue"] .status-badge.orange,
+.app[data-design="enterprise"][data-theme="blue"] .fmea-workflow-badge.inProgress {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+.app[data-design="enterprise"][data-theme="blue"] .status-badge.danger,
+.app[data-design="enterprise"][data-theme="blue"] .ai-status.unavailable {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+.app[data-design="enterprise"][data-theme="blue"] .status-badge.info,
+.app[data-design="enterprise"][data-theme="blue"] .ai-status:is(.connected, .loading) {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+.app[data-design="enterprise"][data-theme="blue"] :is(.status-badge.neutral, .fmea-workflow-badge.remaining, .rula-result-complete.pending) {
+  background: var(--color-raised);
+  color: var(--color-secondary);
+}
+.app[data-design="enterprise"][data-theme="blue"] :is(.rula-card-risk.acceptable, .rula-table-impact.impact-low) {
+  background: var(--color-success-soft);
+  color: var(--color-success) !important;
+}
+.app[data-design="enterprise"][data-theme="blue"] :is(.rula-card-risk.investigation, .rula-group-badge.group-a) {
+  background: var(--color-accent-soft);
+  color: var(--color-accent) !important;
+}
+.app[data-design="enterprise"][data-theme="blue"] :is(.rula-card-risk.review, .rula-table-impact.impact-medium, .rula-factor-card.impact-medium .rula-factor-impact-label) {
+  background: var(--color-warning-soft);
+  color: var(--color-warning) !important;
+}
+.app[data-design="enterprise"][data-theme="blue"] :is(.rula-card-risk.immediate, .rula-table-impact.impact-high, .rula-factor-card.impact-high .rula-factor-impact-label) {
+  background: var(--color-danger-soft);
+  color: var(--color-danger) !important;
+}
+.app[data-design="enterprise"][data-theme="blue"] :is(.rula-card-risk.review-required, .rula-table-impact.impact-neutral, .rula-factor-impact-label) {
+  background: var(--color-raised);
+  color: var(--color-secondary) !important;
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-factor-card.impact-low .rula-factor-impact-label {
+  background: var(--color-success-soft);
+  color: var(--color-success) !important;
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-group-badge.group-b {
+  background: var(--color-violet-soft);
+  color: var(--color-violet);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-manual-action-scope-note {
+  border-color: var(--color-border);
+  background: var(--color-accent-soft);
+  color: var(--color-secondary);
+}
+.app[data-design="enterprise"][data-theme="blue"] .rula-manual-action-scope-note strong { color: var(--color-ink); }
+.app[data-design="enterprise"][data-theme="blue"] .rula-manual-action-scope-note span { color: var(--color-accent); }
+
+/* Typed FMEA/RULA corrective-action workspace */
+.app[data-design="enterprise"] .actions-workspace :is(.action-create-panel, .action-register-panel) { min-width: 0; }
+.app[data-design="enterprise"] .action-type-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-block-end: 16px; border-block-end: 1px solid var(--color-border); }
+.app[data-design="enterprise"] .action-type-tabs > button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: min(180px, 100%); min-height: 44px; margin-block-end: -1px; padding: 10px 14px; border: 1px solid transparent; border-block-end-color: var(--color-border); border-radius: 8px 8px 0 0; background: transparent; color: var(--color-secondary); font-size: .8125rem; font-weight: 650; }
+.app[data-design="enterprise"] .action-type-tabs > button:hover { background: var(--color-subtle); color: var(--color-ink); }
+.app[data-design="enterprise"] .action-type-tabs > button[aria-selected="true"] { border-color: var(--color-border); border-block-end-color: var(--color-surface); background: var(--color-surface); color: var(--color-accent); }
+.app[data-design="enterprise"] .action-assessment-select { display: grid; gap: 6px; width: min(100%, 720px); margin-block-end: 14px; }
+.app[data-design="enterprise"] .action-project-assessment-selectors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: min(100%, 920px); margin-block-end: 14px; }
+.app[data-design="enterprise"] .action-project-assessment-selectors > label { display: grid; gap: 6px; min-width: 0; }
+.app[data-design="enterprise"] .action-assessment-context { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; margin-block: 10px 14px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-subtle); color: var(--color-secondary); font-size: .75rem; }
+.app[data-design="enterprise"] .action-assessment-context strong { color: var(--color-ink); }
+.app[data-design="enterprise"] :is(.action-fmea-risk-context, .action-rula-assessment-context) { display: grid; gap: 10px; min-width: 0; margin-block-end: 14px; padding: 12px; border: 1px solid var(--color-border); border-radius: 9px; background: var(--color-subtle); color: var(--color-secondary); }
+.app[data-design="enterprise"] .action-fmea-risk-heading { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px; min-width: 0; }
+.app[data-design="enterprise"] .action-fmea-risk-heading > div:first-child { display: grid; gap: 3px; min-width: 0; }
+.app[data-design="enterprise"] .action-fmea-risk-heading small { color: var(--color-secondary); font-size: .7rem; }
+.app[data-design="enterprise"] .action-fmea-risk-heading h3 { margin: 0; color: var(--color-ink); font-size: .875rem; line-height: 1.7; overflow-wrap: anywhere; }
+.app[data-design="enterprise"] .action-fmea-risk-heading > div:last-child { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.app[data-design="enterprise"] .action-ap-badge { display: inline-flex; align-items: center; gap: 4px; color: var(--color-secondary); font-size: .72rem; }
+.app[data-design="enterprise"] .action-fmea-risk-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; min-width: 0; }
+.app[data-design="enterprise"] .action-fmea-risk-metrics > span { display: grid; gap: 3px; min-width: 0; padding: 8px; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-surface); }
+.app[data-design="enterprise"] .action-fmea-risk-metrics small { color: var(--color-secondary); font-size: .68rem; overflow-wrap: anywhere; }
+.app[data-design="enterprise"] .action-fmea-risk-metrics strong { color: var(--color-ink); font-size: .82rem; font-variant-numeric: tabular-nums; }
+.app[data-design="enterprise"] .action-fmea-risk-copy { display: grid; gap: 6px; }
+.app[data-design="enterprise"] .action-fmea-risk-copy p { margin: 0; color: var(--color-secondary); font-size: .75rem; line-height: 1.8; overflow-wrap: anywhere; }
+.app[data-design="enterprise"] .action-fmea-risk-copy strong { color: var(--color-ink); }
+.app[data-design="enterprise"] :is(.action-fmea-risk-context, .action-rula-assessment-context) > .field-hint { margin: 0; line-height: 1.7; }
+.app[data-design="enterprise"] .action-rula-assessment-context { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; font-size: .75rem; line-height: 1.8; }
+.app[data-design="enterprise"] .action-rula-assessment-context > strong { grid-column: 1 / -1; color: var(--color-ink); }
+.app[data-design="enterprise"] .action-create-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 14px 12px; min-width: 0; }
+.app[data-design="enterprise"] .action-create-form > label { display: grid; align-content: start; gap: 6px; min-width: 0; }
+.app[data-design="enterprise"] .action-create-form .action-create-wide { grid-column: 1 / -1; }
+.app[data-design="enterprise"] .action-create-form textarea { min-height: 88px; resize: vertical; }
+.app[data-design="enterprise"] .action-create-submit { align-self: end; justify-self: start; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: min(100%, 190px); }
+.app[data-design="enterprise"] .action-register-tabs { margin-block: 0 14px; }
+.app[data-design="enterprise"] .action-list-filters { display: grid; grid-template-columns: repeat(2, minmax(150px, 1fr)) minmax(120px, auto); align-items: end; gap: 10px; margin-block: 14px; padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-subtle); }
+.app[data-design="enterprise"] .action-list-filters > label { display: grid; gap: 5px; min-width: 0; }
+.app[data-design="enterprise"] .action-list-count { justify-self: end; padding: 8px 4px; color: var(--color-secondary); font-size: .75rem; }
+.app[data-design="enterprise"] .action-register-cards { display: grid; gap: 10px; min-width: 0; }
+.app[data-design="enterprise"] .action-register-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, 250px); align-items: center; gap: 14px; min-width: 0; padding: 14px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); color: var(--color-ink); }
+.app[data-design="enterprise"] .action-register-card-main { display: grid; gap: 7px; min-width: 0; }
+.app[data-design="enterprise"] .action-register-card-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; min-width: 0; }
+.app[data-design="enterprise"] .action-register-card-heading h3 { flex: 1 1 220px; min-width: 0; margin: 0; color: var(--color-ink); font-size: .875rem; line-height: 1.7; overflow-wrap: anywhere; }
+.app[data-design="enterprise"] .action-register-card-main > p { margin: 0; color: var(--color-secondary); font-size: .8125rem; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+.app[data-design="enterprise"] .action-register-fmea-context { display: grid; gap: 8px; min-width: 0; padding: 9px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-subtle); }
+.app[data-design="enterprise"] .action-register-fmea-context > div:first-child { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; color: var(--color-secondary); font-size: .72rem; }
+.app[data-design="enterprise"] .action-register-fmea-context > div:first-child > strong { flex: 1 1 100%; min-width: 0; color: var(--color-ink); overflow-wrap: anywhere; }
+.app[data-design="enterprise"] .action-register-fmea-context .action-fmea-risk-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.app[data-design="enterprise"] .action-register-fmea-context .action-fmea-risk-metrics > span { padding: 5px 7px; }
+.app[data-design="enterprise"] .action-register-rula-context { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--color-secondary); font-size: .72rem; line-height: 1.7; }
+.app[data-design="enterprise"] .action-register-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--color-secondary); font-size: .75rem; }
+.app[data-design="enterprise"] .action-register-card-controls { display: grid; gap: 8px; min-width: 0; }
+.app[data-design="enterprise"] .action-register-card-controls > label { display: grid; gap: 4px; min-width: 0; }
+.app[data-design="enterprise"] .action-register-progress { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; color: var(--color-secondary); font-size: .75rem; }
+.app[data-design="enterprise"] .action-register-progress > span { height: 7px; border-radius: 999px; background: var(--color-subtle); }
+.app[data-design="enterprise"] .action-register-progress > span > i { display: block; height: 100%; border-radius: inherit; background: var(--color-primary); }
+.app[data-design="enterprise"] .action-register-progress strong { color: var(--color-ink); font-variant-numeric: tabular-nums; }
+.app[data-design="enterprise"] .action-pagination-note { margin: 0 0 10px; color: var(--color-secondary); font-size: .75rem; line-height: 1.8; }
+.app[data-design="enterprise"] .action-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; margin-block-start: 14px; color: var(--color-secondary); font-size: .8125rem; }
+.app[data-design="enterprise"] .action-loading { padding: 18px; color: var(--color-secondary); text-align: center; }
+
+@media (max-width: 680px) {
+  .app[data-design="enterprise"] .action-project-assessment-selectors { grid-template-columns: minmax(0, 1fr); }
+  .app[data-design="enterprise"] .action-create-form { grid-template-columns: minmax(0, 1fr); }
+  .app[data-design="enterprise"] .action-create-form .action-create-wide { grid-column: auto; }
+  .app[data-design="enterprise"] .action-create-submit { width: 100%; }
+  .app[data-design="enterprise"] .action-fmea-risk-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app[data-design="enterprise"] .action-rula-assessment-context { grid-template-columns: minmax(0, 1fr); }
+  .app[data-design="enterprise"] .action-rula-assessment-context > strong { grid-column: auto; }
+  .app[data-design="enterprise"] .action-list-filters { grid-template-columns: minmax(0, 1fr); }
+  .app[data-design="enterprise"] .action-list-count { justify-self: start; }
+  .app[data-design="enterprise"] .action-register-card { grid-template-columns: minmax(0, 1fr); }
+  .app[data-design="enterprise"] .action-register-card-controls { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 760px) {
+  .app[data-design="enterprise"] .rula-process-fields > .rula-process-form-grid {
+    padding-inline: 12px;
+    padding-block-end: 12px;
+  }
+  .app[data-design="enterprise"][data-theme="blue"] .fmea-full-details-section .fmea-report-data-table tbody > tr {
+    border-color: var(--color-border);
+    background: var(--color-subtle);
+  }
+  .app[data-design="enterprise"][data-theme="blue"] .fmea-full-details-section .fmea-report-data-table tbody > tr > td:nth-child(9) {
+    background: var(--color-accent-soft) !important;
+    color: var(--color-accent);
+  }
+  .app[data-design="enterprise"][data-theme="blue"] .fmea-full-details-section .fmea-report-data-table tbody > tr > td:nth-child(9)::before {
+    color: var(--color-secondary);
+  }
+}
+
+/* Balanced report panels and readable, bounded activity details. */
+.app[data-design="enterprise"] .fmea-report-dashboard-panel .surface-body { min-height: 128px; }
+.app[data-design="enterprise"] .fmea-report-summary-panel .report-stat { min-height: 60px; padding: 8px 10px; }
+.app[data-design="enterprise"] .fmea-report-summary-panel .report-stat strong { font-size: 1.15rem; }
+.app[data-design="enterprise"] .fmea-report-primary-grid .surface-body { min-height: 180px; }
+.app[data-design="enterprise"] .report-ai-advisory-note { display: block; margin: 0 0 8px; color: var(--color-warning); font-size: .6875rem; line-height: 1.45; }
+.app[data-design="enterprise"] .rula-report-score strong { font-size: 2.5rem; }
+.app[data-design="enterprise"] .rula-factor-value strong { font-size: 1.2rem; }
+.app[data-design="enterprise"] .rula-overview-panel .surface-body { min-height: 128px; }
+.app[data-design="enterprise"] .rula-report-context {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+}
+.app[data-design="enterprise"] .rula-report-context-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+.app[data-design="enterprise"] .rula-report-context-grid > div {
+  min-width: 0;
+  gap: 3px;
+  padding: 8px;
+}
+.app[data-design="enterprise"] .rula-report-context-grid > .rula-report-context-field-wide { grid-column: span 2; }
+.app[data-design="enterprise"] .rula-report-context-grid small { font-size: .625rem; line-height: 1.4; }
+.app[data-design="enterprise"] .rula-report-context-grid strong {
+  max-height: 7rem;
+  overflow: auto;
+  color: var(--color-ink);
+  font-size: .75rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  unicode-bidi: plaintext;
+}
+.app[data-design="enterprise"] .rula-report-context-description {
+  max-height: 8rem;
+  overflow: auto;
+  padding-block-start: 8px;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.app[data-design="enterprise"] .rula-report-context-description p {
+  margin-block-start: 4px;
+  font-size: .75rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  unicode-bidi: plaintext;
+}
+.app[data-design="enterprise"] .fmea-review-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+.app[data-design="enterprise"] .fmea-review-grid > div { min-width: 0; padding: 10px; }
+.app[data-design="enterprise"] .fmea-review-grid :is(strong, p) { font-size: .75rem; line-height: 1.55; overflow-wrap: anywhere; unicode-bidi: plaintext; }
+.app[data-design="enterprise"] .fmea-review-grid .fmea-review-wide p {
+  max-height: 8rem;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+@media (max-width: 1100px) {
+  .app[data-design="enterprise"] .rula-report-context-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .app[data-design="enterprise"] .fmea-report-dashboard-panel .surface-body { min-height: 0; }
+  .app[data-design="enterprise"] .fmea-report-primary-grid .surface-body { min-height: 0; }
+  .app[data-design="enterprise"] .rula-report-context-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app[data-design="enterprise"] .fmea-review-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 380px) {
+  .app[data-design="enterprise"] .rula-report-context-grid { grid-template-columns: minmax(0, 1fr); }
+  .app[data-design="enterprise"] .rula-report-context-grid > .rula-report-context-field-wide { grid-column: auto; }
+}
+
+/* FMEA tables use an RTL grid; numeric cells keep their own LTR text direction. */
+@media (min-width: 761px) {
+  .app[data-design="enterprise"] .table-wrap :is(.fmea-risk-table, .fmea-report-data-table) :is(th, td) {
+    border-left: 0;
+    border-right: 0;
+  }
+  .app[data-design="enterprise"] .table-wrap :is(.fmea-risk-table, .fmea-report-data-table) :is(th, td):not(:last-child) {
+    border-left: 1px solid var(--color-border);
+  }
+}
+
+/* Suggested controls keep their reading space; compact metadata stays on the left. */
+.app[data-design="enterprise"] .fmea-suggested-actions-panel .fmea-suggestion-card {
+  direction: ltr;
+  grid-template-columns: auto minmax(0, 1fr) 27px;
+  grid-template-areas: "controls copy icon";
+  gap: .5rem;
+  padding: .5rem .6rem;
+}
+.app[data-design="enterprise"] .fmea-suggestion-card > .report-action-icon { grid-area: icon; }
+.app[data-design="enterprise"] .fmea-suggestion-card > .fmea-suggestion-copy { grid-area: copy; min-width: 0; display: grid; gap: .25rem; }
+.app[data-design="enterprise"] .fmea-corrective-suggestion-heading { min-width: 0; }
+.app[data-design="enterprise"] .fmea-suggestion-card .fmea-suggestion-title {
+  display: block; width: 100%; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 4px; background: transparent;
+  color: var(--color-ink); font: inherit; font-size: .63rem; font-weight: 500; line-height: 1.7; text-align: start;
+  white-space: nowrap; overflow-x: auto; overflow-y: hidden; text-overflow: clip; scrollbar-width: thin; cursor: pointer;
+}
+.app[data-design="enterprise"] .fmea-suggestion-card .fmea-suggestion-copy small { min-width: 0; font-size: .63rem; line-height: 1.7; }
+.app[data-design="enterprise"] .fmea-suggestion-controls { grid-area: controls; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: .25rem; width: 145px; }
+.app[data-design="enterprise"] .fmea-suggestion-controls > .status-badge { justify-self: stretch; justify-content: center; min-width: 0; padding: .25rem .3rem; font-size: .6rem; white-space: nowrap; }
+.app[data-design="enterprise"] .fmea-suggestion-controls > .text-button { justify-content: center; min-height: 32px; padding: .25rem .15rem; font-size: .61rem; white-space: nowrap; border-radius: 6px; }
+.app[data-design="enterprise"] .fmea-suggestion-controls .danger-text { color: var(--color-danger, #b64b4c); }
+.app[data-design="enterprise"] :is(.fmea-suggestion-title, .fmea-suggestion-controls .text-button):focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.app[data-design="enterprise"] .fmea-suggestions-loading { display: flex; align-items: center; gap: .5rem; color: var(--color-secondary); font-size: .7rem; margin: 0 0 .6rem; }
+.app[data-design="enterprise"] .fmea-suggested-actions-panel .report-ai-action-error { margin: 0 0 .6rem; }
+.app[data-design="enterprise"] .fmea-suggestion-detail { width: min(620px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); padding: 1.2rem; overflow: auto; color: var(--color-ink); background: var(--color-surface); }
+.app[data-design="enterprise"] .fmea-suggestion-detail header, .app[data-design="enterprise"] .fmea-suggestion-detail footer { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.app[data-design="enterprise"] .fmea-suggestion-detail h2 { margin: 0; font-size: 1rem; }
+.app[data-design="enterprise"] .fmea-suggestion-detail :is(h3, p, dd) { overflow: visible; text-overflow: clip; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 2; }
+.app[data-design="enterprise"] .fmea-suggestion-detail h3 { font-size: 1rem; }
+.app[data-design="enterprise"] .fmea-suggestion-detail p { font-size: .85rem; }
+.app[data-design="enterprise"] .fmea-suggestion-detail dt { color: var(--color-secondary); font-size: .75rem; }
+.app[data-design="enterprise"] .fmea-suggestion-detail dd { margin: .2rem 0 .8rem; }
+.app[data-design="enterprise"] .fmea-suggestion-detail-badges { display: flex; gap: .5rem; }
+.app[data-design="enterprise"] .fmea-suggestion-detail .fmea-suggestion-review-hint { color: var(--color-secondary); font-size: .75rem; }
+@media (max-width: 540px) {
+  .app[data-design="enterprise"] .fmea-suggested-actions-panel .fmea-suggestion-card { grid-template-columns: minmax(0, 1fr) 27px; grid-template-areas: "copy icon" "controls controls"; }
+  .app[data-design="enterprise"] .fmea-suggestion-controls { justify-self: start; }
+  .app[data-design="enterprise"] .fmea-suggestion-controls > .text-button { min-height: 44px; }
+  .app[data-design="enterprise"] .fmea-suggestion-detail footer { flex-wrap: wrap; }
+}
+
+/* Image-specific review keeps the existing scoring and explicit human confirmation. */
+.rula-image-processing-note { color: var(--color-secondary); font-size: .72rem; line-height: 1.7; }
+.app[data-design="enterprise"] .rula-compact-image-card { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+.rula-image-card-header, .rula-image-card-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rula-image-card-header { justify-content: space-between; }
+.rula-image-card-header > strong { font-size: .78rem; font-weight: 600; }
+.rula-image-card-header .rula-image-review-status { padding: 2px 8px; border-radius: 6px; background: var(--color-subtle); color: var(--color-secondary); font-size: .67rem; line-height: 1.7; }
+.rula-compact-image-card .rula-posture-image-select { display: grid; place-items: center; width: 100%; min-height: 120px; padding: 0; border-radius: 8px; overflow: hidden; }
+.rula-compact-image-card .rula-posture-image-select img { width: 100%; height: 160px; object-fit: contain; }
+.app[data-design="enterprise"] .rula-image-card-actions .rula-image-edit { min-height: 34px; padding: 5px 12px; border-radius: 7px; font-size: .72rem; }
+.rula-image-card-actions .text-button { min-height: 34px; font-size: .7rem; }
+.rula-compact-image-card > .rula-image-review-error, .rula-image-workspace-status { margin: 0; font-size: .73rem; line-height: 1.8; color: var(--color-secondary); }
+.rula-compact-image-card > .rula-posture-image-card-meta { padding: 0; background: transparent; }
+@media (max-width: 540px) {
+  .app[data-design="enterprise"] .rula-image-card-actions .rula-image-edit, .rula-image-card-actions .text-button { min-height: 44px; }
+}
+.rula-posture-image-card .rula-image-edit { min-height: 44px; white-space: normal; text-align: start; gap: .4rem; font-size: .76rem; }
+.rula-image-review-backdrop { position: fixed; inset: 0; z-index: 1250; display: grid; place-items: center; padding: 16px; background: rgb(3 12 28 / 65%); }
+.rula-image-review-dialog { display: flex; flex-direction: column; width: min(1180px, 100%); max-height: calc(100dvh - 32px); min-width: 0; border: 1px solid var(--color-border, #d4e4ee); border-radius: 16px; background: var(--color-surface, #fff); color: var(--color-ink, #0f172a); box-shadow: var(--elevation-float, 0 18px 50px rgb(0 0 0 / 25%)); }
+.rula-image-review-dialog > header, .rula-image-review-dialog > footer { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; }
+.rula-image-review-dialog > header { border-bottom: 1px solid var(--color-border, #d4e4ee); }
+.rula-image-review-dialog > header h2 { margin: 0; font-size: 1rem; }
+.rula-image-review-dialog > header p { margin: .35rem 0 0; color: var(--color-secondary); overflow-wrap: anywhere; font-size: .78rem; }
+.rula-image-review-dialog > footer { justify-content: flex-end; border-top: 1px solid var(--color-border, #d4e4ee); }
+.rula-image-review-content { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 16px; }
+.rula-image-review-dialog :is(.rula-edit-backdrop, .assessment-image-lightbox-backdrop) { z-index: 1300; }
+@media (max-width: 540px) {
+  .rula-image-review-backdrop { padding: 8px; }
+  .rula-image-review-dialog { max-height: calc(100dvh - 16px); border-radius: 12px; }
+  .rula-image-review-dialog > header, .rula-image-review-dialog > footer, .rula-image-review-content { padding: 12px; }
+}
+
+/* Keep the restored inline review readable within the dashboard workspace. */
+.app[data-design="enterprise"] .rula-smart-analysis,
+.app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-heading strong {
+  color: var(--color-ink);
+}
+.app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-heading small {
+  color: var(--color-secondary);
+}
+.app[data-design="enterprise"] .rula-smart-analysis .rula-posture-description-preview {
+  background: var(--color-subtle);
+  border-color: var(--color-border);
+  color: var(--color-secondary);
+}
+.app[data-design="enterprise"] .rula-smart-analysis .rula-posture-description-preview strong {
+  color: var(--color-ink);
+}
+.app[data-design="enterprise"] .rula-smart-analysis .rula-posture-description-preview p {
+  color: var(--color-secondary);
+}
+@media (min-width: 769px) and (max-width: 1439px) {
+  .app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-visual {
+    width: min(100%, 640px);
+    justify-self: center;
+  }
+}

@@ -125,6 +125,7 @@ function tokenUsageReferences(row: ActivityLogDbRow): TokenUsageReference[] {
   if (row.action === "FMEA_PROCESS_IMAGE_ANALYSIS" || row.action === "FMEA_PROCESS_IMAGE_ANALYSIS_FAILED") add("FMEA_IMAGE_REVIEW", row.requestId);
   if (row.action === "RULA_POSTURE_IMAGE_ANALYSIS" || row.action === "RULA_POSTURE_IMAGE_ANALYSIS_FAILED") add("RULA_IMAGE_REVIEW", row.requestId);
   if (row.action === "RULA_POSTURE_TEXT_ANALYSIS") add("RULA_TEXT_REVIEW", row.requestId);
+  if (row.action === "RULA_TASK_DESCRIPTION_SUGGESTION") add("RULA_TASK_DESCRIPTION_SUGGESTION", row.requestId);
   if (row.action === "FMEA_REPORT_DETAIL_SUGGESTIONS") add("FMEA_REPORT_DETAILS", row.requestId);
   if (row.action === "FMEA_REPORT_ACTION_SUGGESTIONS") add("FMEA_ACTION_SUGGESTIONS", row.requestId);
   if (row.action === "RULA_REPORT_ACTION_SUGGESTIONS") add("RULA_ACTION_SUGGESTIONS", row.requestId);

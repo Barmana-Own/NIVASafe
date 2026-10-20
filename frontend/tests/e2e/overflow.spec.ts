@@ -98,23 +98,18 @@ test.describe("@overflow dynamic states", () => {
     await waitForElementMotionToSettle(page, "#app-sidebar");
     await check(page, "mobile drawer open");
 
-    await page.locator("#app-sidebar [data-testid='theme-switcher'] .theme-trigger").click();
-    await check(page, "mobile drawer theme menu open");
-    await page.keyboard.press("Escape");
-    if (!(await page.locator("#app-sidebar").evaluate((element) => element.classList.contains("open")))) {
-      await page.locator(".mobile-menu").click();
-      await expect(page.locator("#app-sidebar")).toHaveClass(/open/);
-      await waitForElementMotionToSettle(page, "#app-sidebar");
-    }
-    await page.locator("#app-sidebar [data-testid='language-switcher']").click();
-    await check(page, "mobile drawer language menu open");
-    await page.keyboard.press("Escape");
-    if (await page.locator("#app-sidebar").evaluate((element) => element.classList.contains("open"))) {
-      await page.locator(".sidebar-backdrop").click();
-    }
+    await page.locator("#app-sidebar .sidebar-mobile-close").click();
     await expect(page.locator("#app-sidebar")).not.toHaveClass(/open/);
     await waitForElementMotionToSettle(page, "#app-sidebar");
     await check(page, "mobile drawer closed");
+
+    await page.locator(".topbar [data-testid='theme-switcher'] .theme-trigger").click();
+    await check(page, "mobile theme menu open");
+    await page.keyboard.press("Escape");
+    await page.locator(".topbar [data-testid='language-switcher']").click();
+    await check(page, "mobile language menu open");
+    await page.keyboard.press("Escape");
+    await check(page, "mobile utility menus closed");
   });
 
   test("keeps selects, dialogs, validation errors and file preview viewport-safe", async ({ page }) => {
@@ -125,9 +120,10 @@ test.describe("@overflow dynamic states", () => {
     await check(page, "portalized StyledSelect open");
     await page.keyboard.press("Escape");
 
-    await page.locator(".fmea-report-data-table .report-table-actions button").first().click();
+    await page.locator(".compact-assessment-mobile .rm-row").first().click();
+    await expect(page.locator(".compact-assessment-dialog[open]")).toBeVisible();
     await check(page, "FMEA detail dialog open");
-    await page.locator(".fmea-report-dialog-actions button").first().click();
+    await page.locator(".compact-assessment-dialog .rm-header .rm-icon").click();
 
     await page.goto("/login#login-form", { waitUntil: "domcontentloaded" });
     await waitForPageReady(page);
@@ -135,10 +131,13 @@ test.describe("@overflow dynamic states", () => {
     await check(page, "login validation error");
 
     await authenticate(page, "/files");
+    const previewPromise = page.waitForEvent("popup");
     await page.locator(".file-card .file-actions button").first().click();
-    await check(page, "file preview dialog open");
-    await page.locator(".file-preview-dialog .modal-close").click();
-    await check(page, "file preview dialog closed");
+    const preview = await previewPromise;
+    await expect(preview).toHaveURL(/^blob:/);
+    await check(page, "file preview opened in isolated tab");
+    await preview.close();
+    await check(page, "file preview closed");
   });
 
   test("keeps expanded activity and report details inside the viewport", async ({ page }) => {
@@ -155,22 +154,22 @@ test.describe("@overflow dynamic states", () => {
     }
 
     await authenticate(page, "/rula/rula-e2e-1/report");
-    const rulaDetails = page.locator(".rula-report-data-section details").first();
-    if (await rulaDetails.count()) {
-      const summary = rulaDetails.locator("summary").first();
-      if (!(await rulaDetails.getAttribute("open"))) await summary.click();
-      await check(page, "RULA report details expanded");
-    }
+    const mobileRulaRow = page.locator(".rula-report-data-section .rm-list .rm-row").first();
+    await expect(mobileRulaRow).toBeVisible();
+    await mobileRulaRow.click();
+    await expect(page.locator(".rula-mobile-ui.rm-modal [role=dialog]")).toBeVisible();
+    await check(page, "RULA mobile report details open");
+    await page.locator(".rula-mobile-ui.rm-modal .rm-header button").click();
+    await check(page, "RULA mobile report details closed");
   });
 
   test("keeps RTL/LTR and theme changes within the viewport", async ({ page }) => {
     await openRoute(page, "/rula/rula-e2e-1/report", true, { width: 390, height: 844 });
-    await page.locator(".mobile-menu").click();
-    await page.locator("#app-sidebar [data-testid='language-switcher']").click();
+    await page.locator(".topbar [data-testid='language-switcher']").click();
     await page.getByRole("menuitemradio", { name: /English|انگلیسی/i }).click();
     await check(page, "English RTL-to-LTR switch");
 
-    await page.locator("#app-sidebar [data-testid='theme-switcher'] .theme-trigger").click();
+    await page.locator(".topbar [data-testid='theme-switcher'] .theme-trigger").click();
     await page.locator("[data-theme-option='white']").click();
     await check(page, "English white theme");
   });

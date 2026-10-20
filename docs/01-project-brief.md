@@ -27,3 +27,12 @@ The UI must preserve RTL/LTR behavior, required-field clarity and explicit user 
 ## Incremental multi-company scope
 
 The account model supports multiple independent organizations per user. Each organization receives its own membership set, settings, projects and assessment data, plus an independent subscription state. The authenticated shell lets users switch only among server-returned memberships; in production, a newly created organization remains available for billing but operational routes stay blocked until that organization's subscription is paid and usable. This scope preserves the existing monolithic frontend/API/database structure and does not introduce a separate service.
+
+
+## Scoped checkpoint rula-image-experience-20261019-01 — 2026-10-19 / 1405-07-27
+
+Scoped status: PASS — safe code release with public image processing disabled.
+
+Public access means all eligible memberships after one actual platform approval, explicit informed image consent, no fabricated provider approval and no anatomical optimization. Source baseline and old release preserved.
+
+Evidence: C:/NIVASafe/reports/evidence/rula-image-experience-20261019-01. Full-product status is not COMPLETE.

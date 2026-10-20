@@ -66,8 +66,9 @@ export function PwaManager() {
     const syncInstalledState = () => setInstalled(isStandalone());
     const onDisplayModeChange = () => syncInstalledState();
     const onBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
       if (isStandalone()) return;
+      // Preserve browser-native promotion. The optional in-app button still
+      // calls prompt() from a user gesture; merely loading a page never does.
       const prompt = event as BeforeInstallPromptEvent;
       setInstallPrompt(prompt);
       if (canShowInstallHint()) setInstallVisible(true);

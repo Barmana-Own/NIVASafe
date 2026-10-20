@@ -20,6 +20,26 @@ describe("RULA assessment model transformations", () => {
     expect(isRulaSingleAnalysisReviewed(analysis)).toBe(false);
   });
 
+  it("keeps AI review requirements through image mapping and persisted-value normalization", () => {
+    const parts = ["upperArm", "lowerArm", "wrist", "wristTwist", "neck", "trunk", "legs"] as const;
+    const imageSide = Object.fromEntries(parts.map((part) => [part, {
+      angle: 15,
+      score: 2,
+      detected: true,
+      confidence: part === "neck" ? 0.3 : 0.9,
+      requiresReview: part === "neck",
+    }]));
+    const mapped = rulaAnalysisFromImageSide(imageSide);
+
+    expect(mapped?.analysis.neck).toMatchObject({ requiresReview: true, confirmedByUser: false });
+    expect(mapped && isRulaSingleAnalysisReviewed(mapped.analysis)).toBe(false);
+
+    const reloaded = postureAnalysisFromValue(mapped?.analysis);
+    expect(reloaded.neck).toMatchObject({ requiresReview: true, confirmedByUser: false });
+    expect(isRulaSingleAnalysisReviewed(reloaded)).toBe(false);
+    expect(isRulaSingleAnalysisReviewed({ ...reloaded, neck: { ...reloaded.neck, source: "USER", confirmedByUser: true } })).toBe(true);
+  });
+
   it("keeps independently reviewed left and right postures when preparing BOTH-side state", () => {
     const analysis = postureAnalysisFromValue({
       sideAnalyses: {

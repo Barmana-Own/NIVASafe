@@ -1,0 +1,1 @@
+import {PrismaClient}from'../backend/node_modules/@prisma/client/default.js';const p=new PrismaClient();try{console.log(JSON.stringify(await p.$queryRaw`SELECT migration_name,finished_at FROM _prisma_migrations ORDER BY started_at DESC LIMIT 3`));}finally{await p.$disconnect()}

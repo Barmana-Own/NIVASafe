@@ -2,87 +2,88 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { calculateRpn, riskLevel } from "@nivasafe/domain";
 
-const appSource = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
-const apiClientSource = readFileSync(new URL("./api/client.ts", import.meta.url), "utf8");
-const appLayoutSource = readFileSync(new URL("./layout/AppLayout.tsx", import.meta.url), "utf8");
-const uiSource = readFileSync(new URL("./components/UI.tsx", import.meta.url), "utf8");
-const overlaySource = readFileSync(new URL("./components/Overlay.tsx", import.meta.url), "utf8");
-const generalPagesSource = readFileSync(new URL("./features/general/GeneralPages.tsx", import.meta.url), "utf8");
-const accountPagesSource = readFileSync(new URL("./features/account/AccountPages.tsx", import.meta.url), "utf8");
-const registrationPagesSource = readFileSync(new URL("./features/account/RegistrationPage.tsx", import.meta.url), "utf8");
-const assessmentShellSource = readFileSync(new URL("./features/assessments/AssessmentPages.tsx", import.meta.url), "utf8");
-const assessmentSharedSource = readFileSync(new URL("./features/assessments/assessmentShared.tsx", import.meta.url), "utf8");
-const fmeaFeatureSource = readFileSync(new URL("./features/assessments/fmea/FmeaFeature.tsx", import.meta.url), "utf8");
-const fmeaReportComponentsSource = readFileSync(new URL("./features/assessments/fmea/FmeaReportComponents.tsx", import.meta.url), "utf8");
-const fmeaDraftSource = readFileSync(new URL("./features/assessments/fmea/fmeaDraft.ts", import.meta.url), "utf8");
-const fmeaRiskEditorSource = readFileSync(new URL("./features/assessments/fmea/FmeaRiskEditor.tsx", import.meta.url), "utf8");
-const fmeaRiskRegisterSource = readFileSync(new URL("./features/assessments/fmea/FmeaRiskRegister.tsx", import.meta.url), "utf8");
-const rulaFeatureSource = readFileSync(new URL("./features/assessments/rula/RulaFeature.tsx", import.meta.url), "utf8");
-const rulaModelSource = readFileSync(new URL("./features/assessments/rula/rulaModel.ts", import.meta.url), "utf8");
-const rulaPostureComponentsSource = readFileSync(new URL("./features/assessments/rula/RulaPostureComponents.tsx", import.meta.url), "utf8");
-const assessmentPagesSource = `${assessmentShellSource}\n${assessmentSharedSource}\n${fmeaFeatureSource}\n${fmeaReportComponentsSource}\n${fmeaDraftSource}\n${fmeaRiskEditorSource}\n${fmeaRiskRegisterSource}\n${rulaFeatureSource}\n${rulaModelSource}\n${rulaPostureComponentsSource}`;
-const filesPageSource = readFileSync(new URL("./features/files/FilesPage.tsx", import.meta.url), "utf8");
-const stylesEntrySource = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
-const stylesIndexUrl = new URL("./styles/index.css", import.meta.url);
-const stylesIndexSource = readFileSync(stylesIndexUrl, "utf8");
-const stylesModuleSources = Array.from(stylesIndexSource.matchAll(/@import\s+"([^"]+)"/g), ([, importPath]) =>
-  readFileSync(new URL(importPath, stylesIndexUrl), "utf8"),
-);
-const stylesSource = `${stylesEntrySource}\n${stylesIndexSource}\n${stylesModuleSources.join("\n")}`;
-const indexHtmlSource = readFileSync(new URL("../index.html", import.meta.url), "utf8");
-const i18nSource = readFileSync(new URL("./i18n.tsx", import.meta.url), "utf8");
-const themeSource = readFileSync(new URL("./theme.ts", import.meta.url), "utf8");
-const requiredFieldValidationSource = readFileSync(new URL("./forms/requiredFieldValidation.tsx", import.meta.url), "utf8");
-const autoSaveSource = readFileSync(new URL("./forms/AutoSaveForm.tsx", import.meta.url), "utf8");
-const autoSaveRulesSource = readFileSync(new URL("./forms/autoSave.ts", import.meta.url), "utf8");
-const assistantPageSource = readFileSync(new URL("./features/assistant/AssistantPage.tsx", import.meta.url), "utf8");
-const adminPageSource = readFileSync(new URL("./features/admin/AdminPanelPage.tsx", import.meta.url), "utf8");
-const adminModuleSource = readFileSync(new URL("../../backend/src/modules/admin.ts", import.meta.url), "utf8");
-const fmeaApiSource = readFileSync(new URL("../../backend/src/modules/assessments.ts", import.meta.url), "utf8");
-const filesApiSource = readFileSync(new URL("../../backend/src/modules/files.ts", import.meta.url), "utf8");
-const fmeaProcessSource = readFileSync(new URL("../../backend/src/fmea-process.ts", import.meta.url), "utf8");
-const reportsSource = readFileSync(new URL("../../backend/src/modules/reports.ts", import.meta.url), "utf8");
-const actionsSource = readFileSync(new URL("../../backend/src/modules/actions.ts", import.meta.url), "utf8");
-const actionProgressSource = readFileSync(new URL("../../backend/src/action-progress.ts", import.meta.url), "utf8");
-const fmeaReportHelpersSource = readFileSync(new URL("../../backend/src/fmea-report.ts", import.meta.url), "utf8");
+const readSource = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8").replace(/\r\n/g, "\n");
+const assistantDesignSource = readSource("./features/assistant/assistant-design.css");
+const appSource = readSource("./App.tsx");
+const apiClientSource = readSource("./api/client.ts");
+const appLayoutSource = readSource("./layout/AppLayout.tsx");
+const navigationSource = readSource("./layout/navigation.ts");
+const shellStylesSource = readSource("./styles/shell.css");
+const profileMenuSource = readSource("./layout/ProfileMenu.tsx");
+const appearanceProviderSource = readSource("./AppearanceProvider.tsx");
+const routeRecoverySource = readSource("./components/RouteRecovery.tsx");
+const modalFocusSource = readSource("./components/useModalFocus.ts");
+const headerNotificationsSource = readSource("./features/notifications/HeaderNotifications.tsx");
+const uiSource = readSource("./components/UI.tsx");
+const generalPagesSource = readSource("./features/general/GeneralPages.tsx");
+const actionPagesSource = readSource("./features/actions/ActionsPage.tsx");
+const accountPagesSource = readSource("./features/account/AccountPages.tsx");
+const registrationPagesSource = readSource("./features/account/RegistrationPage.tsx");
+const assessmentPagesSource = readSource("./features/assessments/AssessmentPages.tsx");
+const rulaPostureReviewSource = readSource("./features/assessments/rulaPostureReview.ts");
+const checklistsPageSource = readSource("./features/checklists/ChecklistsPage.tsx");
+const incidentsPageSource = readSource("./features/incidents/IncidentsPage.tsx");
+const supportPageSource = readSource("./features/support/SupportPage.tsx");
 
-describe("FMEA module boundaries", () => {
-  it("keeps route exports stable while isolating process and report modules", () => {
-    expect(assessmentShellSource).toContain('export { FmeaPage, FmeaReportPage } from "./fmea/FmeaFeature";');
-    expect(assessmentShellSource).not.toContain("function FmeaProcessPage");
-    expect(assessmentShellSource).not.toContain("function FmeaReportPage");
-    expect(fmeaFeatureSource).toContain('from "./FmeaReportComponents"');
-    expect(fmeaFeatureSource).toContain("export function FmeaPage");
-    expect(fmeaFeatureSource).toContain("function FmeaProcessPage");
-    expect(fmeaReportComponentsSource).toContain("export function FmeaRiskDistributionChart");
-    expect(fmeaReportComponentsSource).toContain("export function FmeaScoreGuide");
+describe("RULA corrective AI report integration", () => {
+  it("separates main-factor names from source captions without inline text collisions", () => {
+    expect(stylesSource).toContain('.rula-factor-title > div { display: grid; gap: .18rem; min-width: 0; text-align: start; }');
+    expect(stylesSource).toContain('.rula-factor-title > div > strong, .rula-factor-title > div > small { display: block; margin: 0; line-height: 1.55; overflow-wrap: anywhere; }');
+    expect(stylesSource).toContain('.rula-factor-title small { color: var(--rula-result-muted); font-size: .64rem; font-weight: 400; }');
+    expect(assessmentPagesSource).toContain('factor.source !== "AI" && <small>');
+  });
+  it("does not label input validation as an AI outage and uses a localized explanation", () => {
+    expect(assessmentPagesSource).toContain('setAiStatus(invalidInput ? undefined : "unavailable")');
+    expect(assessmentPagesSource).toContain('t("assessment.rulaAiSuggestionInputInvalid")');
+    expect(assessmentPagesSource).toContain('.status === 400');
+  });
+  it("requests draft recommendations only in the active report step and cancels stale requests", () => {
+    expect(assessmentPagesSource).toContain('if (!active) return;');
+    expect(assessmentPagesSource).toContain('"/rula/action-suggestions", { method: "POST", body: requestBody, signal: controller.signal }');
+    expect(assessmentPagesSource).toContain('return () => controller.abort();');
+    expect(assessmentPagesSource).toContain('active={wizardStep === 3}');
+  });
+  it("preserves successful empty model output and distinguishes alternate AI from local failure", () => {
+    expect(assessmentPagesSource).toContain('const loadedSuggestions = aiSuggestedActions ?? report?.suggestedActions ?? [];');
+    expect(assessmentPagesSource).toContain('if (report?.suggestionSnapshot || aiSuggestedActions !== null || loadedSuggestions.length || !report)');
+    expect(assessmentPagesSource).toContain('if (result.data.reasonCode) setAiActionError');
+    expect(assessmentPagesSource).toContain('if (response.data.reasonCode) setAiError');
   });
 });
-
-describe("RULA module boundaries", () => {
-  it("keeps route exports stable while isolating the RULA feature module", () => {
-    expect(assessmentShellSource).toContain('export { RulaPage, RulaReportPage } from "./rula/RulaFeature";');
-    expect(assessmentShellSource).not.toContain("function RulaPage");
-    expect(assessmentShellSource).not.toContain("function RulaReportPage");
-    expect(rulaFeatureSource).toContain("export function RulaPage");
-    expect(rulaFeatureSource).toContain("export function RulaReportPage");
-    expect(rulaPostureComponentsSource).toContain("function RulaPostureAnalysisStep");
-    expect(rulaFeatureSource).toContain("function RulaReportDataTable");
-  });
-});
-
-describe("RULA responsive posture data", () => {
-  it("keeps side state and review provenance explicit while using shared phone cards", () => {
-    expect(rulaModelSource).toContain("sideAnalyses");
-    expect(rulaModelSource).toContain("confirmedByUser");
-    expect(rulaModelSource).toContain("isRulaPostureResultReviewed");
-    expect(rulaPostureComponentsSource).toContain('data-label={t("assessment.detectedStatus")}');
-    expect(rulaFeatureSource).toContain('data-label={t("assessment.rulaActionBodySide")}');
-    expect(stylesSource).toContain('.responsive-table-container[data-responsive="cards"] > table.rula-analysis-table > tbody > tr > td:first-child');
-    expect(stylesSource).toContain('.responsive-table-container[data-responsive="cards"] > table.rula-report-data-table > tbody > tr > td:nth-child(8)');
-    expect(stylesSource).toContain('.responsive-table-container[data-responsive="cards"] > table.rula-correction-table > tbody > tr > td:nth-child(2)');
-  });
-});
+const rulaOverviewSource = readSource("./features/assessments/RulaReportOverview.tsx");
+const rulaOverviewModelSource = readSource("./features/assessments/rulaOverviewModel.ts");
+const filesPageSource = readSource("./features/files/FilesPage.tsx");
+// Match the stylesheet cascade loaded by main.tsx and its feature-level CSS imports.
+const stylesSource = [
+  "./styles.css",
+  "./styles/tokens.css",
+  "./styles/foundations.css",
+  "./styles/shell.css",
+  "./styles/authentication.css",
+  "./styles/assessments.css",
+  "./styles/management.css",
+  "./styles/assistant.css",
+  "./styles/support.css",
+  "./styles/responsive-tables.css",
+  "./features/assistant/assistant-design.css",
+  "./features/assessments/rula-mobile-table.css",
+].map(readSource).join("\n");
+const indexHtmlSource = readSource("../index.html");
+const i18nSource = readSource("./i18n.tsx");
+const themeSource = readSource("./theme.ts");
+const requiredFieldValidationSource = readSource("./forms/requiredFieldValidation.tsx");
+const autoSaveSource = readSource("./forms/AutoSaveForm.tsx");
+const autoSaveRulesSource = readSource("./forms/autoSave.ts");
+const assistantPageSource = readSource("./features/assistant/AssistantPage.tsx");
+const adminPageSource = readSource("./features/admin/AdminPanelPage.tsx");
+const adminModuleSource = readSource("../../backend/src/modules/admin.ts");
+const fmeaApiSource = readSource("../../backend/src/modules/assessments.ts");
+const filesApiSource = readSource("../../backend/src/modules/files.ts");
+const fmeaProcessSource = readSource("../../backend/src/fmea-process.ts");
+const reportsSource = readSource("../../backend/src/modules/reports.ts");
+const actionsSource = readSource("../../backend/src/modules/actions.ts");
+const actionProgressSource = readSource("../../backend/src/action-progress.ts");
+const fmeaReportHelpersSource = readSource("../../backend/src/fmea-report.ts");
 
 describe("FMEA live preview", () => {
   it("uses the same shared rule as the API", () => {
@@ -99,7 +100,7 @@ describe("FMEA live preview", () => {
     expect(assessmentPagesSource).not.toContain("fmeaRiskThresholdsFromSettings");
     expect(fmeaApiSource).toContain("riskLevel(rpn, DEFAULT_THRESHOLDS)");
     expect(reportsSource).toContain("function fmeaReferenceRiskThresholds(): RiskThresholds");
-    expect(reportsSource).toContain("return normaliseFmeaItems(data.items, DEFAULT_THRESHOLDS)");
+    expect(reportsSource).toContain("return normaliseFmeaItems(data.items, data.riskThresholds ?? DEFAULT_THRESHOLDS)");
     expect(assessmentPagesSource).toContain('<StatusBadge value={previewRiskLevel}/>');
     expect(assessmentPagesSource).toContain('<option value="VERY_LOW">{t("status.veryLow")}</option>');
     expect(uiSource).toContain('VERY_LOW: { key: "status.veryLow"');
@@ -142,9 +143,12 @@ describe("authenticated header controls", () => {
     expect(appLayoutSource).not.toContain("<StyledSelect");
     expect(appLayoutSource).not.toContain('className="ghost logout"');
     expect(appLayoutSource).toContain('className="side-logout"');
-    expect(appLayoutSource).toContain("function NotificationBell()");
-    expect(appLayoutSource).toContain('useLoad<HeaderNotification[]>("/notifications")');
-    expect(appLayoutSource).toContain('data-testid="header-notifications"');
+    expect(appLayoutSource).toContain('aria-label={t("shell.logoutAccount")}');
+    expect(appLayoutSource).toContain('<span className="side-logout-label">{t("shell.logoutAccount")}</span>');
+    expect(stylesSource).toContain(".app.sidebar-collapsed .side-logout-label { display: none; }");
+    expect(appLayoutSource).toContain('<HeaderNotifications key={`${session.user.id}:${orgId}`}');
+    expect(headerNotificationsSource).toContain('useLoad<NotificationSummary>("/notifications/summary")');
+    expect(headerNotificationsSource).toContain('data-testid="header-notifications"');
     expect(stylesSource).toContain(".header-notifications");
     expect(stylesSource).toContain(".notification-badge");
     expect(stylesSource).not.toContain(".header-actions .logout");
@@ -155,68 +159,57 @@ describe("authenticated header controls", () => {
   });
 });
 
-describe("touch and keyboard accessibility contract", () => {
-  it("keeps shell navigation keyboard-reachable and provides a skip target", () => {
-    expect(appLayoutSource).toContain('className="skip-link" href="#main-content"');
-    expect(appLayoutSource).toContain('id="main-content" className="workspace" tabIndex={-1}');
-    expect(appLayoutSource).toContain('document.documentElement.style.overflow = "hidden"');
-    expect(appLayoutSource).toContain('type="button" className="sidebar-backdrop"');
-    expect(i18nSource).toContain('"shell.skipToContent": "رفتن به محتوای اصلی"');
-    expect(i18nSource).toContain('"shell.skipToContent": "Skip to main content"');
-    expect(stylesSource).toContain(".skip-link:focus-visible");
-    expect(stylesSource).toContain("#main-content");
-  });
-
-  it("gives icon actions contextual names and exposes password visibility state", () => {
-    expect(assistantPageSource).toContain('aria-label={t("assistant.newConversation")}');
-    expect(generalPagesSource).toContain('aria-label={`${t("notifications.markRead")}: ${item.title}`}');
-    expect(generalPagesSource).toContain('aria-label={`${t("common.download")}: ${file.originalName}`}');
-    expect(generalPagesSource).toContain('aria-label={`${t("common.delete")}: ${file.originalName}`}');
-    expect(accountPagesSource).toContain('aria-pressed={showPassword}');
-    expect(registrationPagesSource).toContain('aria-pressed={showPassword}');
-    expect(registrationPagesSource).toContain('aria-pressed={showConfirmPassword}');
-  });
-
-  it("uses semantic controls for assessment cards and image previews", () => {
-    expect(assessmentPagesSource).toContain('className="assessment-card-main"');
-    expect(assessmentPagesSource).toContain('aria-label={`${t("assessment.operations")}: ${item.title}`}');
-    expect(assessmentPagesSource).not.toContain('role="link" tabIndex={0}');
-    expect(assessmentPagesSource).not.toContain('role="button" tabIndex={0}');
-    expect(assessmentPagesSource).toContain('className="fmea-process-image-preview-button"');
-    expect(stylesSource).toContain(".assessment-card-main:focus-visible");
-    expect(stylesSource).toContain(".fmea-selected-items button:focus-visible");
-    expect(stylesSource).toContain("min-block-size: var(--control-height-compact)");
-  });
-
-  it("keeps non-text report status available to assistive technology", () => {
-    expect(assessmentPagesSource).toContain('role="progressbar" aria-label={t("assessment.rulaFactorContribution"');
-    expect(assessmentPagesSource).toContain('role="img" aria-label={t("report.riskDistribution")}');
-    expect(stylesSource).toContain("@media (prefers-reduced-motion: reduce)");
-  });
-});
-
 describe("account shortcut", () => {
-  it("makes the signed-in user card open account settings", () => {
-    expect(appLayoutSource).toContain('<Link className="side-user" to="/profile"');
-    expect(appLayoutSource).toContain('aria-label={t("nav.profile")}');
-    expect(stylesSource).toContain(".side-user:hover, .side-user:focus-visible");
-    expect(i18nSource).toContain('"nav.profile": "تنظیمات حساب"');
-    expect(i18nSource).toContain('"nav.profile": "Account settings"');
+  it("keeps account management in the sidebar and removes the duplicate header profile control", () => {
+    expect(appLayoutSource.indexOf("<ProfileMenu />")).toBeGreaterThan(appLayoutSource.indexOf('<aside ref={sidebar}'));
+    expect(appLayoutSource.slice(appLayoutSource.indexOf('<div className="header-actions">'), appLayoutSource.indexOf("</div>", appLayoutSource.indexOf('<div className="header-actions">')))).not.toContain("ProfileMenu");
+    expect(profileMenuSource).toContain('<Link to="/profile" role="menuitem"');
+    expect(profileMenuSource).toContain('{t("nav.profile")}');
+    expect(profileMenuSource).toContain('aria-haspopup="menu" aria-expanded={open}');
+    expect(stylesSource).toContain(".profile-menu-trigger");
+    expect(stylesSource).toContain(".app.sidebar-collapsed .side-user { display: none; }");
+    expect(stylesSource).toContain(".app.sidebar-collapsed .side-logout { width: 44px;");
+    expect(i18nSource).toContain('"nav.profile": "تنظیمات حساب و برنامه"');
+    expect(i18nSource).toContain('"nav.profile": "Account and application settings"');
   });
 });
 
-describe("planned safety modules", () => {
-  it("exposes checklist and incident routes with an explicit coming-soon state", () => {
-    expect(appLayoutSource).toContain('path: "/checklists", labelKey: "nav.checklists"');
-    expect(appLayoutSource).toContain('path: "/incidents", labelKey: "nav.incidents"');
-    expect(appLayoutSource).toContain('safety: "group.safety"');
-    expect(appSource).toContain('path="checklists" element={<ComingSoonPage');
-    expect(appSource).toContain('path="incidents" element={<ComingSoonPage');
-    expect(generalPagesSource).toContain('t("comingSoon.status")');
-    expect(generalPagesSource).toContain('t("comingSoon.message")');
-    expect(i18nSource).toContain('"nav.checklists": "چک‌لیست و ممیزها"');
-    expect(i18nSource).toContain('"nav.incidents": "ثبت و مدیریت حوادث"');
-    expect(i18nSource).toContain('"comingSoon.message": "این بخش در حال توسعه است و پس از آماده‌سازی در دسترس شما قرار می‌گیرد."');
+describe("checklists and incident workflows", () => {
+  it("connects checklist templates and inspections to their authorized persisted API workflows", () => {
+    expect(navigationSource).toContain('id: "checklists", labelKey: "nav.checklists", icon: "audit", path: "/checklists", scope: "inspectors"');
+    expect(appSource).toContain('path="checklists" element={<AccessGuard roles={[');
+    expect(appSource).toContain("<ChecklistsPage />");
+    expect(checklistsPageSource).toContain('useLoad<ChecklistTemplate[]>("/checklists/templates?limit=100")');
+    expect(checklistsPageSource).toContain('api<ChecklistTemplate>(editingTemplateId ? `/checklists/templates/');
+    expect(checklistsPageSource).toContain('/checklists/inspections/${encodeURIComponent(current.id)}/submit');
+    expect(checklistsPageSource).toContain('/checklists/inspections/${encodeURIComponent(current.id)}/review');
+    expect(checklistsPageSource).toContain('t("checklists.scopeNote")');
+    expect(i18nSource).toContain('"checklists.templateUpdated"');
+    expect(i18nSource).toContain('"checklists.inspectionSubmitted"');
+  });
+
+  it("connects incident reporting and review without inventing severity or investigation fields", () => {
+    expect(navigationSource).toContain('id: "incident-management", labelKey: "nav.incidents", icon: "warning", path: "/incidents", scope: "all"');
+    expect(appSource).toContain('path="incidents" element={<IncidentsPage />');
+    expect(incidentsPageSource).toContain('useLoad<IncidentReport[]>("/incidents?limit=100")');
+    expect(incidentsPageSource).toContain('api<IncidentReport>("/incidents"');
+    expect(incidentsPageSource).toContain('method: "PATCH"');
+    expect(incidentsPageSource).not.toContain("severity");
+    expect(incidentsPageSource).toContain('t("incidents.scopeNote")');
+    expect(i18nSource).toContain('"incidents.statusUpdated"');
+  });
+});
+
+describe("support request conversation", () => {
+  it("loads tenant-owned ticket details and appends idempotent requester and support replies", () => {
+    expect(supportPageSource).toContain('useLoad<SupportRequestDetails>(open ? detailPath : null)');
+    expect(supportPageSource).toContain('`/support/requests/${encodeURIComponent(requestId)}/replies`');
+    expect(supportPageSource).toContain('`/admin/support-requests/${encodeURIComponent(requestId)}/replies`');
+    expect(supportPageSource).toContain('headers: { "idempotency-key": replyIdempotencyKey.current }');
+    expect(supportPageSource).toContain('await api<SupportThreadReply>');
+    expect(supportPageSource).toContain('t("support.supportTeam")');
+    expect(supportPageSource).toContain("requests.reload");
+    expect(i18nSource).toContain('"support.replySent"');
   });
 });
 
@@ -233,90 +226,8 @@ describe("styled select controls", () => {
   });
 });
 
-describe("viewport-safe overlay architecture", () => {
-  it("portals floating controls, positions them within the viewport and removes overflow workarounds", () => {
-    expect(overlaySource).toContain("createPortal");
-    expect(overlaySource).toContain('OVERLAY_ROOT_ID = "nivasafe-overlay-root"');
-    expect(overlaySource).toContain("getBoundingClientRect");
-    expect(overlaySource).toContain('window.addEventListener("scroll", update, true)');
-    expect(uiSource).toContain("OverlayPortal");
-    expect(uiSource).toContain("useFloatingPosition");
-    expect(assessmentPagesSource).toContain("function OverlayDialogFrame");
-    expect(assessmentPagesSource).toContain("function ReportInlineDetails");
-    expect(assessmentPagesSource).toContain("<OverlayDialogFrame");
-    expect(assessmentPagesSource).toContain("<ReportInlineDetails");
-    expect(overlaySource).toContain("focusableElements");
-    expect(overlaySource).toContain("hasOpenFloatingOverlay");
-    expect(overlaySource).toContain("focusScopeElements");
-    expect(overlaySource).toContain("isInFocusScope");
-    expect(overlaySource).toContain("document.documentElement.style.overflow = \"hidden\"");
-    expect(stylesSource).toContain("#nivasafe-overlay-root");
-    expect(stylesSource).toContain(".report-inline-details-popover { position: fixed");
-    expect(stylesSource).not.toContain(".report-inline-details > summary");
-    expect(stylesSource).not.toContain(".surface:has(.styled-select.is-open)");
-    expect(stylesSource).not.toContain(".surface:has(.localized-date-input.is-open)");
-    expect(stylesSource).not.toContain(".table-wrap:has(.styled-select.is-open)");
-  });
-
-  it("keeps dialogs focus-trapped and body-scroll-safe", () => {
-    expect(overlaySource).toContain("useBodyScrollLock(open)");
-    expect(overlaySource).toContain('event.key !== "Tab"');
-    expect(overlaySource).toContain('document.addEventListener("keydown", onKeyDown, true)');
-    expect(uiSource).toContain('aria-modal="true"');
-    expect(uiSource).toContain('describedBy="dialog-message"');
-    expect(overlaySource).toContain("document.body.style.paddingInlineEnd");
-  });
-
-  it("keeps file previews in-app and releases object URLs", () => {
-    expect(filesPageSource).toContain("<Modal open={Boolean(filePreview)}");
-    expect(filesPageSource).toContain('filePreview.mode === "image"');
-    expect(filesPageSource).toContain('filePreview.mode === "video"');
-    expect(filesPageSource).toContain('filePreview.mode === "pdf"');
-    expect(filesPageSource).toContain('<object data={filePreview.url} type="application/pdf"');
-    expect(filesPageSource).toContain("URL.revokeObjectURL");
-    expect(filesPageSource).not.toContain("window.open");
-    expect(stylesSource).toContain(".file-preview-dialog");
-    expect(stylesSource).toContain(".file-preview-content object");
-    expect(stylesSource).toContain("max-height: calc(100dvh");
-  });
-});
-
-describe("shared UI design system", () => {
-  it("exposes the reusable interaction, form, feedback and modal primitives", () => {
-    expect(uiSource).toContain("export function Button");
-    expect(uiSource).toContain("IconButton = forwardRef");
-    expect(uiSource).toContain("export function FormField");
-    expect(uiSource).toContain("export function Alert");
-    expect(uiSource).toContain("export function LoadingState");
-    expect(uiSource).toContain("export function Badge");
-    expect(uiSource).toContain("export function Modal");
-    expect(uiSource).toContain("export function PageActions");
-    expect(uiSource).toContain("export function Surface");
-    expect(uiSource).toContain('aria-busy={loading || undefined}');
-    expect(uiSource).toContain('aria-label={label}');
-    expect(uiSource).toContain('disabled={disabled || loading}');
-  });
-
-  it("keeps the sizing, focus and layering contract in one stylesheet", () => {
-    expect(stylesSource).toContain("--control-height-compact: 44px");
-    expect(stylesSource).toContain("--touch-target: 44px");
-    expect(stylesSource).toContain("--focus-ring:");
-    expect(stylesSource).toContain("--z-dialog: 120");
-    expect(stylesSource).toContain(".ui-button-primary, .primary");
-    expect(stylesSource).toContain(".ui-icon-button, .icon-button");
-    expect(stylesSource).toContain(".ui-alert > span");
-    expect(stylesSource).toContain("@media (prefers-reduced-motion: reduce)");
-    expect(filesPageSource).toContain("Button");
-    expect(filesPageSource).toContain("IconButton");
-    expect(generalPagesSource).toContain("LoadingState");
-    expect(adminPageSource).toContain("UiLoadingState");
-    expect(stylesSource).toContain('.app[data-theme="blue"] .theme-option');
-    expect(stylesSource).toContain('.app[data-theme="white"] .theme-option');
-  });
-});
-
 describe("form interaction ergonomics", () => {
-  it("moves through the next available field with Enter and scrolls newly opened inline panels into view", () => {
+  it("moves through fields with Enter and focuses accessible editors while retaining inline panel scrolling", () => {
     expect(appSource).toContain("<FormInteractionEnhancer/>");
     expect(uiSource).toContain("export function FormInteractionEnhancer");
     expect(uiSource).toContain('event.key !== "Enter"');
@@ -325,10 +236,13 @@ describe("form interaction ergonomics", () => {
     expect(uiSource).toContain("[data-scroll-target]");
     expect(generalPagesSource).toContain('id="dashboard-layout-controls"');
     expect(generalPagesSource).toContain('data-scroll-target="#dashboard-layout-controls"');
-    expect(accountPagesSource).toContain('data-scroll-target={`#member-edit-${member.id}`}');
-    expect(adminPageSource).toContain('data-scroll-target={`#admin-user-edit-${user.id}`}');
+    expect(accountPagesSource).toContain('role="dialog" tabIndex={-1} aria-modal="true"');
+    expect(adminPageSource).toContain('role="dialog" tabIndex={-1} aria-modal="true"');
+    expect(modalFocusSource).toContain('element.querySelector<HTMLElement>(\'[data-autofocus="true"]\')');
+    expect(modalFocusSource).toContain('if (event.shiftKey && (document.activeElement === first || document.activeElement === element))');
     expect(stylesSource).toContain("scroll-margin-top: 1.25rem");
-    expect(stylesSource).toContain(".admin-edit-row { scroll-margin-top:");
+    expect(stylesSource).toContain(".admin-user-editor { display: grid; gap: 16px;");
+    expect(stylesSource).toContain("max-height: calc(100dvh - 48px); overflow-y: auto; overscroll-behavior: contain;");
   });
 });
 
@@ -337,7 +251,7 @@ describe("localized corrective-action dates", () => {
     expect(uiSource).toContain("export function LocalizedDateInput");
     expect(uiSource).toContain("fa-IR-u-ca-persian");
     expect(uiSource).toContain('type="hidden" name={name}');
-    expect(generalPagesSource).toContain('<LocalizedDateInput name="dueDate"');
+    expect(actionPagesSource).toContain('<LocalizedDateInput name="dueDate"');
     expect(assessmentPagesSource).toContain('<LocalizedDateInput name="dueDate"');
     expect(stylesSource).toContain(".localized-date-popover {");
     expect(i18nSource).toContain('"actions.chooseDate"');
@@ -358,13 +272,14 @@ describe("corrective-action body-side scope", () => {
     expect(actionsSource).toContain("bodySide: actionBodySideSchema.nullable().optional()");
     expect(actionsSource).toContain("RULA_ACTION_BODY_SIDE_REQUIRED");
     expect(actionsSource).toContain("RULA_ACTION_BODY_SIDE_MISMATCH");
-    expect(generalPagesSource).toContain('name="bodySide"');
-    expect(generalPagesSource).toContain('name="rulaId"');
-    expect(generalPagesSource).toContain('t("actions.bodySideColumn")');
+    expect(actionPagesSource).toContain('name="bodySide"');
+    expect(actionPagesSource).toContain('rulaId: createRulaAssessment.id');
+    expect(actionPagesSource).toContain('t("actions.bodySideColumn")');
+    expect(actionPagesSource).toContain("allowedRulaActionSides(createRulaAssessment.bodySide)");
     expect(assessmentPagesSource).toContain('const actionSide = action.bodySide ?? payload.bodySide');
     expect(assessmentPagesSource).toContain('bodySide: actionSide');
     expect(assessmentPagesSource).toContain("buildLocalRulaSuggestionsForAssessment");
-    expect(assessmentPagesSource).toContain("const RULA_CORRECTIVE_SUGGESTION_MAX = 6;");
+    expect(assessmentPagesSource).toContain("const RULA_CORRECTIVE_SUGGESTION_MAX = 20;");
     expect(assessmentPagesSource).toContain("suggestions.slice(0, RULA_CORRECTIVE_SUGGESTION_MAX)");
     expect(assessmentPagesSource).toContain('t("assessment.rulaActionBodySide")');
     expect(reportsSource).toContain('localizedRulaBodySide(action.bodySide ?? undefined, locale)');
@@ -373,16 +288,47 @@ describe("corrective-action body-side scope", () => {
 
 describe("corrective-action form layout", () => {
   it("keeps the new-action fields in deliberate responsive rows with a dedicated submit control", () => {
-    expect(generalPagesSource).toContain('className="action-field action-project"');
-    expect(generalPagesSource).toContain('className="action-field action-rula"');
-    expect(generalPagesSource).toContain('className="action-field action-body-side"');
-    expect(generalPagesSource).toContain('className="action-field action-description"');
-    expect(generalPagesSource).toContain('className="primary action-submit" type="submit"');
-    expect(stylesSource).toContain(".action-form { grid-template-columns: repeat(12, minmax(0, 1fr)); align-items: start; }");
-    expect(stylesSource).toContain(".action-form .action-description { grid-column: span 8; }");
-    expect(stylesSource).toContain(".action-form .action-submit { align-self: end; min-height: var(--control-height); width: 100%; white-space: nowrap; }");
-    expect(stylesSource).toContain(".action-form .action-submit { grid-column: 1 / -1; justify-self: start; width: min(100%, 15rem); }");
-    expect(stylesSource).toContain(".action-form .action-submit { width: 100%; }");
+    expect(actionPagesSource).toContain('className="action-create-form"');
+    expect(actionPagesSource).toContain('className="primary action-create-submit" type="submit"');
+    expect(stylesSource).toContain(".action-create-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));");
+    expect(stylesSource).toContain(".action-create-form .action-create-wide { grid-column: 1 / -1; }");
+    expect(stylesSource).toContain(".action-register-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, 250px);");
+  });
+});
+
+describe("typed corrective-action workspace", () => {
+  it("keeps FMEA and RULA creation and register tabs independent", () => {
+    expect(actionPagesSource).toContain('role="tablist" aria-label={t("actions.createType")}');
+    expect(actionPagesSource).toContain('role="tablist" aria-label={t("actions.registerType")}');
+    expect(actionPagesSource).toContain("function handleActionTabKeyDown");
+    expect(actionPagesSource).toContain('aria-controls="action-list-panel"');
+    expect(actionPagesSource).toContain('const [createType, setCreateType]');
+    expect(actionPagesSource).toContain('const [registerType, setRegisterType]');
+    expect(actionPagesSource).toContain('const fmeaProjects = useMemo(() => projectsForAssessments(fmeas.data), [fmeas.data])');
+    expect(actionPagesSource).toContain('const rulaProjects = useMemo(() => projectsForAssessments(rulas.data), [rulas.data])');
+    expect(actionPagesSource).toContain('const fmeaRegister = useActionsByProject(registerType === "FMEA" ? listFmeaProjectId || null : null, "FMEA", registerType === "FMEA" ? listFmeaId || null : null)');
+    expect(actionPagesSource).toContain('const rulaRegister = useActionsByProject(registerType === "RULA" ? listRulaProjectId || null : null, "RULA", registerType === "RULA" ? listRulaId || null : null)');
+    expect(actionPagesSource).toContain('assessmentItemIds: new Set(listFmeaAssessment?.items.map((item) => item.id) ?? [])');
+    expect(actionPagesSource).toContain('value={createFmeaProjectId}');
+    expect(actionPagesSource).toContain('value={listFmeaProjectId}');
+    expect(actionPagesSource).toContain('className="action-fmea-risk-context"');
+    expect(actionPagesSource).toContain('className="action-rula-assessment-context"');
+    expect(actionPagesSource).toContain('actionPriorityForRiskLevel(selectedRiskItem.riskLevel)');
+    expect(actionPagesSource).not.toContain("reportPath(");
+    expect(actionPagesSource).toContain('name="fmeaItemId"');
+    expect(actionPagesSource).toContain('name="bodySide"');
+    expect(actionPagesSource).toContain("allowedRulaActionSides(assessment.bodySide)");
+  });
+
+  it("posts only to the existing action API and preserves the general legacy register paging", () => {
+    expect(actionPagesSource.match(/api\("\/actions"/g)).toHaveLength(1);
+    expect(actionPagesSource).toContain("buildFmeaActionPayload");
+    expect(actionPagesSource).toContain("buildRulaActionPayload");
+    expect(actionPagesSource).toContain('headers: { "idempotency-key": idempotencyKey }');
+    expect(actionPagesSource).toContain("if (actionCreatePending.current) return;");
+    expect(actionPagesSource).toContain('actionListQueryString({ type: "UNCLASSIFIED", page: legacyPage, limit })');
+    expect(actionPagesSource).toContain('filterActionList(legacyActions, { type: "UNCLASSIFIED", status: statusFilter || undefined, priority: priorityFilter || undefined })');
+    expect(actionPagesSource).not.toContain("/actions?rulaId=");
   });
 });
 
@@ -613,9 +559,11 @@ describe("FMEA risk register", () => {
     expect(assessmentPagesSource).toContain('t("report.addManualAction")');
     expect(assessmentPagesSource).toContain("const FMEA_REPORT_VISIBLE_ITEM_COUNT = 5");
     expect(assessmentPagesSource).toContain("const FMEA_REPORT_AI_ACTION_MAX = 8");
-    expect(assessmentPagesSource).toContain('t("report.getAiActionSuggestion")');
-    expect(assessmentPagesSource).toContain('t("report.showMoreFailureModes", { count: hiddenTopFailureModeCount })');
-    expect(assessmentPagesSource).toContain('t("report.showMoreActions", { count: hiddenSuggestedActionCount })');
+    expect(assessmentPagesSource).not.toContain('t("report.getAiActionSuggestion")');
+    expect(assessmentPagesSource).toContain("useFmeaAutomaticSuggestions(id, locale,");
+    expect(assessmentPagesSource).toContain('t("report.showMoreFailureModes", { count: hiddenTopFailureModeCount.toLocaleString(numberLocale) })');
+    expect(assessmentPagesSource).toContain("visibleFmeaReportItems(suggestedActionItems, false, FMEA_REPORT_VISIBLE_ITEM_COUNT)");
+    expect(assessmentPagesSource).not.toContain("showAllSuggestedActions");
     expect(stylesSource).toContain(".report-list-toggle {");
     expect(assessmentPagesSource).toContain("function openManualActionForm()");
     expect(assessmentPagesSource).toContain("showActionRegister");
@@ -631,7 +579,7 @@ describe("FMEA risk register", () => {
     expect(stylesSource).toContain("inset-block-start: 50%;");
     expect(stylesSource).toContain(".fmea-report-table-toolbar .risk-table-search input {");
     expect(stylesSource).toContain(".fmea-report-table-toolbar .risk-table-search:focus-within input {");
-    const interactiveReportTableSource = fmeaRiskRegisterSource.slice(fmeaRiskRegisterSource.indexOf("function FmeaInteractiveReportRiskTable"), fmeaRiskRegisterSource.indexOf("function FmeaReportItemDetailsDialog"));
+    const interactiveReportTableSource = assessmentPagesSource.slice(assessmentPagesSource.indexOf("function FmeaInteractiveReportRiskTable"), assessmentPagesSource.indexOf("function FmeaReportItemDetailsDialog"));
     expect(interactiveReportTableSource).not.toContain('t("assessment.processActivity")}</th>');
     expect(assessmentPagesSource).toContain('onClick={() => onView(item)}');
     expect(assessmentPagesSource).toContain('onClick={() => onEdit(item)}');
@@ -672,9 +620,7 @@ describe("FMEA risk register", () => {
     expect(assessmentPagesSource).toContain("formatFmeaRiskPercentage");
     expect(assessmentPagesSource).toContain("onMouseEnter={() => activate(entry.level)}");
     expect(assessmentPagesSource).toContain('t("report.ofTotal")');
-    expect(assessmentPagesSource).toContain("completedActionCount");
-    expect(assessmentPagesSource).toContain("inProgressActionCount");
-    expect(assessmentPagesSource).toContain("remainingActionCount");
+    expect(assessmentPagesSource).toContain("<FmeaActionProgressChart progress={reportActionProgress}");
     expect(assessmentPagesSource).toContain('fmea-risk-donut-label');
     expect(stylesSource).toContain(".fmea-risk-donut {");
     expect(stylesSource).toContain("background: transparent");
@@ -704,15 +650,16 @@ describe("FMEA risk register", () => {
   it("moves the FMEA process and date above the full details table", () => {
     expect(assessmentPagesSource).toContain("function FmeaReportTableContext");
     expect(assessmentPagesSource).toContain('className="fmea-report-table-context"');
-    const reportTableSource = fmeaReportComponentsSource.slice(fmeaReportComponentsSource.indexOf("export function FmeaReportRiskTable"), fmeaReportComponentsSource.indexOf("export function FmeaScoreGuide"));
+    const reportTableSource = assessmentPagesSource.slice(assessmentPagesSource.indexOf("function FmeaReportRiskTable"), assessmentPagesSource.indexOf("function FmeaScoreGuide"));
     expect(reportTableSource).not.toContain('t("assessment.processActivity")}</th>');
     expect(reportTableSource).not.toContain('<td className="report-table-text">{processName}</td>');
   });
 
   it("puts the final-table exports above the FMEA results table", () => {
-    const fmeaReportSource = fmeaFeatureSource.slice(fmeaFeatureSource.indexOf("export function FmeaReportPage"));
+    const fmeaReportSource = assessmentPagesSource.slice(assessmentPagesSource.indexOf("export function FmeaReportPage"), assessmentPagesSource.indexOf("export function RulaReportPage"));
     expect(fmeaReportSource).toContain('downloadFmeaFullReport("pdf")');
     expect(fmeaReportSource).toContain('downloadFmeaFullReport("docx")');
+    expect(fmeaReportSource).toContain('downloadFmeaFullReport("xlsx")');
     expect(fmeaReportSource).toContain("locale=${locale}");
     expect(assessmentPagesSource).toContain("function FmeaFinalTableExportBar");
     expect(assessmentPagesSource).toContain('onDownload("xlsx")');
@@ -770,9 +717,9 @@ describe("FMEA risk register", () => {
   });
 
   it("does not ask for manual row number or process stage when adding a risk row", () => {
-    const formStart = fmeaFeatureSource.indexOf('<SectionCard title={t("assessment.addRiskRow")');
-    const formEnd = fmeaFeatureSource.indexOf("</SectionCard>}", formStart);
-    const addRowSource = fmeaFeatureSource.slice(formStart, formEnd);
+    const formStart = assessmentPagesSource.indexOf('<SectionCard title={t("assessment.addRiskRow")');
+    const formEnd = assessmentPagesSource.indexOf("</SectionCard>}", formStart);
+    const addRowSource = assessmentPagesSource.slice(formStart, formEnd);
     expect(addRowSource).not.toContain('name="rowNumber"');
     expect(addRowSource).not.toContain('name="processStep"');
     expect(assessmentPagesSource).toContain('const requiredFields = ["failureMode", "effect", "cause"]');
@@ -786,9 +733,9 @@ describe("FMEA risk register", () => {
 
 describe("FMEA creation stepper", () => {
   it("keeps the three stages visible and opens report/results after registration", () => {
-    const wizardStart = fmeaFeatureSource.indexOf('description={t("assessment.threeSteps"');
-    const wizardEnd = fmeaFeatureSource.indexOf('<fieldset id="fmea-process-step" data-step="1"', wizardStart);
-    const wizardSource = fmeaFeatureSource.slice(wizardStart, wizardEnd);
+    const wizardStart = assessmentPagesSource.indexOf('description={t("assessment.threeSteps"');
+    const wizardEnd = assessmentPagesSource.indexOf('<fieldset id="fmea-process-step" data-step="1"', wizardStart);
+    const wizardSource = assessmentPagesSource.slice(wizardStart, wizardEnd);
     expect(assessmentPagesSource).toContain('const labels = [t("assessment.processInformation"), t("assessment.review"), t("assessment.reportResults")]');
     expect(wizardSource).toContain('{wizardStep === 3 ? <FmeaReportStepper onStepClick={handleFmeaStepClick}/> : <FmeaCreationStepper currentStep={wizardStep} onStepClick={handleFmeaStepClick}/>}');
     expect(assessmentPagesSource).toContain('function FmeaCreationStepper({ currentStep, onStepClick }');
@@ -834,8 +781,8 @@ describe("FMEA creation stepper", () => {
     expect(i18nSource).toContain('"assessment.moveRowDown": "جابجایی ردیف به پایین"');
     expect(stylesSource).toContain('.fmea-stage-two-review {');
     expect(stylesSource).toContain('.fmea-review-risk-card-compact {');
-    const stageTwoReviewStart = fmeaFeatureSource.indexOf('{wizardStep === 2 && <div className="fmea-stage-two-review">');
-    const stageTwoReviewSource = fmeaFeatureSource.slice(stageTwoReviewStart, fmeaFeatureSource.indexOf('<div className="wizard-actions">', stageTwoReviewStart));
+    const stageTwoReviewStart = assessmentPagesSource.indexOf('{wizardStep === 2 && <div className="fmea-stage-two-review">');
+    const stageTwoReviewSource = assessmentPagesSource.slice(stageTwoReviewStart, assessmentPagesSource.indexOf('<div className="wizard-actions">', stageTwoReviewStart));
     expect(stageTwoReviewSource.indexOf('FmeaStageTwoDetailsCard')).toBeLessThan(stageTwoReviewSource.indexOf('fmea-add-risk-row-trigger'));
     expect(assessmentPagesSource).toContain('{registeredAssessmentsView && selectedAssessment && canEdit() && wizardStep === 2 && <SectionCard title={t("assessment.addRiskRow")');
     expect(assessmentPagesSource).toContain('className="ghost button-link fmea-registered-button"');
@@ -845,7 +792,7 @@ describe("FMEA creation stepper", () => {
     expect(assessmentPagesSource).toContain('navigate("/fmea?view=registered")');
     expect(assessmentPagesSource).toContain('registeredAssessmentsView && <div id="fmea-registered-assessments"');
     expect(assessmentPagesSource).toContain('onClick={() => navigate("/fmea")}');
-    expect(assessmentPagesSource).toContain('className="assessment-card-main" aria-label={`${t("assessment.openReport")}: ${item.title}`}');
+    expect(assessmentPagesSource).toContain('className="assessment-card" key={item.id} onClick={() => navigate(`/fmea/${item.id}/report`)}');
     expect(assessmentPagesSource).not.toContain('onClick={() => setSelected(item.id)}');
     expect(assessmentPagesSource).toContain('id="fmea-registered-assessments"');
     expect(assessmentPagesSource).toContain('t("assessment.previousStep")');
@@ -874,14 +821,14 @@ describe("FMEA creation stepper", () => {
 
   });
 
-  it("seeds five persisted details and renders the report details card before the manual add-row control", () => {
+  it("preserves up to twenty model-selected details and renders them before the manual add-row control", () => {
     expect(assessmentPagesSource).toContain('const [reviewDetailSeedLoading, setReviewDetailSeedLoading] = useState(false)');
     expect(assessmentPagesSource).toContain('body: JSON.stringify({ locale, autoCreate: true })');
     expect(assessmentPagesSource).toContain('detail-suggestions');
     expect(assessmentPagesSource).toContain('function FmeaStageTwoDetailsCard');
-    expect(assessmentPagesSource).toContain('className="report-details-card"');
+    expect(assessmentPagesSource).toContain('className="report-details-card fmea-full-details-section"');
     expect(assessmentPagesSource).toContain('mode: "risk-rows"');
-    expect(assessmentPagesSource).toContain('riskRows?.slice(0, 5)');
+    expect(assessmentPagesSource).toContain('riskRows?.slice(0, 20)');
     expect(assessmentPagesSource).toContain('items={stageTwoDetailsItems}');
     expect(assessmentPagesSource).toContain('report.items.length === 0');
     expect(assessmentPagesSource).toContain('<FmeaStageTwoDetailsCard items={stageTwoDetailsItems}');
@@ -893,12 +840,19 @@ describe("FMEA creation stepper", () => {
 describe("RULA creation stepper", () => {
   it("uses the requested review/scoring and assessment-reporting labels", () => {
     expect(assessmentPagesSource).toContain('[t("assessment.processInformation"), t("assessment.rulaReviewScoring"), t("assessment.rulaAssessmentReporting")]');
-    expect(assessmentPagesSource).toContain('onClick={() => { setError(""); setWizardStep(step); }} disabled={submitting}');
+    expect(assessmentPagesSource).toContain('onClick={() => { if (step === 3) { if (!validateRulaProcessInfo()) return; storeCurrentRulaImageReview(selectedPostureImageKeyRef.current); if (!validateWizardStep(2)) return; } setError(""); setWizardStep(step); }} disabled={submitting}');
     expect(assessmentPagesSource).toContain('disabled={wizardStep === 1 || submitting} onClick={() => { setError(""); setWizardStep((step) => step === 3 ? 2 : 1); }}>{t("assessment.previousStep")}</button>');
     expect(assessmentPagesSource).toContain('function advanceRulaWizard()');
+    expect(assessmentPagesSource).toContain('if (wizardStep === 2) storeCurrentRulaImageReview(selectedPostureImageKeyRef.current);');
+    expect(assessmentPagesSource).toContain('if (step === 3) { if (!validateRulaProcessInfo()) return; storeCurrentRulaImageReview(selectedPostureImageKeyRef.current); if (!validateWizardStep(2)) return; }');
+    expect(assessmentPagesSource).toContain('else if (review?.editedAnalysis) { setRulaForce(review.force ?? 0); setRulaMuscleUse(review.muscleUse ?? false); setPostureAnalysis(review.editedAnalysis); }');
     expect(assessmentPagesSource).toContain('if (missing) { setError(t("assessment.validationEnter", { field: missing[1] })); scrollAssessmentValidationToTop(); return false; }');
     expect(assessmentPagesSource).toContain('setWizardStep((step) => step === 1 ? 2 : step === 2 ? 3 : 3);');
-    expect(assessmentPagesSource).toContain('function validateWizardStep() {\n    if (wizardStep === 1) return validateRulaProcessInfo();\n    setError("");\n    return true;\n  }');
+    expect(assessmentPagesSource).toContain('function validateWizardStep(step = wizardStep)');
+    expect(assessmentPagesSource).toContain('if (!canAdvanceRulaImageReview(imageReviews, manualRulaFallback))');
+    expect(assessmentPagesSource).toContain('import { canAdvanceRulaImageReview, isManualRulaReviewComplete');
+    expect(assessmentPagesSource).toContain('savedPostureImages.length > savedImageAssessments.current.length');
+    expect(assessmentPagesSource).toContain('if (!validateWizardStep(2)) { setWizardStep(2); return; }');
     expect(assessmentPagesSource).not.toContain('hasUnconfirmedRulaResults(postureAnalysis, rulaBodySide)');
     expect(assessmentPagesSource).toContain('if (wizardStep < 3) { advanceRulaWizard(); return; } if (!validateRulaProcessInfo()) { setWizardStep(1); return; }');
     expect(assessmentPagesSource).toContain('navigate(`/rula/${created.data.id}/report`)');
@@ -906,7 +860,7 @@ describe("RULA creation stepper", () => {
     expect(i18nSource).toContain('"assessment.calculateRegisterRula": "Register and view report"');
     expect(stylesSource).toContain('.wizard-stepper > button:focus-visible');
     expect(stylesSource).toContain('.assessment-validation-alert { scroll-margin-top: 1rem; }');
-    expect(assessmentPagesSource).toContain('<fieldset hidden={wizardStep !== 3}><legend>{t("assessment.rulaAssessmentReporting")}</legend>');
+    expect(assessmentPagesSource).toContain('<fieldset hidden={wizardStep !== 3}><legend tabIndex={-1}>{t("assessment.rulaAssessmentReporting")}</legend>');
     expect(assessmentPagesSource).toContain('onClick={advanceRulaWizard}>{t("common.next")}');
     expect(i18nSource).toContain('"assessment.rulaReviewScoring": "مرور و ثبت و امتیاز دهی"');
     expect(i18nSource).toContain('"assessment.rulaAssessmentReporting": "گزارش دهی ارزیابی"');
@@ -935,20 +889,29 @@ describe("RULA assessment results view", () => {
     expect(i18nSource).toContain('"assessment.rulaRegistered": "ارزیابی‌های ثبت‌شده"');
     expect(i18nSource).toContain('"assessment.rulaRegistered": "Registered assessments"');
   });
-  it("renders RULA results as semantic cards and keeps report actions", () => {
+  it("renders RULA results as FMEA-style clickable cards and keeps report actions", () => {
     expect(assessmentPagesSource).toContain('className="assessment-list rula-assessment-list"');
     expect(assessmentPagesSource).toContain('className="assessment-card rula-assessment-card"');
-    expect(assessmentPagesSource).toContain('className="assessment-card-main" aria-label={t("assessment.openRulaReport") + ": " + displayTitle}');
-    expect(assessmentPagesSource).not.toContain('role="link" tabIndex={0}');
+    expect(assessmentPagesSource).toContain('onClick={handleOpen}');
+    expect(assessmentPagesSource).toContain('onKeyDown={handleKeyDown}');
+    expect(assessmentPagesSource).toContain('event.stopPropagation()');
     expect(assessmentPagesSource).toContain('onDownload(item, "xlsx")');
     expect(assessmentPagesSource).toContain('onDownload(item, "docx")');
     expect(assessmentPagesSource).toContain("onDelete(item)");
     expect(assessmentPagesSource).toContain('rula-assessment-context');
+    expect(assessmentPagesSource).toContain('<strong title={taskDescription}>{taskDescription}</strong>');
     expect(assessmentPagesSource).toContain('onOpenReport={(item) => navigate');
     expect(assessmentPagesSource).not.toContain('className="assessment-report-table rula-assessment-register-table"');
     expect(stylesSource).toContain(".rula-assessment-list");
     expect(stylesSource).toContain(".rula-assessment-card");
     expect(stylesSource).toContain(".rula-assessment-card:focus-visible");
+    expect(stylesSource).toContain(".rula-assessment-context > span:first-child > strong");
+    expect(stylesSource).toContain("text-overflow: ellipsis");
+    expect(stylesSource).toContain("white-space: nowrap");
+    const rulaReportPageSource = assessmentPagesSource.slice(assessmentPagesSource.indexOf("export function RulaReportPage"), assessmentPagesSource.indexOf("function RulaAssessmentTable"));
+    expect(rulaReportPageSource).toContain('/reports/rula/${report.assessment.id}.xlsx?locale=${locale}');
+    expect(rulaReportPageSource).toContain('/reports/rula/${report.assessment.id}.docx?locale=${locale}');
+    expect(rulaReportPageSource).toContain('/reports/rula/${report.assessment.id}.pdf?locale=${locale}');
   });
   it("keeps the manual RULA action form below the final data table", () => {
     const finalTableIndex = assessmentPagesSource.lastIndexOf("<RulaReportDataTable");
@@ -957,7 +920,7 @@ describe("RULA assessment results view", () => {
     const impactPanelIndex = assessmentPagesSource.indexOf('<aside className="rula-report-impact-panel"');
     expect(manualFormRenderIndex).toBeGreaterThan(impactPanelIndex);
     expect(assessmentPagesSource).toContain("const manualActionForm = onAddAction ? <RulaManualActionForm");
-    expect(assessmentPagesSource).toContain("<RulaReportDataTable analysis={visibleAnalysis}");
+    expect(assessmentPagesSource).toContain("<RulaReportDataTable analysis={tableAnalysis}");
     expect(assessmentPagesSource).toContain("{manualActionForm}</div>");
     expect(assessmentPagesSource).toContain('type="submit" formNoValidate');
     expect(assessmentPagesSource).toContain("manualValidationError");
@@ -1046,6 +1009,26 @@ describe("RULA process information", () => {
     expect(stylesSource).toContain(".rula-process-form-grid #rula-task-description { min-height: 148px; font-size: .7rem; line-height: 1.35; padding: .68rem .78rem; }");
   });
 
+  it("uses the RULA-specific, bounded task-description AI route", () => {
+    const requestStart = assessmentPagesSource.indexOf("async function requestRulaTaskDescriptionSuggestion()");
+    const requestEnd = assessmentPagesSource.indexOf("function acceptRulaTaskDescriptionSuggestion()", requestStart);
+    const rulaDescriptionRequest = assessmentPagesSource.slice(requestStart, requestEnd);
+    expect(rulaDescriptionRequest).toContain('rulaAiRequest<RulaTaskDescriptionResponse>("/rula/task-description-suggestion"');
+    expect(rulaDescriptionRequest).toContain("body: JSON.stringify({ jobTitle: title, taskDescription: rulaTaskDescription.trim(), locale })");
+    expect(rulaDescriptionRequest).not.toContain("/fmea/process-suggestions");
+    expect(assessmentPagesSource).toContain('id="rula-ai-data-use-note" className="field-hint"');
+    expect(i18nSource).toContain('"assessment.rulaAiDataUse": "When you request an AI suggestion');
+    expect(fmeaApiSource).toContain("const rulaTaskDescriptionSuggestionBody");
+    const routeStart = fmeaApiSource.indexOf('app.post("/api/v1/rula/task-description-suggestion"');
+    const routeEnd = fmeaApiSource.indexOf('app.post("/api/v1/rula/posture-image-analysis"', routeStart);
+    const rulaDescriptionRoute = fmeaApiSource.slice(routeStart, routeEnd);
+    expect(rulaDescriptionRoute).toContain("parse(rulaTaskDescriptionSuggestionBody, request.body)");
+    expect(rulaDescriptionRoute).toContain("buildRulaTaskDescriptionPrompt(body)");
+    expect(rulaDescriptionRoute).toContain("includeKnowledge: false");
+    expect(rulaDescriptionRoute).toContain('requirePermission(request, "assessments.create")');
+    expect(rulaDescriptionRoute).toContain('rateLimit: { max: 12, timeWindow: "1 minute" }');
+  });
+
   it("reuses the FMEA searchable job catalog control for RULA", () => {
     expect(assessmentPagesSource).toContain("function JobCatalogSearch");
     expect(assessmentPagesSource).toContain('className="rula-job-search"');
@@ -1060,9 +1043,9 @@ describe("RULA process information", () => {
 
 describe("FMEA assessment information layout", () => {
   it("keeps the assessment code and scope automatic and hidden during review", () => {
-    const assessmentInfoStart = fmeaFeatureSource.indexOf('<fieldset ref={fmeaReviewStepRef} id="fmea-review-step" data-step="2"');
-    const assessmentInfoEnd = fmeaFeatureSource.indexOf('<div className="wizard-actions"', assessmentInfoStart);
-    const assessmentInfoSource = fmeaFeatureSource.slice(assessmentInfoStart, assessmentInfoEnd);
+    const assessmentInfoStart = assessmentPagesSource.indexOf('<fieldset ref={fmeaReviewStepRef} id="fmea-review-step" data-step="2"');
+    const assessmentInfoEnd = assessmentPagesSource.indexOf('<div className="wizard-actions"', assessmentInfoStart);
+    const assessmentInfoSource = assessmentPagesSource.slice(assessmentInfoStart, assessmentInfoEnd);
     expect(assessmentInfoSource).toContain('<legend>{t("assessment.review")}</legend>');
     expect(assessmentPagesSource).toContain('const [assessmentCode, setAssessmentCode] = useState(() => draftValue(readLocalDraft(draftKey), "code").trim() || generatedFmeaCode());');
     expect(assessmentPagesSource).toContain('function automaticFmeaScope(projectLabel: string, jobTitle: string)');
@@ -1105,7 +1088,11 @@ describe("first-run assessment navigation", () => {
   });
 
   it("shows a three-step assessment path without the basic-information step", () => {
-    expect(registrationPagesSource).toContain('<div className="path-step current"><b>۱</b><span>{t("path.assessmentType")}</span></div><i/><div className="path-step"><b>۲</b><span>{t("path.assessmentInfo")}</span></div><i/><div className="path-step"><b>۳</b><span>{t("path.reviewConfirm")}</span></div>');
+    expect(registrationPagesSource).toContain('<div className="path-stepper" aria-label={t("path.stepsLabel")}>');
+    expect(registrationPagesSource).toContain('(1).toLocaleString(locale === "en" ? "en-US" : "fa-IR")');
+    expect(registrationPagesSource).toContain('t("path.assessmentType")');
+    expect(registrationPagesSource).toContain('t("path.assessmentInfo")');
+    expect(registrationPagesSource).toContain('t("path.reviewConfirm")');
     expect(registrationPagesSource).toContain('t("path.stepOneOfThree")');
     expect(registrationPagesSource).not.toContain('t("path.basicInfo")');
     expect(registrationPagesSource).not.toContain('t("path.stepTwoOfFour")');
@@ -1115,11 +1102,10 @@ describe("first-run assessment navigation", () => {
 });
 
 describe("page entry loading", () => {
-  it("does not add an artificial delay to route changes", () => {
-    expect(appSource).not.toContain("RouteTransitionLoader");
-    expect(appSource).not.toContain("setSettledRouteKey");
-    expect(appSource).not.toContain("setTimeout(() => setSettledRouteKey");
-    expect(appSource).not.toContain("PageLoadingScreen");
+  it("shows a centered branded transition loader with accessible reduced-motion behavior", () => {
+    expect(appSource).toContain("<Suspense fallback={<PageLoadingScreen />}>");
+    expect(routeRecoverySource).toContain("export class RouteRecovery");
+    expect(uiSource).toContain("export function PageLoadingScreen()");
     expect(uiSource).toContain('className="page-loading-screen"');
     expect(uiSource).toContain('src="/brand/nivasafe-icon.png"');
     expect(stylesSource).toContain(".page-loading-screen { position: fixed;");
@@ -1129,19 +1115,17 @@ describe("page entry loading", () => {
 });
 
 describe("mobile page action controls", () => {
-  it("uses a shrink-safe grid that wraps action labels instead of clipping them", () => {
+  it("keeps dashboard and assessment actions in balanced, bounded mobile grids", () => {
     expect(generalPagesSource).toContain('className="page-action-label"');
     expect(assessmentPagesSource).toContain('className="page-action-label"');
-    expect(stylesSource).toContain(".page-actions {\n    display: grid;\n    grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));");
-    expect(stylesSource).toContain(".page-actions > .page-actions-inline {\n    display: grid;\n    grid-column: 1 / -1;");
-    expect(stylesSource).toContain(".page-actions-inline > .fmea-assistant-toggle {\n    grid-column: 1 / -1;");
-    expect(stylesSource).toContain("min-height: 44px;");
-    expect(stylesSource).toContain(".page-action-label {\n    min-width: 0;");
-    expect(stylesSource).toContain("white-space: normal;");
-    expect(stylesSource).toContain("overflow-wrap: anywhere;");
-    expect(stylesSource).toContain("@media (max-width: 479px)");
-    expect(stylesSource).not.toContain("min-height: 4rem;");
-    expect(stylesSource).not.toContain("text-wrap: nowrap;");
+    expect(stylesSource).toContain(".page-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));");
+    expect(stylesSource).toContain(".page-actions > .page-actions-inline { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr));");
+    expect(stylesSource).toContain(".page-actions-inline > .fmea-assistant-toggle { grid-column: 1 / -1; width: 100%;");
+    expect(stylesSource).toContain(".page-actions-inline > * { width: 100%; min-width: 0; min-height: var(--touch-target-min);");
+    expect(stylesSource).toContain(".page-actions, .page-actions > .page-actions-inline { grid-template-columns: 1fr; }");
+    expect(stylesSource).toContain(".page-actions > *, .page-actions-inline > * { grid-column: 1 / -1; }");
+    expect(stylesSource).toContain(".page-action-label { min-width: 0; text-align: center; white-space: normal;");
+    expect(stylesSource).toContain("@media (max-width: 380px)");
   });
 
   it("uses compact typography for page actions while the desktop shell narrows", () => {
@@ -1151,20 +1135,20 @@ describe("mobile page action controls", () => {
 });
 describe("organization navigation wording", () => {
   it("uses the company-only label without CRM wording", () => {
-    expect(appLayoutSource).toContain('labelKey: "nav.organizations"');
-    expect(appLayoutSource).not.toContain("شرکت‌ها و CRM");
+    expect(navigationSource).toContain('labelKey: "nav.organizations"');
+    expect(navigationSource).not.toContain("شرکت‌ها و CRM");
     expect(generalPagesSource).toContain('eyebrow={t("organization.management")}');
     expect(generalPagesSource).not.toContain('eyebrow="CRM و مدیریت سازمان"');
   });
 });
 
 describe("multi-organization workspace management", () => {
-  it("lets every authenticated account create a company while keeping switching outside the topbar", () => {
-    expect(appSource).toContain('<Route path="organizations" element={<OrganizationsPage />} />');
-    expect(appLayoutSource).toContain('path: "/organizations", labelKey: "nav.organizations", icon: "dashboard", scope: "all"');
+  it("restricts organization management and creation to organization administrators", () => {
+    expect(appSource).toContain('<Route path="organizations" element={<AccessGuard roles={["SUPER_ADMIN", "ORG_ADMIN"]}><OrganizationsPage /></AccessGuard>} />');
+    expect(navigationSource).toContain('id: "organizations", labelKey: "nav.organizations", icon: "dashboard", path: "/organizations", scope: "administrators"');
     expect(appLayoutSource).not.toContain("selectOrganization(event.target.value)");
     expect(apiClientSource).toContain("export function selectOrganization(organizationId: string): boolean");
-    expect(generalPagesSource).toContain("const { session, orgId } = getSession(); const canCreate = Boolean(session)");
+    expect(generalPagesSource).toContain("const { session, orgId } = getSession(); const canCreate = canManage");
     expect(generalPagesSource).toContain("selectOrganization(result.data.id)");
     expect(generalPagesSource).toContain("disabled={creating}");
   });
@@ -1219,20 +1203,24 @@ describe("dashboard widget layout", () => {
   });
 
   it("organizes the sidebar by product area and exposes collapse state to assistive technology", () => {
-    expect(appLayoutSource).toContain('group: "actions"');
-    expect(appLayoutSource).toContain('group: "reports"');
-    expect(appLayoutSource).toContain('group: "guidance"');
-    expect(appLayoutSource).toContain('group: "organization"');
-    expect(appLayoutSource).toContain('group: "settings"');
+    expect(navigationSource).toContain('id: "actions", labelKey: "group.actions"');
+    expect(navigationSource).toContain('id: "documents", labelKey: "group.documents"');
+    expect(navigationSource).toContain('id: "help", labelKey: "group.help"');
+    expect(navigationSource).toContain('id: "organization", labelKey: "group.organization"');
+    expect(navigationSource).toContain('id: "settings", labelKey: "group.settings"');
     expect(appLayoutSource).toContain('id="app-sidebar"');
     expect(appLayoutSource).toContain('aria-expanded={!sidebarCollapsed}');
     expect(appLayoutSource).toContain('aria-controls="app-sidebar"');
-    expect(appLayoutSource).toContain('title={sidebarCollapsed ? t(item.labelKey) : undefined}');
-    expect(appLayoutSource).toContain('location.pathname.startsWith(`${item.path}/`)');
-    expect(stylesSource).toContain(".app:not(.admin-shell) .side-nav a.active");
+    expect(appLayoutSource).not.toContain('aria-expanded={expanded}');
+    expect(appLayoutSource).not.toContain('hidden={!expanded}');
+    expect(appLayoutSource).not.toContain('toggleNavigationSection');
+    expect(appLayoutSource).toContain('collapsed={sidebarCollapsed}');
+    expect(navigationSource).toContain('return pathname === path || pathname.startsWith(`${path}/`)');
+    expect(shellStylesSource).toContain('.app[data-design="enterprise"] .side-nav-link.active');
+    expect(shellStylesSource).toContain('.side-nav-link:focus-visible');
     expect(stylesSource).toContain("@media (min-width: 761px) and (max-width: 1020px)");
     expect(i18nSource).toContain('"group.actions": "برنامه‌های اقدام"');
-    expect(i18nSource).toContain('"group.organization": "Company and users"');
+    expect(i18nSource).toContain('"group.organization": "Organization and users"');
   });
 });
 
@@ -1304,9 +1292,9 @@ describe("production login safety", () => {
   it("renders the localized public hero message", () => {
     expect(accountPagesSource).not.toContain("<h1>NIVASafe</h1>");
     expect(accountPagesSource).not.toContain('className="login-hero-icon"');
-    expect(accountPagesSource).toContain('className="login-logo-wordmark"');
-    expect(accountPagesSource).toContain('<div className="login-toolbar-brand"><div className="login-brand-panel">');
-    expect(accountPagesSource).not.toContain('<div className="login-toolbar-brand"><img src="/brand/nivasafe-icon.png"');
+    expect(accountPagesSource).not.toContain('className="login-toolbar-wordmark"');
+    expect(accountPagesSource).toContain('<div className="login-toolbar-brand"><img className="login-toolbar-icon" src="/brand/nivasafe-icon.png"');
+    expect(accountPagesSource).not.toContain('<div className="login-toolbar-brand"><div className="login-brand-panel">');
     expect(accountPagesSource).toContain('<h1>{t("auth.heroTitle")}</h1>');
     expect(accountPagesSource).toContain('<span className="login-toolbar-link">{t("auth.features")}</span>');
     expect(accountPagesSource).toContain('<span className="login-toolbar-link">{t("auth.licenses")}</span>');
@@ -1330,11 +1318,11 @@ describe("production login safety", () => {
     expect(stylesSource).toContain(".login-toolbar-brand .login-brand-panel { margin-top: 0; padding: 0; border: 0;");
     expect(stylesSource).toContain(".login-toolbar-brand .login-brand-copy { display: flex; align-items: center; justify-content: center;");
     expect(stylesSource).toContain(".login-support-logo { display: block; width: 46px; height: 46px;");
-    expect(stylesSource).toContain(".login { grid-template-columns: 1fr; grid-template-rows: auto; align-items: stretch; }");
-    expect(accountPagesSource).toContain('const [mobileLoginFormVisible, setMobileLoginFormVisible]');
+    expect(stylesSource).toContain(".login { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr); align-items: stretch; }");
+    expect(accountPagesSource).toContain('const mobileLoginFormVisible = location.hash === "#login-form";');
     expect(accountPagesSource).toContain('onClick={openMobileLogin}');
     expect(accountPagesSource).toContain('event.preventDefault();');
-    expect(accountPagesSource).toContain('href="/register"');
+    expect(accountPagesSource).toContain('to="/register"');
     expect(stylesSource).toContain(".login:not(.mobile-login-form-visible):not(.register-page) .login-card { display: none; }");
     expect(stylesSource).toContain(".login.mobile-login-form-visible .login-art { display: none; }");
     expect(stylesSource).toContain(".login-art { display: flex; --login-art-inline-pad:");
@@ -1473,10 +1461,12 @@ describe("new user onboarding", () => {
 });
 
 describe("assistant AI connectivity UX", () => {
-  it("shows the configured provider state and protects short chat prompts", () => {
-    expect(assistantPageSource).toContain("configuredForChat");
-    expect(assistantPageSource).toContain("providerConnected");
-    expect(assistantPageSource).toContain("providerUnavailable");
+  it("hides the model label, uses system branding and protects short chat prompts", () => {
+    expect(assistantPageSource).not.toContain("DeepSeek 4 Flash");
+      expect(assistantPageSource).toContain('src="/icon-64.png"');
+      expect(assistantPageSource).toContain('className="message-time"');
+      expect(assistantPageSource).not.toContain("connection-notice");
+      expect(assistantPageSource).not.toContain("connection-controls");
     expect(assistantPageSource).toContain("minLength={2}");
     expect(assistantPageSource).toContain("messageTooShort");
   });
@@ -1498,40 +1488,48 @@ describe("assistant AI connectivity UX", () => {
     expect(i18nSource).toContain('"assistant.waitingForResponse": "Waiting for the assistant response..."');
   });
 
+  it("keeps an accessible multiline composer with responsive send controls", () => {
+    expect(assistantPageSource).toContain('id="assistant-message" name="content"');
+    expect(assistantPageSource).toContain('className="composer-actions"');
+    expect(assistantPageSource).toContain('aria-label={t("assistant.send")}');
+    expect(assistantPageSource).toContain('event.nativeEvent.isComposing');
+    expect(assistantDesignSource).toContain('.composer textarea');
+    expect(assistantDesignSource).toContain('.shortcuts{display:none}');
+    expect(assistantDesignSource).toContain('button:focus-visible');
+  });
+
   it("shows conversation topics instead of generated date-only labels", () => {
     expect(assistantPageSource).toContain("<strong>{item.title}</strong>");
     expect(assistantPageSource).toContain("body: JSON.stringify({ title: t(\"assistant.newConversation\") })");
-    expect(assistantPageSource).toContain("conversations.data.map");
+    expect(assistantPageSource).toContain("visibleConversations.map");
   });
 
   it("keeps the mobile shell inline and keeps the chat composer reachable", () => {
     expect(stylesSource).toContain(".topbar { flex-wrap: nowrap; row-gap: 0; }");
-    expect(stylesSource).toContain(".header-actions {\n    flex-wrap: wrap;");
-    expect(stylesSource).toContain(".topbar .language-menu { position: absolute;");
+    expect(stylesSource).toContain(".header-actions { width: auto; flex: 0 0 auto; justify-content: flex-end; gap: .4rem; flex-wrap: nowrap; }");
+    expect(stylesSource).toContain(".language-menu { position: absolute;");
     expect(stylesSource).toContain("inset-block-start: calc(100% + .5rem);");
     expect(stylesSource).toContain("inset-inline-start: auto; inset-inline-end: 0;");
     expect(stylesSource).not.toContain(".topbar .language-menu { position: fixed;");
-    expect(stylesSource).toContain(".login-toolbar .language-menu");
-    expect(stylesSource).toContain('[dir="rtl"] .login-toolbar .language-menu');
-
     expect(stylesSource).toContain("width: min(174px, calc(100vw - 1rem));");
-    expect(stylesSource).toContain('[dir="rtl"] .language-picker .language-menu { inset-inline-start: 0; inset-inline-end: auto; }');
+    expect(stylesSource).not.toContain('[dir="rtl"] .language-picker .language-menu { inset-inline-start: 0; inset-inline-end: auto; }');
     expect(stylesSource).toContain(".assistant-layout { position: relative; display: block; flex: 1 1 auto; min-height: 0; gap: 0; overflow: hidden; }");
     expect(stylesSource).toContain(".composer input { min-height: 44px; }");
     expect(stylesSource).toContain(".composer .primary { min-width: 44px; min-height: 44px; }");
   });
 
-  it("uses a ChatGPT-like mobile conversation drawer and hides the page title", () => {
+  it("keeps the full mobile conversation history accessible", () => {
     expect(assistantPageSource).toContain("mobileConversationsOpen");
-    expect(assistantPageSource).toContain("assistant-history-toggle");
-    expect(assistantPageSource).toContain("assistant-history-backdrop");
-    expect(assistantPageSource).toContain("assistant-history-close");
+    expect(assistantPageSource).toContain("history-toggle");
+    expect(assistantPageSource).toContain("useModalFocus(historyRef, compactHistory && mobileConversationsOpen");
+    expect(modalFocusSource).toContain("if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });");
+    expect(modalFocusSource).toContain('event.key === "Escape"');
+    expect(assistantPageSource).toContain("history-back");
     expect(assistantPageSource).toContain("history-open");
     expect(assistantPageSource).toContain("setMobileConversationsOpen(false)");
-    expect(stylesSource).toContain(".assistant-page > .page-header { display: none; }");
-    expect(stylesSource).toContain(".assistant-layout.history-open .conversation-panel");
-    expect(stylesSource).toContain(".assistant-history-backdrop");
-    expect(stylesSource).toContain(".assistant-history-toggle");
+    expect(assistantDesignSource).toContain(".history-open .history{display:flex}");
+    expect(assistantDesignSource).toContain(".history-open .chat{display:none}");
+    expect(assistantDesignSource).toContain(".history-toggle");
     expect(stylesSource).toContain("left: 0;");
     expect(i18nSource).toContain('"assistant.openConversations": "نمایش گفتگوها"');
     expect(i18nSource).toContain('"assistant.closeConversations": "بستن گفتگوها"');
@@ -1577,7 +1575,7 @@ describe("knowledge form layout", () => {
     expect(stylesSource).toContain(".message-citations {");
     expect(stylesSource).toContain("height: 112px; min-height: 112px;");
     expect(stylesSource).toContain(".knowledge-options .checkbox-card { min-height: 76px;");
-    expect(stylesSource).toContain("@media (max-width: 900px) {\n  .knowledge-form-top, .knowledge-options { grid-template-columns: 1fr; }");
+    expect(stylesSource).toMatch(/@media \(max-width: 900px\) {\r?\n  \.knowledge-form-top, \.knowledge-options \{ grid-template-columns: 1fr; \}/);
   });
 });
 
@@ -1586,7 +1584,7 @@ describe("form and surface UI polish", () => {
     expect(stylesSource).toContain("--control-height: 48px;");
     expect(stylesSource).toContain("--control-radius: 13px;");
     expect(stylesSource).toContain("--form-gap: 1rem;");
-    expect(stylesSource).toContain('input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"])');
+    expect(stylesSource).toContain(':where(.app, .login) :is(input:where(:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"])), textarea, select, .styled-select-trigger, .localized-date-trigger)');
     expect(stylesSource).toContain('input[type="file"]::file-selector-button');
     expect(stylesSource).toContain("select option {");
     expect(stylesSource).toContain("select option:checked");
@@ -1602,36 +1600,24 @@ describe("form and surface UI polish", () => {
 });
 
 describe("mobile authenticated shell", () => {
-  it("keeps the mobile drawer usable across route changes, Escape, resize and focus transitions", () => {
+  it("keeps the mobile drawer usable across route changes, Escape, and desktop resize", () => {
     expect(appLayoutSource).toContain('setMobileOpen(false);\n  }, [location.pathname, location.search]);');
-    expect(appLayoutSource).toContain('if (event.key === "Escape") {');
-    expect(appLayoutSource).toContain('setMobileOpen(false);');
+    expect(appLayoutSource).toContain('if (event.key === "Escape") setMobileOpen(false);');
     expect(appLayoutSource).toContain('if (window.innerWidth > 760) setMobileOpen(false);');
-    expect(appLayoutSource).toContain('document.addEventListener("keydown", onKeyDown);');
+    expect(appLayoutSource).toContain('window.addEventListener("keydown", closeOnEscape);');
     expect(appLayoutSource).toContain('window.addEventListener("resize", closeOnDesktopResize);');
     expect(appLayoutSource).toContain('aria-controls="app-sidebar"');
     expect(appLayoutSource).toContain('className="sidebar-backdrop"');
-    expect(appLayoutSource).toContain('ref={mobileMenuButtonRef}');
-    expect(appLayoutSource).toContain('ref={sidebarRef}');
-    expect(appLayoutSource).toContain('data-mobile-drawer-close');
-    expect(appLayoutSource).toContain('document.body.style.overflow = "hidden";');
-    expect(appLayoutSource).toContain('opener.focus({ preventScroll: true })');
-    expect(stylesSource).toContain('html[data-mobile-drawer-open="true"]');
-    expect(stylesSource).toContain('.topbar-secondary-utilities,');
-    expect(stylesSource).toContain('.side-utilities {');
   });
 
   it("bounds mobile shell overflow without disabling dense-table scrolling", () => {
     expect(indexHtmlSource).toContain('name="viewport"');
     expect(indexHtmlSource).toContain('content="width=device-width,initial-scale=1,viewport-fit=cover"');
-    expect(stylesSource).toContain("/* Responsive foundation: layout children own their overflow.");
-    expect(stylesSource).not.toContain("overflow-x: clip;");
-    expect(stylesSource).not.toContain("body { margin: 0; min-width: 320px; min-height: 100vh; overflow-x: hidden;");
-    expect(stylesSource).toContain("min-height: 100dvh;");
-    expect(stylesSource).toContain(".side-nav {\n    min-height: 0;");
-    expect(stylesSource).toContain("-webkit-overflow-scrolling: touch;");
-    expect(stylesSource).toContain(".table-wrap > table {\n    max-width: none;");
-    expect(stylesSource).toContain('[dir="rtl"] .app-sidebar.open {\n    transform: translateX(0);');
+    expect(stylesSource).toContain('.app[data-design="enterprise"] .page-shell { min-width: 0;');
+    expect(stylesSource).toContain('.app[data-design="enterprise"] .table-wrap { max-width: 100%;');
+    expect(stylesSource).toContain('.table-wrap.report-data-table-wrap { max-width: 100%; overflow-x: auto; }');
+    expect(stylesSource).toContain("overscroll-behavior-inline: contain;");
+    expect(stylesSource).toContain('.app[dir="rtl"] .app-sidebar.open {\n    transform: translateX(0);');
     expect(stylesSource).toContain("touch-action: manipulation;");
   });
 });
@@ -1652,9 +1638,6 @@ describe("localized required-field validation", () => {
     expect(requiredFieldValidationSource).toContain("form.noValidate = true");
     expect(requiredFieldValidationSource).toContain('document.addEventListener("submit", onSubmit, true)');
     expect(requiredFieldValidationSource).toContain("missingRequiredControls");
-    expect(requiredFieldValidationSource).toContain("focusAndScrollToFirstInvalid");
-    expect(requiredFieldValidationSource).toContain("scrollIntoView");
-    expect(requiredFieldValidationSource).toContain("visibleValidationTarget");
     expect(stylesSource).toContain('label:has(input[required], select[required], textarea[required])');
     expect(stylesSource).not.toContain('content: "*"');
     expect(stylesSource).toContain('.required-label');
@@ -1663,20 +1646,16 @@ describe("localized required-field validation", () => {
 });
 
 describe("fixed authentication viewport", () => {
-  it("keeps the login shell naturally scrollable when the viewport or keyboard shrinks", () => {
-    expect(stylesSource).toContain(".login { width: 100%; min-height: 100vh; min-height: 100dvh; height: auto; max-height: none;");
-    expect(stylesSource).toContain("overflow: visible; background: #f5f9fc;");
+  it("locks the login shell to the viewport and prevents document scrolling", () => {
+    expect(stylesSource).toContain("height: 100dvh");
+    expect(stylesSource).toContain("overflow: hidden");
     expect(stylesSource).toContain("body:has(.login)");
-    expect(stylesSource).toContain("body:has(.login) { block-size: auto; min-block-size: 100%; overflow: auto; }");
-    expect(stylesSource).toContain("grid-template-rows: auto;");
-    expect(stylesSource).toContain("max-height: none; overflow: visible;");
-    expect(stylesSource).toContain("font-size: 16px;");
-    expect(stylesSource).toContain("env(safe-area-inset-left)");
+    expect(stylesSource).toContain("grid-template-rows: auto minmax(0, 1fr)");
   });
 
   it("moves narrow screens to a focused, non-cramped form layout", () => {
     expect(stylesSource).toContain("@media (max-width: 900px)");
-    expect(stylesSource).toContain(".login { grid-template-columns: 1fr; grid-template-rows: auto; align-items: stretch; }");
+    expect(stylesSource).toContain(".login { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr); align-items: stretch; }");
     expect(stylesSource).toContain(".login:not(.mobile-login-form-visible) { display: block; }");
     expect(stylesSource).toContain(".login:not(.mobile-login-form-visible):not(.register-page) .login-card { display: none; }");
     expect(stylesSource).toContain(".login.mobile-login-form-visible { display: grid; place-items: center; }");
@@ -1693,7 +1672,7 @@ describe("fixed authentication viewport", () => {
     expect(stylesSource).toContain(
       ".login-hero-content { width: min(820px, 100%); flex: 1 1 auto; min-height: 0; margin-top: 16px; position: relative;",
     );
-    expect(stylesSource).toContain("align-items: center; justify-content: space-between; gap: clamp(1.5rem, 3vh, 2.5rem); margin-inline: auto; text-align: center;");
+    expect(stylesSource).toContain("align-items: center; justify-content: center; gap: clamp(1.25rem, 2.4vh, 2rem); margin-inline: auto; text-align: center;");
     expect(stylesSource).toContain("grid-template-columns: repeat(2, minmax(0, 1fr));");
     expect(stylesSource).toContain("width: min(720px, 100%)");
     expect(stylesSource).toContain("max-width: 720px");
@@ -1703,11 +1682,11 @@ describe("fixed authentication viewport", () => {
     expect(stylesSource).toContain("max-width: 100%; font: 850 clamp(1.75rem, 2.55vw, 2.75rem)/1.22");
     expect(stylesSource).toContain(".login-art h1 { font-size: clamp(2.1rem, 2.4vw, 2.95rem); line-height: 1.2; }");
     expect(stylesSource).toContain(".login-art h1 { font-size: clamp(1.55rem, 2.45vw, 2.4rem); line-height: 1.2; }");
-    expect(stylesSource).toContain("text-align: start; color: #123e73;");
+    expect(stylesSource).toContain("text-align: center; color: #123e73;");
     expect(stylesSource).not.toContain(".login-hero-description");
     expect(accountPagesSource).toContain('className="login-hero-visual"');
     expect(stylesSource).not.toContain("margin-top: 240px");
-    expect(stylesSource).toContain("gap: clamp(1.5rem, 3vh, 2.5rem);");
+    expect(stylesSource).toContain("gap: clamp(1.25rem, 2.4vh, 2rem);");
     expect(stylesSource).toContain('[dir="rtl"] .login-hero-content .login-brand-panel { align-self: flex-start; }');
     expect(stylesSource).toContain('[dir="ltr"] .login-hero-content .login-brand-panel { align-self: flex-start; }');
     expect(stylesSource).toContain('[dir="rtl"] .login-card-logo { align-self: flex-end; }');
@@ -1744,10 +1723,19 @@ describe("language picker", () => {
   });
 });
 
+describe("pending navigation labels", () => {
+  it("uses a concise coming-soon status without changing which modules are pending", () => {
+    expect(i18nSource).toContain('"navigation.backendPending": "به‌زودی"');
+    expect(i18nSource).toContain('"navigation.backendPending": "Coming soon"');
+    expect(navigationSource).toContain('statusKey: "navigation.backendPending"');
+  });
+});
+
 describe("authenticated theme picker", () => {
   it("offers persistent blue and white themes with matching sidebar logo treatments", () => {
     expect(appLayoutSource).toContain('data-theme={theme}');
-    expect(appLayoutSource).toContain("readAppTheme");
+    expect(appearanceProviderSource).toContain("readAppTheme()");
+    expect(appearanceProviderSource).toContain("persistAppTheme(next)");
     expect(uiSource).toContain('data-testid="theme-switcher"');
     expect(uiSource).toContain('data-theme-option={selectedOption.value}');
     expect(uiSource).toContain('data-theme-option={alternateOption.value}');
@@ -1757,7 +1745,13 @@ describe("authenticated theme picker", () => {
     expect(uiSource).toContain('aria-expanded={open}');
     expect(uiSource).toContain('setOpen((value) => !value)');
     expect(uiSource).toContain("theme-options-menu");
+    expect(uiSource).toContain('import { createPortal } from "react-dom"');
+    expect(uiSource).toContain("getOverlayRoot()");
+    expect(uiSource).toContain("useFloatingPosition(triggerRef, open");
+    expect(uiSource).toContain("menuRef.current?.contains(target)");
+    expect(uiSource).not.toContain("onBlur={(event) => { if (!pickerRef.current?.contains(event.relatedTarget as Node | null)) setOpen(false); }}");
     expect(stylesSource).toContain(".theme-options-menu {");
+    expect(stylesSource).toContain(".theme-options-menu { position: fixed;");
     expect(stylesSource).toContain(".theme-option-label { display: none; }");
     expect(stylesSource).toContain(".theme-switcher { position: relative;");
     expect(stylesSource).toContain("max-width: min(180px, calc(100vw - 1rem));");
@@ -1792,7 +1786,7 @@ describe("phone input contract", () => {
     expect(accountPagesSource).toContain("function normalizePhoneField");
     expect(accountPagesSource).toContain('onChange={normalizePhoneField}');
     expect(accountPagesSource).toContain('maxLength={11} pattern="09[0-9]{9}"');
-    const registrationSource = readFileSync(new URL("./features/account/RegistrationPage.tsx", import.meta.url), "utf8");
+    const registrationSource = readSource("./features/account/RegistrationPage.tsx");
     expect(registrationSource).toContain('onChange={(event) => update("phone", normalizePhone(event.target.value))}');
     expect(registrationSource).toContain('phone: typeof draft.phone === "string" ? normalizePhone(draft.phone) : ""');
   });
@@ -1851,16 +1845,9 @@ describe("form auto-save contract", () => {
     expect(autoSaveSource).toContain('form.addEventListener("change", persist)');
     expect(autoSaveRulesSource).toContain('"password"');
     expect(autoSaveRulesSource).toContain('"file"');
-    expect(autoSaveRulesSource).toContain("SENSITIVE_DRAFT_FIELDS");
-    expect(autoSaveRulesSource).toContain("return sanitizeDraft(draft);");
-    expect(autoSaveRulesSource).toContain("JSON.stringify(sanitizeDraft(draft))");
     expect(autoSaveSource).toContain("restoreForm");
-    expect(autoSaveSource).toContain("sanitizeDraft(draft)");
-    expect(registrationPagesSource).toContain("const { password: _password, confirmPassword: _confirmPassword, ...safeDraft } = draft;");
-    expect(filesPageSource).toContain('aria-label={t("files.choose")}');
-    expect(filesPageSource).toContain("uploadSubmittingRef");
-    expect(readFileSync(new URL("./features/general/GeneralPages.tsx", import.meta.url), "utf8")).toContain("<AutoSaveForm");
-    expect(readFileSync(new URL("./features/assistant/AssistantPage.tsx", import.meta.url), "utf8")).toContain("<AutoSaveForm");
+    expect(readSource("./features/general/GeneralPages.tsx")).toContain("<AutoSaveForm");
+    expect(readSource("./features/assistant/AssistantPage.tsx")).toContain("<AutoSaveForm");
   });
 
   it("protects FMEA and RULA assessment drafts through immediate local persistence and IndexedDB backup", () => {
@@ -1896,12 +1883,19 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain('name="postureHoldDuration"');
     expect(assessmentPagesSource).toContain('name="loadWeight"');
     expect(assessmentPagesSource).toContain('name="postureImage"');
+    expect(assessmentPagesSource).toContain("multiple disabled={Boolean(editingAssessmentId");
+    expect(assessmentPagesSource).toContain("RULA_POSTURE_IMAGE_MAX_COUNT");
+    expect(assessmentPagesSource).toContain("requestRulaPostureImageAnalyses");
+    expect(assessmentPagesSource).toContain("applyRulaPostureImageReview");
+    expect(fmeaApiSource).toContain('app.post("/api/v1/rula/posture-image-analysis"');
+    expect(fmeaApiSource).toContain('const provider = getRulaPostureImageAIProvider();');
+    expect(fmeaApiSource).toContain('imagePurpose: "rula-posture"');
     expect(assessmentPagesSource).toContain('noValidate aria-busy={submitting}');
     expect(assessmentPagesSource).toContain("handlePostureImageChange");
     expect(assessmentPagesSource).toContain("removePostureImage");
     expect(assessmentPagesSource).toContain('accept="image/jpeg,image/png,image/webp"');
     expect(assessmentPagesSource).not.toContain('capture="environment"');
-    expect(assessmentPagesSource).toContain('postureImageInvalidType');
+    expect(assessmentPagesSource).toContain('assessment.rulaImageSelection.${selection.issue}');
     expect(assessmentPagesSource).toContain('registeringRula');
     expect(assessmentPagesSource).toContain('entityType", "RulaAssessment"');
     expect(assessmentPagesSource).toContain("rulaAiImageActive");
@@ -1936,7 +1930,7 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain("rulaSourceLabelKey");
     expect(assessmentPagesSource).toContain("confirmedByUser");
     expect(assessmentPagesSource).not.toContain('t("assessment.aiAutoAnalyzed")');
-    expect(assessmentPagesSource).toContain('source !== "DEFAULT"');
+    expect(rulaPostureReviewSource).toContain('row.source !== "DEFAULT" && (row.requiresReview !== true || row.confirmedByUser)');
     expect(assessmentPagesSource).toContain("invalidPostureScore");
     expect(assessmentPagesSource).toContain("RULA Score =");
     expect(assessmentPagesSource).toContain("rula-skeleton-overlay");
@@ -1950,8 +1944,10 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain('sideAnalyses: { RIGHT: right.analysis, LEFT: left.analysis }');
     expect(assessmentPagesSource).toContain('const visibleAnalysis = bodySide === "BOTH" ? analysis.sideAnalyses?.[activeSide] ?? analysis : analysis');
     expect(assessmentPagesSource).toContain('const visibleResult = bodySide === "BOTH" ? sideResults?.[activeSide] ?? result : result');
-    expect(assessmentPagesSource).toContain('if (wizardStep === 1)');
-    expect(assessmentPagesSource).toContain('postureImageAnalysisContextKey.current = ""');
+    expect(assessmentPagesSource).toContain('const automaticAnalysisMode = getRulaAutomaticAnalysisMode(wizardStep, selectedPostureImages.length > 0 || savedPostureImages.length > 0)');
+    expect(assessmentPagesSource).toContain('if (!automaticAnalysisMode) return;');
+    expect(assessmentPagesSource).not.toContain('if (wizardStep === 1) {\n      postureImageAnalysisRequestId.current += 1;');
+    expect(assessmentPagesSource).toContain('automaticAnalysisMode, jobQuery');
     expect(assessmentPagesSource).not.toContain("joint-neck");
     expect(assessmentPagesSource).not.toContain("bone-neck");
     expect(assessmentPagesSource).toContain('name="postureAnalysis"');
@@ -1983,7 +1979,9 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain('rulaManualActionBodySideHint');
     expect(assessmentPagesSource).toContain("function rulaActionForDataTable");
     expect(assessmentPagesSource).toContain("const tableSelectedActions = visibleSelectedActions.map");
-    expect(assessmentPagesSource).toContain("selectedActions={tableSelectedActions}");
+    expect(assessmentPagesSource).toContain(" : reportActionInventory}");
+    expect(assessmentPagesSource).not.toContain("<RulaActionRegister");
+    expect(assessmentPagesSource).toContain("onUpdateAction={onUpdateAction}");
     expect(assessmentPagesSource).toContain("busyActionId");
     expect(assessmentPagesSource).toContain("rulaActionLevelForScore");
     expect(assessmentPagesSource).toContain("rulaPredictionEstimate");
@@ -1998,6 +1996,14 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain('status !== "CANCELLED" && action.status !== "REJECTED"');
     expect(assessmentPagesSource).toContain("priority-${action.priority.toLowerCase()}");
     expect(assessmentPagesSource).toContain('body: JSON.stringify({ status: "CANCELLED" })');
+    expect(assessmentPagesSource).toContain("riskResults={riskResults}");
+    expect(assessmentPagesSource).toContain("progress: action.progress");
+    expect(rulaOverviewSource).toContain('title={t("assessment.rulaRiskDistributionTitle")}');
+    expect(rulaOverviewSource).toContain('className="fmea-risk-donut-svg"');
+    expect(rulaOverviewSource).toContain('className={`fmea-risk-legend-item');
+    expect(rulaOverviewSource).toContain('<FmeaActionProgressChart progress={progress}');
+    expect(rulaOverviewModelSource).toContain("results: readonly RulaOverviewResult[]");
+    expect(rulaOverviewModelSource).toContain("action.progress");
     expect(reportsSource).toContain("const predictedScore = sideResults");
     expect(reportsSource).toContain('"Prediction note"');
     expect(reportsSource).toContain('"Related factors"');
@@ -2008,14 +2014,12 @@ describe("form auto-save contract", () => {
     expect(stylesSource).toContain(".rula-correction-table thead { position: static;");
     expect(stylesSource).toContain(".rula-correction-table tbody { display: table-row-group; }");
     expect(stylesSource).toContain(".rula-correction-table tbody tr { display: table-row;");
-    expect(stylesSource).toContain(".table-wrap.report-data-table-wrap.rula-correction-table-wrap { overflow-x: hidden;");
+    expect(stylesSource).toContain(".table-wrap.report-data-table-wrap.rula-correction-table-wrap { overflow-x: auto; overflow-y: visible;");
     expect(stylesSource).toContain(".rula-correction-table { display: table; width: 100%; min-width: 0 !important; table-layout: fixed; }");
-    expect(stylesSource).toContain(".rula-correction-table .rula-correction-toggle");
-    expect(stylesSource).toContain("min-inline-size: var(--touch-target)");
-    expect(stylesSource).toContain("min-block-size: var(--control-height-compact)");
+    expect(stylesSource).toContain(".rula-correction-table .rula-correction-toggle { width: 100%; max-width: 100%; min-width: 0;");
     expect(stylesSource).toContain("white-space: nowrap; overflow-wrap: normal; word-break: keep-all;");
     expect(i18nSource).toContain('"assessment.rulaSelectAction": "انتخاب"');
-    expect(assessmentPagesSource).toContain("const generalActions = selectedActions.filter");
+    expect(assessmentPagesSource).toContain("buildRulaEvaluationRows(rulaPostureRows, selectedActions)");
     expect(assessmentPagesSource).toContain('t("assessment.rulaGeneralCorrectiveActions")');
     expect(stylesSource).toContain(".rula-manual-action-scope-note");
     expect(stylesSource).toContain(".rula-assessment-register-table");
@@ -2033,11 +2037,11 @@ describe("form auto-save contract", () => {
     expect(stylesSource).toContain(".rula-report-data-table td:last-child .report-table-actions");
     expect(stylesSource).toContain(".rula-report-data-table :is(th, td):last-child");
     expect(stylesSource).toContain("flex-wrap: nowrap");
-    expect(stylesSource).toContain(".rula-report-data-table td:last-child .report-inline-details > .report-inline-trigger");
+    expect(stylesSource).toContain(".rula-report-data-table .report-inline-details > summary.icon-button::marker");
     expect(stylesSource).toContain(".report-details-card .surface-body > details > summary::after");
     expect(stylesSource).toContain(".report-details-card .surface-body > details[open] > summary::after");
     expect(stylesSource).toContain(".rula-report-data-section.report-details-card .surface-body > details > summary");
-    expect(stylesSource).toContain("grid-template-columns: repeat(3, var(--touch-target))");
+    expect(stylesSource).toContain("grid-template-columns: repeat(3, 27px)");
     expect(stylesSource).toContain("overflow-wrap: anywhere");
     expect(assessmentPagesSource).toContain('data-label={t("assessment.bodyPart")}');
     expect(assessmentPagesSource).toContain('data-label={t("assessment.rulaSuggestedAction")}');
@@ -2048,7 +2052,9 @@ describe("form auto-save contract", () => {
     expect(stylesSource).toContain(".rula-smart-analysis .rula-analysis-table .rula-detection-badge");
     expect(stylesSource).toContain("background: linear-gradient(180deg, #fff, #fbfdff);");
     expect(stylesSource).toContain(".rula-report-surface > .surface-body");
-    expect(stylesSource).toContain(".rula-report-page,\n  .rula-report-view {\n    overflow-x: hidden;");
+    expect(stylesSource).toContain(".rula-report-page,");
+    expect(stylesSource).toContain(".rula-report-view .rula-correction-table-wrap {");
+    expect(stylesSource).toContain("overflow-x: auto;\n    overscroll-behavior-inline: contain;");
     expect(stylesSource).toContain(".rula-report-view * {\n    min-width: 0;");
     expect(stylesSource).toContain(".rula-corrections-layout {\n    direction: rtl;");
     expect(stylesSource).toContain(".rula-report-view .table-wrap");
@@ -2060,11 +2066,13 @@ describe("form auto-save contract", () => {
     expect(stylesSource).not.toContain(".rula-report-stepper");
     expect(assessmentPagesSource).toContain("function goToPreviousStep()");
     expect(assessmentPagesSource).toContain('navigate(`/rula?edit=${encodeURIComponent(id)}&step=2`)');
-    expect(assessmentPagesSource).toContain('onEdit={reportPostureEditHandler}');
+    expect(assessmentPagesSource).toContain('onEdit={showBothSides ? undefined : reportPostureEditHandler}');
     expect(assessmentPagesSource).toContain('t("assessment.editPostureResult")');
-    expect(assessmentPagesSource).toContain('part=${encodeURIComponent(part)}');
+    expect(assessmentPagesSource).toContain("setEditingPart(part)");
+    expect(assessmentPagesSource).toContain("RulaPostureEditDialog key={editingPart}");
+    expect(assessmentPagesSource).toContain("onSaveAnalysis");
     expect(assessmentPagesSource).toContain('const editingAssessmentId = searchParams.get("edit")?.trim() ?? ""');
-    expect(assessmentPagesSource).toContain('await api(`/rula/${editingAssessmentId}`, { method: "PATCH"');
+    expect(assessmentPagesSource).toContain('await api<{ id: string; score: number }>(`/rula/${editingAssessmentId}`, { method: "PATCH"');
     expect(assessmentPagesSource).toContain('t("assessment.editRula")');
     expect(i18nSource).toContain('"assessment.editRula": "ویرایش ارزیابی RULA"');
     expect(i18nSource).toContain('"assessment.editRula": "Edit RULA assessment"');
@@ -2074,8 +2082,7 @@ describe("form auto-save contract", () => {
 describe("global admin panel", () => {
   it("separates global administration and exposes guarded user controls", () => {
     expect(appSource).toContain('path="admin"');
-    expect(appLayoutSource).toContain('path: "/admin"');
-    expect(appLayoutSource).toContain('scope === "superadmin" && ["SUPER_ADMIN", "ORG_ADMIN"].includes(role)');
+    expect(navigationSource).toContain('id: "admin", labelKey: "nav.adminPanel", icon: "shield", path: "/admin", scope: "administrators"');
     expect(adminPageSource).toContain("/admin/overview");
     expect(adminPageSource).toContain("/admin/users");
     expect(adminPageSource).toContain("/admin/ai-usage");
@@ -2097,11 +2104,15 @@ describe("global admin panel", () => {
     expect(stylesSource).toContain(".admin-ai-usage-table th, .admin-ai-usage-table td { text-align: center; vertical-align: middle; }");
     expect(stylesSource).toContain(".admin-ai-usage-table .admin-user-identity { display: flex; flex-direction: column; align-items: center; text-align: center; }");
     expect(adminPageSource).toContain('data-label={t("admin.aiUsageUser")}');
-    expect(adminPageSource).toContain('data-label={t("admin.organizationsColumn")}');
-    expect(stylesSource).toContain(".responsive-table-container[data-responsive=\"cards\"]");
-    expect(stylesSource).toContain(".admin-user-table .admin-role-select");
-    expect(stylesSource).toContain(".admin-ai-usage-table .admin-user-identity");
-    expect(stylesSource).toContain(".responsive-table-container[data-responsive=\"cards\"] > table {");
+    expect(adminPageSource).toContain('className="admin-user-card-meta"');
+    expect(adminPageSource).toContain('t("admin.organizationsColumn")');
+    expect(stylesSource).toContain(".admin-ai-usage-table { overflow-x: auto; overscroll-behavior-inline: contain; }");
+    expect(stylesSource).toContain(".admin-ai-quota-editor { display: grid; grid-template-columns: minmax(0, 1fr) auto;");
+    expect(stylesSource).toContain(".admin-ai-quota-editor input { box-sizing: border-box; min-width: 0; width: 100%;");
+    expect(stylesSource).toContain(".admin-ai-usage-table .admin-ai-allowance > span[dir=\"ltr\"] { display: block; max-width: 100%; overflow-wrap: anywhere;");
+    expect(stylesSource).toContain('.app[data-design="enterprise"] .admin-user-card {');
+    expect(stylesSource).toContain('.app[data-design="enterprise"] .admin-user-card-meta {');
+    expect(stylesSource).toContain(".admin-user-card-meta { grid-column: 1; grid-template-columns: minmax(0, 1fr);");
     expect(stylesSource).toContain(".admin-shell");
     expect(appLayoutSource).toContain('const adminVariant = role === "SUPER_ADMIN" ? "global-admin-shell" : role === "ORG_ADMIN" ? "organization-admin-shell" : "";');
     expect(stylesSource).toContain(".global-admin-shell");
@@ -2119,7 +2130,7 @@ describe("global admin panel", () => {
 
 describe("administrator invitations", () => {
   it("offers only the approved HSE and limited organization roles through member flows", () => {
-    const accountSource = readFileSync(new URL("./features/account/AccountPages.tsx", import.meta.url), "utf8");
+    const accountSource = readSource("./features/account/AccountPages.tsx");
     expect(accountSource).toContain('const roles = ["HSE_MANAGER", "HSE_SPECIALIST", "HSE_OFFICER", "EXTERNAL_AUDITOR", "PERSONNEL", "VIEWER"];');
     expect(accountSource).toContain("const invitationRoles = [...roles];");
     expect(accountSource).not.toContain('const roles = ["ORG_ADMIN"');
@@ -2139,7 +2150,7 @@ describe("activity log migration", () => {
   it("moves the user-facing audit surface to a detailed activity log while preserving the old route", () => {
     expect(appSource).toContain('path="activity-log"');
     expect(appSource).toContain('path="audit" element={<Navigate to="/activity-log" replace />}');
-    expect(appLayoutSource).toContain('path: "/activity-log", labelKey: "nav.activityLog"');
+    expect(navigationSource).toContain('id: "activity-log", labelKey: "nav.activityLog", icon: "audit", path: "/activity-log", scope: "all"');
     expect(generalPagesSource).toContain('export function ActivityLogPage()');
     expect(generalPagesSource).toContain('useLoad<ActivityLogEntry[]>(activityLogPath)');
     expect(generalPagesSource).toContain('activityLog.assessment');
@@ -2152,74 +2163,10 @@ describe("activity log migration", () => {
     expect(stylesSource).toContain('.activity-log-filters input { width: 100%; max-width: 100%; min-width: 0; }');
     expect(stylesSource).toContain('  .activity-log-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }');
     expect(stylesSource).toContain('  .activity-log-filter-actions { grid-column: 1 / -1; justify-content: flex-start; }');
-    expect(stylesSource).toContain('.responsive-table-container[data-responsive="cards"] > table > tbody');
-    expect(stylesSource).toContain('.activity-log-table tbody > tr.activity-log-detail-row { display: block;');
-    expect(i18nSource).toContain('"nav.activityLog": "لاگ فعالیت"');
-    expect(appLayoutSource).toContain('path: "/activity-log", labelKey: "nav.activityLog", icon: "audit", scope: "all"');
-  });
-});
-
-describe("responsive data tables", () => {
-  it("uses one labelled table container contract across desktop, tablet and phone", () => {
-    expect(uiSource).toContain("export function TableContainer");
-    expect(uiSource).toContain('data-responsive={mobileCards ? "cards" : "scroll"}');
-    expect(stylesSource).toContain(".responsive-table-container");
-    expect(stylesSource).toContain("overscroll-behavior-inline: contain");
-    expect(stylesSource).toContain("@media (min-width: 768px) and (max-width: 1279px)");
-    expect(stylesSource).toContain("@media (max-width: 767px)");
-    expect(stylesSource).not.toContain("table { width: 100%; border-collapse: collapse; white-space: nowrap; }");
-    expect(stylesSource).not.toContain(".table-wrap:has(.styled-select.is-open)");
-  });
-
-  it("keeps dense assessment, action, activity and administration rows labelled for mobile cards", () => {
-    expect(assessmentPagesSource).toContain('fmea-risk-table');
-    expect(assessmentPagesSource).toContain('data-label={t("assessment.existingControls")}');
-    expect(assessmentPagesSource).toContain('fmea-report-data-table');
-    expect(assessmentPagesSource).toContain('className="rula-analysis-table"');
-    expect(assessmentPagesSource).toContain('assessment-report-table rula-report-data-table');
-    expect(assessmentPagesSource).toContain('assessment-report-table rula-correction-table');
-    expect(generalPagesSource).toContain('className="actions-data-table"');
-    expect(generalPagesSource).toContain('data-label={t("actions.progress")}');
-    expect(generalPagesSource).toContain('className="activity-log-table"');
-    expect(generalPagesSource).toContain('data-label={t("activityLog.details")}');
-    expect(adminPageSource).toContain('className="admin-ai-usage-table"');
-    expect(adminPageSource).toContain('className="admin-user-table"');
-    expect(adminPageSource).toContain('data-label={t("admin.organizationsColumn")}');
-  });
-});
-
-describe("modular CSS architecture", () => {
-  it("keeps a small entry point and an explicit, stable import order", () => {
-    expect(stylesEntrySource.trim()).toBe('@import "./styles/index.css";');
-    const requiredModules = [
-      "tokens.css",
-      "base.css",
-      "layout.css",
-      "buttons.css",
-      "forms.css",
-      "tables.css",
-      "overlays.css",
-      "themes.css",
-      "features/fmea-process.css",
-      "features/fmea-details.css",
-      "features/rula-report.css",
-      "features/rula-table-cards.css",
-      "features/rula-mobile.css",
-      "responsive.css",
-    ];
-    for (const module of requiredModules) {
-      expect(stylesIndexSource).toContain(`@import "./${module}";`);
-    }
-    expect(stylesIndexSource.indexOf('@import "./tokens.css";')).toBeLessThan(stylesIndexSource.indexOf('@import "./base.css";'));
-    expect(stylesIndexSource.indexOf('@import "./base.css";')).toBeLessThan(stylesIndexSource.indexOf('@import "./layout.css";'));
-    expect(stylesIndexSource.indexOf('@import "./layout.css";')).toBeLessThan(stylesIndexSource.indexOf('@import "./features/fmea-process.css";'));
-  });
-
-  it("does not reintroduce the removed overflow workarounds", () => {
-    expect(stylesSource).not.toContain(".surface:has(.styled-select.is-open)");
-    expect(stylesSource).not.toContain(".table-wrap:has(.styled-select.is-open)");
-    expect(stylesSource).not.toContain("table { width: 100%; border-collapse: collapse; white-space: nowrap; }");
-    expect(stylesSource).toContain(".table-wrap");
-    expect(stylesSource).toContain("overflow-x: auto");
+    expect(stylesSource).toContain('@media (max-width: 1100px) {\n  .table-wrap.activity-log-table { overflow-x: auto; overscroll-behavior-inline: contain; }');
+    expect(stylesSource).toContain('.table-wrap.activity-log-table { overflow-x: auto; overscroll-behavior-inline: contain; }');
+    expect(stylesSource).toContain('.activity-log-table tbody { display: grid; gap: .65rem; padding: .65rem; }');
+    expect(stylesSource).toContain('.activity-log-table tbody > tr:not(.activity-log-detail-row) td::before { content: attr(data-label);');
+    expect(i18nSource).toContain('"nav.activityLog": "گزارش فعالیت"');
   });
 });

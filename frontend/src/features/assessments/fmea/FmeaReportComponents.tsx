@@ -52,7 +52,7 @@ export function FmeaRiskDistributionChart({ distribution, totalFailureModes, loc
   const activate = (level: FmeaReportRiskLevel) => setActiveLevel(level);
   const clearActive = () => setActiveLevel(null);
   const activeLabel = activeEntry ? t(fmeaReportRiskLabelKey(activeEntry.level)) : "";
-  return <div className="fmea-risk-distribution-visual">
+  return <div className="fmea-risk-distribution-visual" dir={locale === "fa" ? "rtl" : "ltr"}>
     <div className={`fmea-risk-donut${activeEntry ? " has-active" : ""}`} role="group" aria-label={t("report.riskDistribution")} onMouseLeave={clearActive}>
       <svg className="fmea-risk-donut-svg" viewBox="0 0 120 120" role="img" aria-label={t("report.riskDistribution")}>
         <circle className="fmea-risk-donut-track" cx="60" cy="60" r="43" pathLength="100"/>

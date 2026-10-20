@@ -6,6 +6,9 @@ import { defineConfig } from "vitest/config";
 // repository-level `.env` is intentionally configured for local development,
 // so set the process mode early for build/preview commands to keep React from
 // emitting the development-only jsxDEV runtime into production assets.
+// Build and test scripts use Vite's runner config loader to avoid esbuild's
+// ancestor scan reaching ACL-protected Windows profile directories in isolated
+// workspaces.
 const productionCommand = process.argv.some((argument) => argument === "build" || argument === "preview");
 if (productionCommand) {
   process.env.NODE_ENV = "production";
@@ -36,9 +39,13 @@ export default defineConfig(({ mode }) => {
     esbuild: {
       jsxDev: mode !== "production",
     },
-    // The workspace root is the parent of the frontend package. Using ../..
-    // makes Vite scan the entire drive on Windows while loading env files.
-    envDir: fileURLToPath(new URL("..", import.meta.url)),
+    // Production bundles only consume explicitly supplied VITE_* values.
+    // The production API URL defaults to /api/v1, so reading a protected local
+    // .env file is unnecessary and can fail under the restricted build account.
+    // Tests and CI also receive configuration through process.env.
+    envDir: mode === "production" || mode === "test" || process.env.CI === "true"
+      ? false
+      : fileURLToPath(new URL("..", import.meta.url)),
     server: {
       host: "0.0.0.0",
       port: 5043,

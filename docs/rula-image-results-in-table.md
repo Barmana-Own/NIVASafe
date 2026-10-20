@@ -1,0 +1,9 @@
+# RULA independent image results in the existing table
+
+The separate top independent-image summary card was removed at the user's explicit request. Its filename, independent RULA score, action level and seven body-part scores are retained in the existing assessment data table. Each image has an identifying heading row and separate body-part rows in the same table; angle, detection status and score share are also displayed. BOTH-side reports follow the existing anatomical-side tabs and use the corresponding independent observations and scores. Primary assessment/action editing, completion and deletion controls are preserved. Independent image observations remain read-only here as in the previous summary; they are edited in the existing image review stage.
+
+No additional table, column, panel, CSS change, backend change, migration, environment change or production assessment mutation was made. The previous card's information was transferred rather than discarded. Existing server scoring, AI report context and image persistence are unchanged. Filenames and observations remain React-escaped; no new security boundary is introduced.
+
+Validation: 200 frontend tests PASS; production build, repository TypeScript lint, typecheck and diff check PASS. Tests verify all four image sections, 28 part rows, one table, independent LEFT-side scores, escaped filenames and absence of the top card. Edge checks at 390/768/1024/1554 pixels PASS with no horizontal overflow or clipped sections. CSS artifact hash remains unchanged. Existing large bundle warning remains.
+
+Frontend deployed to the existing Nginx site with PWA cache v23. Local/public login and health return HTTP200, database is up, and public JS/CSS match the compiled artifacts. Rollback location is recorded in project-state.json under latestRulaImageResultsInTable. Evidence: C:/NIVASafe/backups/rula-image-table-{tests,build,lint,typecheck}.log and rula-image-layout-evidence.json.

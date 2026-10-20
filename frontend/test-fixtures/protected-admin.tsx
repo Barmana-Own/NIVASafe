@@ -1,0 +1,11 @@
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {MemoryRouter} from 'react-router-dom';
+import {LocaleProvider} from '../src/i18n';
+import {AdminPanelPage} from '../src/features/admin/AdminPanelPage';
+import '../src/styles.css';
+import {DialogProvider} from '../src/components/UI';
+localStorage.setItem('nivasafe-session',JSON.stringify({accessToken:'fixture',refreshToken:'fixture',user:{id:'other-admin',globalRole:'SUPER_ADMIN'},organizations:[]}));
+const user={id:'protected-admin',displayName:'NIVASafe Administrator',email:'admin@app.nivasafe.com',username:null,globalRole:'SUPER_ADMIN',protectedSystemAdmin:true,active:true,createdAt:'2026-10-10T00:00:00Z',lastLoginAt:null,jobTitle:null,phone:null,memberships:[]};
+window.fetch=async(input)=>{const url=String(input);let data:any=[];if(url.includes('/admin/users'))data=[user];if(url.includes('/admin/overview'))data={users:{total:1,active:1,inactive:0,superAdmins:1},organizations:{total:0,active:0,inactive:0},activeMemberships:0,pendingInvitations:0,pendingMemberRequests:0,recentUsers:[]};if(url.includes('/ai-usage'))data={users:[],totals:{totalTokens:0,requestCount:0,inputTokens:0,outputTokens:0}};return new Response(JSON.stringify({data}),{headers:{'Content-Type':'application/json'}})};
+createRoot(document.getElementById('root')!).render(<MemoryRouter><LocaleProvider><DialogProvider><AdminPanelPage/></DialogProvider></LocaleProvider></MemoryRouter>);

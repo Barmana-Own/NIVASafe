@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildRulaFactors, buildRulaSideResults, buildRulaSuggestions, buildRulaSuggestionsForAssessment, fallbackRulaPostureAnalysis, predictedRulaScore, primaryRulaResult, rulaImpactSchema, type RulaImpact } from "./rula-report.js";
+import { buildRulaFactors, buildRulaSideResults, buildRulaSuggestions, buildRulaSuggestionsForAssessment, fallbackRulaPostureAnalysis, predictedRulaScore, primaryRulaResult, rulaImpactSchema, parseRulaInputs, type RulaImpact } from "./rula-report.js";
 import { rulaPosturePartKeys, type RulaPostureAnalysis } from "./rula-posture.js";
 
 const analysis: RulaPostureAnalysis = {
@@ -15,6 +15,10 @@ const analysis: RulaPostureAnalysis = {
 const inputs = { upperArm: 3, lowerArm: 2, wrist: 1, wristTwist: 1, neck: 3, trunk: 2, legs: 1, muscleUse: true, force: 1 };
 
 describe("RULA results report", () => {
+  it('labels unversioned stored inputs as legacy and retains the explicit table version', () => {
+    expect(parseRulaInputs(inputs).algorithmVersion).toBe('legacy-average-v1');
+    expect(parseRulaInputs({...inputs,algorithmVersion:'cornell-worksheet-2001-tables-v1'}).algorithmVersion).toBe('cornell-worksheet-2001-tables-v1');
+  });
   it("exposes the three requested main factors with angle and contribution", () => {
     const factors = buildRulaFactors(analysis);
     expect(factors.map((factor) => factor.key)).toEqual(["neck", "upperArm", "trunk"]);

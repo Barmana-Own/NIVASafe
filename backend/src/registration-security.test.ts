@@ -15,9 +15,18 @@ const validPersonalPayload = {
   employeeCount: null,
   nationalId: null,
   subscriptionPlan: "STARTER" as const,
+  termsAccepted: true,
+  termsVersion: "nivasafe-terms-2026-10-19-v1",
 };
 
 describe("registration security boundary", () => {
+  it("requires current terms and never infers image consent from registration", () => {
+    expect(parseRegistrationInput(validPersonalPayload)).toMatchObject({ imageProcessingConsent: false });
+    expect(() => parseRegistrationInput({ ...validPersonalPayload, termsAccepted: false })).toThrow();
+    expect(() => parseRegistrationInput({ ...validPersonalPayload, termsVersion: "outdated" })).toThrow();
+    expect(() => parseRegistrationInput({ ...validPersonalPayload, imageProcessingConsent: true })).toThrow();
+    expect(parseRegistrationInput({ ...validPersonalPayload, imageProcessingConsent: true, imageProcessingConsentVersion: "image-processing-account-2026-10-19-v1" })).toMatchObject({ imageProcessingConsent: true });
+  });
   it("normalizes valid contact values and rejects a mismatched contact type", () => {
     expect(validateRegistrationIdentity({ email: " Person@Example.com ", displayName: " علی  رضایی ", phone: "۰۹۱۲۱۲۳۴۵۶۷" })).toEqual({
       email: "person@example.com",

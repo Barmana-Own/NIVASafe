@@ -3,28 +3,55 @@ import { files } from "./testData";
 
 declare global {
   interface Window {
-    __previewObjectUrls?: { created: string[]; revoked: string[] };
+    __previewObjectUrls?: {
+      created: string[];
+      revoked: string[];
+      opened: Array<{ url: string; target: string; features: string; contentType: string | null }>;
+      expire: () => void;
+    };
   }
 }
 
 const pdfPreviewFixture = Buffer.from("%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Count 0/Kids[]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF", "ascii");
 
-async function trackPreviewObjectUrls(page: Parameters<typeof authenticate>[0]) {
-  await page.addInitScript(() => {
-    const state = { created: [] as string[], revoked: [] as string[] };
+async function trackPreviewObjectUrls(page: Parameters<typeof authenticate>[0], options: { interceptOpen?: boolean } = {}) {
+  await page.addInitScript(({ interceptOpen }) => {
+    const expirations: Array<() => void> = [];
+    const contentTypes = new Map<string, string>();
+    const state = {
+      created: [] as string[],
+      revoked: [] as string[],
+      opened: [] as Array<{ url: string; target: string; features: string; contentType: string | null }>,
+      expire: () => expirations.splice(0).forEach((callback) => callback()),
+    };
     Object.defineProperty(window, "__previewObjectUrls", { value: state });
     const create = URL.createObjectURL.bind(URL);
     const revoke = URL.revokeObjectURL.bind(URL);
     URL.createObjectURL = (value) => {
       const url = create(value);
       state.created.push(url);
+      contentTypes.set(url, value.type);
       return url;
     };
     URL.revokeObjectURL = (url) => {
       state.revoked.push(url);
       revoke(url);
     };
-  });
+    const open = window.open.bind(window);
+    window.open = ((url?: string | URL | null, target?: string, features?: string) => {
+      const normalizedUrl = String(url ?? "");
+      state.opened.push({ url: normalizedUrl, target: target ?? "", features: features ?? "", contentType: contentTypes.get(normalizedUrl) ?? null });
+      return interceptOpen ? null : open(url, target, features);
+    }) as typeof window.open;
+    const schedule = window.setTimeout.bind(window);
+    window.setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
+      if (timeout === 60_000 && typeof handler === "function" && handler.toString().includes("revokeObjectURL")) {
+        expirations.push(() => handler(...args));
+        return 0;
+      }
+      return schedule(handler, timeout, ...args);
+    }) as typeof window.setTimeout;
+  }, options);
 }
 
 async function readTrackedObjectUrls(page: Parameters<typeof authenticate>[0]) {
@@ -80,7 +107,7 @@ test.describe("responsive shell and critical interactions", () => {
   });
 
   test("supports keyboard selection in a portalized StyledSelect", async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
+    await page.setViewportSize({ width: 1280, height: 800 });
     await authenticate(page, "/fmea/fmea-e2e-1/report");
     await expect(page.locator(".fmea-report-table-wrap")).toBeVisible();
 
@@ -117,10 +144,13 @@ test.describe("responsive shell and critical interactions", () => {
     await deleteButton.click();
     const dialog = page.locator(".app-dialog");
     await expect(dialog).toBeVisible();
-    await expect.poll(() => page.evaluate(() => ({ body: document.body.style.overflow, root: document.documentElement.style.overflow }))).toEqual({ body: "hidden", root: "hidden" });
+    await expect.poll(() => page.evaluate(() => ({ body: document.body.style.overflow, root: document.documentElement.style.overflow }))).toEqual({ body: "hidden", root: initialOverflow.root });
 
+    await expect(dialog.locator(".dialog-actions button").first()).toBeFocused();
     await page.keyboard.press("Tab");
-    await expect(dialog.locator(".modal-close")).toBeFocused();
+    await expect(dialog.locator(".dialog-actions button").last()).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(dialog.locator(".dialog-actions button").first()).toBeFocused();
     await page.keyboard.press("Shift+Tab");
     await expect(dialog.locator(".dialog-actions button").last()).toBeFocused();
     await page.keyboard.press("Escape");
@@ -144,18 +174,21 @@ test.describe("responsive shell and critical interactions", () => {
     await authenticate(page, "/fmea/fmea-e2e-1/report");
     await waitForPageReady(page);
 
-    await expect(page.locator(".fmea-report-data-table")).toBeVisible();
+    const firstRow = page.locator(".fmea-report-page .rm-row").first();
+    await expect(firstRow).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth && document.body.scrollWidth <= document.body.clientWidth);
     expect(overflow).toBe(true);
 
-    const viewButton = page.locator(".fmea-report-data-table .report-table-actions button").first();
-    await viewButton.click();
-    await expect(page.locator(".fmea-report-dialog")).toBeVisible();
-    await page.locator(".fmea-report-dialog-actions button").first().click();
-    await expect(page.locator(".fmea-report-dialog")).toHaveCount(0);
+    await firstRow.click();
+    const details = page.locator("dialog.rm-detail[open]");
+    await expect(details).toBeVisible();
+    await expect(details.locator(".rm-header h3")).toHaveText("جزئیات ریسک");
+    await expect(details).toContainText("RPN");
+    await details.locator(".rm-header button").click();
+    await expect(page.locator("dialog.rm-detail[open]")).toHaveCount(0);
   });
 
-  test("switches RULA side and saves a manual posture edit", async ({ page }) => {
+  test("opens left-side RULA details and saves a manual posture edit", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await authenticate(page, "/rula/rula-e2e-1/report");
     await expect(page.locator(".rula-report-view")).toBeVisible();
@@ -165,12 +198,31 @@ test.describe("responsive shell and critical interactions", () => {
     await sideTabs.nth(1).click();
     await expect(sideTabs.nth(1)).toHaveAttribute("aria-selected", "true");
 
-    await page.locator(".rula-report-data-table .report-table-actions > .icon-button").first().click();
-    await expect(page).toHaveURL(/\/rula\?edit=rula-e2e-1&step=2&part=/);
-    const dialog = page.locator(".rula-edit-dialog");
+    const leftRow = page.locator('[data-rula-report-side="LEFT"] .rm-row[data-mobile-row-id^="upperArm"]').first();
+    await expect(leftRow).toBeVisible();
+    await leftRow.click();
+    const details = page.locator('.rm-modal [role="dialog"]');
+    await expect(details).toBeVisible();
+    await expect(details.locator(".rm-body-side")).toHaveText("سمت چپ");
+    await expect(details.locator(".rm-metrics strong").first()).toHaveText("۳");
+
+    await details.locator(".rm-detail-footer .rm-buttons button").first().click();
+    const dialog = page.locator('.rula-evaluation-row-dialog[role="dialog"]');
     await expect(dialog).toBeVisible();
-    await dialog.locator(".rula-edit-actions button").last().click();
+    const score = dialog.locator("label").filter({ hasText: "امتیاز پیشنهادی" }).locator("input");
+    await expect(score).toHaveValue("3");
+    await score.fill("5");
+
+    const patchResponse = page.waitForResponse(response => response.request().method() === "PATCH" && new URL(response.url()).pathname === "/api/v1/rula/rula-e2e-1");
+    const reportRefresh = page.waitForResponse(response => response.request().method() === "GET" && new URL(response.url()).pathname === "/api/v1/rula/rula-e2e-1/report");
+    await dialog.getByRole("button", { name: "ذخیره" }).click();
+    const patch = await patchResponse;
+    const savedAnalysis = (await patch.json()).data?.postureAnalysis;
+    expect(savedAnalysis.sideAnalyses.LEFT.upperArm.score).toBe(5);
+    await reportRefresh;
     await expect(dialog).toHaveCount(0);
+    await expect(leftRow.locator(".rm-score")).toHaveText("۵");
+    await expect(page.locator('[data-rula-report-side="RIGHT"] .rm-row[data-mobile-row-id^="upperArm"] .rm-score')).toHaveText("۴");
   });
 
   test("uses the same compact report download button styling as FMEA", async ({ page }) => {
@@ -205,22 +257,24 @@ test.describe("responsive shell and critical interactions", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await authenticate(page, "/rula?edit=rula-e2e-1&step=3");
 
-    const overview = page.getByTestId("rula-assessment-overview");
+    const overview = page.getByTestId("rula-stage-three-overview");
     await expect(overview).toBeVisible();
-    await expect(overview.getByText("خلاصه مدیریتی ارزیابی RULA")).toBeVisible();
-    await expect(overview.getByText("توزیع سطح اثر عوامل RULA")).toBeVisible();
-    await expect(overview.getByText("پیشرفت انتخاب اقدامات اصلاحی")).toBeVisible();
-    await expect(overview.getByTestId("rula-factor-impact-chart").locator("svg circle.rula-overview-donut-segment").first()).toBeVisible();
+    await expect(overview.getByText("توزیع سطح ریسک ارزیابی RULA")).toBeVisible();
+    await expect(overview.getByText("پیشرفت اقدامات اصلاحی")).toBeVisible();
+    await expect(overview.locator(".rula-overview-distribution-panel .fmea-risk-donut-svg")).toBeVisible();
+    await expect(overview.locator(".report-action-progress")).toBeVisible();
 
-    const selectionProgress = overview.getByTestId("rula-suggestion-selection-progress");
-    await expect(selectionProgress).toBeVisible();
-    await expect(selectionProgress).toHaveAttribute("aria-valuenow", "0");
-    await expect.poll(() => selectionProgress.evaluate((element) => getComputedStyle(element).backgroundImage)).toContain("conic-gradient");
-    const selectSuggestion = page.locator(".rula-correction-table .rula-correction-toggle").first();
+    const selectedActions = page.locator(".rula-selected-actions-preview");
+    await expect(selectedActions).toBeVisible();
+    await expect(selectedActions).toContainText("برای مشاهده اثر اصلاحی، یک اقدام پیشنهادی را انتخاب کنید.");
+    const selectSuggestion = page.locator(".rula-corrections-section .compact-assessment-mobile .rm-row").first();
     await expect(selectSuggestion).toBeVisible();
+    await selectSuggestion.scrollIntoViewIfNeeded();
     await selectSuggestion.click();
-    await expect(selectionProgress).toHaveAttribute("aria-valuenow", "1");
-    await expect.poll(() => selectionProgress.evaluate((element) => getComputedStyle(element).backgroundImage)).toContain("conic-gradient");
+    const suggestionDialog = page.locator("dialog.rm-detail");
+    await expect(suggestionDialog).toBeVisible();
+    await suggestionDialog.getByRole("button", { name: "افزودن به جدول ارزیابی RULA" }).click();
+    await expect(selectedActions.locator(":scope > div")).toHaveCount(1);
 
     for (const width of [320, 390, 768, 1280]) {
       await page.setViewportSize({ width, height: width < 500 ? 844 : 900 });
@@ -235,49 +289,59 @@ test.describe("responsive shell and critical interactions", () => {
   test("renders the admin user data view without page-level horizontal overflow", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await authenticate(page, "/admin");
-    await expect(page.locator(".admin-user-table")).toBeVisible();
+    await expect(page.locator(".admin-user-card").first()).toBeVisible();
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth && document.body.scrollWidth <= document.body.clientWidth);
     expect(overflow).toBe(true);
     await expect(page.getByText("اپراتور با نام طولانی برای جدول کاربران").first()).toBeVisible();
   });
 
-  test("opens and closes the in-app file preview overlay", async ({ page }) => {
+  test("opens image previews in an isolated tab and expires their object URL", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
+    await trackPreviewObjectUrls(page);
     await authenticate(page, "/files");
     await expect(page.locator(".file-card")).toBeVisible();
 
+    const popupPromise = page.waitForEvent("popup");
     await page.locator(".file-card .file-actions button").first().click();
-    const preview = page.locator(".file-preview-dialog");
-    await expect(preview).toBeVisible();
-    await expect(preview.locator("img")).toBeVisible();
-    await preview.locator(".modal-close").click();
-    await expect(preview).toHaveCount(0);
+    const preview = await popupPromise;
+    await expect(preview).toHaveURL(/^blob:/);
+    await expect.poll(() => preview.evaluate(() => document.contentType)).toBe("image/png");
+    const url = (await readTrackedObjectUrls(page)).created.at(-1);
+    expect(url).toMatch(/^blob:/);
+    expect((await readTrackedObjectUrls(page)).revoked).not.toContain(url);
+
+    await page.evaluate(() => window.__previewObjectUrls?.expire());
+    await expect.poll(async () => (await readTrackedObjectUrls(page)).revoked).toContain(url);
+    await preview.close();
   });
 
-  test("previews a local PDF fixture and revokes its object URL on close", async ({ page }) => {
+  test("previews a local PDF fixture in an isolated tab and expires its object URL", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await mockPreviewFiles(page);
-    await trackPreviewObjectUrls(page);
+    await trackPreviewObjectUrls(page, { interceptOpen: true });
     await authenticate(page, "/files");
     await expect(page.locator(".file-card")).toHaveCount(2);
 
     const before = (await readTrackedObjectUrls(page)).created.length;
     await page.locator('.file-card').filter({ hasText: "گزارش-آزمایشی.pdf" }).locator(".file-actions button").first().click();
-    const preview = page.locator(".file-preview-dialog");
-    await expect(preview).toBeVisible();
-    await expect(preview.locator('.file-preview-pdf object[type="application/pdf"]')).toBeVisible();
     const created = (await readTrackedObjectUrls(page)).created;
     expect(created.length).toBeGreaterThan(before);
     const previewUrl = created.at(-1);
     expect(previewUrl).toMatch(/^blob:/);
+    expect((await readTrackedObjectUrls(page)).opened.at(-1)).toEqual({
+      url: previewUrl,
+      target: "_blank",
+      features: "noopener,noreferrer",
+      contentType: "application/pdf",
+    });
 
-    await preview.locator(".modal-close").click();
-    await expect(preview).toHaveCount(0);
+    expect((await readTrackedObjectUrls(page)).revoked).not.toContain(previewUrl);
+    await page.evaluate(() => window.__previewObjectUrls?.expire());
     await expect.poll(async () => (await readTrackedObjectUrls(page)).revoked).toContain(previewUrl);
   });
 
-  test("previews a generated local WebM fixture and revokes its object URL on close", async ({ page }) => {
+  test("previews a generated local WebM fixture in an isolated tab and expires its object URL", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     const videoData = await page.evaluate(async () => {
       if (!("MediaRecorder" in window) || !HTMLCanvasElement.prototype.captureStream) {
@@ -338,20 +402,49 @@ test.describe("responsive shell and critical interactions", () => {
     await expect(page.locator(".file-card")).toHaveCount(3);
 
     const before = (await readTrackedObjectUrls(page)).created.length;
+    const popupPromise = page.waitForEvent("popup");
     await page.locator('.file-card').filter({ hasText: "ویدئوی-آزمایشی.webm" }).locator(".file-actions button").first().click();
-    const preview = page.locator(".file-preview-dialog");
-    await expect(preview).toBeVisible();
-    const video = preview.locator(".file-preview-video video");
-    await expect(video).toBeVisible();
-    await expect(video).toHaveAttribute("src", /^blob:/);
-    await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.readyState), { timeout: 5000 }).toBeGreaterThanOrEqual(1);
+    const preview = await popupPromise;
+    await expect(preview).toHaveURL(/^blob:/);
+    await expect.poll(() => preview.evaluate(() => document.contentType)).toBe("video/webm");
     const created = (await readTrackedObjectUrls(page)).created;
     expect(created.length).toBeGreaterThan(before);
     const previewUrl = created.at(-1);
     expect(previewUrl).toMatch(/^blob:/);
 
-    await preview.locator(".modal-close").click();
-    await expect(preview).toHaveCount(0);
+    expect((await readTrackedObjectUrls(page)).revoked).not.toContain(previewUrl);
+    await page.evaluate(() => window.__previewObjectUrls?.expire());
     await expect.poll(async () => (await readTrackedObjectUrls(page)).revoked).toContain(previewUrl);
+    await preview.close();
+  });
+
+  test("keeps the reply confirmation visible while refreshing support requests", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await authenticate(page, "/support");
+    await page.getByRole("button", { name: /مشاهده و ادامه گفتگو/ }).click();
+    await page.getByRole("textbox", { name: "پاسخ شما" }).fill("پیام ساختگی برای آزمون تایید ارسال پاسخ");
+    await page.getByRole("button", { name: "ارسال پاسخ" }).click();
+    await expect(page.locator(".support-thread-panel .alert.success[role=status]")).toContainText("پاسخ در پرونده ثبت شد.");
+  });
+
+  test("shows the default AI allowance and confirms an admin quota update", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await authenticate(page, "/admin");
+    await page.getByRole("tab", { name: /هوش مصنوعی/ }).click();
+    const firstUser = page.getByRole("row", { name: /کاربر آزمون ریسپانسیو/ });
+    await expect(firstUser.getByRole("checkbox", { name: /دسترسی هوش مصنوعی/ })).toBeChecked();
+    const limit = firstUser.getByRole("textbox", { name: /سقف توکن/ });
+    await expect(limit).toHaveValue("1000000");
+    await limit.fill("1250000");
+    await firstUser.getByRole("button", { name: /ذخیره: کاربر آزمون ریسپانسیو/ }).click();
+    await expect(page.getByRole("status")).toContainText("سهمیه هوش مصنوعی به‌روزرسانی شد.");
+    await expect(limit).toHaveValue("1250000");
+  });
+
+  test("renders the notification inbox with the summary response shape", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await authenticate(page, "/notifications");
+    await expect(page.getByRole("heading", { name: "اعلان‌ها" })).toBeVisible();
+    await expect(page.getByText("نتیجه ارزیابی آماده است")).toBeVisible();
   });
 });

@@ -3,24 +3,6 @@ export type AutoSaveDraft = Record<string, AutoSaveValue>;
 export type AutoSaveStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 export type AssessmentDraftKind = "fmea" | "rula";
 
-/**
- * Fields that must never be written to, or restored from, a browser draft.
- *
- * Keep this list centralized so a caller-specific `excludeFields` option can
- * add exclusions without accidentally replacing the security defaults.
- */
-export const SENSITIVE_DRAFT_FIELDS = [
-  "password",
-  "currentPassword",
-  "newPassword",
-  "confirmPassword",
-  "passwordConfirmation",
-  "token",
-  "accessToken",
-  "refreshToken",
-  "file",
-] as const;
-
 export function assessmentDraftKey(kind: AssessmentDraftKind, userId?: string | null, organizationId?: string | null): string {
   return `nivasafe-draft:v1:${kind}:${userId ?? "guest"}:${organizationId || "none"}`;
 }
@@ -34,12 +16,7 @@ export function clearAssessmentWizardStep(draftKey: string): void {
 }
 
 function isExcluded(name: string, excludedFields: readonly string[]) {
-  const normalizedName = name.toLowerCase();
-  return excludedFields.some((field) => field.toLowerCase() === normalizedName);
-}
-
-function allExcludedFields(excludedFields: readonly string[] = []): readonly string[] {
-  return [...SENSITIVE_DRAFT_FIELDS, ...excludedFields];
+  return excludedFields.includes(name);
 }
 
 /** Read a browser draft without allowing malformed or unexpected values to break a form. */
@@ -56,7 +33,7 @@ export function readStoredDraft(storage: AutoSaveStorage | undefined, key: strin
         draft[name] = fieldValue as AutoSaveValue;
       }
     }
-    return sanitizeDraft(draft);
+    return draft;
   } catch {
     return null;
   }
@@ -66,7 +43,7 @@ export function readStoredDraft(storage: AutoSaveStorage | undefined, key: strin
 export function writeStoredDraft(storage: AutoSaveStorage | undefined, key: string, draft: AutoSaveDraft): boolean {
   if (!storage) return false;
   try {
-    storage.setItem(key, JSON.stringify(sanitizeDraft(draft)));
+    storage.setItem(key, JSON.stringify(draft));
     return true;
   } catch {
     return false;
@@ -78,18 +55,16 @@ export function clearStoredDraft(storage: AutoSaveStorage | undefined, key: stri
 }
 
 export function sanitizeDraft(draft: AutoSaveDraft, excludedFields: readonly string[] = []): AutoSaveDraft {
-  const blockedFields = allExcludedFields(excludedFields);
-  return Object.fromEntries(Object.entries(draft).filter(([name]) => !isExcluded(name, blockedFields))) as AutoSaveDraft;
+  return Object.fromEntries(Object.entries(draft).filter(([name]) => !isExcluded(name, excludedFields))) as AutoSaveDraft;
 }
 
 /** Snapshot uncontrolled form fields while deliberately excluding credentials and file objects. */
-export function snapshotForm(form: HTMLFormElement, excludedFields: readonly string[] = []): AutoSaveDraft {
-  const blockedFields = allExcludedFields(excludedFields);
+export function snapshotForm(form: HTMLFormElement, excludedFields: readonly string[] = ["password", "currentPassword", "newPassword", "confirmPassword", "token", "file"]): AutoSaveDraft {
   const snapshot: AutoSaveDraft = {};
   for (const field of Array.from(form.elements)) {
     if (!(field instanceof HTMLInputElement || field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement)) continue;
     const name = field.name;
-    if (!name || isExcluded(name, blockedFields)) continue;
+    if (!name || isExcluded(name, excludedFields)) continue;
     if (field instanceof HTMLInputElement) {
       if (["file", "password"].includes(field.type)) continue;
       if (field.type === "checkbox") { snapshot[name] = field.checked; continue; }
@@ -101,7 +76,7 @@ export function snapshotForm(form: HTMLFormElement, excludedFields: readonly str
     }
     snapshot[name] = field.value;
   }
-  return sanitizeDraft(snapshot, blockedFields);
+  return sanitizeDraft(snapshot, excludedFields);
 }
 
 /** Restore a draft into uncontrolled inputs. React-controlled fields remain authoritative. */

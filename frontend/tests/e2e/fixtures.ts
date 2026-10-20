@@ -1,10 +1,23 @@
 import { expect, test as base, type Locator, type Page, type Route } from "@playwright/test";
 import { readFileSync } from "node:fs";
-import { actions, activityLog, adminOverview, adminUsers, dashboard, files, fmeaRecord, fmeaReport, knowledgeDocuments, knowledgeQuota, members, notificationPreferences, notifications, profile, rulaRecord, rulaReport, rulaSuggestions, testProject, testSession } from "./testData";
+import { actions, activityLog, adminOverview, adminUsers, dashboard, files, fmeaRecord, fmeaReport, knowledgeDocuments, knowledgeQuota, members, notificationPreferences, notifications, profile, profileImageConsent, rulaRecord, rulaReport, rulaSuggestions, supportRequest, testProject, testSession } from "./testData";
 
 export { expect };
 
 const onePixelPng = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
+type E2ERulaPersistedAction = {
+  id: string;
+  title: string;
+  description: string;
+  priority: string;
+  status: string;
+  progress: number;
+  beforeRisk: number;
+  afterRisk: number;
+  bodySide: string;
+  rulaImpact: { suggestionId: string; scoreReduction: number; affectedParts: string[] };
+};
+type E2ERulaReport = Omit<typeof rulaReport, "actions"> & { actions: E2ERulaPersistedAction[] };
 const vazirmatnFonts = {
   arabic: readFileSync(new URL("./assets/vazirmatn-arabic.woff2", import.meta.url)),
   latin: readFileSync(new URL("./assets/vazirmatn-latin.woff2", import.meta.url)),
@@ -42,7 +55,7 @@ async function json(route: Route, data: unknown, status = 200) {
   await route.fulfill({ status, contentType: "application/json", body: JSON.stringify({ data }) });
 }
 
-async function mockApi(route: Route) {
+async function mockApi(route: Route, aiQuotaOverrides: Map<string, { aiEnabled?: boolean; aiTokenLimit?: number; aiTokensUsed?: number }>, rulaReportOverrides: Map<string, E2ERulaReport>) {
   const request = route.request();
   const method = request.method();
   const path = apiPath(route);
@@ -52,11 +65,29 @@ async function mockApi(route: Route) {
     return;
   }
   if (path === "/auth/login" && method === "POST") { await json(route, testSession); return; }
+  if (path === "/me/ai-quota" && method === "GET") {
+    await json(route, { tokenLimit: 1_000_000, tokensUsed: 0, remainingTokens: 1_000_000, warningThreshold: 100_000, state: "HEALTHY", serverTimestamp: "2026-10-20T00:00:00.000Z" });
+    return;
+  }
+  if (path === "/support/requests" && method === "GET") { await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [{ id: supportRequest.id, category: supportRequest.category, subject: supportRequest.subject, message: supportRequest.message, status: supportRequest.status, priority: supportRequest.priority, createdAt: supportRequest.createdAt, updatedAt: supportRequest.updatedAt }], meta: { page: 1, limit: 20, total: 1 } }) }); return; }
+  if (path === `/support/requests/${supportRequest.id}` && method === "GET") { await json(route, supportRequest); return; }
+  if (path === `/support/requests/${supportRequest.id}/replies` && method === "POST") { const payload = JSON.parse(request.postData() ?? "{}"); await json(route, { id: "reply-e2e-created", message: payload.message, visibility: "PUBLIC", createdAt: "2026-10-16T12:10:00.000Z", author: { id: testSession.user.id, displayName: testSession.user.displayName } }); return; }
+  if (path === "/admin/support-requests" && method === "GET") { await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [supportRequest], meta: { page: 1, limit: 20, total: 1 } }) }); return; }
+  if (path === `/admin/support-requests/${supportRequest.id}` && method === "GET") { await json(route, supportRequest); return; }
+  if (path === `/admin/support-requests/${supportRequest.id}/replies` && method === "POST") { const payload = JSON.parse(request.postData() ?? "{}"); await json(route, { id: "reply-e2e-admin-created", message: payload.message, visibility: "PUBLIC", createdAt: "2026-10-16T12:10:00.000Z", author: { id: testSession.user.id, displayName: testSession.user.displayName, globalRole: testSession.user.globalRole } }); return; }
+  if (path === "/admin/support-staff" && method === "GET") { await json(route, []); return; }
   if (path === "/profile" && method === "GET") { await json(route, profile); return; }
+  if (path === "/profile/image-processing-consent" && method === "GET") { await json(route, profileImageConsent); return; }
+  if (path === "/profile/image-processing-consent" && method === "PUT") {
+    const payload = JSON.parse(request.postData() ?? "{}") as { accepted?: boolean; policyVersion?: string };
+    await json(route, { ...profileImageConsent, accepted: payload.accepted === true, policyVersion: payload.policyVersion ?? profileImageConsent.policyVersion });
+    return;
+  }
   if (path === "/actions" && method === "GET") { await json(route, actions); return; }
   if (path === "/members" && method === "GET") { await json(route, members); return; }
   if (path === "/knowledge" && method === "GET") { await json(route, knowledgeDocuments); return; }
   if (path === "/knowledge/quota" && method === "GET") { await json(route, knowledgeQuota); return; }
+  if (path === "/notifications/summary" && method === "GET") { await json(route, { items: notifications, unreadCount: notifications.filter((item) => !item.readAt).length, total: notifications.length }); return; }
   if (path === "/notifications/preferences" && method === "GET") { await json(route, notificationPreferences); return; }
   if (path === "/processes" && method === "GET") { await json(route, [{ id: "process-e2e-1", projectId: testProject.id, name: "فرایند مونتاژ تجهیزات ایمنی" }]); return; }
   if (path === "/activities" && method === "GET") { await json(route, [{ id: "activity-e2e-1", projectId: testProject.id, processId: "process-e2e-1", title: "فعالیت مونتاژ و کنترل نهایی", location: "سالن تولید" }]); return; }
@@ -92,10 +123,40 @@ async function mockApi(route: Route) {
     return;
   }
   if (path === "/auth/logout" || path === "/profile" || path.startsWith("/actions") || path.startsWith("/admin/") || path.startsWith("/fmea/") || path.startsWith("/rula/")) {
+    const aiAccessMatch = path.match(/^\/admin\/users\/([^/]+)\/ai-access$/);
+    if (aiAccessMatch && method === "PATCH") {
+      const current = adminUsers.find((user) => user.id === aiAccessMatch[1]);
+      if (!current) { await json(route, { error: "user not found" }, 404); return; }
+      const patch = JSON.parse(request.postData() ?? "{}") as { aiEnabled?: boolean; aiTokenLimit?: number };
+      const updated = { ...(aiQuotaOverrides.get(current.id) ?? current), ...patch };
+      aiQuotaOverrides.set(current.id, updated);
+      await json(route, updated);
+      return;
+    }
     if (path === "/rula/rula-e2e-1/report/action-suggestions" && method === "POST") { await json(route, { suggestions: rulaSuggestions, provider: "fallback", model: null, aiStatus: "fallback", minimum: 1 }); return; }
     if (path === "/fmea/fmea-e2e-1/report/action-suggestions" && method === "POST") { await json(route, { suggestions: fmeaReport.suggestedActions, provider: "fallback", model: null, aiStatus: "fallback", minimum: 1 }); return; }
     if (path === "/fmea/fmea-e2e-1/report/detail-suggestions" && method === "POST") { await json(route, { suggestions: [], provider: "fallback", aiStatus: "fallback", minimum: 0 }); return; }
-    if (path === "/rula/rula-e2e-1/report" && method === "GET") { await json(route, rulaReport); return; }
+    if (path === "/actions" && method === "POST") {
+      const payload = JSON.parse(request.postData() ?? "{}") as Omit<E2ERulaPersistedAction, "id" | "progress"> & { rulaId?: string };
+      const created: E2ERulaPersistedAction = { ...payload, id: "action-e2e-created", progress: 0 };
+      if (payload.rulaId === rulaRecord.id) {
+        const current = rulaReportOverrides.get(rulaRecord.id) ?? { ...rulaReport, actions: [] };
+        rulaReportOverrides.set(rulaRecord.id, { ...current, actions: [...current.actions, created] });
+      }
+      await json(route, created);
+      return;
+    }
+    if (path === `/rula/${rulaRecord.id}` && method === "PATCH") {
+      const patch = JSON.parse(request.postData() ?? "{}") as { postureAnalysis?: typeof rulaRecord.postureAnalysis };
+      const current = rulaReportOverrides.get(rulaRecord.id) ?? rulaReport;
+      const updated = patch.postureAnalysis
+        ? { ...current, assessment: { ...current.assessment, postureAnalysis: patch.postureAnalysis } }
+        : current;
+      rulaReportOverrides.set(rulaRecord.id, updated);
+      await json(route, { id: rulaRecord.id, postureAnalysis: updated.assessment.postureAnalysis });
+      return;
+    }
+    if (path === `/rula/${rulaRecord.id}/report` && method === "GET") { await json(route, rulaReportOverrides.get(rulaRecord.id) ?? rulaReport); return; }
     if (path === "/fmea/fmea-e2e-1/report" && method === "GET") { await json(route, request.headers()["x-e2e-touch-targets"] === "fmea-report-expanded" ? expandedFmeaReport : fmeaReport); return; }
     if (path === "/rula/posture-analysis" && method === "POST") { await json(route, { sides: { RIGHT: rulaRecord.postureAnalysis.sideAnalyses.RIGHT, LEFT: rulaRecord.postureAnalysis.sideAnalyses.LEFT }, notes: "Synthetic analysis", provider: "fallback", aiStatus: "fallback" }); return; }
     if (path === "/rula/posture-image-analysis" && method === "POST") { await json(route, { sides: { RIGHT: rulaRecord.postureAnalysis.sideAnalyses.RIGHT, LEFT: rulaRecord.postureAnalysis.sideAnalyses.LEFT }, notes: "Synthetic image analysis", provider: "fallback", aiStatus: "fallback" }); return; }
@@ -114,7 +175,7 @@ async function mockApi(route: Route) {
   if (path === "/admin/overview") { await json(route, adminOverview); return; }
   if (path.startsWith("/admin/member-requests")) { await json(route, []); return; }
   if (path.startsWith("/admin/users")) { await json(route, adminUsers); return; }
-  if (path.startsWith("/admin/ai-usage")) { await json(route, { users: adminUsers.map((user) => ({ userId: user.id, displayName: user.displayName, username: user.username, email: user.email, active: user.active, requestCount: 12, inputTokens: 1200, outputTokens: 800, totalTokens: 2000 })), totals: { requestCount: 24, inputTokens: 2400, outputTokens: 1600, totalTokens: 4000 } }); return; }
+  if (path.startsWith("/admin/ai-usage")) { await json(route, { users: adminUsers.map((user) => ({ ...aiQuotaOverrides.get(user.id), userId: user.id, displayName: user.displayName, username: user.username, email: user.email, active: user.active, aiEnabled: aiQuotaOverrides.get(user.id)?.aiEnabled ?? user.aiEnabled, aiTokenLimit: aiQuotaOverrides.get(user.id)?.aiTokenLimit ?? user.aiTokenLimit, aiTokensUsed: aiQuotaOverrides.get(user.id)?.aiTokensUsed ?? user.aiTokensUsed, requestCount: 12, inputTokens: 1200, outputTokens: 800, totalTokens: 2000 })), totals: { requestCount: 24, inputTokens: 2400, outputTokens: 1600, totalTokens: 4000 } }); return; }
   if (path === "/health") { await json(route, { status: "ready", database: "ready", redis: "ready", storage: "ready", ai: "ready" }); return; }
   if (path === "/organizations/current") { await json(route, { id: "org-e2e-1", nameFa: "سازمان آزمایشی ایمنی", nameEn: "Synthetic Safety Organization", active: true, subscriptionStatus: "ACTIVE" }); return; }
   if (path === "/organizations") { await json(route, [{ id: "org-e2e-1", nameFa: "سازمان آزمایشی ایمنی", nameEn: "Synthetic Safety Organization", active: true, subscriptionStatus: "ACTIVE" }]); return; }
@@ -126,6 +187,8 @@ async function mockApi(route: Route) {
 
 export const test = base.extend<{ apiMocks: void }>({
   apiMocks: [async ({ page }, use) => {
+    const aiQuotaOverrides = new Map<string, { aiEnabled?: boolean; aiTokenLimit?: number; aiTokensUsed?: number }>();
+    const rulaReportOverrides = new Map<string, E2ERulaReport>();
     const consoleErrors: string[] = [];
     const pageErrors: string[] = [];
     page.on("console", (message) => {
@@ -149,7 +212,7 @@ export const test = base.extend<{ apiMocks: void }>({
       }
       await route.fulfill({ status: 200, contentType: "font/woff2", headers: { "access-control-allow-origin": "*", "cache-control": "public, max-age=31536000" }, body: vazirmatnFonts[subset.name] });
     });
-    await page.route("**/api/v1/**", mockApi);
+    await page.route("**/api/v1/**", (route) => mockApi(route, aiQuotaOverrides, rulaReportOverrides));
     await use();
     expect(consoleErrors, `browser console errors:\n${consoleErrors.join("\n")}`).toEqual([]);
     expect(pageErrors, `uncaught page errors:\n${pageErrors.join("\n")}`).toEqual([]);

@@ -6,6 +6,10 @@ import { z } from "zod";
 import { authenticate } from "../auth-guard.js";
 import { checkedPassword } from "./auth.js";
 import { envelope, parse, prisma } from "../core.js";
+import { resolveMemberRequestApprovalEmail } from "../member-request.js";
+import { refreshAIQuotaNotificationsForUser } from "../notification-feed.js";
+
+import { assertProtectedSystemAdminChange } from "../protected-system-admin.js";
 
 const adminUserSelect = {
   id: true,
@@ -14,6 +18,7 @@ const adminUserSelect = {
   displayName: true,
   active: true,
   globalRole: true,
+  protectedSystemAdmin: true,
   lastLoginAt: true,
   jobTitle: true,
   phone: true,
@@ -53,6 +58,7 @@ const userUpdateSchema = z.object({
 const organizationRoleSchema = z.enum(["SUPER_ADMIN", "ORG_ADMIN", "HSE_MANAGER", "HSE_SPECIALIST", "HSE_OFFICER", "EXTERNAL_AUDITOR", "PERSONNEL", "ASSESSOR", "ASSISTANT", "VIEWER"]);
 const membershipUpdateSchema = z.object({ role: organizationRoleSchema.optional(), active: z.boolean().optional() }).refine((value) => value.role !== undefined || value.active !== undefined, { message: "At least one membership field is required" });
 const adminPasswordSchema = z.object({ password: z.string().min(1).max(128) });
+const memberRequestApprovalSchema = adminPasswordSchema.extend({ email: z.string().trim().min(1).max(EMAIL_MAX_LENGTH).optional() });
 const memberRequestStatusSchema = z.enum(["PENDING", "APPROVED", "REJECTED"]);
 const memberRequestRejectSchema = z.object({ reason: z.string().trim().max(1000).nullable().optional() });
 
@@ -127,21 +133,22 @@ export async function registerAdminRoutes(app: FastifyInstance) {
   app.post("/api/v1/admin/member-requests/:id/approve", { preHandler: authenticate, config: { allowUnsubscribed: true } }, async (request) => {
     requireSuperAdmin(request);
     const { id } = parse(z.object({ id: z.string().uuid() }), request.params);
-    const body = parse(adminPasswordSchema, request.body);
+    const body = parse(memberRequestApprovalSchema, request.body);
     const requestRow = await prisma.memberAccessRequest.findUnique({ where: { id } });
     if (!requestRow) throw Object.assign(new Error("درخواست عضویت پیدا نشد."), { statusCode: 404, code: "NOT_FOUND" });
     if (requestRow.status !== MemberRequestStatus.PENDING) throw Object.assign(new Error("این درخواست قبلاً بررسی شده است."), { statusCode: 409, code: "MEMBER_REQUEST_ALREADY_REVIEWED" });
-    const password = checkedPassword(body.password, { email: requestRow.email, displayName: requestRow.displayName });
+    const email = resolveMemberRequestApprovalEmail(requestRow.email, body.email);
+    const password = checkedPassword(body.password, { email, displayName: requestRow.displayName });
     const passwordHash = await bcrypt.hash(password, 12);
     const result = await prisma.$transaction(async (tx) => {
       const current = await tx.memberAccessRequest.findUnique({ where: { id } });
       if (!current || current.status !== MemberRequestStatus.PENDING) throw Object.assign(new Error("این درخواست قبلاً بررسی شده است."), { statusCode: 409, code: "MEMBER_REQUEST_ALREADY_REVIEWED" });
-      const duplicate = await tx.user.findFirst({ where: { OR: [{ email: current.email }, { username: current.username }] }, select: { id: true, email: true, username: true } });
-      if (duplicate?.email === current.email) throw Object.assign(new Error("این ایمیل قبلاً برای یک حساب استفاده شده است."), { statusCode: 409, code: "EMAIL_IN_USE" });
-      if (duplicate?.username === current.username) throw Object.assign(new Error("این نام کاربری قبلاً برای یک حساب استفاده شده است."), { statusCode: 409, code: "USERNAME_IN_USE" });
-      const user = await tx.user.create({ data: { email: current.email, username: current.username, passwordHash, displayName: current.displayName, phone: current.phone, jobTitle: current.jobTitle, active: true } });
+      const duplicate = await tx.user.findFirst({ where: { OR: [{ email }, ...(current.username ? [{ username: current.username }] : [])] }, select: { id: true, email: true, username: true } });
+      if (duplicate?.email === email) throw Object.assign(new Error("این ایمیل قبلاً برای یک حساب استفاده شده است."), { statusCode: 409, code: "EMAIL_IN_USE" });
+      if (current.username && duplicate?.username === current.username) throw Object.assign(new Error("این نام کاربری قبلاً برای یک حساب استفاده شده است."), { statusCode: 409, code: "USERNAME_IN_USE" });
+      const user = await tx.user.create({ data: { email, username: current.username, passwordHash, displayName: current.displayName, phone: current.phone, jobTitle: current.jobTitle, active: true } });
       await tx.organizationMember.create({ data: { organizationId: current.organizationId, userId: user.id, role: current.role, active: true } });
-      const updated = await tx.memberAccessRequest.update({ where: { id }, data: { status: MemberRequestStatus.APPROVED, reviewedById: request.actor!.userId, provisionedUserId: user.id, reviewedAt: new Date(), rejectionReason: null }, include: { organization: { select: { id: true, nameFa: true, nameEn: true } } } });
+      const updated = await tx.memberAccessRequest.update({ where: { id }, data: { email, status: MemberRequestStatus.APPROVED, reviewedById: request.actor!.userId, provisionedUserId: user.id, reviewedAt: new Date(), rejectionReason: null }, include: { organization: { select: { id: true, nameFa: true, nameEn: true } } } });
       await tx.auditLog.create({ data: { userId: request.actor!.userId, organizationId: current.organizationId, action: "MEMBER_ACCESS_REQUEST_APPROVED", entityType: "MemberAccessRequest", entityId: id, metadata: { userId: user.id, username: current.username, role: current.role }, requestId: request.id, ipAddress: request.ip?.slice(0, 64), userAgent: request.headers["user-agent"]?.slice(0, 2000) } });
       return { request: updated, user };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
@@ -186,7 +193,7 @@ export async function registerAdminRoutes(app: FastifyInstance) {
     const usageScope: Prisma.AIUsageRecordWhereInput = organizationId ? { organizationId } : {};
     const usageSearchScope: Prisma.AIUsageRecordWhereInput = search ? { user: searchScope } : {};
     const [users, total, overall] = await Promise.all([
-      prisma.user.findMany({ where, select: { id: true, email: true, username: true, displayName: true, active: true }, skip: (query.page - 1) * query.limit, take: query.limit, orderBy: { displayName: "asc" } }),
+      prisma.user.findMany({ where, select: { id: true, email: true, username: true, displayName: true, active: true, aiEnabled: true, aiTokenLimit: true, aiTokensUsed: true }, skip: (query.page - 1) * query.limit, take: query.limit, orderBy: { displayName: "asc" } }),
       prisma.user.count({ where }),
       prisma.aIUsageRecord.aggregate({ where: { AND: [usageScope, usageSearchScope] }, _count: { _all: true }, _sum: { inputTokens: true, outputTokens: true, totalTokens: true } }),
     ]);
@@ -206,6 +213,8 @@ export async function registerAdminRoutes(app: FastifyInstance) {
           username: user.username,
           email: user.email,
           active: user.active,
+          aiEnabled: user.aiEnabled,
+          ...(!organizationId ? { aiTokenLimit: user.aiTokenLimit, aiTokensUsed: user.aiTokensUsed } : {}),
           requestCount: usage?._count._all ?? 0,
           inputTokens: usage?._sum.inputTokens ?? 0,
           outputTokens: usage?._sum.outputTokens ?? 0,
@@ -221,6 +230,21 @@ export async function registerAdminRoutes(app: FastifyInstance) {
     }, { page: query.page, limit: query.limit, total });
   });
 
+  app.patch("/api/v1/admin/users/:id/ai-access", { preHandler: authenticate, config: { allowUnsubscribed: true } }, async request => {
+    requireSuperAdmin(request);
+    const { id } = parse(z.object({ id: z.string().uuid() }), request.params);
+    const body = parse(z.object({ aiEnabled: z.boolean().optional(), aiTokenLimit: z.number().int().min(0).max(2_147_483_647).optional() }).strict().refine(body => body.aiEnabled !== undefined || body.aiTokenLimit !== undefined, { message: "At least one AI allowance field is required" }), request.body);
+    const user = await prisma.user.findUnique({ where: { id }, select: { id: true, aiTokenLimit: true } });
+    if (!user) throw Object.assign(new Error("User not found"), { statusCode: 404, code: "NOT_FOUND" });
+    const result = await prisma.$transaction(async tx => {
+      const startsNewAllowanceCycle = body.aiTokenLimit !== undefined && body.aiTokenLimit !== user.aiTokenLimit;
+      const updated = await tx.user.update({ where: { id }, data: { ...body, ...(startsNewAllowanceCycle ? { aiQuotaCycle: { increment: 1 } } : {}) }, select: { id: true, aiEnabled: true, aiTokenLimit: true, aiTokensUsed: true, aiQuotaCycle: true } });
+      await tx.auditLog.create({ data: { userId: request.actor!.userId, action: "ADMIN_AI_ACCESS_UPDATE", entityType: "User", entityId: id, metadata: body, requestId: request.id } });
+      return updated;
+    });
+    if (body.aiTokenLimit !== undefined) await refreshAIQuotaNotificationsForUser(id).catch((error) => request.log.warn({ err: error }, "Unable to refresh AI quota notifications after admin allowance edit"));
+    return envelope(result);
+  });
   app.patch("/api/v1/admin/memberships/:id", { preHandler: authenticate, config: { allowUnsubscribed: true } }, async (request) => {
     requireSuperAdmin(request);
     const { id } = parse(z.object({ id: z.string().uuid() }), request.params);
@@ -279,8 +303,9 @@ export async function registerAdminRoutes(app: FastifyInstance) {
     const jobTitle = body.jobTitle === undefined ? undefined : body.jobTitle || null;
     const actorId = request.actor!.userId;
     const updated = await prisma.$transaction(async (tx) => {
-      const target = await tx.user.findUnique({ where: { id }, select: { id: true, email: true, username: true, displayName: true, active: true, globalRole: true } });
+      const target = await tx.user.findUnique({ where: { id }, select: { id: true, email: true, username: true, displayName: true, active: true, globalRole: true, protectedSystemAdmin: true } });
       if (!target) throw Object.assign(new Error("User not found"), { statusCode: 404, code: "NOT_FOUND" });
+      assertProtectedSystemAdminChange(target, body);
       const nextGlobalRole = (body.globalRole ?? target.globalRole) as GlobalRole;
       const nextActive = body.active ?? target.active;
       if (isForbiddenSelfChange(actorId, target.id, target.globalRole, nextGlobalRole, nextActive)) throw Object.assign(new Error("You cannot deactivate or demote your own administrator account"), { statusCode: 409, code: "SELF_ADMIN_CHANGE" });

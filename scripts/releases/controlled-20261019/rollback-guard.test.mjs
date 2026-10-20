@@ -1,0 +1,10 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {assertRollbackTarget} from './rollback-guard.mjs';
+const input={entry:'C:/releases/new/server.js',oldEntry:'C:/releases/old/server.js',newEntry:'C:/releases/new/server.js',indexHash:'new-index',oldIndexHash:'old-index',newIndexHash:'new-index',configHash:'new-config',oldConfigHash:'old-config',newConfigHash:'new-config',envHash:'unchanged-env',originalEnvHash:'unchanged-env'};
+test('allows the known released artifact',()=>assert.doesNotThrow(()=>assertRollbackTarget(input)));
+test('allows an already restored previous artifact',()=>assert.doesNotThrow(()=>assertRollbackTarget({...input,entry:input.oldEntry,indexHash:input.oldIndexHash,configHash:input.oldConfigHash})));
+test('refuses a newer backend before any file restoration',()=>assert.throws(()=>assertRollbackTarget({...input,entry:'C:/releases/future/server.js'}),/another backend/));
+test('preserves a later frontend release',()=>assert.throws(()=>assertRollbackTarget({...input,indexHash:'future-index'}),/frontend changed/));
+test('preserves later service configuration',()=>assert.throws(()=>assertRollbackTarget({...input,configHash:'future-config'}),/service configuration/));
+test('does not roll back rotated secrets or privacy settings',()=>assert.throws(()=>assertRollbackTarget({...input,envHash:'rotated-env'}),/protected runtime settings/));

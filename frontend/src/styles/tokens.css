@@ -1,51 +1,122 @@
-@import url("https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap");
-
-:root {
-  font-family: "Vazirmatn", "Vazir", Tahoma, "Segoe UI", sans-serif;
-  color: #173c38;
-  background: #f3f7f6;
-  font-synthesis: none;
-  --green-950: #063b36;
-  --green-900: #084740;
-  --green-800: #075a51;
-  --green-700: #0b7368;
-  --green-600: #10877a;
-  --green-100: #dff2ee;
-  --green-50: #eff8f6;
-  --ink: #173c38;
-  --muted: #718581;
-  --muted-2: #94a5a2;
-  --line: #dce8e5;
-  --line-strong: #c9dbd7;
-  --surface: #ffffff;
-  --canvas: #f3f7f6;
-  --amber: #e8a630;
-  --red: #d94f4f;
-  --orange: #e67b31;
-  --blue: #3986c8;
-  --violet: #775ac7;
-  --shadow-sm: 0 5px 18px rgba(20, 62, 56, .055);
-  --shadow-md: 0 16px 40px rgba(20, 62, 56, .09);
-  --radius: 18px;
-  --control-height: 48px;
-  --control-height-compact: 44px;
+/* Semantic foundations. Legacy aliases preserve the existing feature contracts. */
+:root,
+:root[data-theme="white"],
+.app[data-design="enterprise"][data-theme="white"] {
+  color-scheme: light;
+  --color-canvas: #f5f7fb;
+  --color-surface: #ffffff;
+  --color-subtle: #f0f4fa;
+  --color-raised: #ffffff;
+  --color-ink: #152238;
+  --color-secondary: #52627a;
+  --color-muted: #5d6d85;
+  --color-border: #dce3ed;
+  --color-control-border: #8495ae;
+  --color-accent: #255fd2;
+  --color-accent-soft: #eaf1ff;
+  --color-primary: #255fd2;
+  --color-primary-hover: #1b4daf;
+  --color-on-primary: #ffffff;
+  --color-focus: #255fd2;
+  --color-success: #11684c;
+  --color-success-soft: #e8f6ef;
+  --color-warning: #845000;
+  --color-warning-soft: #fff4d9;
+  --color-danger: #b42335;
+  --color-danger-soft: #fff0f2;
+  --color-high: #a6440c;
+  --color-high-soft: #fff1e6;
+  --color-violet: #6742b3;
+  --color-violet-soft: #f1ecfc;
+  --elevation-surface: 0 2px 8px rgb(20 38 66 / 3%);
+  --elevation-float: 0 16px 48px rgb(20 38 66 / 14%);
+}
+:root[data-theme="blue"],
+.app[data-design="enterprise"][data-theme="blue"] {
+  color-scheme: dark;
+  --color-canvas: #0d1525;
+  --color-surface: #141f32;
+  --color-subtle: #19263b;
+  --color-raised: #1d2c43;
+  --color-ink: #edf3fd;
+  --color-secondary: #a9b8cf;
+  --color-muted: #9cacc6;
+  --color-border: #30415a;
+  --color-control-border: #607493;
+  --color-accent: #8db5ff;
+  --color-accent-soft: #20365c;
+  --color-primary: #3168d9;
+  --color-primary-hover: #3570e5;
+  --color-on-primary: #ffffff;
+  --color-focus: #a8c8ff;
+  --color-success: #82dfb7;
+  --color-success-soft: #173c33;
+  --color-warning: #f1ca78;
+  --color-warning-soft: #3d321d;
+  --color-danger: #ffa5ad;
+  --color-danger-soft: #442633;
+  --color-high: #ffc08f;
+  --color-high-soft: #442e22;
+  --color-violet: #c5adff;
+  --color-violet-soft: #302845;
+  --elevation-surface: 0 2px 8px rgb(0 0 0 / 10%);
+  --elevation-float: 0 16px 48px rgb(0 0 0 / 38%);
+}
+:root,
+.app[data-design="enterprise"][data-theme] {
+  --font-body: "Vazirmatn", Tahoma, "Segoe UI", sans-serif;
+  --font-size-body: .9375rem;
+  --font-size-small: .8125rem;
+  --font-size-caption: .75rem;
+  --font-size-title: clamp(1.5rem, 2.1vw, 2rem);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius-control: 8px;
+  --radius-surface: 12px;
+  --radius-dialog: 16px;
+  --sidebar-width: 248px;
+  --sidebar-compact: 76px;
+  --topbar-height: 64px;
+  --content-max: 1680px;
+  --duration-fast: 120ms;
+  --duration-normal: 180ms;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --ink: var(--color-ink);
+  --muted: var(--color-secondary);
+  --muted-2: var(--color-muted);
+  --line: var(--color-border);
+  --line-strong: var(--color-control-border);
+  --surface: var(--color-surface);
+  --canvas: var(--color-canvas);
+  --blue: var(--color-accent);
+  --green-950: var(--color-ink);
+  --green-900: var(--color-ink);
+  --green-800: var(--color-accent);
+  --green-700: var(--color-accent);
+  --green-600: var(--color-primary);
+  --green-100: var(--color-accent-soft);
+  --green-50: var(--color-subtle);
+  --red: var(--color-danger);
+  --orange: var(--color-high);
+  --amber: var(--color-warning);
+  --violet: var(--color-violet);
+  --radius: var(--radius-surface);
+  --surface-radius: var(--radius-surface);
+  --control-radius: var(--radius-control);
+  --control-height: 44px;
+  --icon-control-height: 44px;
+  --control-height-compact: 40px;
   --touch-target: 44px;
-  --control-radius: 13px;
-  --form-gap: 1rem;
-  --surface-radius: 18px;
-  --focus-color: #3986c8;
-  --focus-ring: 0 0 0 4px rgba(57, 134, 200, .14);
-  --semantic-success: #147052;
-  --semantic-warning: #93651a;
-  --semantic-danger: #b03934;
-  --semantic-info: #286c9f;
-  --z-sidebar-backdrop: 25;
-  --z-sidebar: 30;
-  --z-dropdown: 90;
-  --z-popover: 100;
-  --z-dialog: 120;
-  --z-toast: 130;
-  --z-overlay-root: 1000;
-  --z-overlay-menu: 1010;
-  --z-overlay-dialog: 1100;
+  --touch-target-min: 44px;
+  --shadow-sm: var(--elevation-surface);
+  --shadow-md: var(--elevation-float);
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--color-focus) 20%, transparent);
+}
+/* One density policy: fine-pointer desktop fields are compact; touch stays 44px. */
+@media (min-width: 761px) and (hover: hover) and (pointer: fine) {
+  :root, .app[data-design="enterprise"][data-theme] { --control-height: 40px; --icon-control-height: 36px; }
 }

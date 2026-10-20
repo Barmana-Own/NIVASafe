@@ -1,0 +1,22 @@
+/* Dense tables keep enough width for readable columns and scroll inside TableRegion. */
+@media (min-width: 761px) {
+  .app[data-design="enterprise"] .table-wrap:has(> table > thead > tr:first-child > th:nth-child(n + 6)) > table:not(.rula-analysis-table) {
+    min-width: 52rem !important;
+    table-layout: auto !important;
+  }
+
+  .app[data-design="enterprise"] .table-wrap:has(> table > thead > tr:first-child > th:nth-child(n + 8)) > table:not(.rula-analysis-table) {
+    min-width: 64rem !important;
+  }
+
+  .app[data-design="enterprise"] .table-wrap:has(> table > thead > tr:first-child > th:nth-child(n + 11)) > table:not(.rula-analysis-table) {
+    min-width: 76rem !important;
+  }
+
+  .app[data-design="enterprise"] .table-wrap:has(> table > thead > tr:first-child > th:nth-child(n + 6)) > table:not(.rula-analysis-table) :is(th, td) {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+}

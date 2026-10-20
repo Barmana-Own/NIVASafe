@@ -1,56 +1,58 @@
-# AI providers and fallback
+# AI provider routing and image safeguards
 
-Core workflows never require AI. The current fallback searches only published documents from the active organization and returns deterministic HSE guidance with citations and a human-review disclaimer.
+Updated: 2026-10-15
 
-```mermaid
-sequenceDiagram
-  User->>API: message + organization scope
-  API->>MySQL: scoped knowledge search
-  API->>Provider: optional minimal context
-  Provider-->>API: response
-  API-->>User: answer + citations + disclaimer
-```
+## Model routing
 
-```mermaid
-sequenceDiagram
-  User->>API: message
-  API-xProvider: unavailable or disabled
-  API->>MySQL: scoped knowledge search
-  API->>Fallback: deterministic guidance
-  Fallback-->>User: answer + citations + disclaimer
-```
+The server uses fixed model identifiers so deployment configuration cannot silently substitute a different model:
 
-## ArvanCloud AI configuration
+| Use case | Model | Provider selection |
+|---|---|---|
+| Assessment text, recommendations, RULA posture text and FMEA analysis | `GPT-5-Mini` | `AI_RISK_PROVIDER`; a different `AI_RISK_FALLBACK_PROVIDER` is an explicit text-only failover setting |
+| Conversation | `DeepSeek-V4-Flash` | `AI_CHAT_PROVIDER`; chat history and organization knowledge remain in the chat path |
+| RULA/FMEA image analysis | `GPT-5-Mini` | Configured assessment provider only; no provider or model failover for image requests |
 
-The production adapter is OpenAI-compatible and sends requests only from the API server to ArvanCloud AI's `chat/completions` endpoint; the API key is never exposed to the browser. Configure the two application roles independently:
+Legacy `AI_RISK_MODEL`, `AI_RISK_FALLBACK_MODEL`, and `AI_CHAT_MODEL` values are ignored. Provider-specific model-name settings are also not used by these routes. The root `.env.example`, Docker Compose environment and PM2 profile no longer suggest that the model can be changed there. All providers receive the fixed model for the corresponding use case. If a provider reports a different model in its response, the adapter rejects the result with `AI_MODEL_MISMATCH`. If it omits model identity, the result does not claim a model in response metadata.
+
+For the generic risk-request endpoint, clients cannot select a provider different from the configured risk provider. Existing queued requests are routed through the current configured assessment provider. Explicitly configured text failover is limited to a different `AI_RISK_FALLBACK_PROVIDER`; otherwise the existing deterministic knowledge fallback remains available. Image requests do not use that failover path.
+
+## Assessment image gate
+
+Both RULA posture images and FMEA process images are sent only to the configured assessment provider, and only if all of these checks pass:
+
+1. The purpose-specific privacy approval environment variable exactly matches that provider name.
+2. The purpose-specific vision-and-structured-output verification variable exactly matches that provider name.
+3. The provider is configured and its adapter accepts that image purpose.
+4. Existing authentication, organization membership, assessment permission, subscription, AI allowance, rate limit, MIME, file-signature and 10 MB size checks pass.
+
+The server variables are intentionally empty by default:
 
 ```dotenv
-AI_ENABLED=true
-ARVAN_API_KEY=replace-with-a-secret-api-key
-ARVAN_BASE_URL=https://api.arvancloudai.ir/v1
-AI_RISK_PROVIDER=arvancloud
-AI_RISK_MODEL=GPT-5-Mini
-AI_RISK_FALLBACK_PROVIDER=arvancloud
-AI_RISK_FALLBACK_MODEL=GPT-5-Mini
-AI_CHAT_PROVIDER=arvancloud
-AI_CHAT_MODEL=DeepSeek-V4-Flash
-AI_CHAT_MAX_OUTPUT_TOKENS=900
-AI_MAX_OUTPUT_TOKENS=1600
-AI_PROVIDER_TIMEOUT_MS=30000
-AI_PROVIDER_MAX_ATTEMPTS=2
-AI_PROVIDER_RETRY_DELAY_MS=250
+RULA_IMAGE_PRIVACY_APPROVED_PROVIDER=
+RULA_IMAGE_VISION_SUPPORTED_PROVIDER=
+FMEA_IMAGE_PRIVACY_APPROVED_PROVIDER=
+FMEA_IMAGE_VISION_SUPPORTED_PROVIDER=
 ```
 
-Risk-analysis requests use `AI_RISK_MODEL` (`GPT-5-Mini`). If the primary call fails or times out, `AI_RISK_FALLBACK_PROVIDER` and `AI_RISK_FALLBACK_MODEL` use the configured ArvanCloud AI credential with `GPT-5-Mini`; the deterministic, organization-scoped knowledge-base fallback remains the final path. Chat messages use `AI_CHAT_MODEL` (`DeepSeek-V4-Flash`). The authenticated `GET /api/v1/ai/providers` response identifies the configured roles and fallback model without returning credentials. Risk requests submitted without an explicit non-default provider use the complete automatic failover chain; an explicitly requested provider remains isolated to that provider.
+They must remain empty until the data-processing terms have been approved and a real, non-production integration check confirms that the exact configured endpoint accepts `GPT-5-Mini`, the image request format and the required structured JSON response. A provider's OpenAI-compatible interface or the fact that the adapter can construct an image request does not prove endpoint capability. There is no automatic switch to GapGPT, GPT-4.1, GPT-4o, or another provider/model. If the check fails or cannot be performed, the upload returns `RULA_IMAGE_AI_UNAVAILABLE` or `FMEA_IMAGE_AI_UNAVAILABLE` and the user can continue with manual review.
 
-All HTTP adapters use a bounded timeout (`AI_PROVIDER_TIMEOUT_MS`, default 30 seconds), at most two total attempts by default (`AI_PROVIDER_MAX_ATTEMPTS`, maximum three), and a capped exponential delay for transient network, rate-limit and 5xx responses (`AI_PROVIDER_RETRY_DELAY_MS`). Non-transient failures are not retried. Retry and failover errors are normalized before they are stored in AI request records, so upstream messages and credentials are not exposed to users or logs. Chat requests use a bounded knowledge context (up to three relevant documents and 900 characters per document), include up to six prior messages from the authenticated user's own conversation, and default to a 900-token output cap through `AI_CHAT_MAX_OUTPUT_TOKENS`; risk-analysis requests retain the broader context and the `AI_MAX_OUTPUT_TOKENS` setting. These limits reduce prompt and generation time while keeping the controls configurable per deployment.
+`GET /api/v1/ai/providers` includes `assessmentImageReadiness` per provider. Its `configured`, `privacyApprovalMatches`, `capabilityApprovalMatches`, `adapterAllowsPurpose` and `requestGateOpen` fields describe local configuration only. `liveReachability` is always `not-verified` because this read-only route does not send a probe or an image. A real response is accepted only if its reported model matches `GPT-5-Mini`; missing response identity is not fabricated from the outbound request setting.
 
-Successful external-provider calls persist the provider-reported input, output and total token counts in `AIUsageRecord`, linked to the initiating user, organization and source request/message. The global administration panel reads all-user aggregates and an organization administrator reads only the selected organization's aggregates through `GET /api/v1/admin/ai-usage`; prompts, completions and credentials are not included. Calls without provider-reported usage are not estimated or counted as token consumption, and the source key makes recording idempotent across retries.
+## Request and data controls
 
-FMEA and RULA assessment image analysis, process suggestions, report detail suggestions and corrective-action suggestions use the dedicated assessment model constant `GPT-5-Mini`, even if a deployment changes the generic risk model setting. Chat remains independently configured through `AI_CHAT_MODEL` (`DeepSeek-V4-Flash`). Corrective-action endpoints validate structured JSON, keep suggestions advisory, record provider/model/token metadata when available, and use deterministic localized fallbacks so an empty panel is not presented for a report that has risk or posture data.
+- API keys remain server-side; no API key is returned by provider-list responses or sent to the browser.
+- RULA and FMEA image endpoints authenticate the actor and check active organization membership and assessment permissions before invoking a provider.
+- Images are validated for MIME type, file signature and size before external processing. No image bytes or prompt text are written into AI usage records or image-analysis audit metadata.
+- Image calls do not use text failover. RULA image retry behavior is bounded; authorization, quota, privacy-gate, malformed-response and ambiguous network-drop errors are not automatically repeated by the client.
+- Model observations remain advisory and must pass the existing RULA parsing, side-isolation and human-review rules. Existing scientific scoring functions are unchanged.
+- Provider-reported token counts are persisted only when present; the application does not estimate missing usage.
+- Provider errors returned to the user and audit metadata are normalized; upstream response bodies and credentials are not exposed.
 
-FMEA process suggestions use the same server-side risk provider and send only bounded job/process context. The API sanitizes structured arrays and description output, marks the response as connected/fallback/unavailable, and keeps the database catalog suggestions available when the external provider is unavailable. AI output is presented as a suggestion and is not written into the FMEA until the user confirms it. An alternate risk model must be configured with an identifier supported by the provider's current model catalog; no unverified model identifier is hard-coded into the application.
+## Deployment verification
 
-FMEA process-image review uses the same risk route with an OpenAI-compatible multimodal message containing the validated image data URI. Only the ArvanCloud adapter advertises image support; failover skips text-only providers when an image is present rather than silently discarding the image. The parser accepts at most six rows, bounds all text fields and requires integer S/O/D values from 1 to 10. The image itself is not included in AI usage records or audit metadata; only the MIME type, byte size, provider status and row count are recorded.
+1. Set `AI_ENABLED=true`, the approved provider name(s), the server-side credential and HTTPS base URL in the protected runtime configuration. Do not put secrets in source, browser configuration or deployment examples.
+2. Call the authenticated `GET /api/v1/ai/providers` endpoint and confirm that the selected assessment provider is configured. The image request gate should remain closed until privacy and endpoint capability have separately been approved.
+3. On a non-production environment, using an eligible test member and a permitted representative image, run one image request after approval. Verify the provider/model identity in the returned result, structured observation, human-review flow and persisted assessment; verify reported token usage only if the provider returns it.
+4. If the provider does not support the exact model/image/JSON combination, leave approval unset. The smallest required follow-up is an explicitly approved provider configuration that supports the exact fixed model and contract, or a separately authorized product change to the model requirement.
 
-To add another provider, implement an adapter that accepts minimal scoped context, validates structured output, redacts secrets, uses the shared timeout/retry transport, and participates in the role-specific routing chain without blocking the user. API keys must remain in ignored server environment files; no frontend bundle, source file or API response contains a credential.
+No provider credential, account-specific environment file, database or live image-provider request was available for this 2026-10-15 source checkpoint. Therefore endpoint reachability, ArvanCloud GPT-5-Mini vision support, privacy approval and real-user image-analysis success remain unverified.

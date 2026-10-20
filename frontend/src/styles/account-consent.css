@@ -1,0 +1,10 @@
+.policy-acceptance-fields { display: grid; gap: 12px; }
+.policy-acceptance { display: flex; align-items: flex-start; gap: 12px; padding: 14px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-subtle); line-height: 1.9; }
+.policy-acceptance input[type="checkbox"] { flex: 0 0 20px; width: 20px; height: 20px; margin-block-start: 4px; }
+.policy-acceptance span { min-width: 0; }
+.policy-acceptance a { font-weight: 600; text-decoration: underline; }
+.account-image-processing { margin-block-start: 24px; scroll-margin-block-start: 100px; }
+.legal-policy-page { min-height: 100dvh; padding: 40px 16px; color: var(--color-ink); background: var(--color-canvas); }
+.legal-policy-page .legal-policy-card { width: min(760px, 100%); margin-inline: auto; padding: clamp(20px, 4vw, 32px); line-height: 2; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); }
+.legal-policy-card h1 { font-size: 1.5rem; }
+.legal-policy-card nav { display: flex; flex-wrap: wrap; gap: 20px; }

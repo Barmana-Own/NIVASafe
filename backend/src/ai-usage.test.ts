@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { buildAIUsageRecordData, recordAIUsage } from "./ai-usage.js";
+import { aggregateAIProviderUsage, buildAIUsageRecordData, recordAIUsage } from "./ai-usage.js";
 
 const result = {
   provider: "arvancloud",
@@ -28,6 +28,15 @@ describe("AI usage accounting", () => {
 
   it("does not report estimated usage when a provider did not return counts", () => {
     expect(buildAIUsageRecordData({ organizationId: "org", userId: "user", useCase: "chat", sourceType: "CHAT_MESSAGE", sourceId: "message", result: { ...result, usage: undefined } })).toBeNull();
+  });
+
+  it("aggregates token usage from invalid-answer retries into one request result", () => {
+    expect(aggregateAIProviderUsage([result, result])).toMatchObject({
+      provider: "arvancloud",
+      model: "GPT-5-Mini",
+      usage: { inputTokens: 240, outputTokens: 60, totalTokens: 300 },
+    });
+    expect(aggregateAIProviderUsage([{ ...result, usage: undefined }])).toBeNull();
   });
 
   it("uses the source identity as an idempotency key", async () => {

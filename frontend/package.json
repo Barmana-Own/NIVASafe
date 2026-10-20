@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build --configLoader runner",
     "preview": "vite preview",
     "lint": "tsc -b --noEmit",
     "typecheck": "tsc -b --noEmit",
-    "test": "vitest run",
+    "test": "vitest run src --configLoader runner",
     "test:e2e": "playwright test --grep-invert \"@visual|@overflow\"",
     "test:overflow": "playwright test --grep @overflow",
     "test:visual": "playwright test --grep @visual",
@@ -19,18 +19,18 @@
   "dependencies": {
     "@nivasafe/domain": "workspace:*",
     "@vitejs/plugin-react": "^4.6.0",
-    "idb-keyval": "^6.2.1",
+    "vite": "^7.0.5",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.18.2",
     "recharts": "^3.1.0",
-    "vite": "^7.0.5"
+    "idb-keyval": "^6.2.1"
   },
   "devDependencies": {
-    "@playwright/test": "1.56.1",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "typescript": "^5.8.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "@playwright/test": "1.56.1"
   }
 }

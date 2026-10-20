@@ -1,5 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import bcrypt from "bcryptjs";
+import { ACCOUNT_IMAGE_CONSENT_VERSION, TERMS_VERSION, imageConsentAuditData } from "../image-processing-consent.js";
+import { registerImageProcessingConsentRoutes } from "./image-processing-consent.js";
 import { randomBytes, randomUUID } from "node:crypto";
 import { DISPLAY_NAME_MAX_LENGTH, EMAIL_MAX_LENGTH, USERNAME_MAX_LENGTH, detectContactInput, isForbiddenDisplayName, isStrongPassword, isValidDisplayName, isValidEmail, isValidIranianNationalId, isValidPhone, isValidUsername, normalizeDisplayName, normalizeEmail, normalizeNationalId, normalizePhone, normalizeUsername, PASSWORD_MIN_LENGTH, SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@nivasafe/domain";
 import { z } from "zod";
@@ -29,7 +31,14 @@ const registrationInput = z.object({
   employeeCount: z.number().int().min(0).max(10_000_000).nullable().optional(),
   nationalId: z.string().trim().max(50).nullable().optional(),
   subscriptionPlan: subscriptionPlanInput.default("STARTER"),
+  termsAccepted: z.literal(true),
+  termsVersion: z.literal(TERMS_VERSION),
+  imageProcessingConsent: z.boolean().default(false),
+  imageProcessingConsentVersion: z.literal(ACCOUNT_IMAGE_CONSENT_VERSION).optional(),
 }).strict().superRefine((value, context) => {
+  if (value.imageProcessingConsent && value.imageProcessingConsentVersion !== ACCOUNT_IMAGE_CONSENT_VERSION) {
+    context.addIssue({ code: "custom", path: ["imageProcessingConsentVersion"], message: "نسخهٔ فعلی شرایط پردازش تصویر لازم است." });
+  }
   if (value.registrationKind === "organization" && !value.companyName?.trim()) {
     context.addIssue({ code: "custom", path: ["companyName"], message: "نام شرکت را وارد کنید." });
   }
@@ -129,6 +138,7 @@ export function parseRegistrationInput(data: unknown) {
 }
 
 export async function registerAuthRoutes(app: FastifyInstance) {
+  await registerImageProcessingConsentRoutes(app);
   const refreshSecret = process.env.JWT_REFRESH_SECRET ?? "development-refresh-secret-change-before-production";
   const signRefreshToken = (userId: string) => app.jwt.sign({ sub: userId, type: "refresh", jti: randomUUID() }, { key: refreshSecret, expiresIn: "7d" });
 
@@ -162,7 +172,8 @@ export async function registerAuthRoutes(app: FastifyInstance) {
           projects: { create: defaultProjectForLocale(body.locale) },
         },
       });
-      await tx.auditLog.create({ data: { userId: createdUser.id, organizationId: organization.id, action: "USER_REGISTER", entityType: "User", entityId: createdUser.id, metadata: { registrationKind: body.registrationKind, active: false }, requestId: request.id, ipAddress: request.ip?.slice(0, 64), userAgent: request.headers["user-agent"]?.slice(0, 2000) } });
+      await tx.auditLog.create({ data: { userId: createdUser.id, organizationId: organization.id, action: "USER_REGISTER", entityType: "User", entityId: createdUser.id, metadata: { registrationKind: body.registrationKind, active: false, termsVersion: body.termsVersion, termsAccepted: true }, requestId: request.id, ipAddress: request.ip?.slice(0, 64), userAgent: request.headers["user-agent"]?.slice(0, 2000) } });
+      if (body.imageProcessingConsent) await tx.auditLog.create({ data: imageConsentAuditData({ userId: createdUser.id, accepted: true, source: "REGISTRATION", requestId: request.id, ipAddress: request.ip, userAgent: request.headers["user-agent"] }) });
       return createdUser;
     });
     return reply.code(201).send(envelope({ ...safeUser(user), pendingActivation: true }));
