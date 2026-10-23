@@ -1945,7 +1945,7 @@ describe("form auto-save contract", () => {
     expect(assessmentPagesSource).toContain("rulaActionLevelFor");
     expect(assessmentPagesSource).toContain("rulaGroupScores");
     expect(assessmentPagesSource).toContain('"--rula-score-angle"');
-    expect(assessmentPagesSource).toContain("Math.round((scoreForGauge / 7) * 270)");
+    expect(assessmentPagesSource).toContain("Math.round(gaugeProgress * 180)");
     expect(assessmentPagesSource).not.toContain('"--rula-score-progress"');
     expect(stylesSource).toContain("var(--rula-score-angle)");
     expect(assessmentPagesSource).toContain("rulaSourceLabelKey");

@@ -10365,5 +10365,58 @@
       "database": "up"
     },
     "apiRestarted": false
+  },
+  "latestRulaGaugeColor": {
+    "status": "VERIFIED",
+    "dates": {
+      "gregorian": "2026-10-23",
+      "jalali": "1405-08-01"
+    },
+    "baseRevision": "e3d49e3b4b1204c59e934787ce5d6b8e19634875",
+    "scope": "Color the existing RULA analysis semicircle for partial coverage and complete action levels; preserve all unrelated UI and scoring.",
+    "validation": {
+      "frontendTests": {
+        "status": "PASS",
+        "passed": 557,
+        "failed": 0,
+        "skipped": 0,
+        "files": 78
+      },
+      "domainBuild": "PASS: node node_modules/typescript/bin/tsc -p tsconfig.json (shared/domain)",
+      "frontendTypecheckAndLint": "PASS: node node_modules/typescript/bin/tsc -b --noEmit (both package scripts use this command)",
+      "frontendBuild": "PASS: node node_modules/vite/bin/vite.js build --configLoader runner; existing bundle-size warning retained",
+      "browser": {
+        "status": "PASS",
+        "checks": 34,
+        "widths": [
+          320,
+          390,
+          768,
+          1440
+        ],
+        "themes": [
+          "white",
+          "blue"
+        ],
+        "locales": [
+          "fa",
+          "en"
+        ],
+        "syntheticPhotos": 4,
+        "sides": 2,
+        "apiRequests": 0,
+        "errors": 0
+      },
+      "securityReview": "PASS: scoped presentation change; bounded numeric CSS angle, static action-level palette, React-escaped accessible text, no new input, dependency, API, permission, persistence or provider request",
+      "regressionReview": "PASS: no baseline file or route removed; existing analysis text, unknown scores, approvals and scoring algorithms retained",
+      "fixtureBuildIsolation": "PASS: test-only controls absent from production JS"
+    },
+    "documentation": "docs/rula-gauge-color-20261023-01.md",
+    "gitHub": {
+      "target": "https://github.com/Barmana-Own/NIVASafe",
+      "branch": "main",
+      "publicationEvidence": ".local/rula-gauge-color-20261023-01/push-verification.json"
+    },
+    "productionDeployment": "NOT_PERFORMED"
   }
 }
