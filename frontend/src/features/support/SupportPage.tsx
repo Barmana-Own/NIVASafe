@@ -101,7 +101,7 @@ function SupportThread({ requestId, admin = false, initiallyOpen = false, onOpen
   }
 
   return <div className="support-thread">
-    <div className="page-actions-inline"><button className="secondary support-thread-toggle" type="button" aria-expanded={open} aria-controls={`support-thread-${requestId}`} onClick={() => { const next = !open; setOpen(next); onOpenChange?.(next); }}>{open ? t("support.closeThread") : t("support.openThread")}</button>{open && <button className="secondary" type="button" disabled={details.loading || busy} onClick={details.reload}><Icon name="restore" size={16}/>{t("support.refreshThread")}</button>}</div>
+    <div className="page-actions-inline"><button className="secondary support-thread-toggle" type="button" aria-expanded={open} aria-controls={`support-thread-${requestId}`} aria-describedby={`support-ticket-heading-${requestId}`} onClick={() => { const next = !open; setOpen(next); onOpenChange?.(next); }}>{open ? t("support.closeThread") : t("support.openThread")}</button>{open && <button className="secondary" type="button" disabled={details.loading || busy} onClick={details.reload}><Icon name="restore" size={16}/>{t("support.refreshThread")}</button>}</div>
     {open && <div className="support-thread-panel" id={`support-thread-${requestId}`}>
       {error && <div className="alert error" role="alert"><Icon name="warning"/>{error}</div>}
       {message && <div className="alert success" role="status"><Icon name="check"/>{message}</div>}
@@ -144,13 +144,13 @@ function SupportThread({ requestId, admin = false, initiallyOpen = false, onOpen
 
 function SupportTicketCard({ item, initiallyOpen = false, onOpenChange, onChanged }: { item: SupportRequest; initiallyOpen?: boolean; onOpenChange?: (open: boolean) => void; onChanged: () => void }) {
   const { t } = useI18n();
-  return <article className="support-request-card" id={`ticket-${item.id}`}>
+  return <article className={`support-request-card${initiallyOpen ? " is-open" : ""}`} id={`ticket-${item.id}`}>
     <div className="support-request-card-heading"><div>
       <small>{t(categoryKey[item.category])} · {t("support.lastUpdated")} {formatDate(item.updatedAt, true)}</small>
-      <h3>{item.subject}</h3>
-      <small className="support-ticket-reference">{t("support.ticketReference")}: <bdi dir="ltr">{item.id}</bdi></small>
+      <h3 id={`support-ticket-heading-${item.id}`}>{item.subject}</h3>
+      {initiallyOpen && <small className="support-ticket-reference">{t("support.ticketReference")}: <bdi dir="ltr">{item.id}</bdi></small>}
     </div><StatusBadge value={item.status}/></div>
-    <p className="support-request-preview">{item.message}</p>
+    {initiallyOpen && <p className="support-request-preview">{item.message}</p>}
     <SupportThread requestId={item.id} initiallyOpen={initiallyOpen} onOpenChange={onOpenChange} onChanged={onChanged}/>
   </article>;
 }
@@ -354,15 +354,17 @@ export function SupportInboxSection() {
       <label>{t("support.filterStatus")}<StyledSelect value={status} onChange={(event) => { setStatus(event.target.value as "" | SupportStatus); setPage(1); }}><option value="">{t("support.allStatuses")}</option>{statuses.map((value) => <option key={value} value={value}>{t(statusKey[value])}</option>)}</StyledSelect></label>
     </div>
     <LoadState state={{ ...requests, data: requests.data ? visibleRequests : null }} empty={search || category ? t("support.noMatches") : t("support.noRequests")}>
-      {() => visibleRequests.length ? <div className="support-request-list">{visibleRequests.map((item) => <article className="support-inbox-card" key={item.id}>
-        <header className="support-request-card-heading"><div><small>{locale === "en" ? item.organization.nameEn : item.organization.nameFa} · {item.requester.displayName}</small><h3>{item.subject}</h3><small className="support-ticket-reference">{t("support.ticketReference")}: <bdi dir="ltr">{item.id}</bdi></small></div><StatusBadge value={item.status}/></header>
+      {() => visibleRequests.length ? <div className="support-request-list">{visibleRequests.map((item) => <article className={`support-inbox-card${selectedTicketId === item.id ? " is-open" : ""}`} id={`ticket-${item.id}`} key={item.id}>
+        <header className="support-request-card-heading"><div><small>{locale === "en" ? item.organization.nameEn : item.organization.nameFa} · {item.requester.displayName}</small><h3 id={`support-ticket-heading-${item.id}`}>{item.subject}</h3>{selectedTicketId === item.id && <small className="support-ticket-reference">{t("support.ticketReference")}: <bdi dir="ltr">{item.id}</bdi></small>}</div><StatusBadge value={item.status}/></header>
         <div className="support-request-inbox-meta"><span>{t(categoryKey[item.category])}</span><span>{t("support.priority")}: {t(priorityKey[item.priority])}</span><time dateTime={item.updatedAt}>{formatDate(item.updatedAt, true)}</time></div>
-        <p className="support-request-preview">{item.message}</p>
+        {selectedTicketId === item.id && <p className="support-request-preview">{item.message}</p>}
         <SupportThread requestId={item.id} admin initiallyOpen={selectedTicketId === item.id} onOpenChange={(open) => setSearchParams(current => { const next = new URLSearchParams(current); if (open) next.set("ticket", item.id); else if (next.get("ticket") === item.id) next.delete("ticket"); return next; })} onChanged={() => { requests.reload(); linkedTicket.reload(); }}/>
+        {selectedTicketId === item.id && <>
         <label>{t("support.requestStatus")}<StyledSelect value={statusDrafts[item.id] ?? item.status} onChange={(event) => setStatusDrafts((current) => ({ ...current, [item.id]: event.target.value as SupportStatus }))}>{supportStatusOptions(item.status).map((value) => <option key={value} value={value}>{t(statusKey[value])}</option>)}</StyledSelect></label>
         <label>{t("support.priority")}<StyledSelect value={priorityDrafts[item.id] ?? item.priority} onChange={(event) => setPriorityDrafts((current) => ({ ...current, [item.id]: event.target.value as SupportPriority }))}>{priorities.map((value) => <option key={value} value={value}>{t(priorityKey[value])}</option>)}</StyledSelect></label>
         <label>{t("support.assignedTo")}<StyledSelect value={assigneeDrafts[item.id] ?? item.assignedTo?.id ?? ""} onChange={(event) => setAssigneeDrafts((current) => ({ ...current, [item.id]: event.target.value }))}><option value="">{t("support.unassigned")}</option>{(staff.data ?? []).map((person) => <option key={person.id} value={person.id}>{person.displayName}</option>)}</StyledSelect></label>
         <button className="primary" type="button" disabled={busyId === item.id || ((statusDrafts[item.id] ?? item.status) === item.status && (priorityDrafts[item.id] ?? item.priority) === item.priority && (assigneeDrafts[item.id] ?? item.assignedTo?.id ?? "") === (item.assignedTo?.id ?? ""))} onClick={() => void save(item)}>{busyId === item.id ? t("common.loading") : <><Icon name="check"/>{t("support.saveStatus")}</>}</button>
+        </>}
       </article>)}</div> : <p className="support-filter-empty">{t("support.noMatches")}</p>}
     </LoadState>
     {requests.meta && <div className="support-pagination"><span>{t("support.pageSummary", { page: page.toLocaleString(locale === "en" ? "en-US" : "fa-IR"), pages: pageCount.toLocaleString(locale === "en" ? "en-US" : "fa-IR"), total: total.toLocaleString(locale === "en" ? "en-US" : "fa-IR") })}</span><div><button className="secondary" type="button" disabled={page <= 1 || requests.loading} onClick={() => setPage((value) => Math.max(1, value - 1))}>{t("support.previousPage")}</button><button className="secondary" type="button" disabled={page >= pageCount || requests.loading} onClick={() => setPage((value) => Math.min(pageCount, value + 1))}>{t("support.nextPage")}</button></div></div>}

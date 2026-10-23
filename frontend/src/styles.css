@@ -6553,6 +6553,59 @@ details.optional-fields > :not(summary),
   .app .table-wrap.activity-log-table > table > tbody { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
+/* Owner-requested support ticket cards with selected details expanded across the row. */
+.app .support-request-list {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+.app .support-request-list > :is(.support-request-card, .support-inbox-card) {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 12px;
+  padding: 16px;
+}
+.app .support-request-list > :is(.support-request-card, .support-inbox-card):not(.is-open) > .support-request-card-heading {
+  flex-direction: column;
+  gap: 8px;
+}
+.app .support-request-list > :is(.support-request-card, .support-inbox-card).is-open {
+  grid-column: 1 / -1;
+  border-color: var(--color-accent);
+}
+.app .support-request-list > .support-inbox-card.is-open {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.app .support-request-list > .support-inbox-card:not(.is-open) .support-request-inbox-meta time {
+  flex-basis: 100%;
+  margin-inline-start: 0;
+}
+.app .support-request-list > :is(.support-request-card, .support-inbox-card) > .support-thread {
+  align-self: end;
+  justify-items: stretch;
+}
+.app .support-request-list .support-thread-toggle {
+  min-height: 44px;
+  white-space: normal;
+}
+.app .support-request-list > :is(.support-request-card, .support-inbox-card):not(.is-open) .support-thread-toggle {
+  width: 100%;
+}
+.app .support-request-list > :is(.support-request-card, .support-inbox-card):not(.is-open) .page-actions-inline {
+  width: 100%;
+}
+@media (min-width: 640px) {
+  .app .support-request-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+  .app .support-request-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1280px) {
+  .app .support-request-list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .app .support-request-list > .support-inbox-card.is-open { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* Owner-requested notification cards; preferences and header popovers keep their layout. */
 .app .notification-list {
   grid-template-columns: minmax(0, 1fr);

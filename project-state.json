@@ -10522,5 +10522,61 @@
       "publicationEvidence": ".local/notification-cards-20261023-01/push-verification.json"
     },
     "productionDeployment": "NOT_PERFORMED"
+  },
+  "latestSupportTicketCards": {
+    "status": "VERIFIED",
+    "dates": {
+      "gregorian": "2026-10-23",
+      "jalali": "1405-08-01"
+    },
+    "baseRevision": "c1d5dc0393320fd9dc1054c2e20bcea538cabdd3",
+    "scope": "Show compact support ticket cards; reveal full details, management controls and conversation after selecting a ticket, retaining existing customer/admin workflows.",
+    "validation": {
+      "frontendTests": {
+        "status": "PASS",
+        "passed": 557,
+        "failed": 0,
+        "skipped": 0,
+        "files": 78
+      },
+      "frontendTypecheckAndLint": "PASS: node node_modules/typescript/bin/tsc -b --noEmit (both package scripts use this command)",
+      "frontendBuild": "PASS: node node_modules/vite/bin/vite.js build --configLoader runner; existing bundle-size warning retained",
+      "browser": {
+        "status": "PASS",
+        "checks": 32,
+        "adminChecks": 24,
+        "customerChecks": 8,
+        "widths": [
+          320,
+          390,
+          768,
+          1024,
+          1280,
+          1440,
+          1920
+        ],
+        "themes": [
+          "white",
+          "blue"
+        ],
+        "locales": [
+          "fa",
+          "en"
+        ],
+        "syntheticApiRequests": 382,
+        "realApiRequests": 0,
+        "errors": 0
+      },
+      "securityReview": "PASS: React-escaped content and UUID-bound disclosure attributes; unchanged detail/reply/internal-note transports, auth/tenant policies and optimistic/idempotent mutations; customer internal-note exclusion verified",
+      "regressionReview": "PASS: all 1313 baseline files preserved; selected-ticket URL, deep links, drafts, Back navigation, public replies, internal notes and management save verified; customer creation and API handlers remain identical",
+      "fixtureBuildIsolation": "PASS: synthetic fixture markers absent from production JS"
+    },
+    "documentation": "docs/support-ticket-cards-20261023-01.md",
+    "gitHub": {
+      "target": "https://github.com/Barmana-Own/NIVASafe",
+      "branch": "main",
+      "publicationEvidence": ".local/support-ticket-cards-20261023-01/push-verification.json"
+    },
+    "productionDeployment": "NOT_PERFORMED"
   }
 }
