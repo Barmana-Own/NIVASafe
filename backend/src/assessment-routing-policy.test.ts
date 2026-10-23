@@ -112,7 +112,7 @@ describe("assessment model and gateway policy", () => {
       }));
       vi.stubGlobal("fetch", fetchMock);
       const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
-      const pending = getRulaPostureImageAIProvider().analyze({ organizationId: "stage", message: "Synthetic posture", imagePurpose: "rula-posture", includeKnowledge: false, image: { mimeType: "image/png", base64: "synthetic" } });
+      const pending = getRulaPostureImageAIProvider().analyze({ organizationId: "stage", message: "Synthetic posture", imagePurpose: "rula-posture", includeKnowledge: false, image: { mimeType: "image/png", base64: "synthetic" }, beforeImageTransfer: async () => undefined });
       const outcome = pending.then(() => null, error => error);
       await vi.advanceTimersByTimeAsync(119_999);
       expect(fetchMock.mock.calls[0]?.[1]?.signal?.aborted).toBe(false);

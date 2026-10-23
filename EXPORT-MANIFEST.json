@@ -1,0 +1,60 @@
+{
+  "project": "NIVASafe",
+  "packageType": "Complete source snapshot, sanitized",
+  "generated": {
+    "gregorian": "2026-10-14",
+    "jalali": "۱۴۰۵/۰۷/۲۲"
+  },
+  "sourceRevision": "c90c11a",
+  "sourceFiles": 439,
+  "sourceBytes": 6097637,
+  "filesByTop": {
+    ".dockerignore": 1,
+    ".github": 1,
+    ".gitignore": 1,
+    "backend": 131,
+    "database": 2,
+    "deployment": 14,
+    "docker-compose.yml": 1,
+    "docs": 78,
+    "frontend": 138,
+    "package.json": 1,
+    "pnpm-lock.yaml": 1,
+    "pnpm-workspace.yaml": 1,
+    "project-integrity-manifest.md": 1,
+    "project-state.json": 1,
+    "README.md": 1,
+    "release-manifest.json": 1,
+    "reports": 8,
+    "scripts": 48,
+    "shared": 6,
+    "START-NIVASAFE-XAMPP.cmd": 1,
+    "START-NIVASAFE.cmd": 1,
+    "turbo.json": 1
+  },
+  "validation": {
+    "requiredComponents": [
+      "frontend",
+      "backend",
+      "shared",
+      "database",
+      "deployment",
+      "docs",
+      "scripts"
+    ],
+    "allPresent": true,
+    "activeEnvSecrets": "PASS excluded and scanned",
+    "privateKeyScan": "PASS",
+    "sourceHashesRecorded": true
+  },
+  "exclusions": [
+    ".git metadata",
+    "node_modules and package caches",
+    "generated build output",
+    "uploads and local user data",
+    "backup and patch-backup directories",
+    "real .env files and credential files",
+    "database dumps and runtime logs",
+    "temporary RULA QA fixtures"
+  ]
+}

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isRulaLocalPoseConfigured } from "./rula-pose-provider.js";
 
 const weakSecretMarkers = ["development", "change-before-production", "change-in-production", "secret"];
 const defaultLoginRateLimitMax = 60;
@@ -22,6 +23,9 @@ export function getLoginRateLimit() {
 }
 
 export function validateEnvironment() {
+  const localPose = process.env.RULA_LOCAL_POSE_ENABLED;
+  if (localPose !== undefined && localPose !== "true" && localPose !== "false") throw new Error("RULA_LOCAL_POSE_ENABLED must be true or false");
+  if (localPose === "true" && !isRulaLocalPoseConfigured()) throw new Error("Local RULA pose processing requires absolute runtime, worker and model paths plus a pinned model SHA256");
   const port = Number(process.env.PORT ?? 5044);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error(`Invalid PORT: ${process.env.PORT}`);
 

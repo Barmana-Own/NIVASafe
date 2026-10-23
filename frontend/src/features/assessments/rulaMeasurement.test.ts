@@ -7,6 +7,13 @@ it("preserves immutable original AI/geometry suggestions across local review nor
   expect(measurementFromValue({...measurement,landmarks:Array(10).fill({})})).toBeUndefined();
   expect(measurementFromValue({...measurement,geometryAngle:NaN})).toBeUndefined();
 });
+it("preserves explicit model detection without coercing legacy or malformed flags",()=>{
+  expect(measurementFromValue({...measurement,aiDetected:true})).toEqual({...measurement,aiDetected:true});
+  expect(measurementFromValue({...measurement,aiDetected:false})).toEqual({...measurement,aiDetected:false});
+  expect(measurementFromValue(measurement)).not.toHaveProperty("aiDetected");
+  for(const aiDetected of [null,0,1,"true","false",{},[]]) expect(measurementFromValue({...measurement,aiDetected})).toBeUndefined();
+  expect(measurementFromValue({...measurement,aiDetected:true,unexpected:"discard"})).not.toHaveProperty("unexpected");
+});
 it("uses controlled localized uncertainty labels",()=>{
   expect(measurementQualityLabel(measurementFromValue(measurement),"fa")).toBe("تعارض زاویه و مفصل‌ها");
   expect(measurementQualityLabel(measurementFromValue(measurement),"en")).toBe("Angle/landmark conflict");

@@ -1,128 +1,130 @@
-# گزارش فنی — سخت‌گیری و پایداری آزمون تصویری
+# رضایت تصویر، تطبیق مدل و انتشار امن NIVASafe
 
-| مورد | مقدار |
+| Field / مشخصه | Value / مقدار |
 |---|---|
-| پروژه | NIVASafe |
-| نوع گزارش | فنی |
-| زبان | فارسی |
-| تاریخ شمسی | ۱۰ مهر ۱۴۰۵ |
-| تاریخ میلادی | ۲ اکتبر ۲۰۲۶ |
-| بازبینی مبنا | `17c0d8b`؛ تغییرات این کار commit نشده‌اند |
-| وضعیت | اعتبارسنجی محلی موفق؛ اجرای CI راه‌دور انجام نشده |
+| Project | NIVASafe |
+| Type | Technical |
+| Language | فارسی |
+| Gregorian | 2026-10-19 |
+| Jalali | 1405-07-27 |
+| Release | release-rula-image-experience-20261019-01 |
+| Revision | e5bf3f050bd6e127e13918c8d3eefcd3f8376acf; preserved dirty working tree |
+| Delivery | CODE DEPLOYED; LIVE IMAGE DISABLED; provider acceptance PARTIAL |
 
-## دامنه و علت ریشه‌ای
+## دامنه و علل مشاهده‌شده
 
-حد مجاز عمومی `toHaveScreenshot` برابر `0.08` بود و تمام assertionهای تصویری بدون override از آن استفاده می‌کردند. برای screenshotها `maxDiffPixels`، pixelmatch `threshold`، mask یا استثنای موردی دیگری وجود نداشت. readiness helper فقط ۱۰۰ میلی‌ثانیه مکث می‌کرد و آماده‌شدن فونت/تصاویر را بررسی نمی‌کرد. در trace یک درخواست subset لاتین Vazirmatn از `fonts.gstatic.com` با `ERR_CONNECTION_FAILED` ثبت شده بود؛ همچنین خروجی trace/report زیر watch سرور Vite می‌توانست HMR و reload حین capture ایجاد کند.
+هندسه، تحلیل سمت‌ها، نسخه‌های تاریخی امتیاز و بازبینی انسانی R6/R7/R8 حفظ شد؛ بهینه‌سازی دقت یا مدل دوم انجام نشد. کارت مشترک و ویرایش هر تصویر جای متن‌ها، نام فایل تکراری و باکس بزرگ ادامهٔ دستی را گرفت؛ نقش، اشتراک، سهمیه، جداسازی سازمان و کنترل فایل حفظ شد.
 
-## پیاده‌سازی
+۱. ارسال production پیش از ارائه‌دهنده به دلیل نبود تأیید واقعی حریم خصوصی سطح پلتفرم متوقف بود. تنظیم‌های مؤثر همچنان خالی‌اند؛ allowlist سازمانی یا تأیید ساختگی اضافه نشده است.
+۲. درخواست GPT-5-Mini در درگاه احرازشده HTTP200 با نام openai/gpt-5-mini برگشت؛ تطبیق نام مدل در برنامه آن را پیش از parser پوسچر رد می‌کرد: AI_MODEL_MISMATCH و503 داخلی. آزمون قرمز/سبز این خطا را ثابت کرد؛ فقط همین نام دقیق برای Arvan و خانوادهٔ درخواستی پذیرفته شد. مدل واقعی برگشتی حفظ می‌شود؛ مدل/endpoint درخواستی یا fallback عوض نشده و چت همچنان DeepSeek است. نام ساده و snapshot قبلی پذیرفته‌اند؛ خانواده، namespace و پسوند غیرمجاز و جایگزینی مدل چت رد می‌شوند.
+۳. دو فراخوانی تصویر در مهلت۱۲۰ثانیه بدون پاسخ HTTP ارائه‌دهنده متوقف شدند؛ علت تأخیر بالادست UNKNOWN است. درخواست‌های۴/۵/۶ نسخهٔ نهایی HTTP200، خروجی معتبر و ذخیره‌شدنی داشتند؛ هیچ نتیجهٔ دقت آناتومیک از HTTP استنتاج نشده است. این سه پاسخ معتبر به502 داخلی تبدیل نشدند.
+۴. اجرای کامل مرورگر در انتظار networkidle هنگام بازخوانی گزارش متوقف شد؛ تولید و retry موجودِ پیشنهاد متنی RULA ادامه داشت. سقف۱۰ تماس رعایت شد؛ پاسخ آخرین تماس متنی پیش از خاموشی آزمون مشاهده نشد و UNKNOWN است، نه429/503 ساختگی. اجرای اصلی FAIL حفظ شد. بازکردن واقعی دو گزارشِ ذخیره‌شده و GET/PDF سپس بدون ارائه‌دهنده موفق بود و جدا ثبت شد؛ BOTH سازمان دوم و تکرار RIGHT مستقل کامل نشدند.
 
-- `frontend/playwright.config.ts`: حد سراسری به `maxDiffPixelRatio: 0.02` تغییر کرد؛ scale تصویر CSS، locale فارسی، timezone تهران و device scale factor یک تثبیت شده‌اند. Playwright نسخه ۱٫۵۶٫۱ و Chromium نسخه ۱۴۱٫۰٫۷۳۹۰٫۳۷ استفاده شد.
-- `frontend/tests/e2e/fixtures.ts`: در مرحلهٔ اولیهٔ سخت‌گیری آزمون تصویری، readiness شامل `networkidle` بود؛ اصلاح مرحلهٔ ۰۴ که پایین‌تر ثبت شده، آن را با آمادگی محدود و مبتنی بر وضعیت واقعی جایگزین کرد. درخواست‌های Google Fonts در تست با همان نسخه Vazirmatn از فایل‌های محلی fixture پاسخ داده می‌شوند؛ CSS و assetهای production تغییر نکردند. مجوز فونت در `frontend/tests/e2e/assets/OFL.txt` قرار دارد.
-- `frontend/tests/e2e/visual.spec.ts`: مسیر عمومی login/register حالت theme/language صریح دارد و زمان سیستم ثابت است. پوشش فهرست و فرم FMEA/RULA و Knowledge/Notifications/Members/Profile در ۳۹۰ و ۱۲۸۰ پیکسل اضافه شد.
-- `frontend/tests/e2e/__snapshots__/chromium/visual.spec.ts/`: ۱۶ baseline جدید برای همان ۸ سطح اضافه و تصاویر پس از تولید بازبینی شدند. baselineهای موجود در این مرحله به‌روزرسانی نشدند؛ اختلافات موجود در working tree از قبل حاضر بودند و حفظ شدند.
-- `frontend/vite.config.ts`: دایرکتوری‌های artifactهای Playwright از watch توسعه Vite مستثنا شدند تا ایجاد trace باعث reload صفحه در capture نشود.
-- `docs/testing.md`: حد آستانه، ماتریس صفحه‌ها، منابع فونت fixture و سیاست snapshot مستند شد.
+## معماری رضایت و حریم خصوصی
 
-یک اجرای تصویری پیش از اصلاح watch در ۴۲/۵۲ متوقف شد؛ ایجاد trace باعث HMR/reload صفحه شده بود. پس از مستثناکردن پوشه‌های artifact، دو اجرای نهایی متوالی بدون reload ناخواسته کامل و موفق شدند.
+نسخهٔ اطلاعیه rula-image-consent-2026-10-19-v1 نامعلوم‌بودن شروط اختصاصی درگاه و بسته‌بودن ارسال عمومی را می‌گوید. عکس جدید یا تغییر سازمان رضایت قبلی را باطل می‌کند؛ ثبت‌نام و بازیابی پیش‌نویس رضایت نیست. نبود/قدیمی‌بودن نسخه با403 و خطای ثبت audit مانع ارسال‌اند. AuditLog موجود پیش از نرمال‌سازی و فراخوانی خارجی، کاربر/سازمان/زمان سرور/requestId، مدل/هدف/سمت/زبان و SHA256 فایل اصلی را ثبت می‌کند. شش سابقهٔ مصنوعی وجود دارد؛ عکس، نام فایل، پرامپت کامل، JWT و کلید در این رویداد ذخیره نمی‌شوند. schema و وابستگی عوض نشده‌اند. پیش از فعال‌سازی، اطلاعیه باید مطابق شرایط واقعی نسخهٔ جدید بگیرد.
 
-هیچ override با آستانه بزرگ‌تر، threshold ثانویه، mask تصویری یا تغییر CSS/فونت production اضافه نشد. اجرای workflow در `.github/workflows/ci.yml` به صورت ایستا بررسی شد: push و pull request را هدف می‌گیرد و job ویژوال `test:visual` را بدون `--update-snapshots` اجرا می‌کند. اجرای واقعی GitHub Actions انجام نشده است.
+[سیاست رسمی](https://www.arvancloud.ir/en/legal/privacy-policy)، [شرایط رسمی](https://www.arvancloud.ir/en/legal/terms) و [DPA](https://www.arvancloud.ir/en/legal/data-processing-agreement) بررسی شدند؛ انطباق قراردادی و شرایط اختصاصی نگهداری/آموزش/محل/حذف تصاویر همین حساب API اثبات نشده است. حکم حقوقی عمومی صادر نشده. تصمیم‌های واقعی و متن دقیق تأیید در docs/legal/rula-image-platform-approval.2026-10-19.md است؛ رضایت بارگذار جای اختیار ارسال عکس دیگری را نمی‌گیرد.
 
-## اعتبارسنجی
+## پذیرش واقعی
 
-محیط محلی: Windows؛ `@playwright/test` نسخه 1.56.1؛ Chromium نسخه 141.0.7390.37؛ locale=`fa-IR`، timezone=`Asia/Tehran` و deviceScaleFactor=`1`. ماتریس تصویری شامل ۵۲ مورد در viewportهای ۳۲۰/۳۶۰/۳۹۰/۴۳۰/۴۸۰/۷۶۸/۱۰۲۴/۱۲۸۰/۱۴۴۰/۱۹۲۰ (بر حسب صفحه)، مسیرهای موبایل و دسکتاپ، گزارش‌های دو ارزیابی و نمونه‌های RTL/LTR و theme است.
-
-| فرمان | نتیجه واقعی |
+| مورد | نتیجه |
 |---|---|
-| `pnpm.cmd --filter @nivasafe/web test:visual` — اجرای اول | PASS، ۵۲/۵۲ |
-| همان فرمان — اجرای پیاپی دوم، بدون تغییر کد/fixture | PASS، ۵۲/۵۲ |
-| `pnpm.cmd --filter @nivasafe/web test:e2e` | PASS، ۹۰/۹۰ |
-| `pnpm.cmd --filter @nivasafe/web test:overflow` | PASS، ۱۰۸/۱۰۸ |
-| `pnpm.cmd --filter @nivasafe/web lint` | PASS |
-| `pnpm.cmd --filter @nivasafe/web typecheck` | PASS |
-| `pnpm.cmd --filter @nivasafe/web test` | PASS، ۵ فایل و ۱۲۴ تست |
-| `pnpm.cmd --filter @nivasafe/web build` | PASS؛ هشدار اندازه chunk بالاتر از ۵۰۰KB |
-| `git diff --check` | PASS؛ فقط هشدارهای موجود درباره تبدیل LF/CRLF |
+| SOURCE FIXED | PASS؛۲۰ فایل برنامه/آزمون، probe و تغییر مجاز تنظیم انتشار |
+| STAGING IMAGE E2E | PARTIAL؛ LEFT سازمان B و تصاویر BOTH سازمان A با ویرایش انسانی/ذخیره/ورود مجدد/GET/گزارش/PDF گذشت؛ اجرای پیوسته FAIL |
+| بازبینی و tampering | PASS؛ نهایی‌سازیِ بازبینی‌نشده400؛ بدون زاویهٔ ساختگی |
+| مسیر دستی با دروازهٔ بسته | PASS؛۲ سازمان عادی،۳۹۰/۱۲۸۰،ذخیره/بازکردن/PDF/رد دسترسی متقاطع،بدون ارائه‌دهنده |
+| بودجه |۱۰ از۱۰؛۶ تلاش تصویر و۴ تلاش متن خودکار گزارش؛ تاریخچه حفظ شد |
+| مدل | درخواست GPT-5-Mini؛ پاسخ GPT-5-Mini،gpt-5-mini-2025-08-07،openai/gpt-5-mini؛ چت DeepSeek-V4-Flash فقط محلی/تنظیم واقعی بررسی شد |
+| انتساب کل مصرف حساب Arvan | UNPROVED؛ export/dashboard نداریم؛ فقط timestamp/model/requestId/fingerprint/origin این اجرا ثبت شد |
+| CODE DEPLOYED | PASS؛۲۳ هش عمومی،health200/DBup،۸ رد401 ناشناس و Chrome عمومی۳۹۰/۱۲۸۰ بدون خطای JS/API |
+| LIVE VISION ENABLED | خیر؛دو پرچم مؤثر PM2 خالی‌اند |
+| دقت آناتومیک | تأیید مستقل ندارد؛ بهینه‌سازی متوقف است |
 
-برای آزمون منفی، تغییر موقت CSS با `transform: translateY(140px)` روی `.rula-report-view` اعمال شد. فرمان `pnpm.cmd --filter @nivasafe/web test:visual --grep "rula-report-390"` آزمون بصری را با ۶۶٬۷۲۵ پیکسل اختلاف (نسبت ۰٫۰۳) شکست داد، در حالی که آزمون overflow هم‌نام پاس شد. تصاویر expected/actual/diff بررسی شدند. تغییر موقت حذف شد و اجرای فایل‌محور `pnpm.cmd --filter @nivasafe/web exec playwright test tests/e2e/visual.spec.ts --grep "rula-report-390"` با ۱/۱ موفق شد. هیچ baseline از این آزمون منفی بازنویسی نشد.
+## امنیت، حفظ پروژه و کار باقی‌مانده
 
-## محدودیت‌ها و ریسک باقیمانده
+در دامنهٔ تغییر، نقص امنیتی مادیِ شناخته‌شدهٔ معرفی‌شده باقی نماند: رضایت پیش از ارسال، audit پایدار، کنترل دسترسی/فایل، diagnostic محدود، allowlist مدل و متن escapeشده بررسی شدند.۴۲۲ قرارداد ستون در۳۷ جدول production/staging فقط‌خواندنی برابر بود؛ رکورد کاربران production خوانده یا تغییر داده نشد؛ migration/تغییر upload/بازگردانی DB انجام نشد.۶۸ فایل کد/خروجی برای کلیدهای تنظیم‌شده و private key بررسی شدند. وابستگی تغییر نکرد؛ اسکن جدید advisory وابستگی NOT_RUN است. کارهای قبلی، routeها، قابلیت‌ها، نسخهٔ امتیاز و assetها حفظ شدند؛ فقط متن/کنترل‌های تکراریِ خواسته‌شده حذف شدند، نه پشتیبانی یا بازبینی دستی.
 
-- مخزن و CI، pnpm نسخه 10.13.1 را تعیین می‌کنند؛ محیط محلی pnpm نسخه 11.19.0 داشت. اجرای Corepack برای نسخه pinned به علت `EPERM` هنگام ایجاد cache پیش‌فرض در مسیر خارج از workspace انجام نشد. آزمون‌ها با pnpm محلی و dependencyهای نصب‌شده از workspace اجرا شدند؛ اجرای CI واقعی یا تکرار کامل با pnpm 10.13.1 مشاهده نشده است.
-- هشدار chunk بزرگ‌تر از ۵۰۰KB در build باقی است و خارج از دامنه این مرحله است.
-- تغییرات working tree commit/push/deploy نشده‌اند. تعدادی تغییر از مراحل قبلی از قبل وجود داشتند و دست‌نخورده حفظ شدند.
+خطاهای اولیهٔ harness شامل کپی‌نبودن fixture/config ایزوله، strict typing تست، locator عنوانِ ترکیبی، مسیر خروجی شواهد، ترتیب فیزیکی ستون schema و انتظار networkidle ثبت و اصلاح شدند؛ تست برنامه برای پنهان‌کردن خطا حذف یا ضعیف نشد. هشدار قدیمی PM2 دربارهٔ wmic ENOENT مانع health و تمرین rollback نشد.
 
-## بررسی امنیت و رگرسیون
+پیش از فعال‌سازی تصویر: رکورد واقعی مجوز ارائه‌دهنده/پلتفرم تکمیل، اطلاعیه نسخه‌گذاری، و پایداری ارائه‌دهنده و BOTH سازمان دوم در بودجهٔ مشخص بررسی شود. این آزمون‌های فنی عادی پس از مجوز واقعی نیازمند اجازهٔ تکراری مالک نیستند. تماس پولی دیگری در این کار انجام نشد.
 
-تغییرات اجرایی این مرحله به Playwright، fixtureها، assetهای آزمون و watch توسعه محدودند؛ مسیر production فونت، API، محاسبات FMEA/RULA، دسترسی‌ها و داده‌ها تغییر نکردند. فایل‌های font با مجوز OFL همراه‌اند. E2E، overflow، typecheck، unit و build اجرا شدند؛ این کار جایگزین audit امنیتی جامع برنامه نیست.
+## Validation commands / دستورات اعتبارسنجی
 
-## الحاقیه — آمادگی قطعی صفحه و ساعت اشتراک
+| Package | Executed command | Exit |
+|---|---|---|
+| frontend | `corepack pnpm run test` | 0 |
+| frontend | `corepack pnpm run typecheck` | 0 |
+| frontend | `corepack pnpm run lint` | 0 |
+| frontend | `corepack pnpm run build` | 0 |
+| shared/domain | `corepack pnpm run test` | 0 |
+| shared/domain | `corepack pnpm run typecheck` | 0 |
+| shared/domain | `corepack pnpm run lint` | 0 |
+| shared/domain | `corepack pnpm run build` | 0 |
+| backend | `corepack pnpm run test` | 0 |
+| backend | `corepack pnpm run typecheck` | 0 |
+| backend | `corepack pnpm run lint` | 0 |
+| backend | `corepack pnpm run build` | 0 |
 
-در مرحلهٔ بعد، `waitForPageReady()` در `frontend/tests/e2e/fixtures.ts` با بودجهٔ کلی ۱۲ثانیه‌ای و فازهای route، محتوای قابل‌مشاهده، loaderهای واقعی، `document.fonts.ready`، کامل‌شدن و decode تصاویر، font readiness پس از render و ثبات هندسه طی frameهای متوالی تکمیل شد. انتظار عمومی `networkidle` و مکث‌های ثابت از مسیر آمادگی حذف شدند. در `authenticate()` انتظار shell جداگانه حذف شد تا readiness یک بودجهٔ مستقل اضافه نداشته باشد. خطاهای timeout، route، فاز جاری، loaderها، تصاویر و آخرین هندسه را گزارش می‌کنند. تنها `setTimeout`های باقی‌مانده deadline و مهلت محدود جمع‌آوری diagnostics را اعمال می‌کنند. برای اسکرین‌شات همچنان تنظیم Playwright جهت خاموش‌کردن انیمیشن و caret استفاده می‌شود؛ تست‌های تعاملی این رفتار را تغییر نمی‌دهند.
+API contract:93 frontend paths/155 backend routes; exit0. Release verifier:29 checks; exit0. Test totals:638 backend/69files,435 frontend/62files,19 domain/2files;1092 unique tests. See validation.json,validation-backend-r2.json,contracts-r2.json and individual logs. Existing Vite chunk-size warning remains non-blocking.
 
-شش regression test آمادگی، بارگذاری تأخیری dashboard، تصویر preview، loader متوقف، فونت محلی، ناوبری SPA و تصویر بدون source را پوشش می‌دهند. هیچ درخواست بیرونی یا mock production اضافه نشده است.
+## Changed files / فایل‌های تغییرکرده
 
-در مرحلهٔ اشتراک، علت ریشه‌ای آزمون این بود که `createSubscriptionFields()` لحظهٔ ساخت را می‌گرفت ولی `subscriptionIsUsable()` زمان واقعی سیستم را جداگانه می‌خواند. تابع backend اکنون پارامتر اختیاری `now = new Date()` دارد و آن را به `isSubscriptionActive()` موجود در domain می‌دهد؛ فراخواننده‌های production بدون پارامتر، همان ساعت جاری را حفظ می‌کنند. هیچ تغییر API، payload، schema، نقش، مدت اشتراک یا business rule وجود ندارد.
-
-آزمون‌ها قواعد موجود را ثبت می‌کنند: فقط `ACTIVE` و `TRIALING` واجد شرایط‌اند؛ `expiresAt` دقیقاً در لحظهٔ انقضا دیگر معتبر نیست؛ `null` برای وضعیت واجدشرایط بدون انقضا همچنان مجاز است؛ تاریخ نامعتبر نامعتبر ارزیابی می‌شود. تست‌های trial در ۲۰۲۶ و ۲۰۴۶ یک لحظهٔ UTC مشترک دارند و انقضای ۱۴روزه را با دقت میلی‌ثانیه بررسی می‌کنند. تست مسیر پیش‌فرض ساعت fake را در `finally` حتماً بازمی‌گرداند.
-
-### اعتبارسنجی الحاقیه
-
-| فرمان | نتیجه |
+| Path | Change |
 |---|---|
-| `pnpm --filter @nivasafe/web test:e2e --output=playwright-results/stage04-e2e-final2` | PASS، ۹۶/۹۶؛ Chromium، Windows |
-| `pnpm --filter @nivasafe/web test:overflow --output=playwright-results/stage04-overflow-final2` | PASS، ۱۰۸/۱۰۸؛ مسیرهای اصلی در ۳۹۰ و ۱۲۸۰ و ماتریس بحرانی ۳۲۰ تا ۱۹۲۰ پیکسل |
-| `pnpm --filter @nivasafe/web test:visual --output=playwright-results/stage04-visual-final2-1` | PASS، ۵۲/۵۲ |
-| `pnpm --filter @nivasafe/web test:visual --output=playwright-results/stage04-visual-final2-2` | PASS، ۵۲/۵۲ متوالی؛ آستانهٔ ۰٫۰۲ و baselineهای موجود |
-| `pnpm --filter @nivasafe/web exec playwright test tests/e2e/readiness.spec.ts --project=chromium --output=playwright-results/stage04-readiness-final2` | PASS، ۶/۶ |
-| `pnpm --filter @nivasafe/web lint` و `pnpm --filter @nivasafe/web typecheck` | PASS |
-| `pnpm --filter @nivasafe/web test` | PASS، ۵ فایل و ۱۲۴ تست |
-| `pnpm --filter @nivasafe/web build` | PASS؛ هشدار chunk بالاتر از ۵۰۰KB |
-| `pnpm --filter @nivasafe/api exec vitest run src/organization-rules.test.ts` | PASS، ۱۲/۱۲ |
-| `pnpm --filter @nivasafe/api exec vitest run --maxWorkers=1` | PASS، ۲۳ فایل و ۱۵۲ تست |
-| `pnpm --filter @nivasafe/domain test` | PASS، ۱۲/۱۲ |
-| `pnpm --filter @nivasafe/api lint` و `pnpm --filter @nivasafe/api typecheck` | PASS |
-| `pnpm --filter @nivasafe/api build` | PASS |
-| `pnpm --filter @nivasafe/api test` | FAIL در یک اجرای parallel: ۱۵۱/۱۵۲؛ timeout موردی در آزمون AI provider |
-| `pnpm --filter @nivasafe/api exec vitest run src/ai-provider.test.ts -t "reports configured providers as available"` | PASS، ۱ تست؛ ۱۸ مورد خارج از فیلتر skip |
+| `frontend/src/features/assessments/AssessmentPages.tsx` | Modified |
+| `frontend/src/features/assessments/rulaImageAnalysisPolicy.test.ts` | Modified |
+| `frontend/src/features/assessments/rulaImageAnalysisPolicy.ts` | Modified |
+| `frontend/src/features/assessments/rulaImageConsent.ts` | Added |
+| `frontend/src/features/assessments/RulaImageConsentDialog.test.tsx` | Added |
+| `frontend/src/features/assessments/RulaImageConsentDialog.tsx` | Added |
+| `frontend/src/features/assessments/RulaPostureImageCard.test.tsx` | Added |
+| `frontend/src/features/assessments/RulaPostureImageCard.tsx` | Added |
+| `frontend/src/i18n.test.ts` | Modified |
+| `frontend/src/i18n.tsx` | Modified |
+| `frontend/src/styles/assessments.css` | Modified |
+| `backend/src/ai-provider.test.ts` | Modified |
+| `backend/src/ai-provider.ts` | Modified |
+| `backend/src/assessment-routing-policy.test.ts` | Modified |
+| `backend/src/image-analysis-diagnostics.test.ts` | Modified |
+| `backend/src/image-analysis-diagnostics.ts` | Modified |
+| `backend/src/modules/assessments.ts` | Modified |
+| `backend/src/rula-image-consent.ts` | Added |
+| `backend/src/rula-registered-member.test.ts` | Modified |
+| `backend/src/rula-three-stage.test.ts` | Modified |
+| `scripts/probe-efficient-vision-model.mjs` | Exact Arvan response namespace, no request/endpoint change |
+| `deployment/ecosystem.config.cjs` | Authorized API entry/version cutover only; gates/worker preserved |
 
-فرمان موازی متعارف `pnpm --filter @nivasafe/api test` در یک اجرا ۱۵۱/۱۵۲ داشت؛ تنها timeout پنج‌ثانیه‌ای آزمون «reports configured providers as available» در `ai-provider.test.ts` بود. اجرای همان مورد به‌تنهایی PASS شد و اجرای کامل تک‌worker، بدون تغییر timeout یا حذف آزمون، ۱۵۲/۱۵۲ PASS شد. این مورد به منطق اشتراک مرتبط نبود و در گزارش نهایی پنهان نشده است.
+Legal documents: docs/legal/rula-image-processing-review.2026-10-19.md; docs/legal/rula-image-platform-approval.2026-10-19.md; docs/rula-image-platform-access.md. Release scripts: scripts/releases/rula-image-experience-20261019-01/{backup-protected-config.ps1,prepare.mjs,rehearse.mjs,release.mjs}. Required stage documents, state, manifest, integrity and dated reports updated; unrelated source, schemas, assets and dependencies preserved.
 
-یک بررسی strict TypeScript دستی برای فایل‌های E2E، خارج از script/tsconfig پروژه، با فرمان زیر اجرا شد و FAIL شد:
+## Artifact identity / هویت نسخه
 
-```text
-node_modules/.bin/tsc.cmd --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --typeRoots ../node_modules/.pnpm/node_modules/@types --types node --lib ES2022,DOM,DOM.Iterable --jsx react-jsx --esModuleInterop tests/e2e/fixtures.ts tests/e2e/readiness.spec.ts tests/e2e/overflow.spec.ts tests/e2e/visual.spec.ts tests/e2e/touch-targets.spec.ts tests/e2e/interaction.spec.ts
-```
+- Backend/frontend release: release-rula-image-experience-20261019-01; staging marker rula-image-experience-20261019-01-r2; PID8960, SYSTEM, NIVASafe-API scheduled task/PM2; API listener127.0.0.1:5044.
+- Backend entry: C:\ProgramData\NIVASafe\releases\release-rula-image-experience-20261019-01\backend\dist\server.js
+- Frontend root: C:/inetpub/nivasafe/app-com; index SHA256: 1d18d2d8266449731a5ff883705542adac5503db0ed65259b61d3294ee24bcf2
+- Compiled module hashes: C:/NIVASafe/reports/evidence/rula-image-experience-20261019-01/runtime-after.json; C:/NIVASafe/reports/evidence/rula-image-experience-20261019-01/prepared.json. Source hashes: C:/NIVASafe/reports/evidence/rula-image-experience-20261019-01/scope-security-integrity.json.
+- Backup: C:/ProgramData/NIVASafe/backups/release-rula-image-experience-20261019-01; protected .env and runtime rollback state access remains SYSTEM/Administrators only.
+- Rollback: `C:\Runtime\node\node.exe C:\NIVASafe\scripts\releases\rula-image-experience-20261019-01\release.mjs rollback`; guarded code/config/index restore, no data rollback. Actual old/new/old service rehearsal and static swap passed before cutover.
 
-خطاها در `overflow.ts:171`، `testData.ts:136`، `touch-targets.spec.ts:75` و `touch-targets.ts:76-77` بودند؛ در helper و spec آمادگی جدید خطایی گزارش نشد. فرمان رسمی frontend lint/typecheck PASS است و Playwright تمام suiteهای مرورگری را اجرا کرد. این بررسی دستی در پیکربندی repository تعریف نشده و خطاهایش خارج از تغییرات فعلی‌اند.
+## Stage reconciliation / مراحل در دامنهٔ انتشار امن
 
-فرمان `git diff --check` برای فایل‌های تغییرکرده موفق بود؛ تنها هشدارهای line ending در Windows دیده شدند. اجرای remote CI انجام نشده و PNG baselineها در Stage 04/05 بازنویسی نشدند.
+| Stage | Status | Observable work |
+|---|---|---|
+| 01 | PASS (code-only scope) | Public access means all eligible memberships after one actual platform approval, explicit informed image consent, no fabricated provider approval and no anatomical optimization. Source baseline and old release preserved. |
+| 02 | PASS (code-only scope) | Compact image cards retain per-image edit/remove/retry and controlled status. Filename duplication, support link inside each card and giant fallback block intentionally replaced. Versioned bilingual disclosure is in a separate consent dialog; mobile/desktop and RTL/LTR verified. |
+| 03 | PASS (code-only scope) | Shared RulaPostureImageCard, RulaImageConsentDialog and typed notice added; new image batches/tenant changes clear consent.435 tests, typecheck/lint/build and16 component browser states passed. |
+| 04 | PASS (code-only scope) | Current consent version required and durable actor/tenant-bound audit receipt awaited before provider dispatch. Exact authenticated Arvan response alias openai/gpt-5-mini accepted only for the configured GPT-5-Mini family; request model and endpoint unchanged.638 backend tests passed. |
+| 05 | PASS (code-only scope) | Existing AuditLog JSON stores consent version, selected-upload fingerprint and request identity. No schema/migration required. Production/staging422 column contracts across37 tables equal using read-only information_schema; no production records read/written. |
+| 06 | PASS (code-only scope) | Image multipart adds imageAnalysisConsentVersion; missing/outdated versions403. Existing paths preserved:93 frontend paths/155 backend routes. Genuine final-candidate3 image requests parsed;2 provider-derived assessments saved/reopened/PDF. |
+| 07 | PASS (code-only scope) | Existing server-side membership/role/subscription/quota/tenant checks preserved. Two ordinary-user organizations tested; unauthorized401, consent403, invalid file415, unreviewed finalization400 and cross-organization404. No per-organization image allowlist. |
+| 08 | PASS (code-only scope) | Default-unchecked consent, audit-failure dispatch denial, safe response identity allowlist, escaped UI and existing file/auth gates verified. Configured-secret/private-key scan68 files PASS; protected rollback config remains SYSTEM/Administrators only. No dependencies or security controls weakened. |
+| 09 | PASS (code-only scope) | 1092 unique tests passed:638 backend,435 frontend,19 domain. Twelve applicable package checks exit0;93/155 contract and29 release checks exit0. Original full provider/browser run FAIL and subsequent zero-provider reopen PASS are separate evidence. Full feature acceptance remains PARTIAL. |
+| 10 | PASS (code-only scope) | Exact Arvan namespace mismatch reproduced red/green and repaired. Image120s timeouts remain UNKNOWN upstream cause. Reload networkidle wait failed amid automatic report text calls;10-call hard budget enforced. Actual saved records reopened in Chrome390/1280 with provider disabled;16 component cases and2 public login cases passed. Safari/WebKit NOT_RUN. |
+| 11 | PASS (code-only scope) | DEPLOYED_CODE_ONLY release-rula-image-experience-20261019-01; PID8960 SYSTEM via existing NIVASafe-API/PM2. Backup C:/ProgramData/NIVASafe/backups/release-rula-image-experience-20261019-01. Operational old/new/old rehearsal and static rollback passed;23 public hashes/health checks and8 anonymous401 checks passed. Both image gates remain empty; no migration, protected-env edit, worker/Nginx restart or production assessment write. |
+| 12 | PASS (code-only scope) | PASS only for this closed-image-feature safe code release after source/artifact parity, secret/ACL/schema/auth/rollback/public runtime verification. Full product/image acceptance is BLOCKED pending real provider terms/platform decision, final notice revision and remaining provider stability/second-organization BOTH checks. No independent anatomical validation claimed. |
 
-## مرحلهٔ ۰۷ — دروازهٔ نهایی کیفیت انتشار محلی
+Every PASS in this table is scoped to code release with public image gates closed. Whole-product RULA acceptance remains BLOCKED. Clean migration replay and Safari/WebKit are NOT_RUN; no schema change or Safari coverage is claimed.
 
-**وضعیت: PASS (فقط اعتبارسنجی محلی).** این نقطهٔ کنترل وضعیت working tree فعلی روی revision مبنای `17c0d8b` است؛ تغییرات بدون commit مراحل قبل حفظ شدند. تاریخ: ۱۰ مهر ۱۴۰۵ / ۲ اکتبر ۲۰۲۶.
+## Evidence / شواهد
 
-| بررسی | نتیجهٔ فعلی |
-|---|---|
-| `corepack pnpm test` | PASS: دامنه ۱۲، API تعداد ۱۵۲ و frontend تعداد ۱۳۱؛ جمعاً ۲۹۵ تست |
-| `corepack pnpm lint`، `corepack pnpm typecheck`، `corepack pnpm build` | PASS در ۳ بسته؛ هشدار chunk جاوااسکریپت ۸۹۰٫۲۰ کیلوبایتی باقی است |
-| `corepack pnpm verify:release` / `corepack pnpm verify:contract` | PASS: ۲۸ بررسی انتشار؛ ۶۸ مسیر API فرانت‌اند با ۱۲۱ route بک‌اند تطبیق دارند |
-| `pnpm --filter @nivasafe/web test:e2e` | PASS: ۹۹/۹۹ تست Chromium در Windows |
-| `pnpm --filter @nivasafe/web test:overflow` | PASS: ۱۰۸/۱۰۸ |
-| `pnpm --filter @nivasafe/web test:visual` | PASS: ۵۲/۵۲ با `maxDiffPixelRatio: 0.02` |
-| آزمون متمرکز PDF/WebM/dialog با pnpm پین‌شده | PASS: ۳/۳ با pnpm 10.13.1 |
-| بررسی دستی strict TypeScript برای فایل‌های fixture/spec در Playwright | PASS: بدون diagnostic |
-| گراف import محدود FMEA/RULA | PASS: در فایل‌های بررسی‌شده cycle پیدا نشد |
-
-در مرحلهٔ ۰۷ آزمون‌های مرورگری برای PDF محلی، WebM تولیدشده در Chromium، آزادسازی object URL، محدودماندن focus در modal، Escape، قفل اسکرول پس‌زمینه و بازگشت focus اضافه شد. fixture پس از timeout اولیهٔ ضبط و سپس خطای تعداد کارت مورد انتظار اصلاح شد؛ تست‌های اصلاح‌شده و کل E2E موفق شدند. در این مرحله source مربوط به production و baseline تصویری تغییر نکرد. سه تصویر موجود که بازبینی شدند: `rula-report-390.png`، `fmea-report-320.png` و `dashboard-1280.png` در مسیر `frontend/tests/e2e/__snapshots__/chromium/visual.spec.ts/`.
-
-یک اجرای کامل اولیهٔ E2E روی آزمون hit target گزارش RULA در عرض ۱۹۲۰ پیکسل timeout شد و تصویر ثبت‌شده هنوز loader را نشان می‌داد. اجرای همان مورد به‌تنهایی ۱/۱ و اجرای کامل بعدی ۹۹/۹۹ موفق شد. خطا قابل بازتولید نبود و علت قطعی در برنامه شناسایی نشد؛ بنابراین به‌عنوان ریسک گذرای پایداری آزمون ثبت می‌شود.
-
-فایل `error-context.md` مربوط به timeout اولیه پس از اجراهای بعدی دیگر در `frontend/playwright-results/` موجود نیست، چون مسیر خروجی در اجراهای بعدی دوباره استفاده شد. اجرای نهایی visual موفق بود و attachment اختلاف expected/actual/diff تولید نکرد.
-
-فایل‌های آزمون دیگری که در مرحلهٔ ۰۷ اصلاح شدند: `fixtures.ts`، `overflow.ts`، `testData.ts`، `touch-targets.spec.ts` و `touch-targets.ts`. بررسی strict TypeScript دستی برای همهٔ fixtureها و specهای Playwright پس از اصلاحات بدون diagnostic موفق شد. این اصلاحات کد برنامه یا baseline تصویری را تغییر ندادند.
-
-پیکربندی CI به‌صورت ایستا بررسی شد: triggerهای push/PR، job کیفیت Ubuntu، job تصویری Windows وابسته، مسیر artifactهای خطا و نبودن پرچم به‌روزرسانی baseline برقرارند. اجرای واقعی Actions و تنظیمات branch-protection مشاهده نشد. تست زندهٔ MySQL/API، استقرار یا درخواست production انجام نشد. safe-area فیزیکی iOS و مرورگرهای غیر Chromium آزمایش نشدند. ابزار اعتبارسنجی YAML در محیط موجود نبود و workflow به‌صورت ایستا بررسی شد.
-
-نسخهٔ پین‌شدهٔ package manager از طریق cache محلی Corepack در workspace در دسترس قرار گرفت. اجرای کامل E2E/overflow/visual پیش از آن با pnpm محلی 11.19.0 بود؛ تست‌های ریشه، lint/typecheck/build، verifierها و تست‌های متمرکز نهایی مرورگر با pnpm 10.13.1 اجرا شدند. lockfile تغییر نکرد.
-
-پایان موفق `pnpm install --frozen-lockfile` ثبت نشد: dependencyهای موجود از قبل آماده بودند و تلاش نصب به درخواست جایگزینی پوشهٔ modules رسید. lockfile تغییر نکرد؛ این مرحلهٔ نصب به‌عنوان انجام‌نشده ثبت می‌شود، نه PASS.
+All relative evidence files are under `C:/NIVASafe/reports/evidence/rula-image-experience-20261019-01`: acceptance.json; provider-request-provenance.json; provider-failure-audit.json; final-both-browser.json (FAIL preserved); reopen-after-budget.json (separate PASS); closed-manual-browser.json; browser-components.json; public-browser.json; schema-security.json; protected-backup-after.json; operational-rollback.json; deployment.json; runtime-after.json. Original snapshots and failed harness logs retained.

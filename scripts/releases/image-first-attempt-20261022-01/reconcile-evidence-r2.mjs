@@ -1,0 +1,18 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {evidence,read,sha} from './prepare-proxy.mjs';
+const target=`${evidence}/recent-image-attempts.json`;
+const current=fs.readFileSync(target);
+const historical=JSON.parse(current);
+const start=read(`${evidence}/controlled-ui-start-r2.json`).startedAt;
+historical.logs=historical.logs.filter(event=>event.createdAt<start);
+const bytes=JSON.stringify(historical,null,2);
+const expected=read(`${evidence}/candidate-r2.json`).preservedV1Evidence.find(file=>file.path===target).sha256;
+assert.equal(createHash('sha256').update(bytes).digest('hex'),expected,'Historical reconstruction must match the pre-existing frozen hash exactly');
+fs.writeFileSync(`${evidence}/recent-image-attempts-r2.json`,current,{flag:'wx'});
+fs.writeFileSync(target,bytes);
+assert.equal(sha(target),expected);
+const result={status:'PASS',reason:'The read-only rolling audit export was refreshed after R2. Preserve the new snapshot under a revision-specific name and restore the historical snapshot only after an exact frozen SHA match.',historicalSha256:expected,historicalEvents:historical.logs.length,newSnapshot:'recent-image-attempts-r2.json',newSnapshotSha256:sha(`${evidence}/recent-image-attempts-r2.json`),controlledFailureEvidenceChanged:false};
+fs.writeFileSync(`${evidence}/evidence-reconciliation-r2.json`,JSON.stringify(result,null,2));
+console.log(JSON.stringify(result));

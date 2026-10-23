@@ -1,7 +1,6 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+import {RULA_POSE_SOURCE,type RulaLocalPoseResult,type RulaPoseLandmark} from "./rula-pose-provider.js";
 import { buildRulaPostureImageAnalysisPrompt, buildRulaPostureTextAnalysisPrompt, buildRulaTaskDescriptionPrompt, cleanRulaTaskDescription, fallbackRulaPostureTextAnalysis, parseRulaPostureImageAnalysis, parseRulaPostureTextAnalysis, rulaPostureImageAnalysisResponseSchema, rulaPostureTextAnalysisResponseSchema, RULA_TASK_DESCRIPTION_MAX_LENGTH } from "./rula-posture-ai.js";
-
-afterEach(() => vi.unstubAllEnvs());
 
 describe("RULA posture image analysis", () => {
   it("preserves leg support rather than turning a visible bent knee into an invalid table index", () => {
@@ -151,35 +150,6 @@ describe("RULA posture image analysis", () => {
     expect(prompt).toContain("Do not draw a skeleton when a landmark is not visible");
   });
 
-  it("uses the compact landmark contract in development mode and derives reviewed results locally", () => {
-    vi.stubEnv("NODE_ENV", "development");
-    vi.stubEnv("RULA_LANDMARK_EXPERIMENT_V2", "1");
-    const imageGeometry = { width: 1000, height: 700, normalized: true as const };
-    const prompt = buildRulaPostureImageAnalysisPrompt({ bodySide: "RIGHT", locale: "en", imageGeometry });
-    expect(prompt).toContain("NIVASAFE_RULA_LANDMARK_LOCALIZATION_V2");
-    expect(prompt).toContain("Do not estimate angles or RULA scores");
-    expect(prompt).not.toContain('Return exactly one complete JSON object with top-level keys "sides" and "notes"');
-
-    const landmarks = [["head",170,146],["neck",170,174],["shoulder",170,210],["elbow",265.26,265],["wrist",210.26,360.26],["hand",195.26,386.24],["hip",170,395],["knee",170,488],["ankle",170,583]]
-      .map(([name, x, y]) => ({ name, x, y, visibility: "VISIBLE", confidence: 0.95 }));
-    const analysis = parseRulaPostureImageAnalysis(JSON.stringify({
-      schemaVersion: "rula-landmarks-v2",
-      sides: { RIGHT: { subjectId: "A", side: "RIGHT", coordinateSystem: "PIXELS", bounds: { left: 100, top: 100, right: 350, bottom: 630 }, view: "SAGITTAL", facing: "IMAGE_RIGHT", up: { x: 0, y: -1 }, legSupport: "SUPPORTED", landmarks } },
-      notes: "Synthetic posture",
-    }), "RIGHT", imageGeometry);
-    expect(analysis.sides.RIGHT?.upperArm.measurement).toMatchObject({ version: "landmark-geometry-v2", trustedSource: "DETERMINISTIC_IMAGE_PLANE" });
-    expect(analysis.sides.RIGHT?.overlay.points.shoulder).toEqual({ x: 0.17, y: 0.3, confidence: 0.95 });
-    expect(analysis.sides.RIGHT?.wristTwist).toMatchObject({ angle: null, detected: false, requiresReview: true });
-  });
-
-  it("never enables the experimental landmark contract in production", () => {
-    vi.stubEnv("NODE_ENV", "production");
-    vi.stubEnv("RULA_LANDMARK_EXPERIMENT_V2", "1");
-    const prompt = buildRulaPostureImageAnalysisPrompt({ bodySide: "RIGHT", locale: "en", imageGeometry: { width: 1000, height: 700, normalized: true } });
-    expect(prompt).toContain('Return exactly one complete JSON object with top-level keys "sides" and "notes"');
-    expect(prompt).not.toContain("NIVASAFE_RULA_LANDMARK_LOCALIZATION_V2");
-  });
-
   it("defines the exact nested sides contract for BOTH image responses", () => {
     const prompt = buildRulaPostureImageAnalysisPrompt({ bodySide: "BOTH", jobTitle: "Assembly operator", taskDescription: "Inspect parts", locale: "en" });
     expect(prompt).toContain('Return exactly one complete JSON object with top-level keys "sides" and "notes"');
@@ -243,5 +213,83 @@ describe("RULA posture image analysis", () => {
     expect(result.sides.LEFT?.neck.score).toBeGreaterThan(1);
     expect(result.sides.RIGHT?.overlay.points).toEqual({});
     expect(rulaPostureTextAnalysisResponseSchema.parse({ ...result, provider: "fallback", aiStatus: "fallback" }).sides.RIGHT).toBeDefined();
+  });
+});
+
+describe("local specialist pose integration",()=>{
+  const context={width:1200,height:800,normalized:true as const};
+  const point=(name:RulaPoseLandmark["name"],x:number,y:number):RulaPoseLandmark=>({name,x,y,visibility:.95,presence:.9});
+  const pose:RulaLocalPoseResult={source:RULA_POSE_SOURCE,modelSha256:"a".repeat(64),...context,poses:[{landmarks:[
+    point("nose",.85,.1),point("right_ear",.8,.1),point("left_ear",.9,.1),
+    point("right_shoulder",.7,.2),point("right_elbow",.7,.4),point("right_wrist",.8,.4),point("right_index",.85,.4),point("right_hip",.7,.6),point("right_knee",.7,.75),point("right_ankle",.7,.9),
+    point("left_shoulder",.3,.2),point("left_elbow",.3,.4),point("left_wrist",.2,.4),point("left_index",.15,.4),point("left_hip",.3,.6),point("left_knee",.3,.75),point("left_ankle",.3,.9),
+  ]}]};
+  const row={angle:0,score:1,detected:true,confidence:.95};
+  const side={upperArm:row,lowerArm:{...row,angle:90},wrist:row,wristTwist:{...row,angle:null,detected:false},neck:row,trunk:row,legs:{...row,angle:null},overlay:{points:{head:{x:.01,y:.99,confidence:1}}},geometry:{view:"SAGITTAL",facing:"IMAGE_LEFT",upright:true,landmarks:"malformed irrelevant model coordinates"}};
+
+  it("ignores malformed generated overlay/geometry and uses the local pose for every drawn and measured point",()=>{
+    const result=parseRulaPostureImageAnalysis(JSON.stringify({sides:{RIGHT:{...side,overlay:"malformed model overlay"}}}),"RIGHT",context,pose).sides.RIGHT!;
+    expect(result.overlay.points.head).toEqual({x:.85,y:.1,confidence:.9});
+    expect(result.overlay.points.shoulder).toEqual({x:.7,y:.2,confidence:.9});
+    expect(result.upperArm.measurement).toMatchObject({facing:"IMAGE_RIGHT",trustedSource:"AI_ANGLE_AUDIT",state:"ESTIMATED"});
+    for(const part of ["upperArm","lowerArm","wrist","neck","trunk"] as const) for(const landmark of result[part].measurement!.landmarks){
+      expect(result.overlay.points[landmark.name]).toEqual({x:landmark.x,y:landmark.y,confidence:landmark.confidence});
+    }
+    expect(result.lowerArm.angle).toBe(90);
+    expect(result.wrist.angle).toBe(0);
+    expect(result.neck).toMatchObject({angle:null,detected:false,requiresReview:true,measurement:{state:"UNMEASURABLE",qualityCodes:["LANDMARK_MISSING"]}});
+    expect(result.overlay.points.neck).toBeUndefined();
+  });
+
+  it("keeps both anatomical sides independent and never swaps them using a model facing guess",()=>{
+    const result=parseRulaPostureImageAnalysis(JSON.stringify({sides:{RIGHT:side,LEFT:side}}),"BOTH",context,pose);
+    expect(result.sides.RIGHT?.overlay.points.wrist?.x).toBe(.8);
+    expect(result.sides.LEFT?.overlay.points.wrist?.x).toBe(.2);
+    expect(result.sides.RIGHT?.lowerArm.angle).toBe(90);
+    expect(result.sides.LEFT?.lowerArm.angle).toBe(90);
+  });
+
+  it("recovers correctly typed side-local view cues from the earlier ambiguous prompt without borrowing another side",()=>{
+    const {geometry: _geometry,...flat}=side;
+    const result=parseRulaPostureImageAnalysis(JSON.stringify({sides:{RIGHT:{...flat,view:"SAGITTAL",upright:true},LEFT:flat},view:"SAGITTAL",upright:true}),"BOTH",context,pose);
+    expect(result.sides.RIGHT?.lowerArm).toMatchObject({angle:90,detected:true,requiresReview:true,measurement:{state:"ESTIMATED"}});
+    expect(result.sides.LEFT?.lowerArm).toMatchObject({angle:null,detected:false,measurement:{qualityCodes:["VIEW_UNSUITABLE"]}});
+    expect(result.sides.RIGHT?.neck).toMatchObject({angle:null,detected:false,requiresReview:true});
+    for(const fields of [{view:"sagittal",upright:true},{view:"SAGITTAL",upright:"true"},{view:"SAGITTAL",upright:true,geometry:{view:"OBLIQUE",upright:true}}]){
+      const audited=parseRulaPostureImageAnalysis(JSON.stringify({sides:{RIGHT:{...flat,...fields}}}),"RIGHT",context,pose).sides.RIGHT!;
+      expect(audited.lowerArm.detected).toBe(false);
+    }
+  });
+
+  it("cannot reintroduce an occluded local joint through generated coordinates",()=>{
+    const hidden={...pose,poses:[{landmarks:pose.poses[0]!.landmarks.map(p=>p.name==="right_elbow"?{...p,visibility:.1}:p)}]};
+    const result=parseRulaPostureImageAnalysis(JSON.stringify({sides:{RIGHT:side}}),"RIGHT",context,hidden).sides.RIGHT!;
+    expect(result.overlay.points.elbow).toBeUndefined();
+    expect(result.lowerArm).toMatchObject({angle:null,detected:false,requiresReview:true});
+  });
+
+  it("uses model view information only to withhold unsupported sagittal measurements",()=>{
+    const result=parseRulaPostureImageAnalysis(JSON.stringify({sides:{RIGHT:{...side,geometry:{view:"OBLIQUE",facing:"IMAGE_RIGHT",upright:true}}}}),"RIGHT",context,pose).sides.RIGHT!;
+    expect(result.lowerArm).toMatchObject({angle:null,detected:false,measurement:{qualityCodes:["VIEW_UNSUITABLE"]}});
+    expect(result.overlay.points.elbow).toEqual({x:.7,y:.4,confidence:.9});
+  });
+
+  it("requires single-person detector evidence and cannot fall back to generated dots",()=>{
+    for(const poses of [[],[pose.poses[0]!,pose.poses[0]!]]){
+      expect(()=>parseRulaPostureImageAnalysis(JSON.stringify({sides:{RIGHT:side}}),"RIGHT",context,{...pose,poses})).toThrow("single visible body");
+    }
+    expect(()=>parseRulaPostureImageAnalysis(JSON.stringify({sides:{RIGHT:side}}),"RIGHT",undefined,pose)).toThrow("image reference frame");
+  });
+
+  it("stops requesting generated coordinates while retaining seven editable AI posture rows",()=>{
+    const prompt=buildRulaPostureImageAnalysisPrompt({bodySide:"BOTH",locale:"en",imageGeometry:context,localPose:true});
+    expect(prompt).toContain("all seven body-part objects");
+    expect(prompt).toContain("Do not generate landmark coordinates");
+    expect(prompt).toContain('"view":"SAGITTAL|FRONTAL|OBLIQUE|UNKNOWN"');
+    expect(prompt).toContain('property named "geometry"');
+    expect(prompt).toContain('never put view/upright directly on the side or at the root');
+    expect(prompt).not.toContain("overlay.points");
+    expect(prompt).not.toContain('"landmarks"');
+    expect(prompt).not.toContain('"x":0.0');
   });
 });

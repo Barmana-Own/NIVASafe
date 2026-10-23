@@ -1,10 +1,12 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, download, getCurrentRole, getSession, useLoad } from "../../api/client";
 import { EmptyState, Icon, PageHeader, SectionCard, formatDate, useDialog } from "../../components/UI";
 import { AutoSaveForm, clearAutoSaveDraft } from "../../forms/AutoSaveForm";
 import { scopedDraftKey } from "../../forms/autoSave";
 import { useI18n } from "../../i18n";
+import { OrganizationImageButton } from "./OrganizationImagePicker";
+import { organizationImageSource } from "./organizationImageSource";
 
 type FileReference = { type: "FMEA" | "RULA" | "KNOWLEDGE" | "OTHER"; title: string | null; code: string | null };
 type FileItem = { id: string; originalName: string; mimeType: string; size: number; kind: string; createdAt: string; reference?: FileReference | null };
@@ -26,6 +28,10 @@ export function FilesPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [fileName, setFileName] = useState("");
+  const [selectedOrganizationFile, setSelectedOrganizationFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const uploadPending = useRef(false);
   const dialog = useDialog();
   const role = getCurrentRole();
   const { session, orgId } = getSession();
@@ -35,20 +41,34 @@ export function FilesPage() {
   const reports = useLoad<RegisteredReport[]>(canViewReports ? "/reports/registered" : null);
   const canDelete = ["SUPER_ADMIN", "ORG_ADMIN"].includes(role);
   async function upload(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); const element = event.currentTarget; const form = new FormData(element); setError(""); setMessage("");
-    try { await api("/files", { method: "POST", body: form }); await clearAutoSaveDraft(uploadDraftKey); element.reset(); setFileName(""); state.reload(); setMessage(t("files.uploaded")); }
+    event.preventDefault();
+    if (uploadPending.current) return;
+    uploadPending.current = true;
+    setUploading(true);
+    const element = event.currentTarget;
+    const form = new FormData(element);
+    if (selectedOrganizationFile && !organizationImageSource(selectedOrganizationFile)) form.set("file", selectedOrganizationFile);
+    setError(""); setMessage("");
+    try { if (!selectedOrganizationFile || !organizationImageSource(selectedOrganizationFile)) await api("/files", { method: "POST", body: form }); await clearAutoSaveDraft(uploadDraftKey); element.reset(); setSelectedOrganizationFile(null); setFileName(""); state.reload(); setMessage(t("files.uploaded")); }
     catch (reason) { setError((reason as Error).message); }
+    finally { uploadPending.current = false; setUploading(false); }
+  }
+  function chooseOrganizationImage(files: File[]) {
+    if (uploadPending.current || !files[0]) return;
+    setSelectedOrganizationFile(files[0]);
+    setFileName(files[0].name);
+    if (fileInput.current) fileInput.current.value = "";
   }
   async function remove(id: string) { if (!(await dialog.confirm(`${t("common.delete")}؟`))) return; try { setError(""); await api(`/files/${id}`, { method: "DELETE" }); state.reload(); setMessage(t("files.deleted")); } catch (reason) { setError((reason as Error).message); } }
   async function getFile(item: FileItem) { try { setError(""); const blob = await download(`/files/${item.id}/download`); const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = item.originalName; anchor.click(); URL.revokeObjectURL(url); } catch (reason) { setError((reason as Error).message); } }
-  async function preview(item: FileItem) { try { setError(""); const blob = await download(`/files/${item.id}/download`); const url = URL.createObjectURL(blob); window.open(url, "_blank", "noopener,noreferrer"); window.setTimeout(() => URL.revokeObjectURL(url), 60_000); } catch (reason) { setError((reason as Error).message); } }
-  return <section className="page-shell">
+  async function preview(item: FileItem) { try { setError(""); const blob = await download(`/files/${item.id}/download`); const url = URL.createObjectURL(blob); const opened = window.open(url, "_blank", "noopener,noreferrer"); if (!opened) URL.revokeObjectURL(url); else window.setTimeout(() => URL.revokeObjectURL(url), 60_000); } catch (reason) { setError((reason as Error).message); } }
+  return <section className="page-shell files-page">
     <PageHeader eyebrow={t("files.eyebrow")} title={t("files.title")} description={t("files.description")}/>
     {error && <div role="alert" className="alert error"><Icon name="warning"/>{error}</div>}{message && <div role="status" className="alert success"><Icon name="check"/>{message}</div>}
     {canUpload && <SectionCard title={t("files.upload")} description={t("files.uploadDescription")} icon="plus">
       <AutoSaveForm storageKey={uploadDraftKey} className="upload-form" onSubmit={upload} excludeFields={["file"]}>
-        <label className="dropzone"><input name="file" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,application/pdf,.doc,.docx,.xlsx,.csv,.txt" required onChange={(event) => setFileName(event.target.files?.[0]?.name ?? "")}/><span className="upload-icon"><Icon name="files" size={30}/></span><strong>{fileName || t("files.choose")}</strong><small>{t("files.fileTypes")}</small><span className="ghost fake-button">{t("files.chooseButton")}</span></label>
-        <label>{t("files.referenceType")}<input name="entityType" placeholder={t("files.referencePlaceholder")}/></label><button className="primary"><Icon name="plus"/> {t("files.uploadButton")}</button>
+        <div className="files-upload-picker"><label className="dropzone"><input ref={fileInput} name="file" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,application/pdf,.doc,.docx,.xlsx,.csv,.txt" required={!selectedOrganizationFile} disabled={uploading} onChange={(event) => { setSelectedOrganizationFile(null); setFileName(event.target.files?.[0]?.name ?? ""); }}/><span className="upload-icon"><Icon name="files" size={30}/></span><strong>{fileName || t("files.choose")}</strong><small>{t("files.fileTypes")}</small></label><div className="files-upload-picker-actions organization-image-buttons"><button type="button" className="ghost" disabled={uploading} onClick={() => fileInput.current?.click()}><Icon name="files"/>{t("files.chooseButton")}</button><OrganizationImageButton maxCount={1} maxBytes={10 * 1024 * 1024} disabled={uploading} onSelect={chooseOrganizationImage}/></div></div>
+        <label>{t("files.referenceType")}<input name="entityType" placeholder={t("files.referencePlaceholder")}/></label><button className="primary" disabled={uploading}><Icon name="plus"/> {t("files.uploadButton")}</button>
       </AutoSaveForm>
     </SectionCard>}
     {canViewReports && <SectionCard title={t("files.reportsSection")} description={t("files.reportsDescription")} icon="chart">

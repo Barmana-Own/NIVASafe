@@ -1,4 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+const imageTransport = vi.hoisted(() => ({ agent: vi.fn() }));
+vi.mock("undici", () => ({ Agent: class {
+  constructor(options: unknown) { imageTransport.agent(options); }
+} }));
 // Transform the provider graph during collection, outside the five-second
 // request assertion deadline. Cold Windows transforms otherwise outlive a
 // timed-out test and can dispatch into the following test's fetch mock.
@@ -6,6 +10,148 @@ import "./ai-provider.js";
 
 vi.mock("./ai-access.js", () => ({ isAIAccessError: (error: { code?: string }) => error?.code?.startsWith("AI_ACCESS_"), withAIAllowance: (input: unknown, run: (input: unknown) => unknown) => run(input) }));
 describe("AI provider adapters", () => {
+  it("isolates certificate-verified assessment text and image pools without changing chat transport", async () => {
+    vi.resetModules();
+    imageTransport.agent.mockClear();
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ choices: [{ message: { content: '{"synthetic":true}' } }] }), { status: 200 })));
+    vi.stubGlobal("fetch", fetchMock);
+    const { getAIProvider } = await import("./ai-provider.js");
+    await getAIProvider("arvancloud", "risk").analyze({ organizationId: "org", message: "Synthetic posture JSON", includeKnowledge: false, beforeImageTransfer: async () => undefined, imagePurpose: "rula-posture", image: { mimeType: "image/png", base64: "synthetic" } });
+    expect(imageTransport.agent).toHaveBeenCalledExactlyOnceWith({ connect: { timeout: 30_000, rejectUnauthorized: true }, connections: 4, pipelining: 1, keepAliveTimeout: 60_000, keepAliveMaxTimeout: 60_000 });
+    expect(fetchMock.mock.calls[0]?.[1]).toHaveProperty("dispatcher");
+    const imageDispatcher = fetchMock.mock.calls[0]?.[1].dispatcher;
+    await getAIProvider("arvancloud", "risk").analyze({ organizationId: "org", message: "Synthetic text", includeKnowledge: false, maxOutputTokens: 1200 });
+    const textDispatcher = fetchMock.mock.calls[1]?.[1].dispatcher;
+    expect(textDispatcher).toBeDefined();
+    expect(textDispatcher).not.toBe(imageDispatcher);
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1].body))).toMatchObject({ model: "GPT-5-Mini", max_completion_tokens: 1200 });
+    await getAIProvider("arvancloud", "risk").analyze({ organizationId: "org", message: "Another synthetic text", includeKnowledge: false });
+    expect(fetchMock.mock.calls[2]?.[1].dispatcher).toBe(textDispatcher);
+    await getAIProvider("arvancloud", "risk").analyze({ organizationId: "org", message: "Another synthetic image", includeKnowledge: false, beforeImageTransfer: async () => undefined, imagePurpose: "rula-posture", image: { mimeType: "image/png", base64: "synthetic" } });
+    expect(fetchMock.mock.calls[3]?.[1].dispatcher).toBe(imageDispatcher);
+    await getAIProvider("arvancloud", "chat").analyze({ organizationId: "org", message: "Synthetic chat", includeKnowledge: false });
+    expect(fetchMock.mock.calls[4]?.[1]).not.toHaveProperty("dispatcher");
+    expect(imageTransport.agent).toHaveBeenCalledTimes(2);
+    expect(imageTransport.agent.mock.calls.every(([options]) => options.connect.timeout === 30_000 && options.connect.rejectUnauthorized === true && options.connections === 4 && options.pipelining === 1 && options.keepAliveTimeout === 60_000 && options.keepAliveMaxTimeout === 60_000)).toBe(true);
+  });
+  it.each(["http://api.arvancloudai.ir/v1", "https://unapproved.example/v1"])("never creates a text connection pool for unapproved gateway %s", async gateway => {
+    vi.resetModules();
+    imageTransport.agent.mockClear();
+    process.env.ARVAN_BASE_URL = gateway;
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const { getAIProvider } = await import("./ai-provider.js");
+    await expect(getAIProvider("arvancloud", "risk").analyze({ organizationId: "org", message: "Synthetic text", includeKnowledge: false })).rejects.toMatchObject({ code: "ASSESSMENT_PROVIDER_NOT_APPROVED" });
+    expect(imageTransport.agent).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it.each(["rula-posture", "fmea-process"] as const)("recovers two provably unsent %s connections before delivering one image", async imagePurpose => {
+    const connectFailure = () => Object.assign(new TypeError("fetch failed"), { cause: { code: "UND_ERR_CONNECT_TIMEOUT" } });
+    const fetchMock = vi.fn().mockRejectedValueOnce(connectFailure()).mockRejectedValueOnce(connectFailure()).mockResolvedValueOnce(new Response(JSON.stringify({ model: "gpt-5-mini-2025-08-07", choices: [{ message: { content: '{"synthetic":true}' } }] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const beforeImageTransfer = vi.fn().mockResolvedValue(undefined);
+    const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
+    await expect(getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "Synthetic posture JSON", includeKnowledge: false, beforeImageTransfer, imagePurpose, image: { mimeType: "image/png", base64: "synthetic" } })).resolves.toMatchObject({ answer: '{"synthetic":true}' });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(beforeImageTransfer).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls.every(([_url, options]) => options.redirect === "error")).toBe(true);
+  });
+
+  it.each(["UND_ERR_CONNECT_TIMEOUT", "EAI_AGAIN", "ECONNREFUSED"])("bounds unsent %s connection recovery at three tries", async code => {
+    const fetchMock = vi.fn().mockRejectedValue(Object.assign(new TypeError("fetch failed"), { cause: { code } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const beforeImageTransfer = vi.fn().mockResolvedValue(undefined);
+    const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
+    await expect(getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "Synthetic posture JSON", includeKnowledge: false, beforeImageTransfer, imagePurpose: "rula-posture", image: { mimeType: "image/png", base64: "synthetic" } })).rejects.toMatchObject({ code: "PROVIDER_CONNECT_FAILED", networkErrorCode: code, connectionAttempts: 3 });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(beforeImageTransfer).toHaveBeenCalledTimes(3);
+  });
+
+  it("rechecks consent after a failed connection and never dispatches after withdrawal", async () => {
+    const fetchMock = vi.fn().mockRejectedValue(Object.assign(new TypeError("fetch failed"), { cause: { code: "UND_ERR_CONNECT_TIMEOUT" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const beforeImageTransfer = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(Object.assign(new Error("Withdrawn"), { code: "IMAGE_PROCESSING_ACCOUNT_CONSENT_REQUIRED", statusCode: 403 }));
+    const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
+    await expect(getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "Synthetic posture JSON", includeKnowledge: false, beforeImageTransfer, imagePurpose: "rula-posture", image: { mimeType: "image/png", base64: "synthetic" } })).rejects.toMatchObject({ code: "IMAGE_PROCESSING_ACCOUNT_CONSENT_REQUIRED" });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(beforeImageTransfer).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([undefined, "UND_ERR_SOCKET", "ECONNRESET", "ETIMEDOUT", "UND_ERR_HEADERS_TIMEOUT"])("never replays an image for ambiguous fetch failure %s", async code => {
+    const fetchMock = vi.fn().mockRejectedValue(Object.assign(new TypeError("fetch failed"), { ...(code ? { cause: { code } } : {}) }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
+    await expect(getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "Synthetic posture JSON", includeKnowledge: false, beforeImageTransfer: async () => undefined, imagePurpose: "rula-posture", image: { mimeType: "image/png", base64: "synthetic" } })).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it.each([429, 500, 502, 503, 504])("never replays an image after received HTTP %i", async status => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
+    await expect(getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "Synthetic posture JSON", includeKnowledge: false, beforeImageTransfer: async () => undefined, imagePurpose: "rula-posture", image: { mimeType: "image/png", base64: "synthetic" } })).rejects.toMatchObject({ code: "PROVIDER_REQUEST_FAILED", statusCode: status });
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("never treats a response-body failure as an unsent connection", async () => {
+    const response = new Response("{}");
+    vi.spyOn(response, "text").mockRejectedValue(Object.assign(new TypeError("body failed"), { cause: { code: "UND_ERR_CONNECT_TIMEOUT" } }));
+    const fetchMock = vi.fn().mockResolvedValue(response);
+    vi.stubGlobal("fetch", fetchMock);
+    const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
+    await expect(getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "Synthetic posture JSON", includeKnowledge: false, beforeImageTransfer: async () => undefined, imagePurpose: "rula-posture", image: { mimeType: "image/png", base64: "synthetic" } })).rejects.toThrow("body failed");
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("shares one 120-second deadline across preconnect recovery and the delivered response", async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    const fetchMock = vi.fn((_url: string, options: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      calls++;
+      options.signal?.addEventListener("abort", () => reject(new DOMException("Timed out", "AbortError")), { once: true });
+      if (calls < 3) setTimeout(() => reject(Object.assign(new TypeError("fetch failed"), { cause: { code: "UND_ERR_CONNECT_TIMEOUT" } })), 20_000);
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const beforeImageTransfer = vi.fn().mockResolvedValue(undefined);
+    const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
+    const pending = getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "Synthetic posture JSON", includeKnowledge: false, beforeImageTransfer, imagePurpose: "rula-posture", image: { mimeType: "image/png", base64: "synthetic" } });
+    const assertion = expect(pending).rejects.toMatchObject({ code: "PROVIDER_TIMEOUT" });
+    await vi.advanceTimersByTimeAsync(119_999);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[2]?.[1]?.signal?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    await assertion;
+    expect(beforeImageTransfer).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+  it.each(["rula-posture", "fmea-process"] as const)("rejects redirects instead of replaying a %s image to another recipient", async imagePurpose => {
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError("Redirect rejected"));
+    vi.stubGlobal("fetch", fetchMock);
+    const beforeImageTransfer = vi.fn().mockResolvedValue(undefined);
+    const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
+    await expect(getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "Synthetic posture", includeKnowledge: false, imagePurpose, image: { mimeType: "image/png", base64: "synthetic" }, beforeImageTransfer })).rejects.toThrow();
+    expect(beforeImageTransfer).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledExactlyOnceWith("https://api.arvancloudai.ir/v1/chat/completions", expect.objectContaining({ method: "POST", redirect: "error" }));
+  });
+  it.each(["rula-posture", "fmea-process"] as const)("fails closed if an internal %s image caller omits the transfer guard", async imagePurpose => {
+    const fetchMock = vi.fn();vi.stubGlobal("fetch", fetchMock);
+    const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
+    await expect(getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "Synthetic posture", includeKnowledge: false, imagePurpose, image: { mimeType: "image/png", base64: "synthetic" } })).rejects.toMatchObject({ statusCode: 403, code: "IMAGE_TRANSFER_AUTHORIZATION_REQUIRED" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it("does not allow an image caller to evade the guard by omitting image purpose", async () => {
+    const fetchMock = vi.fn();vi.stubGlobal("fetch", fetchMock);
+    const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
+    await expect(getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "Synthetic posture", includeKnowledge: false, image: { mimeType: "image/png", base64: "synthetic" } })).rejects.toMatchObject({ code: "IMAGE_TRANSFER_AUTHORIZATION_REQUIRED" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it.each(["rula-posture", "fmea-process"] as const)("runs fresh authorization for %s at the HTTP boundary and never sends after a rejected guard", async imagePurpose => {
+    const fetchMock = vi.fn();vi.stubGlobal("fetch", fetchMock);
+    const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
+    const beforeImageTransfer = vi.fn().mockRejectedValue(Object.assign(new Error("Consent withdrawn"), { statusCode: 403, code: "IMAGE_PROCESSING_ACCOUNT_CONSENT_REQUIRED", retryable: false }));
+    await expect(getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "Synthetic posture", includeKnowledge: false, imagePurpose, image: { mimeType: "image/png", base64: "synthetic" }, beforeImageTransfer })).rejects.toMatchObject({ code: "IMAGE_PROCESSING_ACCOUNT_CONSENT_REQUIRED" });
+    expect(beforeImageTransfer).toHaveBeenCalledOnce();expect(fetchMock).not.toHaveBeenCalled();
+  });
   it("lets one bounded FMEA corrective-action request complete after the generic timeout without changing models or retrying", async () => {
     vi.useFakeTimers();
     const fetchMock = vi.fn((_url: string, options: RequestInit) => new Promise<Response>((resolve, reject) => {
@@ -44,7 +190,7 @@ describe("AI provider adapters", () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response('{"error":"chat completion failed"}', { status: 400 }));
     vi.stubGlobal("fetch", fetchMock);
     const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
-    const input = { organizationId: "org", message: "JSON image posture", imagePurpose: "rula-posture" as const, includeKnowledge: false, maxOutputTokens: 3000, image: { mimeType: "image/png", base64: "test" } };
+    const input = { organizationId: "org", message: "JSON image posture", beforeImageTransfer: async () => undefined, imagePurpose: "rula-posture" as const, includeKnowledge: false, maxOutputTokens: 3000, image: { mimeType: "image/png", base64: "test" } };
     await expect(getRulaPostureImageAIProvider().analyze(input)).rejects.toMatchObject({ code: "PROVIDER_REQUEST_FAILED" });
     expect(fetchMock).toHaveBeenCalledOnce();
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
@@ -57,29 +203,90 @@ describe("AI provider adapters", () => {
     vi.resetModules();
   });
 
-  it("keeps RULA vision requests bounded at 60 seconds for slow gateway inference", async () => {
+  it.each(["rula-posture", "fmea-process"] as const)("lets one %s image completion finish after sixty seconds without another transfer", async imagePurpose => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn((_url: string, options: RequestInit) => new Promise<Response>((resolve, reject) => {
+      options.signal?.addEventListener("abort", () => reject(new DOMException("Timed out", "AbortError")), { once: true });
+      setTimeout(() => resolve(new Response(JSON.stringify({ model: "gpt-5-mini-2025-08-07", choices: [{ message: { content: '{"synthetic":true}' } }] }), { status: 200 })), 75_000);
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const beforeImageTransfer = vi.fn().mockResolvedValue(undefined);
+    const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
+    const pending = getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "Synthetic posture JSON", includeKnowledge: false, beforeImageTransfer, imagePurpose, image: { mimeType: "image/png", base64: "synthetic" } });
+    const assertion = expect(pending).resolves.toMatchObject({ model: "gpt-5-mini-2025-08-07", answer: '{"synthetic":true}' });
+    await vi.advanceTimersByTimeAsync(60_001);
+    expect(fetchMock.mock.calls[0]?.[1]?.signal?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(15_000);
+    await assertion;
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(beforeImageTransfer).toHaveBeenCalledOnce();
+  });
+
+  it.each(["rula-posture", "fmea-process"] as const)("keeps %s image requests bounded at 120 seconds with no duplicate attempt", async imagePurpose => {
     vi.resetModules();
     process.env.AI_RISK_PROVIDER = "arvancloud";
     process.env.ARVAN_API_KEY = "test-arvan";
     process.env.ARVAN_BASE_URL = "https://api.arvancloudai.ir/v1";
-    process.env.RULA_IMAGE_PROVIDER_TIMEOUT_MS = "60000";
     vi.useFakeTimers();
     const fetchMock = vi.fn((_url: string | URL | Request, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
       init?.signal?.addEventListener("abort", () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })), { once: true });
     }));
     vi.stubGlobal("fetch", fetchMock);
     const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
-    const pending = getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "Synthetic posture", imagePurpose: "rula-posture", includeKnowledge: false, image: { mimeType: "image/png", base64: "synthetic" } });
+    const beforeImageTransfer = vi.fn().mockResolvedValue(undefined);
+    const pending = getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "Synthetic posture", beforeImageTransfer, imagePurpose, includeKnowledge: false, image: { mimeType: "image/png", base64: "synthetic" } });
     const outcome = pending.then(() => null, error => error);
-    await vi.advanceTimersByTimeAsync(0);
-    expect(fetchMock).toHaveBeenCalledOnce();
-    await vi.advanceTimersByTimeAsync(59_999);
+    await vi.advanceTimersByTimeAsync(119_999);
     expect(fetchMock.mock.calls[0]?.[1]?.signal?.aborted).toBe(false);
     await vi.advanceTimersByTimeAsync(1);
     expect(await outcome).toMatchObject({ code: "PROVIDER_TIMEOUT", retryable: true });
     expect(fetchMock).toHaveBeenCalledOnce();
+    expect(beforeImageTransfer).toHaveBeenCalledOnce();
     vi.useRealTimers();
     vi.resetModules();
+  });
+
+  it.each([
+    ["rula-posture", "RULA_IMAGE_PROVIDER_TIMEOUT_MS", "1", 60_000],
+    ["fmea-process", "FMEA_IMAGE_PROVIDER_TIMEOUT_MS", "90000", 90_000],
+    ["rula-posture", "RULA_IMAGE_PROVIDER_TIMEOUT_MS", "999999", 120_000],
+    ["fmea-process", "FMEA_IMAGE_PROVIDER_TIMEOUT_MS", "invalid", 120_000],
+  ] as const)("bounds %s operator timeout %s=%s at %i milliseconds", async (imagePurpose, setting, configured, deadline) => {
+    vi.stubEnv(setting, configured);
+    vi.useFakeTimers();
+    const fetchMock = vi.fn((_url: string, options: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      options.signal?.addEventListener("abort", () => reject(new DOMException("Timed out", "AbortError")), { once: true });
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
+    const pending = getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "Synthetic posture JSON", includeKnowledge: false, beforeImageTransfer: async () => undefined, imagePurpose, image: { mimeType: "image/png", base64: "synthetic" } });
+    const assertion = expect(pending).rejects.toMatchObject({ code: "PROVIDER_TIMEOUT" });
+    await vi.advanceTimersByTimeAsync(deadline - 1);
+    expect(fetchMock.mock.calls[0]?.[1]?.signal?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    await assertion;
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["risk", false, 30_000],
+    ["chat", false, 60_000],
+    ["chat", true, 60_000],
+  ] as const)("preserves the %s transport deadline for image=%s at %i milliseconds", async (useCase, image, deadline) => {
+    process.env.AI_PROVIDER_MAX_ATTEMPTS = "1";
+    vi.useFakeTimers();
+    const fetchMock = vi.fn((_url: string, options: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      options.signal?.addEventListener("abort", () => reject(new DOMException("Timed out", "AbortError")), { once: true });
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { getAIProvider } = await import("./ai-provider.js");
+    const pending = getAIProvider("arvancloud", useCase).analyze({ organizationId: "org", message: "Synthetic request", includeKnowledge: false, ...(image ? { image: { mimeType: "image/png", base64: "synthetic" } } : {}) });
+    const assertion = expect(pending).rejects.toMatchObject({ code: "PROVIDER_TIMEOUT" });
+    await vi.advanceTimersByTimeAsync(deadline - 1);
+    expect(fetchMock.mock.calls[0]?.[1]?.signal?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    await assertion;
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 
   it("fails closed when an upstream reports a model other than the configured assessment model", async () => {
@@ -96,7 +303,7 @@ describe("AI provider adapters", () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ model: "openai/gpt-5-mini", choices: [{ message: { content: '{"synthetic":true}' } }] }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
     const { getAIProvider } = await import("./ai-provider.js");
-    const result = await getAIProvider("arvancloud", "risk").analyze({ organizationId: "org", message: "Synthetic alias regression", includeKnowledge: false, imagePurpose, image: { mimeType: "image/png", base64: "synthetic" } });
+    const result = await getAIProvider("arvancloud", "risk").analyze({ organizationId: "org", message: "Synthetic alias regression", includeKnowledge: false, beforeImageTransfer: async () => undefined, imagePurpose, image: { mimeType: "image/png", base64: "synthetic" } });
     expect(result.model).toBe("openai/gpt-5-mini");
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)).model).toBe("GPT-5-Mini");
     expect(fetchMock).toHaveBeenCalledOnce();
@@ -146,7 +353,7 @@ describe("AI provider adapters", () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status }));
     vi.stubGlobal("fetch", fetchMock);
     const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
-    await expect(getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "JSON posture", imagePurpose: "rula-posture", includeKnowledge: false, image: { mimeType: "image/png", base64: "test" } })).rejects.toMatchObject({ statusCode: status });
+    await expect(getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "JSON posture", beforeImageTransfer: async () => undefined, imagePurpose: "rula-posture", includeKnowledge: false, image: { mimeType: "image/png", base64: "test" } })).rejects.toMatchObject({ statusCode: status });
     expect(fetchMock).toHaveBeenCalledOnce();
     vi.resetModules();
   });
@@ -160,7 +367,7 @@ describe("AI provider adapters", () => {
     const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
     let failure: unknown;
     try {
-      await getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "JSON posture", includeKnowledge: false, imagePurpose: "rula-posture", image: { mimeType: "image/png", base64: "synthetic" } });
+      await getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "JSON posture", includeKnowledge: false, beforeImageTransfer: async () => undefined, imagePurpose: "rula-posture", image: { mimeType: "image/png", base64: "synthetic" } });
     } catch (error) {
       failure = error;
     }
@@ -175,7 +382,7 @@ describe("AI provider adapters", () => {
     const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
     let failure: unknown;
     try {
-      await getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "JSON posture", includeKnowledge: false, imagePurpose: "rula-posture", image: { mimeType: "image/png", base64: "synthetic" } });
+      await getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "JSON posture", includeKnowledge: false, beforeImageTransfer: async () => undefined, imagePurpose: "rula-posture", image: { mimeType: "image/png", base64: "synthetic" } });
     } catch (error) {
       failure = error;
     }
@@ -189,7 +396,7 @@ describe("AI provider adapters", () => {
     const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
     let failure: unknown;
     try {
-      await getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "JSON posture", includeKnowledge: false, imagePurpose: "rula-posture", image: { mimeType: "image/png", base64: "synthetic" } });
+      await getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "JSON posture", includeKnowledge: false, beforeImageTransfer: async () => undefined, imagePurpose: "rula-posture", image: { mimeType: "image/png", base64: "synthetic" } });
     } catch (error) {
       failure = error;
     }
@@ -222,7 +429,7 @@ describe("AI provider adapters", () => {
     const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
     const provider = getRulaPostureImageAIProvider();
     expect(provider.name).toBe("arvancloud");
-    await provider.analyze({ organizationId: "org", message: "JSON posture", includeKnowledge: false, imagePurpose: "rula-posture", image: { mimeType: "image/png", base64: "synthetic" } });
+    await provider.analyze({ organizationId: "org", message: "JSON posture", includeKnowledge: false, beforeImageTransfer: async () => undefined, imagePurpose: "rula-posture", image: { mimeType: "image/png", base64: "synthetic" } });
     expect(fetchMock.mock.calls[0]?.[0]).toBe("https://api.arvancloudai.ir/v1/chat/completions");
     expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body ?? "{}").model).toBe("GPT-5-Mini");
   });
@@ -261,6 +468,8 @@ describe("AI provider adapters", () => {
     process.env.AI_PROVIDER_TIMEOUT_MS = "30000";
     process.env.AI_PROVIDER_MAX_ATTEMPTS = "2";
     process.env.AI_PROVIDER_RETRY_DELAY_MS = "0";
+    vi.stubEnv("RULA_IMAGE_PROVIDER_TIMEOUT_MS", "");
+    vi.stubEnv("FMEA_IMAGE_PROVIDER_TIMEOUT_MS", "");
     process.env.ARVAN_API_KEY = "test-arvancloud";
     process.env.ARVAN_BASE_URL = "https://api.arvancloudai.ir/v1";
     process.env.GAPGPT_API_KEY = "test-gapgpt";
@@ -276,6 +485,7 @@ describe("AI provider adapters", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
   });
 
@@ -455,7 +665,7 @@ describe("AI provider adapters", () => {
 
     const provider = getAIProvider("arvancloud", "risk");
     expect(provider.supportsImages()).toBe(true);
-    await provider.analyze({ organizationId: "org", imagePurpose: "fmea-process", message: "image review", image: { mimeType: "image/png", base64: "iVBORw0KGgo=" } });
+    await provider.analyze({ organizationId: "org", beforeImageTransfer: async () => undefined, imagePurpose: "fmea-process", message: "image review", image: { mimeType: "image/png", base64: "iVBORw0KGgo=" } });
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
     expect(body.messages[1].content[0]).toMatchObject({ type: "text" });
     expect(body.messages[1].content[1]).toEqual({ type: "image_url", image_url: { url: "data:image/png;base64,iVBORw0KGgo=" } });
@@ -476,7 +686,7 @@ describe("AI provider adapters", () => {
     expect(provider.supportsImages({ imagePurpose: "rula-posture" })).toBe(true);
     expect(provider.supportsImages({ imagePurpose: "fmea-process" })).toBe(true);
     expect(listAIProviders().find((item) => item.name === "gapgpt")).toMatchObject({ configuredForRisk: false, riskModel: null });
-    await provider.analyze({ organizationId: "org", imagePurpose: "rula-posture", message: "RULA posture review", image: { mimeType: "image/jpeg", base64: "dGVzdA==" } });
+    await provider.analyze({ organizationId: "org", beforeImageTransfer: async () => undefined, imagePurpose: "rula-posture", message: "RULA posture review", image: { mimeType: "image/jpeg", base64: "dGVzdA==" } });
 
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(fetchMock.mock.calls[0]?.[0]).toBe("https://api.arvancloudai.ir/v1/chat/completions");
@@ -498,7 +708,7 @@ describe("AI provider adapters", () => {
     vi.stubGlobal("fetch", fetchMock);
     vi.doMock("./core.js", () => ({ prisma: { knowledgeDocument: { findMany: knowledge } } }));
     const { getRulaPostureImageAIProvider } = await import("./ai-provider.js");
-    await expect(getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "JSON posture", imagePurpose: "rula-posture", includeKnowledge: false, maxOutputTokens: 5000, image: { mimeType: "image/png", base64: "test" } })).rejects.toMatchObject({ code: "PROVIDER_REQUEST_FAILED" });
+    await expect(getRulaPostureImageAIProvider().analyze({ organizationId: "org", message: "JSON posture", beforeImageTransfer: async () => undefined, imagePurpose: "rula-posture", includeKnowledge: false, maxOutputTokens: 5000, image: { mimeType: "image/png", base64: "test" } })).rejects.toMatchObject({ code: "PROVIDER_REQUEST_FAILED" });
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(knowledge).not.toHaveBeenCalled();
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({ model: "GPT-5-Mini", max_completion_tokens: 5000 });

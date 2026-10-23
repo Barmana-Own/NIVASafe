@@ -1,3 +1,5 @@
+import { assessmentImageFileKey } from "../files/organizationImageSource";
+
 export const RULA_POSTURE_IMAGE_MAX_COUNT = 4;
 export const RULA_POSTURE_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
@@ -6,7 +8,7 @@ const allowedImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 export type RulaPostureImageSelectionIssue = "invalidType" | "tooLarge" | "tooMany";
 
 export function rulaPostureImageFileKey(file: File) {
-  return `${file.name}:${file.size}:${file.lastModified}`;
+  return assessmentImageFileKey(file);
 }
 
 export function appendRulaPostureImages(

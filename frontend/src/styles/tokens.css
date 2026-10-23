@@ -109,8 +109,6 @@
   --control-radius: var(--radius-control);
   --control-height: 44px;
   --icon-control-height: 44px;
-  --control-height-compact: 40px;
-  --touch-target: 44px;
   --touch-target-min: 44px;
   --shadow-sm: var(--elevation-surface);
   --shadow-md: var(--elevation-float);

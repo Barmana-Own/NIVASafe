@@ -1,7 +1,11 @@
 import { classifyRulaImageFailure, imageAnalysisFailureMetadata } from "../image-analysis-diagnostics.js";
+import { assessmentImageBelongs, assessmentImageTransactionOptions, listAssessmentImages, lockAssessmentImageTarget, type ImageLinkClient } from "../assessment-image-links.js";
 import { assertAIAccess, isAIAccessError } from "../ai-access.js";
-import { retryInvalidAIAnswer, retryRulaInvalidAnswer } from "../rula-ai-retry.js";
+import { retryRulaInvalidAnswer } from "../rula-ai-retry.js";
+import { detectRulaLocalPose, isRulaLocalPoseEnabled } from "../rula-pose-provider.js";
+import { hasUsableRulaLocalPose } from "../rula-local-pose-geometry.js";
 import type { FastifyInstance } from "fastify";
+import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { calculateRpn, calculateRula, DEFAULT_THRESHOLDS, riskLevel, type RulaInput } from "@nivasafe/domain";
@@ -10,18 +14,20 @@ import { aggregateAIProviderUsage, recordAIUsage } from "../ai-usage.js";
 import { audit, envelope, parse, prisma, requireOrg, requirePermission } from "../core.js";
 import { getAssessmentImageAIProvider, getAvailableAssessmentAIProvider, getRulaPostureImageAIProvider } from "../ai-provider.js";
 import { imageProviderApprovalFailure } from "../image-provider-approval.js";
+import { loadRulaImageResult, saveRulaImageResult } from "../rula-image-results.js";
+import { rulaImageResultRepository } from "../rula-image-result-repository.js";
 import { generateRulaActionSuggestions, rulaActionSuggestionBodySchema } from "../rula-action-generation.js";
 import { allowedMime, hasValidFileSignature, MAX_ATTACHMENT_FILE_BYTES } from "./files.js";
 import { assertFmeaProcessItemSelectionLimit, buildDescriptionPrompt, buildFmeaImageAnalysisPrompt, buildFmeaProcessAutofillPrompt, buildFmeaRiskRowsPrompt, buildFmeaRiskSuggestionsPrompt, buildJobTitleSuggestionsPrompt, buildProcessSuggestionsPrompt, catalogSuggestions, cleanDescription, cleanJobTitleList, cleanTextList, defaultFmeaProcessStep, emptyFmeaRiskSuggestions, emptyProcessSuggestions, fallbackProcessDescription, FMEA_PROCESS_DESCRIPTION_MAX, FMEA_PROCESS_ITEM_LENGTH_MAX, FMEA_PROCESS_ITEM_MAX, FMEA_PROCESS_AI_SUGGESTION_MAX, FMEA_PROCESS_RISK_ROW_SUGGESTION_MAX, FMEA_PROCESS_SUGGESTION_MAX, isValidShortActivityDescription, limitProcessSuggestions, nextFmeaRowNumber, normalizeJobTitle, parseFmeaImageAnalysis, parseFmeaProcessAutofill, parseFmeaRiskRows, parseFmeaRiskScoreSuggestion, parseFmeaRiskSuggestions, parseJobTitleSuggestions, parseProcessSuggestions, type FmeaImageAnalysis, type FmeaProcessAutofill, type FmeaRiskRowSuggestion, type FmeaRiskScoreSuggestion, type FmeaRiskSuggestions, type ProcessSuggestions } from "../fmea-process.js";
 import { hasExplicitlyEmptyFmeaRiskRows } from "../fmea-process.js";
 import { buildRulaSideResults, primaryRulaResult } from "../rula-report.js";
 import { resolveRulaTitle, rulaActivityInfoSchema, rulaBodySideSchema, rulaTitleSchema } from "../rula-process.js";
-import { buildRulaPostureImageAnalysisPrompt, buildRulaPostureTextAnalysisPrompt, buildRulaTaskDescriptionPrompt, cleanRulaTaskDescription, parseRulaPostureImageAnalysis, parseRulaPostureTextAnalysis, rulaPostureImageAnalysisResponseSchema, rulaPostureTextAnalysisResponseSchema, RULA_TASK_DESCRIPTION_MAX_LENGTH, type RulaPostureImageAnalysis, type RulaPostureTextAnalysisInput } from "../rula-posture-ai.js";
-import { assertRulaFinalStatusReviewed, assertRulaPostureAnalysisReviewed, isRulaPostureAnalysisReviewed, rulaPostureAnalysisSchema, rulaPosturePartKeys, type RulaPostureAnalysis } from "../rula-posture.js";
+import { buildRulaPostureImageAnalysisPrompt, buildRulaPostureTextAnalysisPrompt, buildRulaTaskDescriptionPrompt, cleanRulaTaskDescription, parseRulaPostureImageAnalysis, withRulaActivityAdjustments, parseRulaPostureTextAnalysis, rulaPostureImageAnalysisResponseSchema, rulaPostureTextAnalysisResponseSchema, RULA_TASK_DESCRIPTION_MAX_LENGTH, type RulaPostureImageAnalysis, type RulaPostureTextAnalysisInput } from "../rula-posture-ai.js";
+import { assertRulaFinalStatusReviewed, assertRulaPostureAnalysisReviewed, assertRulaPostureSide, isRulaPostureAnalysisReviewed, rulaPostureAnalysisSchema, rulaPosturePartKeys, type RulaPostureAnalysis } from "../rula-posture.js";
 import { normalizeRulaImage } from "../rula-image-normalization.js";
 import { rulaImageTransferReceipt } from "../rula-image-consent.js";
-import { fmeaImageTransferReceipt } from "../fmea-image-consent.js";
 import { assertAccountImageConsent, readAccountImageConsent } from "../image-processing-consent.js";
+import { authorizePostureImageSubject, type PostureImageSubjectAuthorization } from "../posture-image-authorizations.js";
 import { rulaPostureImageAnalysisRequestSchema } from "../rula-posture-image-request.js";
 
 const idParam = z.object({ id: z.string().uuid() });
@@ -81,7 +87,7 @@ const FMEA_PROCESS_IMAGE_MAX_BYTES = MAX_ATTACHMENT_FILE_BYTES;
 const multipartFieldValue = (field: unknown) => field && !Array.isArray(field) && typeof (field as { value?: unknown }).value === "string" ? (field as { value: string }).value : undefined;
 function inputsWithPostureAnalysis(inputs: RulaInput, analysis?: RulaPostureAnalysis): RulaInput {
   if (!analysis) return inputs;
-  return { ...inputs, upperArm: analysis.upperArm.score, lowerArm: analysis.lowerArm.score, wrist: analysis.wrist.score, wristTwist: analysis.wristTwist.score, neck: analysis.neck.score, trunk: analysis.trunk.score, legs: analysis.legs.score };
+  return { ...inputs, ...analysis.adjustments, upperArm: analysis.upperArm.score, lowerArm: analysis.lowerArm.score, wrist: analysis.wrist.score, wristTwist: analysis.wristTwist.score, neck: analysis.neck.score, trunk: analysis.trunk.score, legs: analysis.legs.score };
 }
 
 function postureAnalysisForSide(analysis: RulaPostureAnalysis | undefined, side: "LEFT" | "RIGHT") {
@@ -99,6 +105,7 @@ export function calculateRulaAssessment(bodySide: "LEFT" | "RIGHT" | "BOTH", raw
   rawInputs = { ...rawInputs, algorithmVersion: !requireReviewedAnalysis && rawInputs.algorithmVersion === 'legacy-average-v1' ? 'legacy-average-v1' : 'cornell-worksheet-2001-tables-v1' };
   parse(rulaInputs, rawInputs);
   const validateObservation = (observation: RulaPostureAnalysis) => {
+    assertRulaPostureSide(bodySide, observation);
     parse(rulaInputs, inputsWithPostureAnalysis(rawInputs, observation));
     for (const side of Object.values(observation.sideAnalyses ?? {})) if (side) parse(rulaInputs, inputsWithPostureAnalysis(rawInputs, side));
   };
@@ -108,7 +115,7 @@ export function calculateRulaAssessment(bodySide: "LEFT" | "RIGHT" | "BOTH", raw
   }
   if (analysis?.imageAssessments?.length) {
     const observations = analysis.imageAssessments.map(image => {
-      assertRulaPostureAnalysisReviewed(bodySide, image.analysis);
+      if (requireReviewedAnalysis) assertRulaPostureAnalysisReviewed(bodySide, image.analysis);
       assertRulaSideAnalyses(bodySide, image.analysis);
       const imageInputs = { ...rawInputs, force: image.force, muscleUse: image.muscleUse };
       const sides = buildRulaSideResults(bodySide, imageInputs, image.analysis);
@@ -132,7 +139,9 @@ export function calculateRulaAssessment(bodySide: "LEFT" | "RIGHT" | "BOTH", raw
   const sideResults = buildRulaSideResults(bodySide, rawInputs, analysis);
   if (!sideResults) throw Object.assign(new Error("هر دو سمت بدن باید به‌صورت جداگانه بررسی و ثبت شوند."), { statusCode: 400, code: "RULA_BOTH_SIDES_REQUIRED" });
   const rightInputs = inputsWithPostureAnalysis(rawInputs, postureAnalysisForSide(analysis, "RIGHT"));
-  return { inputs: rightInputs, result: primaryRulaResult(sideResults), sideResults, analysis };
+  // Keep the shared legacy fallback separate from explicit side overrides so
+  // reloading a right-side adjustment cannot leak it into an untagged left side.
+  return { inputs: { ...rightInputs, force: rawInputs.force, muscleUse: rawInputs.muscleUse }, result: primaryRulaResult(sideResults), sideResults, analysis };
 }
 
 function rulaReviewComplete(bodySide: string, value: unknown) {
@@ -151,9 +160,9 @@ async function ensureActivity(activityId: string | null | undefined, projectId: 
   if (!activity) throw Object.assign(new Error("The selected activity does not belong to this project"), { statusCode: 400, code: "ACTIVITY_PROJECT_MISMATCH" });
 }
 
-async function ensureRulaPostureImage(attachmentId: string | null | undefined, assessmentId: string, organizationId: string) {
+async function ensureRulaPostureImage(attachmentId: string | null | undefined, assessmentId: string, organizationId: string, client: ImageLinkClient) {
   if (!attachmentId) return;
-  const attachment = await prisma.attachment.findFirst({ where: { id: attachmentId, organizationId, entityType: "RulaAssessment", entityId: assessmentId, kind: "IMAGE", deletedAt: null }, select: { id: true } });
+  const attachment = await assessmentImageBelongs(client, organizationId, attachmentId, { entityType: "RulaAssessment", entityId: assessmentId });
   if (!attachment) throw Object.assign(new Error("The selected posture image is not linked to this RULA assessment"), { statusCode: 400, code: "RULA_IMAGE_ASSESSMENT_MISMATCH" });
 }
 
@@ -255,7 +264,7 @@ async function getFmea(id: string, organizationId: string) {
 async function getRula(id: string, organizationId: string) {
   const assessment = await prisma.rulaAssessment.findFirst({ where: { id, organizationId }, include: { project: true, activity: true } });
   if (!assessment) throw Object.assign(new Error("RULA not found"), { statusCode: 404, code: "NOT_FOUND" });
-  const postureImages = await prisma.attachment.findMany({ where: { organizationId, entityType: "RulaAssessment", entityId: id, kind: "IMAGE", deletedAt: null }, select: { id: true, originalName: true, mimeType: true, size: true, createdAt: true }, orderBy: { createdAt: "asc" } });
+  const postureImages = (await listAssessmentImages(prisma, organizationId, "RulaAssessment", [id])).map(({ entityId: _entityId, ...image }) => image);
   return {
     ...assessment,
     inputs: { ...(assessment.inputs as object), algorithmVersion: (assessment.inputs as { algorithmVersion?: string })?.algorithmVersion ?? 'legacy-average-v1' },
@@ -338,6 +347,7 @@ export async function registerAssessmentRoutes(app: FastifyInstance) {
   app.post("/api/v1/fmea/process-image-analysis", { preHandler: authenticate, config: { rateLimit: { max: 8, timeWindow: "1 minute" } } }, async (request) => {
     const organizationId = requireOrg(request);
     requirePermission(request, "assessments.create");
+    const userId = request.actor!.userId;
     const file = await request.file({ limits: { fileSize: FMEA_PROCESS_IMAGE_MAX_BYTES } });
     if (!file) throw Object.assign(new Error("File is required"), { statusCode: 400, code: "FILE_REQUIRED" });
     if (!allowedMime.has(file.mimetype) || !file.mimetype.startsWith("image/")) throw Object.assign(new Error("Unsupported image type"), { statusCode: 415, code: "FMEA_IMAGE_TYPE_NOT_ALLOWED" });
@@ -351,47 +361,58 @@ export async function registerAssessmentRoutes(app: FastifyInstance) {
       locale: multipartFieldValue(file.fields.locale) ?? "fa",
     });
     const provider = getAssessmentImageAIProvider();
+    await assertAccountImageConsent(userId);
     const approvalFailure = imageProviderApprovalFailure(provider, "fmea-process");
     if (approvalFailure) {
       await audit(request, "FMEA_PROCESS_IMAGE_ANALYSIS_BLOCKED", "FmeaProcessImage", undefined, { provider: provider.name, failureCode: "FMEA_IMAGE_AI_UNAVAILABLE", approvalFailure });
       throw Object.assign(new Error("تحلیل تصویر تا زمان تأیید حریم خصوصی و قابلیت بینایی ارائه‌دهنده هوش مصنوعی در دسترس نیست."), { statusCode: 503, code: "FMEA_IMAGE_AI_UNAVAILABLE", retryable: false });
     }
-    const accountConsent = await assertAccountImageConsent(request.actor!.userId);
-    const transferReceipt = { ...fmeaImageTransferReceipt({ provider: provider.name, locale: body.locale, image: buffer }), accountConsentVersion: accountConsent.policyVersion, consentRecordId: accountConsent.recordId, consentSource: "ACCOUNT_POLICY" };
-    // Persist the account-policy authorization and request-bound image fingerprint before external transfer.
-    await audit(request, "FMEA_PROCESS_IMAGE_TRANSFER_AUTHORIZED", "FmeaProcessImage", undefined, transferReceipt);
-    const providerResults: Awaited<ReturnType<typeof provider.analyze>>[] = [];
-    let validationAttemptCount = 0;
-    let validated: { result: Awaited<ReturnType<typeof provider.analyze>>; analysis: FmeaImageAnalysis } | undefined;
-    let validationError: unknown;
+    async function authorizeTransfer(recordAttempt: boolean): Promise<string> {
+      await authenticate(request);
+      if (request.actor!.userId !== userId || requireOrg(request) !== organizationId) throw Object.assign(new Error("Permission denied"), { statusCode: 403, code: "FORBIDDEN", retryable: false });
+      requirePermission(request, "assessments.create");
+      const currentUser = await prisma.user.findFirst({ where: { id: userId }, select: { active: true, aiEnabled: true, aiTokenLimit: true, aiTokensUsed: true } });
+      assertAIAccess(currentUser);
+      const currentConsent = await assertAccountImageConsent(userId);
+      if (imageProviderApprovalFailure(provider, "fmea-process")) throw Object.assign(new Error("تحلیل تصویر در دسترس نیست."), { statusCode: 503, code: "FMEA_IMAGE_AI_UNAVAILABLE", retryable: false });
+      if (recordAttempt) {
+        try {
+          await audit(request, "FMEA_IMAGE_TRANSFER_AUTHORIZED", "FmeaProcessImage", undefined, {
+            provider: provider.name, requestedModel: "GPT-5-Mini", purpose: "fmea-process", locale: body.locale,
+            imageSha256: createHash("sha256").update(buffer).digest("hex"), accountConsentVersion: currentConsent.policyVersion,
+            consentRecordId: currentConsent.recordId, consentSource: "ACCOUNT_POLICY", attempt: 1,
+          });
+        } catch {
+          throw Object.assign(new Error("ثبت مجوز ارسال تصویر انجام نشد."), { statusCode: 500, code: "IMAGE_TRANSFER_AUDIT_FAILED", retryable: false });
+        }
+        // Consent, access and organization membership can change during the audit write.
+        const confirmedRecordId = await authorizeTransfer(false);
+        if (confirmedRecordId !== currentConsent.recordId) throw Object.assign(new Error("مجوز پردازش تصویر تغییر کرده است؛ تنظیمات رضایت را بررسی کنید."), { statusCode: 403, code: "IMAGE_TRANSFER_AUTHORIZATION_CHANGED", retryable: false });
+      }
+      return currentConsent.recordId;
+    }
     try {
-      validated = await retryInvalidAIAnswer(async () => {
-        validationAttemptCount += 1;
-        const result = await provider.analyze({
-          organizationId,
-          userId: request.actor!.userId,
-          imagePurpose: "fmea-process",
-          includeKnowledge: false,
-          maxOutputTokens: 3000,
-          message: buildFmeaImageAnalysisPrompt(body),
-          image: { mimeType: file.mimetype, base64: buffer.toString("base64") },
-        });
-        providerResults.push(result);
-        return { result, analysis: parseFmeaImageAnalysis(result.answer) };
-      }, ["FMEA_IMAGE_AI_INVALID_RESPONSE"]);
+      await authorizeTransfer(false);
+      const result = await provider.analyze({
+        organizationId,
+        userId,
+        imagePurpose: "fmea-process",
+        beforeImageTransfer: async () => { await authorizeTransfer(true); },
+        includeKnowledge: false,
+        maxOutputTokens: 3000,
+        message: buildFmeaImageAnalysisPrompt(body),
+        image: { mimeType: file.mimetype, base64: buffer.toString("base64") },
+      });
+      const analysis: FmeaImageAnalysis = parseFmeaImageAnalysis(result.answer);
+      await recordAIUsage(prisma, { organizationId, userId: request.actor!.userId, useCase: "risk", sourceType: "FMEA_IMAGE_REVIEW", sourceId: request.id, result });
+      await audit(request, "FMEA_PROCESS_IMAGE_ANALYSIS", "FmeaProcessImage", undefined, { provider: result.provider, aiStatus: result.usedFallback ? "fallback" : "connected", mimeType: file.mimetype, size: buffer.length, riskRowCount: analysis.riskRows.length });
+      return envelope({ ...analysis, provider: result.provider, aiStatus: result.usedFallback ? "fallback" : "connected" });
     } catch (error) {
-      validationError = error;
+      const authorizationCode = (error as { code?: string }).code;
+      if (isAIAccessError(error) || ["IMAGE_PROCESSING_ACCOUNT_CONSENT_REQUIRED", "IMAGE_TRANSFER_AUTHORIZATION_REQUIRED", "IMAGE_TRANSFER_AUTHORIZATION_CHANGED", "IMAGE_TRANSFER_AUDIT_FAILED", "UNAUTHORIZED", "FORBIDDEN", "SUBSCRIPTION_REQUIRED", "ORGANIZATION_INACTIVE"].includes(authorizationCode ?? "")) throw Object.assign(error as Error, { retryable: false });
+      await audit(request, "FMEA_PROCESS_IMAGE_ANALYSIS_FAILED", "FmeaProcessImage", undefined, { provider: provider.name, mimeType: file.mimetype, size: buffer.length, ...imageAnalysisFailureMetadata(error) });
+      throw Object.assign(new Error("AI image analysis is temporarily unavailable"), { statusCode: 503, code: "FMEA_IMAGE_AI_UNAVAILABLE", retryable: false });
     }
-    const usageResult = aggregateAIProviderUsage(providerResults);
-    if (usageResult) await recordAIUsage(prisma, { organizationId, userId: request.actor!.userId, useCase: "risk", sourceType: "FMEA_IMAGE_REVIEW", sourceId: request.id, result: usageResult });
-    if (validationError !== undefined) {
-      if (isAIAccessError(validationError)) throw validationError;
-      await audit(request, "FMEA_PROCESS_IMAGE_ANALYSIS_FAILED", "FmeaProcessImage", undefined, { provider: provider.name, mimeType: file.mimetype, size: buffer.length, invalidResponseRetryCount: Math.min(1, Math.max(0, validationAttemptCount - 1)), ...imageAnalysisFailureMetadata(validationError) });
-      throw Object.assign(new Error("AI image analysis is temporarily unavailable"), { statusCode: 503, code: "FMEA_IMAGE_AI_UNAVAILABLE" });
-    }
-    const { result, analysis } = validated!;
-    await audit(request, "FMEA_PROCESS_IMAGE_ANALYSIS", "FmeaProcessImage", undefined, { provider: result.provider, aiStatus: result.usedFallback ? "fallback" : "connected", mimeType: file.mimetype, size: buffer.length, riskRowCount: analysis.riskRows.length });
-    return envelope({ ...analysis, provider: result.provider, aiStatus: result.usedFallback ? "fallback" : "connected" });
   });
   app.post("/api/v1/rula/posture-analysis", { preHandler: authenticate, config: { rateLimit: { max: 12, timeWindow: "1 minute" } } }, async (request) => {
     const organizationId = requireOrg(request);
@@ -467,7 +488,15 @@ export async function registerAssessmentRoutes(app: FastifyInstance) {
     const consent = await readAccountImageConsent(request.actor!.userId);
     return envelope({ available: !approvalFailure && consent.accepted, provider: provider.name, reasonCode: !consent.accepted ? "account-consent-required" : approvalFailure, consentAccepted: consent.accepted, consentVersion: consent.policyVersion });
   });
+  app.get("/api/v1/rula/posture-image-analysis/:id", { preHandler: authenticate }, async (request, reply) => {
+    const organizationId = requireOrg(request);
+    requirePermission(request, "assessments.create");
+    const { id } = parse(idParam, request.params);
+    reply.header("cache-control", "private, no-store");
+    return envelope(await loadRulaImageResult({ id, organizationId, userId: request.actor!.userId }, rulaImageResultRepository()));
+  });
   app.post("/api/v1/rula/posture-image-analysis", { preHandler: authenticate, config: { rateLimit: { max: 8, timeWindow: "1 minute" } } }, async (request) => {
+    const startedAt = new Date();
     const organizationId = requireOrg(request);
     requirePermission(request, "assessments.create");
     const file = await request.file({ limits: { fileSize: MAX_ATTACHMENT_FILE_BYTES } });
@@ -477,6 +506,8 @@ export async function registerAssessmentRoutes(app: FastifyInstance) {
     if (buffer.length > FMEA_PROCESS_IMAGE_MAX_BYTES) throw Object.assign(new Error("حجم تصویر نباید بیشتر از ۱۰ مگابایت باشد."), { statusCode: 413, code: "RULA_IMAGE_SIZE_LIMIT" });
     if (!hasValidFileSignature(buffer, file.mimetype)) throw Object.assign(new Error("محتوای تصویر با نوع اعلام‌شده مطابقت ندارد."), { statusCode: 415, code: "RULA_IMAGE_SIGNATURE_INVALID" });
     const body = parse(rulaPostureImageAnalysisRequestSchema, {
+      imageSubject: multipartFieldValue(file.fields.imageSubject),
+      ownerAuthorizationId: multipartFieldValue(file.fields.ownerAuthorizationId),
       activityInfo: multipartFieldValue(file.fields.activityInfo) === undefined ? undefined : parse(z.string().max(4000).transform((text, context) => { try { return JSON.parse(text); } catch (error) {
       if (isAIAccessError(error)) throw error; context.addIssue({ code: "custom", message: "Invalid activity context" }); return z.NEVER; } }), multipartFieldValue(file.fields.activityInfo)),
       bodySide: multipartFieldValue(file.fields.bodySide) ?? "RIGHT",
@@ -486,17 +517,43 @@ export async function registerAssessmentRoutes(app: FastifyInstance) {
       locale: multipartFieldValue(file.fields.locale) ?? "fa",
     });
     const provider = getRulaPostureImageAIProvider();
-    const accountConsent = await assertAccountImageConsent(request.actor!.userId);
+    const userId = request.actor!.userId;
+    await assertAccountImageConsent(userId);
     const approvalFailure = imageProviderApprovalFailure(provider, "rula-posture");
     if (approvalFailure) {
       await audit(request, "RULA_POSTURE_IMAGE_ANALYSIS_BLOCKED", "RulaPostureImage", undefined, { provider: provider.name, failureCode: "RULA_IMAGE_AI_UNAVAILABLE", retryable: false, approvalFailure });
       throw Object.assign(new Error("تحلیل تصویر تا زمان تأیید حریم خصوصی و قابلیت بینایی ارائه‌دهنده هوش مصنوعی در دسترس نیست."), { statusCode: 503, code: "RULA_IMAGE_AI_UNAVAILABLE", retryable: false });
     }
-    const transferReceipt = { ...rulaImageTransferReceipt({ provider: provider.name, bodySide: body.bodySide, locale: body.locale, image: buffer }), accountConsentVersion: accountConsent.policyVersion, consentRecordId: accountConsent.recordId, consentSource: "ACCOUNT_POLICY" };
-    // This durable, actor/tenant/request-bound account-policy receipt must exist before transfer.
-    // A consent/audit failure stops the request; it never becomes provider permission.
-    await audit(request, "RULA_IMAGE_TRANSFER_AUTHORIZED", "RulaPostureImage", undefined, transferReceipt);
+    type TransferAuthorization = PostureImageSubjectAuthorization & { accountConsentVersion: string; consentRecordId: string; consentSource: "ACCOUNT_POLICY" };
+    let transferAuthorization: TransferAuthorization | undefined;
+    async function authorizeTransfer(recordAttempt: boolean): Promise<void> {
+      await authenticate(request);
+      if (request.actor!.userId !== userId || requireOrg(request) !== organizationId) throw Object.assign(new Error("Permission denied"), { statusCode: 403, code: "FORBIDDEN", retryable: false });
+      requirePermission(request, "assessments.create");
+      const currentUser = await prisma.user.findFirst({ where: { id: userId }, select: { active: true, aiEnabled: true, aiTokenLimit: true, aiTokensUsed: true } });
+      assertAIAccess(currentUser);
+      const currentConsent = await assertAccountImageConsent(userId);
+      const subject = await authorizePostureImageSubject({ userId, organizationId, imageSubject: body.imageSubject, ownerAuthorizationId: body.ownerAuthorizationId });
+      if (imageProviderApprovalFailure(provider, "rula-posture")) throw Object.assign(new Error("تحلیل تصویر در دسترس نیست."), { statusCode: 503, code: "RULA_IMAGE_AI_UNAVAILABLE", retryable: false });
+      transferAuthorization = { ...subject, accountConsentVersion: currentConsent.policyVersion, consentRecordId: currentConsent.recordId!, consentSource: "ACCOUNT_POLICY" };
+      if (recordAttempt) {
+        const auditedAuthorization = transferAuthorization;
+        try { await audit(request, "RULA_IMAGE_TRANSFER_AUTHORIZED", "RulaPostureImage", undefined, { ...rulaImageTransferReceipt({ provider: provider.name, bodySide: body.bodySide, locale: body.locale, image: buffer }), ...transferAuthorization, attempt: validationAttemptCount }); }
+        catch { throw Object.assign(new Error("ثبت مجوز ارسال تصویر انجام نشد."), { statusCode: 500, code: "IMAGE_TRANSFER_AUDIT_FAILED", retryable: false }); }
+        // The audit write is asynchronous: a withdrawal/revocation during it must stop dispatch.
+        await authorizeTransfer(false);
+        if (transferAuthorization.consentRecordId !== auditedAuthorization.consentRecordId || transferAuthorization.ownerConsentRecordId !== auditedAuthorization.ownerConsentRecordId || transferAuthorization.ownerAuthorizationId !== auditedAuthorization.ownerAuthorizationId || transferAuthorization.imageOwnerUserId !== auditedAuthorization.imageOwnerUserId) throw Object.assign(new Error("مجوز پردازش تصویر تغییر کرده است؛ تنظیمات رضایت را بررسی کنید."), { statusCode: 403, code: "IMAGE_TRANSFER_AUTHORIZATION_CHANGED", retryable: false });
+      }
+    }
     const image = await normalizeRulaImage(buffer,file.mimetype);
+    // Local pose inference shares the already normalized image frame. Authorize
+    // before CPU work and re-authorize at the external transfer boundary below.
+    const localPose = isRulaLocalPoseEnabled() ? await (async () => {
+      await authorizeTransfer(false);
+      const pose = await detectRulaLocalPose(image);
+      if (!hasUsableRulaLocalPose(pose)) throw Object.assign(new Error("No single clear posture was detected. Review the image manually."), { statusCode: 422, code: "RULA_IMAGE_AI_QUALITY_REVIEW", retryable: false });
+      return pose;
+    })() : undefined;
     const useCompactLandmarkResponse = process.env.NODE_ENV !== "production" && process.env.RULA_LANDMARK_EXPERIMENT_V2 === "1";
     let validated: { result: Awaited<ReturnType<typeof provider.analyze>>; analysis: RulaPostureImageAnalysis } | undefined;
     const providerResults: Awaited<ReturnType<typeof provider.analyze>>[] = [];
@@ -505,11 +562,13 @@ export async function registerAssessmentRoutes(app: FastifyInstance) {
     try {
       validated = await retryRulaInvalidAnswer(async () => {
         validationAttemptCount += 1;
+        await authorizeTransfer(false);
         const result = await provider.analyze({
         organizationId,
         userId: request.actor!.userId,
         imagePurpose: "rula-posture",
-        message: buildRulaPostureImageAnalysisPrompt({...body,imageGeometry:image}),
+        beforeImageTransfer: () => authorizeTransfer(true),
+        message: buildRulaPostureImageAnalysisPrompt({...body,imageGeometry:image,localPose:!!localPose}),
         includeKnowledge: false,
         // The local landmark-only contract removes duplicated model angles, scores,
         // and overlay coordinates. Preserve the tested legacy budget elsewhere.
@@ -519,7 +578,7 @@ export async function registerAssessmentRoutes(app: FastifyInstance) {
         image: { mimeType: image.mimeType, base64: image.buffer.toString("base64") },
       });
         providerResults.push(result);
-        const analysis: RulaPostureImageAnalysis = parseRulaPostureImageAnalysis(result.answer, body.bodySide,image);
+        const analysis: RulaPostureImageAnalysis = withRulaActivityAdjustments(parseRulaPostureImageAnalysis(result.answer, body.bodySide,image,localPose), body.activityInfo);
       if (!Object.values(analysis.sides).some(side => side && [side.upperArm, side.lowerArm, side.wrist, side.neck, side.trunk, side.legs].some(row => row.detected))) {
         throw Object.assign(new Error("No visible posture was assessed"), { code: "RULA_IMAGE_AI_EMPTY_OBSERVATION" });
       }
@@ -532,14 +591,24 @@ export async function registerAssessmentRoutes(app: FastifyInstance) {
     if (usageResult) await recordAIUsage(prisma, { organizationId, userId: request.actor!.userId, useCase: "risk", sourceType: "RULA_IMAGE_REVIEW", sourceId: request.id, result: usageResult });
     if (validationError !== undefined) {
       if (isAIAccessError(validationError)) throw validationError;
+      const authorizationCode = (validationError as { code?: string }).code;
+      if (["IMAGE_PROCESSING_ACCOUNT_CONSENT_REQUIRED", "POSTURE_IMAGE_OWNER_AUTHORIZATION_REQUIRED", "IMAGE_TRANSFER_AUTHORIZATION_REQUIRED", "IMAGE_TRANSFER_AUTHORIZATION_CHANGED", "IMAGE_TRANSFER_AUDIT_FAILED", "UNAUTHORIZED", "FORBIDDEN", "SUBSCRIPTION_REQUIRED", "ORGANIZATION_INACTIVE"].includes(authorizationCode ?? "")) throw validationError;
       await audit(request, "RULA_POSTURE_IMAGE_ANALYSIS_FAILED", "RulaPostureImage", undefined, { provider: provider.name, mimeType: file.mimetype, size: buffer.length, invalidResponseRetryCount: Math.min(1, Math.max(0, validationAttemptCount - 1)), ...imageAnalysisFailureMetadata(validationError) });
       const failure = classifyRulaImageFailure(validationError);
       throw Object.assign(new Error(failure.message), { statusCode: failure.statusCode, code: failure.code, retryable: failure.retryable });
     }
     const { result, analysis } = validated!;
     const overlayPointCount = Object.values(analysis.sides).reduce((count, side) => count + (side ? Object.keys(side.overlay.points).length : 0), 0);
-    await audit(request, "RULA_POSTURE_IMAGE_ANALYSIS", "RulaPostureImage", undefined, { provider: result.provider, aiStatus: result.usedFallback ? "fallback" : "connected", imageConsent: true, mimeType: file.mimetype, size: buffer.length, overlayPointCount });
-    const response = rulaPostureImageAnalysisResponseSchema.parse({ ...analysis, provider: result.provider, model: result.model, aiStatus: result.usedFallback ? "fallback" : "connected" });
+    const validatedResult = rulaPostureImageAnalysisResponseSchema.parse({ ...analysis, provider: result.provider, model: result.model, aiStatus: result.usedFallback ? "fallback" : "connected" });
+    if (!transferAuthorization) throw Object.assign(new Error("مجوز ارسال تصویر ثبت نشده است."), { statusCode: 403, code: "IMAGE_TRANSFER_AUTHORIZATION_REQUIRED", retryable: false });
+    const response = await saveRulaImageResult({ organizationId, userId, sourceRequestId: request.id, imageSha256: rulaImageTransferReceipt({ provider: provider.name, bodySide: body.bodySide, locale: body.locale, image: buffer }).imageSha256, bodySide: body.bodySide, locale: body.locale, authorization: transferAuthorization, attempts: validationAttemptCount, startedAt, completedAt: new Date(), result: validatedResult }, rulaImageResultRepository());
+    try {
+      await audit(request, "RULA_POSTURE_IMAGE_ANALYSIS", "RulaPostureImage", response.analysisRequestId, { analysisRequestId: response.analysisRequestId, provider: result.provider, aiStatus: result.usedFallback ? "fallback" : "connected", imageConsent: true, mimeType: file.mimetype, size: buffer.length, overlayPointCount, ...(localPose ? { landmarkSource: localPose.source, landmarkModelSha256: localPose.modelSha256 } : {}) });
+    } catch {
+      // Authorization was durably audited before transfer. Preserve the already committed
+      // paid result if the supplementary completion audit is temporarily unavailable.
+      request.log.error({ code: "RULA_IMAGE_COMPLETION_AUDIT_FAILED", analysisRequestId: response.analysisRequestId }, "RULA image result committed; completion audit unavailable");
+    }
     return envelope(response);
   });
   app.post("/api/v1/fmea/process-suggestions", { preHandler: authenticate, config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (request) => {
@@ -648,7 +717,7 @@ export async function registerAssessmentRoutes(app: FastifyInstance) {
   app.get("/api/v1/rula", { preHandler: authenticate }, async (request) => {
     const organizationId = requireOrg(request);
     const assessments = await prisma.rulaAssessment.findMany({ where: { organizationId }, include: { project: { select: { id: true, name: true, code: true } } }, orderBy: { updatedAt: "desc" } });
-    const images = assessments.length ? await prisma.attachment.findMany({ where: { organizationId, entityType: "RulaAssessment", entityId: { in: assessments.map((assessment) => assessment.id) }, kind: "IMAGE", deletedAt: null }, select: { id: true, entityId: true, originalName: true, mimeType: true, size: true, createdAt: true }, orderBy: { createdAt: "asc" } }) : [];
+    const images = await listAssessmentImages(prisma, organizationId, "RulaAssessment", assessments.map(assessment => assessment.id));
     const imagesByAssessment = new Map<string, typeof images>();
     for (const image of images) {
       if (!image.entityId) continue;
@@ -673,7 +742,7 @@ export async function registerAssessmentRoutes(app: FastifyInstance) {
     const title = resolveRulaTitle(body.title, body.activityInfo);
     const status = body.status ?? (rulaReviewComplete(body.bodySide, body.postureAnalysis) ? "DRAFT" : "IN_PROGRESS");
     assertRulaFinalStatusReviewed(status, body.bodySide, body.postureAnalysis);
-    const calculation = calculateRulaAssessment(body.bodySide, body.inputs as RulaInput, body.postureAnalysis, false);
+    const calculation = calculateRulaAssessment(body.bodySide, body.inputs as RulaInput, body.postureAnalysis, status === "APPROVED");
     const { inputs, result, sideResults } = calculation;
     const assessment = await prisma.rulaAssessment.create({ data: { organizationId, ...body, status, title, inputs: json(inputs), activityInfo: body.activityInfo ? json(body.activityInfo) : undefined, postureAnalysis: calculation.analysis ? json(calculation.analysis) : undefined, score: result.score, actionLevel: result.actionLevel, explanation: result.explanation } });
     await prisma.rulaVersion.create({ data: { assessmentId: assessment.id, version: 1, snapshot: json({ ...assessment, trace: result.trace, ...(sideResults ? { sideResults } : {}) }), createdBy: request.actor!.userId } });
@@ -686,8 +755,6 @@ export async function registerAssessmentRoutes(app: FastifyInstance) {
     const { id } = parse(idParam, request.params);
     const current = await getRula(id, organizationId);
     const body = parse(rulaBody.partial(), request.body);
-    await ensureRulaPostureImage(body.activityInfo?.postureImageAttachmentId, id, organizationId);
-    for (const image of body.postureAnalysis?.imageAssessments ?? []) await ensureRulaPostureImage(image.attachmentId, id, organizationId);
     const projectId = body.projectId ?? current.projectId;
     const bodySide = (body.bodySide ?? current.bodySide) as "LEFT" | "RIGHT" | "BOTH";
     await ensureProject(projectId, organizationId);
@@ -695,17 +762,21 @@ export async function registerAssessmentRoutes(app: FastifyInstance) {
     const rawInputs = (body.inputs ?? current.inputs) as unknown as RulaInput;
     const postureAnalysis = body.postureAnalysis === undefined ? current.postureAnalysis as RulaPostureAnalysis | undefined : body.postureAnalysis;
     assertRulaFinalStatusReviewed(body.status ?? current.status, bodySide, postureAnalysis);
-    const calculation = calculateRulaAssessment(bodySide, rawInputs, postureAnalysis, body.postureAnalysis !== undefined || body.inputs !== undefined || body.bodySide !== undefined);
+    const calculation = calculateRulaAssessment(bodySide, rawInputs, postureAnalysis, (body.status ?? current.status) === "APPROVED");
     const { inputs, result, sideResults } = calculation;
     const nextVersion = current.version + 1;
     const nextSnapshot = { ...current, ...body, projectId, bodySide, activityId: body.activityId === undefined ? current.activityId : body.activityId, inputs, postureAnalysis: calculation.analysis, score: result.score, actionLevel: result.actionLevel, explanation: result.explanation, version: nextVersion };
     const updateData: Prisma.RulaAssessmentUncheckedUpdateInput = { ...(body.projectId !== undefined ? { projectId } : {}), ...(body.activityId !== undefined ? { activityId: body.activityId } : {}), ...(body.title !== undefined ? { title: body.title } : {}), ...(body.subjectCode !== undefined ? { subjectCode: body.subjectCode } : {}), ...(body.bodySide !== undefined ? { bodySide } : {}), ...(body.status !== undefined ? { status: body.status } : {}), ...(body.inputs !== undefined || body.postureAnalysis !== undefined ? { inputs: json(inputs) } : {}), ...(body.activityInfo !== undefined ? { activityInfo: body.activityInfo ? json(body.activityInfo) : Prisma.JsonNull } : {}), ...(body.postureAnalysis !== undefined ? { postureAnalysis: calculation.analysis ? json(calculation.analysis) : Prisma.JsonNull } : {}), score: result.score, actionLevel: result.actionLevel, explanation: result.explanation, version: nextVersion };
     const assessment = await prisma.$transaction(async (tx) => {
+      // Serialize membership checks with reuse/unlink before saving image references.
+      await lockAssessmentImageTarget(tx, organizationId, { entityType: "RulaAssessment", entityId: id }, { allowArchivedRula: true });
+      await ensureRulaPostureImage(body.activityInfo?.postureImageAttachmentId, id, organizationId, tx);
+      for (const image of body.postureAnalysis?.imageAssessments ?? []) await ensureRulaPostureImage(image.attachmentId, id, organizationId, tx);
       await tx.rulaVersion.upsert({ where: { assessmentId_version: { assessmentId: id, version: current.version } }, update: {}, create: { assessmentId: id, version: current.version, snapshot: json(current), createdBy: request.actor!.userId } });
       const updated = await tx.rulaAssessment.update({ where: { id }, data: updateData });
       await tx.rulaVersion.upsert({ where: { assessmentId_version: { assessmentId: id, version: nextVersion } }, update: {}, create: { assessmentId: id, version: nextVersion, snapshot: json(nextSnapshot), createdBy: request.actor!.userId } });
       return updated;
-    });
+    }, assessmentImageTransactionOptions);
     await audit(request, "RULA_UPDATE", "RulaAssessment", id, { version: assessment.version });
     return envelope({ ...assessment, trace: result.trace, ...(sideResults ? { sideResults } : {}) });
   });

@@ -1,0 +1,4 @@
+/* Owner-requested temporary hiding of the account image authorization UI only. */
+.app #image-processing-consent .posture-image-authorizations {
+  display: none;
+}

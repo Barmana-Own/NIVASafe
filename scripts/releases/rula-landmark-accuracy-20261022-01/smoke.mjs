@@ -1,0 +1,23 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import { pathToFileURL } from 'node:url';
+import { root,task,candidate,evidence,python,model,modelSha256,sha,verifyLocalRuntime } from './runtime-preflight.mjs';
+
+const local=verifyLocalRuntime();
+Object.assign(process.env,{RULA_LOCAL_POSE_ENABLED:'true',RULA_POSE_PYTHON:python,RULA_POSE_WORKER_PATH:`${candidate}/backend/python/rula_pose_worker.py`,RULA_POSE_MODEL_PATH:model,RULA_POSE_MODEL_SHA256:modelSha256});
+const {detectRulaLocalPose}=await import(pathToFileURL(`${candidate}/backend/dist/rula-pose-provider.js`).href);
+const {geometryFromRulaLocalPose,hasUsableRulaLocalPose}=await import(pathToFileURL(`${candidate}/backend/dist/rula-local-pose-geometry.js`).href);
+const original=`${root}/.local/${task}/supplied-worker.png`;
+const image={buffer:fs.readFileSync(original),width:768,height:512,normalized:true};
+assert.equal(sha(original),'f161182c348c684de204e8d89a45d6ee9f88a81626783fc30d642336de96d326');
+const start=performance.now();const pose=await detectRulaLocalPose(image);const elapsedMs=Math.round(performance.now()-start);
+assert.equal(pose.poses.length,1);assert(hasUsableRulaLocalPose(pose));assert.equal(pose.modelSha256,modelSha256);
+const {geometry,overlay}=geometryFromRulaLocalPose(pose,'RIGHT',image,{view:'SAGITTAL',facing:'IMAGE_LEFT',upright:true});
+for(const name of ['shoulder','elbow','wrist','hip','knee','ankle'])assert(geometry.landmarks.some(p=>p.name===name)&&overlay.points[name]);
+assert(!geometry.landmarks.some(p=>p.name==='neck'));
+const expected=JSON.parse(fs.readFileSync(`${root}/.local/${task}/worker-smoke-result.json`,'utf8'));
+const maxDelta=Math.max(...pose.poses[0].landmarks.map(point=>{const other=expected.poses[0].landmarks.find(p=>p.name===point.name);assert(other);return Math.max(Math.abs(point.x-other.x),Math.abs(point.y-other.y));}));
+assert(maxDelta<0.00001,'Different local worker geometry from verified reference');
+const result={status:'PASS',task,elapsedMs,sourceSha256:sha(original),workerSha256:sha(process.env.RULA_POSE_WORKER_PATH),modelSha256,poses:pose.poses.length,landmarks:pose.poses[0].landmarks.length,maxDelta,localNetworkBlocked:local.network.blocked,coordinateSource:pose.source,geometry,clinicalValidation:false,providerCalls:0};
+fs.writeFileSync(`${evidence}/node-worker-smoke.json`,JSON.stringify(result,null,2));
+console.log(JSON.stringify({status:result.status,elapsedMs,poses:result.poses,landmarks:result.landmarks,maxDelta,localNetworkBlocked:true}));

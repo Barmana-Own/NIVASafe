@@ -7,12 +7,6 @@ build/
 coverage/
 *.tsbuildinfo
 
-# Playwright browser-test artifacts (visual baselines remain tracked)
-frontend/test-results/
-frontend/playwright-results/
-frontend/playwright-report/
-frontend/.vite-cache/
-
 # Local configuration and secrets (safe templates remain tracked)
 .env
 .env.*
@@ -42,3 +36,35 @@ service-account*.json
 
 # OS metadata
 .DS_Store
+
+# Reproducible dependency caches and browser/Python runtime output
+.pnpm-store/
+.vite-cache/
+playwright-results/
+playwright-report/
+test-results/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Local export checkouts, private backups and incoming working files
+/.git-push-stage/
+/.nivasafe-uiux-validation-*/
+/.phase03-final-validation-*/
+/backups/
+/deliverables/
+/incoming/
+/patch-backups/
+/ChatGPT Image *.png
+
+# Raw runtime evidence may contain private records or authentication artifacts.
+# Keep source, tests, release scripts and written reports in version control.
+/reports/evidence/
+/reports/ai-access/
+/reports/image-quota/
+/reports/uiux-evidence/
+/reports/uiux-live-deployment-*/
+/reports/NIVASafe-EXECUTION-SCREENSHOTS/
+/reports/NIVASafe-NON-RULA-LIVE-RELEASE-EVIDENCE-*/

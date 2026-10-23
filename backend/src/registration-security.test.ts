@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ACCOUNT_IMAGE_CONSENT_VERSION } from "./image-processing-consent.js";
 import { checkedUsername, parseRegistrationInput, validateRegistrationIdentity } from "./modules/auth.js";
 
 const validPersonalPayload = {
@@ -25,7 +26,7 @@ describe("registration security boundary", () => {
     expect(() => parseRegistrationInput({ ...validPersonalPayload, termsAccepted: false })).toThrow();
     expect(() => parseRegistrationInput({ ...validPersonalPayload, termsVersion: "outdated" })).toThrow();
     expect(() => parseRegistrationInput({ ...validPersonalPayload, imageProcessingConsent: true })).toThrow();
-    expect(parseRegistrationInput({ ...validPersonalPayload, imageProcessingConsent: true, imageProcessingConsentVersion: "image-processing-account-2026-10-19-v1" })).toMatchObject({ imageProcessingConsent: true });
+    expect(parseRegistrationInput({ ...validPersonalPayload, imageProcessingConsent: true, imageProcessingConsentVersion: ACCOUNT_IMAGE_CONSENT_VERSION })).toMatchObject({ imageProcessingConsent: true });
   });
   it("normalizes valid contact values and rejects a mismatched contact type", () => {
     expect(validateRegistrationIdentity({ email: " Person@Example.com ", displayName: " علی  رضایی ", phone: "۰۹۱۲۱۲۳۴۵۶۷" })).toEqual({

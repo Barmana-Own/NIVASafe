@@ -583,22 +583,3 @@ Scoped status: PASS — safe code release with public image processing disabled.
 1092 unique tests passed:638 backend,435 frontend,19 domain. Twelve applicable package checks exit0;93/155 contract and29 release checks exit0. Original full provider/browser run FAIL and subsequent zero-provider reopen PASS are separate evidence. Full feature acceptance remains PARTIAL.
 
 Evidence: C:/NIVASafe/reports/evidence/rula-image-experience-20261019-01. Full-product status is not COMPLETE.
-
-## Scoped checkpoint fmea-image-validation-20261020-01 — 2026-10-20
-
-Scoped status: PASS for malformed FMEA image-response handling; full image-analysis acceptance remains BLOCKED.
-
-| Check | Status | Evidence |
-|---|---|---|
-| Backend unit suite | PASS | 71 files / 658 tests; Vitest exit 0. |
-| Focused image-analysis regression suite | PASS | 4 files / 53 tests, including strict FMEA response parsing, one bounded retry, retry usage aggregation, safe audit diagnostics, and privacy-gate behavior. |
-| Backend typecheck and build | PASS | `npm run typecheck` and `npm run build`; exit 0. |
-| Frontend typecheck and production build | PASS | Direct local TypeScript and Vite binaries; exit 0. Vite reports an existing >500 kB chunk warning. |
-| Frontend test suite | NOT_RUN | No frontend code changed in this checkpoint. |
-| API contract | PASS | 94 frontend paths match 158 backend routes. |
-| Local runtime smoke | PASS | `/rula` returned HTTP 200; `/api/v1/health` returned HTTP 200 and database `up`. |
-| Live provider/image acceptance | NOT_RUN | No uploaded or synthetic image was sent to an external provider. Previous RULA live acceptance received HTTP 401; no new provider result was obtained. |
-| RULA anatomical accuracy | NOT_RUN / BLOCKED | No qualified, independently annotated real-image holdout set is available; no accuracy claim is made. |
-| Account and provider privacy gates | PRESERVED | External image analysis still requires the authenticated user's durable account consent and exact-provider approval/capability gates. |
-
-FMEA image parsing now rejects invalid JSON, missing summaries or row lists, excessive rows, malformed risk rows, and malformed annotation containers. The route retries a malformed provider answer once, aggregates usage across attempts, returns a safe unavailable response if validation still fails, and records only allowlisted diagnostic codes. This verifies response integrity, not the factual correctness of model-generated hazards or scores.

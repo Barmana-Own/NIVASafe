@@ -1,0 +1,40 @@
+{
+  "provider": "MEDIAPIPE_POSE_LANDMARKER",
+  "protocol": "nivasafe-rula-pose-v1",
+  "runtime": {
+    "python": "3.12",
+    "platform": "Windows AMD64",
+    "mediapipe": "0.10.32",
+    "requirements": "requirements.lock",
+    "delegate": "CPU",
+    "maxPoses": 2
+  },
+  "model": {
+    "name": "MediaPipe Pose Landmarker Full",
+    "version": "float16/1",
+    "filename": "pose_landmarker_full.task",
+    "source": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
+    "sha256": "5134a3aad27a58b93da0088d431f366da362b44e3ccfbe3462b3827a839011b1",
+    "bytes": 9398198,
+    "license": "Apache-2.0",
+    "modelCard": "https://storage.googleapis.com/mediapipe-assets/Model%20Card%20BlazePose%20GHUM%203D.pdf"
+  },
+  "sources": {
+    "implementationGuide": "https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker/python",
+    "runtimeLicense": "https://github.com/google-ai-edge/mediapipe/blob/v0.10.32/LICENSE",
+    "pinnedRuntimeSource": "https://github.com/google-ai-edge/mediapipe/tree/v0.10.32",
+    "runtimePackage": "https://pypi.org/project/mediapipe/0.10.32/"
+  },
+  "privacy": {
+    "imageInput": "stdin only; no image files or external inference requests",
+    "modelLoading": "local verified model only; no runtime download",
+    "networkPolicy": "Deployment must deny outbound traffic for the dedicated Python executable.",
+    "runtimeUpgrade": "Worker rejects any MediaPipe version other than 0.10.32. Re-evaluate network behavior before upgrading."
+  },
+  "limitations": [
+    "Predictions are approximate; low-visibility, absent and out-of-frame landmarks must remain unavailable.",
+    "No neck center, head center, hidden landmarks or RULA scores are synthesized by the worker.",
+    "Multiple detected people require subject selection or abstention by the caller.",
+    "This model is not intended for life-critical decisions; assessment results require human review."
+  ]
+}

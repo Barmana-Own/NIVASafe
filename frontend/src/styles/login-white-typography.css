@@ -1,0 +1,12 @@
+/* Supplied white artwork keeps its original colors; existing sizing is reused. */
+@media (min-width: 901px) {
+  :root[data-theme="blue"] .login:not(.simple):not(.register-page) .login-toolbar-brand-image > .login-toolbar-icon {
+    filter: none;
+  }
+}
+
+@media (max-width: 900px) {
+  :root[data-theme="blue"] .login:not(.mobile-login-form-visible):not(.simple):not(.register-page) .login-mobile-typography {
+    filter: none;
+  }
+}

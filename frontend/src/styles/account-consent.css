@@ -3,6 +3,12 @@
 .policy-acceptance input[type="checkbox"] { flex: 0 0 20px; width: 20px; height: 20px; margin-block-start: 4px; }
 .policy-acceptance span { min-width: 0; }
 .policy-acceptance a { font-weight: 600; text-decoration: underline; }
+.image-processing-summary { padding: 12px 14px; border-inline-start: 3px solid var(--color-border); border-radius: 8px; background: var(--color-subtle); font-size: .82rem; line-height: 1.85; }
+.image-processing-summary p { margin: 0; }
+.image-processing-summary p + p { margin-block-start: 8px; }
+.rula-image-subject-selector { display: grid; gap: 10px; margin-block-end: 14px; min-width: 0; font-size: .82rem; line-height: 1.75; }
+.rula-image-subject-selector label { display: grid; gap: 6px; min-width: 0; }
+.rula-image-subject-selector p, .rula-image-subject-selector small { margin: 0; }
 .account-image-processing { margin-block-start: 24px; scroll-margin-block-start: 100px; }
 .legal-policy-page { min-height: 100dvh; padding: 40px 16px; color: var(--color-ink); background: var(--color-canvas); }
 .legal-policy-page .legal-policy-card { width: min(760px, 100%); margin-inline: auto; padding: clamp(20px, 4vw, 32px); line-height: 2; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); }

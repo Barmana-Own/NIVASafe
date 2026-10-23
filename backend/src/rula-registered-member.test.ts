@@ -11,12 +11,15 @@ const db = vi.hoisted(() => ({
   organization: { findUnique: vi.fn() },
   audit: vi.fn(),
   project: { findFirst: vi.fn() },
-  rulaAssessment: { create: vi.fn(), findFirst: vi.fn() },
+  rulaAssessment: { create: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
   rulaVersion: { create: vi.fn(), upsert: vi.fn() },
   attachment: { findMany: vi.fn() },
   auditLog: { create: vi.fn(), findFirst: vi.fn() },
+  aIAnalysisRequest: { create: vi.fn(), findFirst: vi.fn() },
+  $transaction: vi.fn(),
+  $queryRaw: vi.fn(),
 }));
-const ai = vi.hoisted(() => ({ analyze: vi.fn(), recordUsage: vi.fn(), available: vi.fn(), supportsImages: vi.fn() }));
+const ai = vi.hoisted(() => ({ analyze: vi.fn(), recordUsage: vi.fn(), available: vi.fn(), supportsImages: vi.fn(), beforeTransfer: vi.fn() }));
 
 vi.mock("./core.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./core.js")>();
@@ -24,10 +27,11 @@ vi.mock("./core.js", async (importOriginal) => {
 });
 vi.mock("./ai-provider.js", () => ({
   getAvailableAssessmentAIProvider: () => ({ name: "test-vision", analyze: ai.analyze }),
-  getRulaPostureImageAIProvider: () => ({ name: "test-vision", available: ai.available, supportsImages: ai.supportsImages, analyze: ai.analyze }),
+  getRulaPostureImageAIProvider: () => ({ name: "test-vision", available: ai.available, supportsImages: ai.supportsImages, analyze: async (input: { beforeImageTransfer: () => Promise<void> }) => { await ai.beforeTransfer(); await input.beforeImageTransfer(); return ai.analyze(input); } }),
 }));
 vi.mock("./ai-usage.js", async (importOriginal) => ({ ...(await importOriginal<typeof import("./ai-usage.js")>()), recordAIUsage: ai.recordUsage }));
 
+import { ACCOUNT_IMAGE_CONSENT_VERSION, IMAGE_PROCESSING_PURPOSE } from "./image-processing-consent.js";
 import { registerAssessmentRoutes } from "./modules/assessments.js";
 
 const parts = ["upperArm", "lowerArm", "wrist", "wristTwist", "neck", "trunk", "legs"];
@@ -38,6 +42,7 @@ const answer = JSON.stringify({
   } },
   notes: "Synthetic fixture",
 });
+let storedImageResults: Map<string, { id: string; organizationId: string; userId: string; type: string; status: string; output: unknown }>;
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -48,21 +53,36 @@ beforeEach(() => {
   db.organization.findUnique.mockResolvedValue({ active: true, subscriptionStatus: "ACTIVE", subscriptionExpiresAt: null });
   db.project.findFirst.mockResolvedValue({ id: "project-a" });
   db.attachment.findMany.mockResolvedValue([]);
+  db.$queryRaw.mockImplementation(async (query: { sql: string; values: unknown[] }) => {
+    if (!query.sql.includes("FOR UPDATE")) return [];
+    const current = await db.rulaAssessment.findFirst({ where: { id: query.values[0], organizationId: query.values[1] } });
+    return current ? [{ id: current.id }] : [];
+  });
   db.rulaAssessment.create.mockResolvedValue({ id: "assessment-a", status: "APPROVED" });
   db.rulaVersion.create.mockResolvedValue({ id: "version-a" });
+  db.$transaction.mockImplementation(async (run: (tx: typeof db) => Promise<unknown>) => run(db));
   db.auditLog.create.mockResolvedValue({ id: "audit-a" });
-  db.auditLog.findFirst.mockResolvedValue({ id: "account-consent-a", action: "IMAGE_PROCESSING_CONSENT_ACCEPTED", createdAt: new Date("2026-10-19T00:00:00Z"), metadata: { policyVersion: "image-processing-account-2026-10-19-v1" } });
+  storedImageResults = new Map();
+  db.aIAnalysisRequest.create.mockImplementation(async ({ data }) => {
+    const id = `00000000-0000-4000-8000-${String(storedImageResults.size + 1).padStart(12, "0")}`;
+    storedImageResults.set(id, { id, ...data });
+    return { id };
+  });
+  db.aIAnalysisRequest.findFirst.mockImplementation(async ({ where }) => {
+    const row = storedImageResults.get(where.id);
+    return row && row.organizationId === where.organizationId && row.userId === where.userId && row.type === where.type && row.status === where.status ? { id: row.id, output: row.output } : null;
+  });
+  db.auditLog.findFirst.mockResolvedValue({ id: "account-consent-a", action: "IMAGE_PROCESSING_CONSENT_ACCEPTED", createdAt: new Date("2026-10-19T00:00:00Z"), metadata: { policyVersion: ACCOUNT_IMAGE_CONSENT_VERSION, provider: "arvancloud", purpose: IMAGE_PROCESSING_PURPOSE } });
   ai.available.mockReturnValue(true);
   ai.supportsImages.mockReturnValue(true);
   ai.analyze.mockResolvedValue({ provider: "test-vision", model: "fixture-v1", answer, citations: [], confidence: 0.9, usage: { inputTokens: 20, outputTokens: 30, totalTokens: 50 } });
   ai.recordUsage.mockResolvedValue(undefined);
 });
 
-function multipartImage() {
+function multipartImage(overrides: Record<string, string> = {}) {
   const boundary = "task-07-vision-boundary";
   const file = readFileSync(new URL("../../frontend/test-fixtures/rula-ai-synthetic.png", import.meta.url));
-  const fields = ["bodySide=RIGHT", "jobTitle=Operator", "taskDescription=Assembly task", "locale=en"].map((field) => {
-    const [name, value] = field.split("=");
+  const fields = Object.entries({ imageSubject: "SELF", bodySide: "RIGHT", jobTitle: "Operator", taskDescription: "Assembly task", locale: "en", ...overrides }).map(([name, value]) => {
     return Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`);
   });
   const payload = Buffer.concat([
@@ -88,6 +108,27 @@ async function withApp(run: (app: FastifyInstanceForTest) => Promise<void>) {
 
 type FastifyInstanceForTest = Awaited<ReturnType<typeof Fastify>>;
 
+it("saves an unreviewed image result as an in-progress assessment while refusing final approval", async () => withApp(async app => {
+  const rows = Object.fromEntries(parts.map(part => [part, { angle: part === "legs" ? null : 20, score: 1, detected: true, source: "AI", confirmedByUser: false, requiresReview: true, confidence: 0.8 }]));
+  const analysis = { ...rows, imageAssessments: [{ imageKey: "synthetic-image", fileName: "synthetic.png", analysis: rows, force: 0, muscleUse: false }] };
+  const current = { id: "00000000-0000-4000-8000-000000000022", organizationId: "org-a", projectId: "00000000-0000-4000-8000-000000000021", activityId: null, bodySide: "RIGHT", inputs: { upperArm: 1, lowerArm: 1, wrist: 1, wristTwist: 1, neck: 1, trunk: 1, legs: 1, force: 0, muscleUse: false }, postureAnalysis: rows, version: 1, status: "IN_PROGRESS" };
+  db.rulaAssessment.findFirst.mockResolvedValue(current);
+  db.rulaAssessment.update.mockResolvedValue({ ...current, version: 2, postureAnalysis: analysis });
+  const headers = { authorization: `Bearer ${app.jwt.sign({ sub: "user-a" })}`, "x-organization-id": "org-a" };
+  const draft = await app.inject({ method: "PATCH", url: `/api/v1/rula/${current.id}`, headers, payload: { postureAnalysis: analysis, status: "IN_PROGRESS" } });
+  expect(draft.statusCode).toBe(200);
+  expect(db.rulaAssessment.update).toHaveBeenCalledOnce();
+  expect(draft.json().data.postureAnalysis.upperArm.confirmedByUser).toBe(false);
+  const lockIndex = db.$queryRaw.mock.calls.findIndex(([query]) => query.sql.includes("FOR UPDATE"));
+  expect(lockIndex).toBeGreaterThanOrEqual(0);
+  expect(db.$queryRaw.mock.invocationCallOrder[lockIndex]).toBeLessThan(db.rulaAssessment.update.mock.invocationCallOrder[0]!);
+  const final = await app.inject({ method: "PATCH", url: `/api/v1/rula/${current.id}`, headers, payload: { postureAnalysis: analysis, status: "APPROVED" } });
+  expect(final.statusCode).toBe(400);
+  expect(final.json().error.code).toBe("RULA_POSTURE_REVIEW_REQUIRED");
+  expect(db.rulaAssessment.update).toHaveBeenCalledOnce();
+}));
+
+
 it("rejects image transfer without a current durable account-level acceptance", async () => withApp(async app => {
   db.auditLog.findFirst.mockResolvedValue(null);
   const image = multipartImage();
@@ -97,17 +138,143 @@ it("rejects image transfer without a current durable account-level acceptance", 
   expect(ai.analyze).not.toHaveBeenCalled();
 }));
 
+it("stops dispatch when consent is withdrawn after preparation and before the adapter sends", async () => withApp(async app => {
+  ai.beforeTransfer.mockImplementation(() => { db.auditLog.findFirst.mockResolvedValue(null); });
+  const image = multipartImage();
+  const response = await app.inject({ method: "POST", url: "/api/v1/rula/posture-image-analysis", headers: { authorization: `Bearer ${app.jwt.sign({ sub: "user-a" })}`, "x-organization-id": "org-a", "content-type": image.contentType }, payload: image.payload });
+  expect(response.statusCode).toBe(403);
+  expect(response.json().error.code).toBe("IMAGE_PROCESSING_ACCOUNT_CONSENT_REQUIRED");
+  expect(ai.analyze).not.toHaveBeenCalled();
+  expect(ai.recordUsage).not.toHaveBeenCalled();
+}));
+
+it.each(["withdrawal", "receipt-change"])("stops dispatch after %s during the durable attempt audit", async kind => withApp(async app => {
+  db.audit.mockImplementation(async (_request, action) => {
+    if (action === "RULA_IMAGE_TRANSFER_AUTHORIZED") db.auditLog.findFirst.mockResolvedValue(kind === "withdrawal" ? null : { id: "new-account-consent", action: "IMAGE_PROCESSING_CONSENT_ACCEPTED", createdAt: new Date(), metadata: { policyVersion: ACCOUNT_IMAGE_CONSENT_VERSION, provider: "arvancloud", purpose: IMAGE_PROCESSING_PURPOSE } });
+  });
+  const image = multipartImage();
+  const response = await app.inject({ method: "POST", url: "/api/v1/rula/posture-image-analysis", headers: { authorization: `Bearer ${app.jwt.sign({ sub: "user-a" })}`, "x-organization-id": "org-a", "content-type": image.contentType }, payload: image.payload });
+  expect(response.statusCode).toBe(403);
+  expect(response.json().error.code).toBe(kind === "withdrawal" ? "IMAGE_PROCESSING_ACCOUNT_CONSENT_REQUIRED" : "IMAGE_TRANSFER_AUTHORIZATION_CHANGED");
+  expect(ai.analyze).not.toHaveBeenCalled();
+}));
+
+it("stops third-party dispatch if its owner revokes the grant during the attempt audit", async () => withApp(async app => {
+  const grantId = "11111111-1111-4111-8111-111111111111";
+  let revoked = false;
+  db.auditLog.findFirst.mockImplementation(async ({ where }) => {
+    if (where.entityType === "ImageProcessingConsent") return { id: where.userId === "owner-a" ? "owner-consent" : "account-consent-a", action: "IMAGE_PROCESSING_CONSENT_ACCEPTED", createdAt: new Date(), metadata: { policyVersion: ACCOUNT_IMAGE_CONSENT_VERSION, provider: "arvancloud", purpose: IMAGE_PROCESSING_PURPOSE } };
+    if (where.action === "POSTURE_IMAGE_AUTHORIZATION_REVOKED") return revoked ? { id: "revocation" } : null;
+    return { entityId: grantId, userId: "owner-a", organizationId: "org-a", createdAt: new Date(), metadata: { recipientUserId: "user-a", provider: "arvancloud", purpose: IMAGE_PROCESSING_PURPOSE, policyVersion: ACCOUNT_IMAGE_CONSENT_VERSION, ownerConsentRecordId: "owner-consent", expiresAt: new Date(Date.now() + 86_400_000).toISOString() } };
+  });
+  db.audit.mockImplementation(async (_request, action) => { if (action === "RULA_IMAGE_TRANSFER_AUTHORIZED") revoked = true; });
+  const image = multipartImage({ imageSubject: "THIRD_PARTY", ownerAuthorizationId: grantId });
+  const response = await app.inject({ method: "POST", url: "/api/v1/rula/posture-image-analysis", headers: { authorization: `Bearer ${app.jwt.sign({ sub: "user-a" })}`, "x-organization-id": "org-a", "content-type": image.contentType }, payload: image.payload });
+  expect(response.statusCode).toBe(403);
+  expect(response.json().error.code).toBe("POSTURE_IMAGE_OWNER_AUTHORIZATION_REQUIRED");
+  expect(ai.analyze).not.toHaveBeenCalled();
+}));
+
+it("rechecks withdrawal before a malformed-answer retry while preserving billed first-attempt usage", async () => withApp(async app => {
+  ai.analyze.mockImplementationOnce(async () => { db.auditLog.findFirst.mockResolvedValue(null); return { provider: "test-vision", model: "fixture-v1", answer: "invalid JSON", citations: [], confidence: 0.9, usage: { inputTokens: 20, outputTokens: 30, totalTokens: 50 } }; });
+  const image = multipartImage();
+  const response = await app.inject({ method: "POST", url: "/api/v1/rula/posture-image-analysis", headers: { authorization: `Bearer ${app.jwt.sign({ sub: "user-a" })}`, "x-organization-id": "org-a", "content-type": image.contentType }, payload: image.payload });
+  expect(response.statusCode).toBe(403);
+  expect(response.json().error.code).toBe("IMAGE_PROCESSING_ACCOUNT_CONSENT_REQUIRED");
+  expect(ai.analyze).toHaveBeenCalledOnce();
+  expect(ai.recordUsage).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ result: expect.objectContaining({ usage: { inputTokens: 20, outputTokens: 30, totalTokens: 50 } }) }));
+  expect(db.audit.mock.calls.filter(call => call[1] === "RULA_IMAGE_TRANSFER_AUTHORIZED")).toHaveLength(1);
+}));
+
+it.each(["membership", "ai-access"])("rechecks %s changes at actual dispatch", async kind => withApp(async app => {
+  ai.beforeTransfer.mockImplementation(() => {
+    if (kind === "membership") db.organizationMember.findFirst.mockResolvedValue(null);
+    else db.user.findFirst.mockResolvedValue({ id: "user-a", globalRole: "USER", active: true, aiEnabled: false, aiTokenLimit: 10000, aiTokensUsed: 0 });
+  });
+  const image = multipartImage();
+  const response = await app.inject({ method: "POST", url: "/api/v1/rula/posture-image-analysis", headers: { authorization: `Bearer ${app.jwt.sign({ sub: "user-a" })}`, "x-organization-id": "org-a", "content-type": image.contentType }, payload: image.payload });
+  expect(response.statusCode).toBe(kind === "membership" ? 401 : 403);
+  expect(ai.analyze).not.toHaveBeenCalled();
+}));
+
 it("automatically analyzes images under account policy without per-image consent fields", async () => withApp(async app => {
   const image = multipartImage();
   const response = await app.inject({ method: "POST", url: "/api/v1/rula/posture-image-analysis", headers: { authorization: `Bearer ${app.jwt.sign({ sub: "user-a" })}`, "x-organization-id": "org-a", "content-type": image.contentType }, payload: image.payload });
   expect(response.statusCode).toBe(200);
   const index = db.audit.mock.calls.findIndex(call => call[1] === "RULA_IMAGE_TRANSFER_AUTHORIZED");
   expect(index).toBeGreaterThanOrEqual(0);
-  expect(db.audit.mock.calls[index]?.[4]).toMatchObject({ accountConsentVersion: "image-processing-account-2026-10-19-v1", consentRecordId: "account-consent-a", consentSource: "ACCOUNT_POLICY", provider: "test-vision", requestedModel: "GPT-5-Mini", purpose: "rula-posture", bodySide: "RIGHT", locale: "en", imageSha256: expect.stringMatching(/^[a-f0-9]{64}$/) });
+  expect(db.audit.mock.calls[index]?.[4]).toMatchObject({ accountConsentVersion: ACCOUNT_IMAGE_CONSENT_VERSION, consentRecordId: "account-consent-a", consentSource: "ACCOUNT_POLICY", provider: "test-vision", requestedModel: "GPT-5-Mini", purpose: "rula-posture", bodySide: "RIGHT", locale: "en", imageSha256: expect.stringMatching(/^[a-f0-9]{64}$/) });
   const receiptOrder = db.audit.mock.invocationCallOrder[index];
   const dispatchOrder = ai.analyze.mock.invocationCallOrder[0];
   if (receiptOrder === undefined || dispatchOrder === undefined) throw new Error("Account authorization receipt or provider dispatch missing");
   expect(receiptOrder).toBeLessThan(dispatchOrder);
+}));
+
+it("persists validated inference with actor, tenant and consent references before replying and retrieves only the own stored result", async () => withApp(async app => {
+  const image = multipartImage();
+  const headers = { authorization: `Bearer ${app.jwt.sign({ sub: "user-a" })}`, "x-organization-id": "org-a" };
+  const response = await app.inject({ method: "POST", url: "/api/v1/rula/posture-image-analysis", headers: { ...headers, "content-type": image.contentType }, payload: image.payload });
+  expect(response.statusCode).toBe(200);
+  const { analysisRequestId } = response.json().data;
+  expect(analysisRequestId).toMatch(/^[a-f0-9-]{36}$/);
+  expect(db.aIAnalysisRequest.create).toHaveBeenCalledWith({ data: expect.objectContaining({ organizationId: "org-a", userId: "user-a", type: "RULA_POSTURE_IMAGE", status: "SUCCEEDED", attempts: 1, input: expect.objectContaining({ consentRecordId: "account-consent-a", accountConsentVersion: ACCOUNT_IMAGE_CONSENT_VERSION, imageSubject: "SELF", imageOwnerUserId: "user-a", imageSha256: expect.stringMatching(/^[a-f0-9]{64}$/) }), output: expect.objectContaining({ sides: expect.any(Object), provider: "test-vision" }) }), select: { id: true } });
+  const persisted = JSON.stringify(db.aIAnalysisRequest.create.mock.calls[0]?.[0]);
+  expect(persisted).not.toContain("data:image");
+  expect(persisted).not.toContain('"base64"');
+  expect(persisted).not.toContain('"message"');
+  expect(persisted).not.toContain("Assembly task");
+  const read = await app.inject({ url: `/api/v1/rula/posture-image-analysis/${analysisRequestId}`, headers });
+  expect(read.statusCode).toBe(200);
+  expect(read.headers["cache-control"]).toBe("private, no-store");
+  expect(read.json().data).toEqual(response.json().data);
+  expect(db.aIAnalysisRequest.findFirst).toHaveBeenCalledWith({ where: { id: analysisRequestId, organizationId: "org-a", userId: "user-a", type: "RULA_POSTURE_IMAGE", status: "SUCCEEDED" }, select: { id: true, output: true } });
+  expect(ai.analyze).toHaveBeenCalledOnce();
+}));
+
+it("returns the committed paid result if the supplementary completion audit fails", async () => withApp(async app => {
+  db.audit.mockImplementation(async (_request, action) => {
+    if (action === "RULA_POSTURE_IMAGE_ANALYSIS") throw new Error("private audit payload and credentials");
+  });
+  const image = multipartImage();
+  const headers = { authorization: `Bearer ${app.jwt.sign({ sub: "user-a" })}`, "x-organization-id": "org-a" };
+  const response = await app.inject({ method: "POST", url: "/api/v1/rula/posture-image-analysis", headers: { ...headers, "content-type": image.contentType }, payload: image.payload });
+  expect(response.statusCode).toBe(200);
+  expect(response.json().data.analysisRequestId).toMatch(/^[0-9a-f-]{36}$/);
+  expect(response.body).not.toContain("private");
+  expect(db.aIAnalysisRequest.create).toHaveBeenCalledOnce();
+  expect(ai.analyze).toHaveBeenCalledOnce();
+  expect(ai.recordUsage).toHaveBeenCalledOnce();
+  expect(db.audit).toHaveBeenCalledWith(expect.anything(), "RULA_IMAGE_TRANSFER_AUTHORIZED", "RulaPostureImage", undefined, expect.anything());
+  const stored = await app.inject({ url: `/api/v1/rula/posture-image-analysis/${response.json().data.analysisRequestId}`, headers });
+  expect(stored.statusCode).toBe(200);
+  expect(stored.json().data).toEqual(response.json().data);
+}));
+
+it("returns a safe nonretryable error if durable inference storage fails after the paid call", async () => withApp(async app => {
+  db.aIAnalysisRequest.create.mockRejectedValue(new Error("private database credentials and payload"));
+  const image = multipartImage();
+  const response = await app.inject({ method: "POST", url: "/api/v1/rula/posture-image-analysis", headers: { authorization: `Bearer ${app.jwt.sign({ sub: "user-a" })}`, "x-organization-id": "org-a", "content-type": image.contentType }, payload: image.payload });
+  expect(response.statusCode).toBe(503);
+  expect(response.json().error).toMatchObject({ code: "RULA_IMAGE_RESULT_SAVE_FAILED", retryable: false });
+  expect(response.body).not.toContain("private");
+  expect(ai.analyze).toHaveBeenCalledOnce();
+  expect(ai.recordUsage).toHaveBeenCalledOnce();
+}));
+
+it("denies unauthenticated, forbidden and cross-actor/tenant direct stored-result access", async () => withApp(async app => {
+  const image = multipartImage();
+  const headers = { authorization: `Bearer ${app.jwt.sign({ sub: "user-a" })}`, "x-organization-id": "org-a" };
+  const created = await app.inject({ method: "POST", url: "/api/v1/rula/posture-image-analysis", headers: { ...headers, "content-type": image.contentType }, payload: image.payload });
+  expect(created.statusCode).toBe(200);
+  const url = `/api/v1/rula/posture-image-analysis/${created.json().data.analysisRequestId}`;
+  expect((await app.inject({ url })).statusCode).toBe(401);
+  expect((await app.inject({ url, headers: { ...headers, "x-organization-id": "org-b" } })).statusCode).toBe(404);
+  db.user.findFirst.mockResolvedValue({ id: "other-user", globalRole: "USER", active: true });
+  expect((await app.inject({ url, headers: { ...headers, authorization: `Bearer ${app.jwt.sign({ sub: "other-user" })}` } })).statusCode).toBe(404);
+  db.user.findFirst.mockResolvedValue({ id: "user-a", globalRole: "USER", active: true });
+  db.organizationMember.findFirst.mockResolvedValueOnce({ role: "VIEWER", user: { globalRole: "USER" } });
+  expect((await app.inject({ url, headers })).statusCode).toBe(403);
+  expect(ai.analyze).toHaveBeenCalledOnce();
 }));
 
 it("does not send an image if the durable consent audit cannot be recorded", async () => withApp(async app => {
@@ -123,7 +290,7 @@ it("exposes the same platform image capability to independent eligible organizat
   for (const organizationId of ["org-a", "org-b"]) {
     const response = await app.inject({ method: "GET", url: "/api/v1/rula/image-analysis-policy", headers: { authorization: `Bearer ${token}`, "x-organization-id": organizationId } });
     expect(response.statusCode).toBe(200);
-    expect(response.json().data).toEqual({ available: true, provider: "test-vision", reasonCode: null, consentAccepted: true, consentVersion: "image-processing-account-2026-10-19-v1" });
+    expect(response.json().data).toEqual({ available: true, provider: "test-vision", reasonCode: null, consentAccepted: true, consentVersion: ACCOUNT_IMAGE_CONSENT_VERSION });
     expect(response.headers["cache-control"]).toBe("private, no-store");
   }
   expect(ai.analyze).not.toHaveBeenCalled();
@@ -133,7 +300,7 @@ it("reports a missing platform privacy approval without uploading an image or gr
   vi.stubEnv("RULA_IMAGE_PRIVACY_APPROVED_PROVIDER", "");
   const response = await app.inject({ method: "GET", url: "/api/v1/rula/image-analysis-policy", headers: { authorization: `Bearer ${app.jwt.sign({ sub: "user-a" })}`, "x-organization-id": "org-a" } });
   expect(response.statusCode).toBe(200);
-  expect(response.json().data).toEqual({ available: false, provider: "test-vision", reasonCode: "privacy-approval-missing", consentAccepted: true, consentVersion: "image-processing-account-2026-10-19-v1" });
+  expect(response.json().data).toEqual({ available: false, provider: "test-vision", reasonCode: "privacy-approval-missing", consentAccepted: true, consentVersion: ACCOUNT_IMAGE_CONSENT_VERSION });
   expect(ai.analyze).not.toHaveBeenCalled();
 }));
 

@@ -2,7 +2,7 @@ import type { FastifyRequest } from "fastify";
 import { prisma } from "./core.js";
 import { subscriptionIsUsable } from "./subscription.js";
 
-export async function authenticate(request: FastifyRequest) {
+async function authenticatedUser(request: FastifyRequest) {
   let payload: { sub: string };
   try {
     payload = await request.jwtVerify<{ sub: string }>();
@@ -12,9 +12,21 @@ export async function authenticate(request: FastifyRequest) {
       code: "UNAUTHORIZED",
     });
   }
-  const requestedOrg = request.headers["x-organization-id"]?.toString();
   const user = await prisma.user.findFirst({ where: { id: payload.sub, active: true }, select: { id: true, globalRole: true } });
   if (!user) throw Object.assign(new Error("Authentication or organization scope is invalid"), { statusCode: 401, code: "UNAUTHORIZED" });
+  return user;
+}
+
+/** Global account privacy choices remain reachable after organization access changes. */
+export async function authenticateAccount(request: FastifyRequest) {
+  const user = await authenticatedUser(request);
+  request.actor = { userId: user.id, role: user.globalRole === "SUPER_ADMIN" ? "SUPER_ADMIN" : undefined, globalRole: user.globalRole };
+}
+
+export async function authenticate(request: FastifyRequest) {
+  const user = await authenticatedUser(request);
+  const payload = { sub: user.id };
+  const requestedOrg = request.headers["x-organization-id"]?.toString();
   if (!requestedOrg) {
     request.actor = { userId: payload.sub, role: user.globalRole === "SUPER_ADMIN" ? "SUPER_ADMIN" : undefined, globalRole: user.globalRole };
     return;

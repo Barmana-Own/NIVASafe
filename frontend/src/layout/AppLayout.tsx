@@ -92,7 +92,7 @@ export function AppLayout() {
         <button type="button" className="sidebar-mobile-close" onClick={() => setMobileOpen(false)} aria-label={t("shell.closeMenu")}><Icon name="close" size={18}/></button>
       </div>
       <nav className="side-nav" aria-label={t("shell.mainMenu")}>
-        <SidebarNavigation groups={navigation} location={location} collapsed={sidebarCollapsed} activeIds={activeNavigationIds} onNavigate={() => setMobileOpen(false)} t={t}/>
+        <SidebarNavigation groups={navigation} location={location} collapsed={sidebarCollapsed && !mobileViewport} activeIds={activeNavigationIds} onNavigate={() => setMobileOpen(false)} t={t}/>
       </nav>
       <ProfileMenu />
       <button type="button" className="side-logout" onClick={logout} aria-label={t("shell.logoutAccount")} title={sidebarCollapsed ? t("shell.logoutAccount") : undefined}><Icon name="logout" size={18}/><span className="side-logout-label">{t("shell.logoutAccount")}</span></button>

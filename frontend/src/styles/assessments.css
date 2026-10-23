@@ -468,6 +468,7 @@
   line-height: 1.6;
 }
 .app[data-design="enterprise"] .rula-process-form-grid .field-label-line > :first-child { min-width: 0; }
+.app[data-design="enterprise"] :is(.rula-form, .fmea-process-form) { container-type: inline-size; }
 .app[data-design="enterprise"] .rula-process-heading,
 .app[data-design="enterprise"] .rula-posture-heading { min-width: 0; gap: 12px; }
 .app[data-design="enterprise"] .rula-process-heading > div,
@@ -570,6 +571,27 @@
   .app[data-design="enterprise"] .rula-process-form-grid > label.span-two { grid-column: auto; }
   .app[data-design="enterprise"] .rula-process-form-grid .fmea-description-field { grid-column: auto; }
   .app[data-design="enterprise"] .rula-overview-priority-stat { padding: 9px; }
+}
+
+/* The assessment workspace can be narrow even at desktop viewport widths when the sidebar is open. */
+@container (max-width: 950px) {
+  .app[data-design="enterprise"] .rula-process-layout { grid-template-columns: minmax(0, 1fr); }
+  .app[data-design="enterprise"] .rula-process-form-grid > label,
+  .app[data-design="enterprise"] .rula-job-search { font-size: .8rem; }
+}
+@container (max-width: 600px) {
+  .app[data-design="enterprise"] :is(.rula-process-form-grid, .fmea-process-grid, .fmea-suggestion-grid) { grid-template-columns: minmax(0, 1fr); }
+  .app[data-design="enterprise"] .fmea-process-grid .fmea-process-image-field { grid-column: auto; grid-row: auto; }
+  .app[data-design="enterprise"] .fmea-process-grid .fmea-description-head { align-items: flex-start; flex-direction: column; }
+  .app[data-design="enterprise"] .fmea-process-grid .fmea-suggestion-board-head { flex-direction: column; }
+  .app[data-design="enterprise"] .fmea-process-grid .fmea-suggestion-board-actions { width: 100%; justify-content: flex-start; margin-inline-start: 0; }
+  .app[data-design="enterprise"] .rula-process-form-grid > label.span-two,
+  .app[data-design="enterprise"] .rula-process-form-grid .fmea-description-field { grid-column: auto; }
+  .app[data-design="enterprise"] .rula-process-form-grid .field-label-line,
+  .app[data-design="enterprise"] .rula-job-search .fmea-field-label { flex-wrap: wrap; }
+  .app[data-design="enterprise"] .rula-process-form-grid .field-label-line > :first-child { flex: 1 1 12ch; }
+  .app[data-design="enterprise"] .rula-process-form-grid .field-label-line :is(span, small),
+  .app[data-design="enterprise"] .rula-job-search .fmea-field-label span { overflow-wrap: normal; word-break: normal; }
 }
 
 @media (min-width: 761px) and (hover: hover) and (pointer: fine) {
@@ -1093,6 +1115,11 @@
 .rula-image-review-dialog > header p { margin: .35rem 0 0; color: var(--color-secondary); overflow-wrap: anywhere; font-size: .78rem; }
 .rula-image-review-dialog > footer { justify-content: flex-end; border-top: 1px solid var(--color-border, #d4e4ee); }
 .rula-image-review-content { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 16px; }
+.rula-image-consent-dialog { width: min(680px, 100%); }
+.rula-consent-details p { margin: 0 0 12px; font-size: .78rem; line-height: 1.95; color: var(--color-secondary); }
+.rula-consent-agreement { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; font-size: .8rem; line-height: 1.85; }
+.rula-consent-agreement input { flex: 0 0 auto; margin-top: 5px; width: 18px; height: 18px; }
+.rula-image-consent-dialog > footer { flex-wrap: wrap; }
 .rula-image-review-dialog :is(.rula-edit-backdrop, .assessment-image-lightbox-backdrop) { z-index: 1300; }
 @media (max-width: 540px) {
   .rula-image-review-backdrop { padding: 8px; }

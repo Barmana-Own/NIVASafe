@@ -1,0 +1,30 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import {root,task,id,work,evidence,candidate,baseline,sha,read,files,protectedUnchanged,runtimeIdentity} from './prepare.mjs';
+
+const sourcePath='frontend/src/features/account/AccountPages.tsx',mainPath='frontend/src/main.tsx',cssPath='frontend/src/styles/login-desktop-branding.css';
+const assets=read(`${evidence}/assets-inspection.json`),initial=read(`${evidence}/baseline.json`),before=read(`${evidence}/runtime-before.json`);
+assert.equal(assets.status,'PASS');assert.equal(sha(assets.archive),assets.archiveSha256);assert.equal(assets.logos.length,2);
+assert(!fs.existsSync(`${evidence}/candidate.json`));
+assert.deepEqual(files(candidate).map(p=>({path:p,sha256:sha(`${candidate}/${p}`)})),initial.files,'Candidate must still be the untouched baseline');
+for(const f of initial.files)assert.equal(sha(`${baseline}/${f.path}`),f.sha256,'Published baseline changed');
+const normalize=s=>s.replaceAll('\r\n','\n');
+const baseSource=normalize(fs.readFileSync(`${baseline}/${sourcePath}`,'utf8')),rootSource=normalize(fs.readFileSync(`${root}/${sourcePath}`,'utf8'));
+const oldImage='<img className="login-toolbar-icon" src="/brand/nivasafe-icon.png" alt={brandAltForLocale(locale)}/>';
+const picture='<picture className="login-toolbar-brand-image"><source media="(min-width: 901px)" srcSet={locale === "en" ? "/brand/login-typography-en-060c9cae.png" : "/brand/login-typography-fa-7488d145.png"}/>'+oldImage+'</picture>';
+const oldWelcome='<img className="login-card-logo" src="/brand/nivasafe-icon.png" alt={brandAltForLocale(locale)}/><h2>{t("auth.welcome")}</h2>';
+const welcome='<div className="login-welcome-heading">'+oldWelcome+'</div>';
+assert.equal(rootSource.split(picture).length,2);assert.equal(rootSource.split(welcome).length,2);
+assert.equal(rootSource.replace(picture,oldImage).replace(welcome,oldWelcome),baseSource,'Only the two authorized JSX wrappers may change; auth handlers/content preserved');
+const main=normalize(fs.readFileSync(`${root}/${mainPath}`,'utf8')),importLine='import "./styles/login-desktop-branding.css";\n';
+assert.equal(main.split(importLine).length,2);assert.equal(main.replace(importLine,''),normalize(fs.readFileSync(`${baseline}/${mainPath}`,'utf8')));
+const css=fs.readFileSync(`${root}/${cssPath}`,'utf8');assert(css.includes('@media (min-width: 901px)'));assert(!/@import|url\(|expression\(|javascript:/iu.test(css));
+const brandAssets=assets.logos.map(a=>{assert(/^frontend\/public\/brand\/login-typography-(?:en-060c9cae|fa-7488d145)\.png$/u.test(a.sourcePath));assert.equal(sha(`${root}/${a.sourcePath}`),a.sha256);assert.equal(sha(a.suppliedPath),a.sha256);const b=fs.readFileSync(`${root}/${a.sourcePath}`);assert(b.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])));assert.equal(b.readUInt32BE(16),a.width);assert.equal(b.readUInt32BE(20),a.height);assert.equal(b[24],8);assert.equal(b[25],6);return{path:a.sourcePath,url:a.url,sha256:a.sha256};});
+const modified=[sourcePath,mainPath,cssPath,...brandAssets.map(a=>a.path)].sort(),hashes=new Map(initial.files.map(f=>[f.path,f.sha256])),rootSnapshots=[];
+for(const p of modified){const baselineSha=hashes.get(p)??null,from=`${root}/${p}`,to=`${candidate}/${p}`;assert(fs.statSync(from).isFile());if(baselineSha){const saved=`${work}/root-before/${p}`;fs.mkdirSync(path.dirname(saved),{recursive:true});fs.copyFileSync(`${baseline}/${p}`,saved,fs.constants.COPYFILE_EXCL);}else assert(!fs.existsSync(`${baseline}/${p}`));fs.mkdirSync(path.dirname(to),{recursive:true});fs.copyFileSync(from,to);rootSnapshots.push({path:p,beforeSha256:baselineSha,afterSha256:sha(from),snapshotOrigin:baselineSha?'FROZEN_PUBLISHED_BASELINE':'NEW_AUTHORIZED_FILE'});}
+const current=files(candidate);assert.equal(current.length,533);assert.deepEqual(current.filter(p=>!hashes.has(p)||sha(`${candidate}/${p}`)!==hashes.get(p)).sort(),modified);
+protectedUnchanged(before);assert.deepEqual(await runtimeIdentity(),before.api);
+const manifest={task,id,status:'FROZEN',candidate,baseline,modified,approvedRuntimeSource:[sourcePath,mainPath,cssPath],backendChanged:false,databaseChanged:false,stylesChanged:true,noDependenciesChanged:true,apiRestartRequired:false,cssSupplement:`${candidate}/${cssPath}`,cssSupplementSha256:sha(`${candidate}/${cssPath}`),brandAssets,assetsInspectionSha256:sha(`${evidence}/assets-inspection.json`),rootSnapshots,files:current.map(p=>({path:p,sha256:sha(`${candidate}/${p}`)}))};
+fs.writeFileSync(`${evidence}/candidate.json`,JSON.stringify(manifest,null,2),{flag:'wx'});
+console.log(JSON.stringify({status:'FROZEN',task,modified,files:manifest.files.length,rootPreserved:true}));

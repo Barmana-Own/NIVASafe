@@ -113,6 +113,11 @@ enum AttachmentKind {
   DOCUMENT
 }
 
+enum AttachmentAssessmentType {
+  FmeaAssessment
+  RulaAssessment
+}
+
 model User {
   id                           String                    @id @default(uuid()) @db.VarChar(36)
   email                        String                    @unique
@@ -230,6 +235,7 @@ model Organization {
   notifications            Notification[]
   invitations              Invitation[]
   attachments              Attachment[]
+  assessmentImageLinks     AttachmentAssessmentLink[]
   knowledgeCategories      KnowledgeCategory[]
   aiRequests               AIAnalysisRequest[]
   conversations            ChatConversation[]
@@ -593,8 +599,23 @@ model Attachment {
   deletedAt      DateTime?
   organization   Organization   @relation(fields: [organizationId], references: [id])
   uploadedBy     User           @relation(fields: [uploadedById], references: [id])
+  assessmentLinks AttachmentAssessmentLink[]
 
   @@index([organizationId, entityType, entityId])
+}
+
+model AttachmentAssessmentLink {
+  id             String                   @id @default(uuid()) @db.VarChar(36)
+  organizationId String                   @db.VarChar(36)
+  attachmentId   String                   @db.VarChar(36)
+  entityType     AttachmentAssessmentType
+  entityId       String                   @db.VarChar(36)
+  createdAt      DateTime                 @default(now())
+  organization   Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  attachment     Attachment               @relation(fields: [attachmentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([attachmentId, entityType, entityId], map: "AttachmentAssessmentLink_attachment_target_key")
+  @@index([organizationId, entityType, entityId], map: "AttachmentAssessmentLink_organization_target_idx")
 }
 
 model Notification {

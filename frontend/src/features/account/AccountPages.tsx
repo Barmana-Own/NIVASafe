@@ -8,6 +8,7 @@ import { scopedDraftKey } from "../../forms/autoSave";
 import { brandAltForLocale, brandLogoForLocale, useI18n } from "../../i18n";
 import { validateMemberRequestIdentity } from "./memberRequestIdentity";
 import { AuthAppearanceControls } from "../../components/AuthAppearanceControls";
+import { useAppearance } from "../../AppearanceProvider";
 import { AccountImageProcessingConsent } from "./ImageProcessingConsent";
 import { WorkspaceTabs } from "../../components/WorkspaceTabs";
 import { useModalFocus } from "../../components/useModalFocus";
@@ -43,6 +44,10 @@ function LoginEnamadSeal() {
 
 export function LoginPage() {
   const { locale, direction, t } = useI18n();
+  const { theme } = useAppearance();
+  const typographySrc = theme === "blue"
+    ? locale === "en" ? "/brand/login-typography-white-en-43467467.png" : "/brand/login-typography-white-fa-5a75f122.png"
+    : locale === "en" ? "/brand/login-typography-en-060c9cae.png" : "/brand/login-typography-fa-7488d145.png";
   const nav = useNavigate(); const location = useLocation(); const [params] = useSearchParams(); const submittingRef = useRef(false); const loginFormRef = useRef<HTMLFormElement>(null); const [error, setError] = useState(""); const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({}); const [loading, setLoading] = useState(false); const [showPassword, setShowPassword] = useState(false); const [rememberMe, setRememberMe] = useState(() => localStorage.getItem("nivasafe-remember-login") !== "false"); const [rememberedLoginEmail] = useState(() => localStorage.getItem(REMEMBERED_LOGIN_EMAIL_KEY) ?? ""); const mobileLoginFormVisible = location.hash === "#login-form";
   function finishLogin(session: Session, organizationId?: string, identifier?: string) {
     saveSession(session, rememberMe, organizationId);
@@ -86,7 +91,7 @@ export function LoginPage() {
   }
   return <main className={`login ${mobileLoginFormVisible ? "mobile-login-form-visible" : ""}`} dir={direction} lang={locale}>
     <nav className="login-toolbar" aria-label={t("auth.links")}>
-      <div className="login-toolbar-brand"><img className="login-toolbar-icon" src="/brand/nivasafe-icon.png" alt={brandAltForLocale(locale)}/></div>
+      <div className="login-toolbar-brand"><picture className="login-toolbar-brand-image"><source media="(min-width: 901px)" srcSet={typographySrc}/><img className="login-toolbar-icon" src="/brand/nivasafe-icon.png" alt={brandAltForLocale(locale)}/></picture></div>
       <div className="login-toolbar-links">
         <span className="login-toolbar-link">{t("auth.features")}</span>
         <span className="login-toolbar-link">{t("auth.licenses")}</span>
@@ -99,6 +104,7 @@ export function LoginPage() {
       <div className="login-hero-content" id="login-about">
         <div className="login-mobile-brand" aria-label={brandAltForLocale(locale)}>
           <img className="login-mobile-brand-icon" src="/brand/nivasafe-icon.png" alt="" />
+          <img className="login-mobile-typography" src={typographySrc} alt={brandAltForLocale(locale)}/>
           <span>{t("auth.brandSubtitle")}</span>
         </div>
         <div className="login-hero-visual" aria-hidden="true"><div className="visual-orb visual-orb-one"/><div className="visual-orb visual-orb-two"/><div className="visual-shield"><Icon name="shield" size={42}/><span>N</span></div><div className="visual-screen"><div className="visual-screen-head"><span/><span/><span/></div><div className="visual-chart"><i/><i/><i/><i/><b/></div><div className="visual-screen-foot"><span/><span/><span/></div></div><div className="visual-hardhat"><span/><b/></div><span className="visual-spark"><Icon name="sparkles" size={20}/></span></div>
@@ -115,7 +121,7 @@ export function LoginPage() {
       </footer>
     </section>
     <form ref={loginFormRef} id="login-form" className="login-card" autoComplete="on" noValidate aria-busy={loading} onSubmit={submit}>
-      <img className="login-card-logo" src="/brand/nivasafe-icon.png" alt={brandAltForLocale(locale)}/><h2>{t("auth.welcome")}</h2><p className="muted">{t("auth.welcomeMessage")}</p>
+      <div className="login-welcome-heading"><img className="login-card-logo" src="/brand/nivasafe-icon.png" alt={brandAltForLocale(locale)}/><h2>{t("auth.welcome")}</h2></div><p className="muted">{t("auth.welcomeMessage")}</p>
       <label htmlFor="login-identifier"><span className="field-label-line">{t("auth.loginIdentifier")}</span><input id="login-identifier" name="identifier" type="text" inputMode="email" dir="ltr" placeholder={t("auth.loginUsernamePlaceholder")} autoComplete="username" defaultValue={rememberedLoginEmail} autoCapitalize="none" spellCheck={false} maxLength={254} disabled={loading} aria-invalid={Boolean(fieldErrors.identifier)} aria-describedby={fieldErrors.identifier ? "login-identifier-error" : undefined} onChange={() => { setFieldErrors((current) => ({ ...current, identifier: undefined })); setError(""); }} required/>{fieldErrors.identifier && <small id="login-identifier-error" className="field-error" role="alert">{fieldErrors.identifier}</small>}</label><label htmlFor="login-password"><span className="field-label-line">{t("auth.password")}</span><div className="password-field"><input id="login-password" name="password" aria-label={t("auth.password")} type={showPassword ? "text" : "password"} dir="ltr" placeholder={t("auth.passwordPlaceholder")} autoComplete="current-password" maxLength={128} disabled={loading} aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? "login-password-error" : undefined} onChange={() => { setFieldErrors((current) => ({ ...current, password: undefined })); setError(""); }} required/><button type="button" className="password-toggle" disabled={loading} onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")} title={showPassword ? t("auth.hidePassword") : t("auth.showPassword")} aria-controls="login-password"><Icon name={showPassword ? "eyeOff" : "eye"} size={19}/></button></div>{fieldErrors.password && <small id="login-password-error" className="field-error" role="alert">{fieldErrors.password}</small>}</label>
       <div className="login-options"><label className="remember-me"><input type="checkbox" checked={rememberMe} disabled={loading} onChange={(event) => setRememberMe(event.target.checked)}/><span>{t("auth.rememberMe")}</span></label><Link className="login-link" to="/forgot-password">{t("auth.forgotPassword")}</Link></div>
       {error && <div className="alert error" role="alert" aria-live="assertive"><Icon name="warning"/>{error}</div>}

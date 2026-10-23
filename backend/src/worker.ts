@@ -5,6 +5,7 @@ import { describeAIProviderError, getRoutedAIProvider } from "./ai-provider.js";
 import { recordAIUsage } from "./ai-usage.js";
 import { prisma } from "./core.js";
 import { deliverEmailOutbox } from "./mail.js";
+import { isRulaImageResultType } from "./ai-analysis-types.js";
 
 const redisUrl = process.env.REDIS_URL;
 if (!redisUrl) { process.stderr.write("REDIS_URL is required for the queue worker\n"); process.exit(1); }
@@ -12,6 +13,8 @@ const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
 
 const aiWorker = new Worker("nivasafe-ai", async (job) => {
   const request = await prisma.aIAnalysisRequest.findUnique({ where: { id: String(job.data.requestId) } }); if (!request) return;
+  // Image results are already complete; replay would bypass the consent-bound upload path.
+  if (isRulaImageResultType(request.type)) return;
   const input = request.input as { message?: string }; const provider = getRoutedAIProvider("risk", request.provider);
   if (!provider.available()) { await prisma.aIAnalysisRequest.update({ where: { id: request.id }, data: { status: AIRequestStatus.WAITING_FOR_PROVIDER, error: "AI provider is not configured", attempts: { increment: 1 } } }); return; }
   await prisma.aIAnalysisRequest.update({ where: { id: request.id }, data: { status: AIRequestStatus.PROCESSING, startedAt: new Date(), attempts: { increment: 1 } } });

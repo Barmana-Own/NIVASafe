@@ -2,7 +2,11 @@ import { suggestedRulaPostureScore } from "@nivasafe/domain";
 import { z } from "zod";
 import { landmarkNames, measureRulaImagePlane, type LandmarkFrame } from "./rula-geometry.js";
 import { rulaMeasurementSchema, type RulaMeasurement } from "./rula-measurement.js";
+import { rulaAdjustmentSuggestionsSchema, suggestRulaActivityAdjustments, type RulaAdjustmentSuggestions } from "./rula-adjustments.js";
+import type { RulaActivityInfo } from "./rula-process.js";
 import {buildRulaLandmarkPrompt,parseLocalizedRulaImage} from "./rula-landmark-localization.js";
+import {geometryFromRulaLocalPose} from "./rula-local-pose-geometry.js";
+import type {RulaLocalPoseResult} from "./rula-pose-provider.js";
 import {
   rulaBodySideKeys,
   rulaOverlayPointKeys,
@@ -24,12 +28,20 @@ export type RulaPostureImageRow = {
 
 export type RulaPostureImageSide = Record<RulaPosturePart, RulaPostureImageRow> & {
   overlay: RulaPostureImageOverlay;
+  adjustments?: RulaAdjustmentSuggestions;
 };
 
 export type RulaPostureImageAnalysis = {
   sides: Partial<Record<RulaBodySideResult, RulaPostureImageSide>>;
   notes: string;
 };
+
+/** Add only deterministic activity facts, never model-generated load/timing claims. */
+export function withRulaActivityAdjustments(analysis: RulaPostureImageAnalysis, activity?: RulaActivityInfo): RulaPostureImageAnalysis {
+  const adjustments = suggestRulaActivityAdjustments(activity);
+  if (!Object.keys(adjustments).length) return analysis;
+  return { ...analysis, sides: Object.fromEntries(Object.entries(analysis.sides).map(([side, result]) => [side, { ...result, adjustments: { ...adjustments } }])) };
+}
 
 export type RulaPostureTextAnalysisInput = {
   bodySide: "LEFT" | "RIGHT" | "BOTH";
@@ -161,7 +173,7 @@ function parseOverlay(value: unknown): RulaPostureImageOverlay {
   return parsed.data;
 }
 
-function parseSide(value: unknown, requireHumanReview: boolean): RulaPostureImageSide | null {
+function parseSide(value: unknown, requireHumanReview: boolean, ignoreModelCoordinates = false): RulaPostureImageSide | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const source = value as Record<string, unknown>;
   const rows: Partial<Record<RulaPosturePart, RulaPostureImageRow>> = {};
@@ -186,19 +198,21 @@ function parseSide(value: unknown, requireHumanReview: boolean): RulaPostureImag
     };
   }
   if (!rulaPosturePartKeys.every((part) => rows[part] !== undefined)) return null;
-  return { ...(rows as Record<RulaPosturePart, RulaPostureImageRow>), overlay: parseOverlay(source.overlay) };
+  return { ...(rows as Record<RulaPosturePart, RulaPostureImageRow>), overlay: ignoreModelCoordinates ? {points:{}} : parseOverlay(source.overlay) };
 }
 
-export function buildRulaPostureImageAnalysisPrompt(input: { bodySide: "LEFT" | "RIGHT" | "BOTH"; jobTitle?: string; taskDescription?: string; postureDescription?: string; activityInfo?: unknown; locale: "fa" | "en"; imageGeometry?: RulaImageGeometryContext }) {
-  // Keep the alternate compact contract available for local desktop evaluation only.
-  // Production always remains on the approved, previously released response contract.
-  if(process.env.NODE_ENV!=="production"&&process.env.RULA_LANDMARK_EXPERIMENT_V2==="1"&&input.imageGeometry) return buildRulaLandmarkPrompt({...input,imageGeometry:input.imageGeometry});
+export function buildRulaPostureImageAnalysisPrompt(input: { bodySide: "LEFT" | "RIGHT" | "BOTH"; jobTitle?: string; taskDescription?: string; postureDescription?: string; activityInfo?: unknown; locale: "fa" | "en"; imageGeometry?: RulaImageGeometryContext; localPose?: boolean }) {
+  // Research-only contract. Development evidence has not justified production promotion.
+  // This changes representation, never authorization, consent, routing or scoring rules.
+  if(!input.localPose&&process.env.NODE_ENV==="test"&&process.env.RULA_LANDMARK_EXPERIMENT_V2==="1"&&input.imageGeometry) return buildRulaLandmarkPrompt({...input,imageGeometry:input.imageGeometry});
   const language = input.locale === "en" ? "English" : "Persian";
   const requestedSides = input.bodySide === "BOTH" ? "LEFT and RIGHT" : input.bodySide;
   return [
     "NIVASAFE_RULA_POSTURE_IMAGE_REVIEW",
     'Return exactly one complete JSON object with top-level keys "sides" and "notes". The "sides" value is an object whose keys are the requested anatomical sides. For BOTH, put both "LEFT" and "RIGHT" inside "sides"; do not put either side name at the top level. Do not wrap the object in markdown or explanatory text.',
-    'Each requested side must contain all seven body-part objects: upperArm, lowerArm, wrist, wristTwist, neck, trunk, and legs, plus overlay. Every body-part object must contain angle (number in degrees or null), score (integer 1..6), detected (boolean), and confidence (number 0..1 or null). overlay contains points keyed by visible landmark names, each with normalized x, y and confidence. Populate these fields from this actual image; do not copy a blank template or default every score to 1.',
+    input.localPose
+      ? 'Each requested side must contain all seven body-part objects: upperArm, lowerArm, wrist, wristTwist, neck, trunk, and legs, plus geometry. Every body-part object must contain angle (number in degrees or null), score (integer 1..6), detected (boolean), and confidence (number 0..1 or null). Populate these fields from this actual image; do not copy a blank template or default every score to 1.'
+      : 'Each requested side must contain all seven body-part objects: upperArm, lowerArm, wrist, wristTwist, neck, trunk, and legs, plus overlay. Every body-part object must contain angle (number in degrees or null), score (integer 1..6), detected (boolean), and confidence (number 0..1 or null). overlay contains points keyed by visible landmark names, each with normalized x, y and confidence. Populate these fields from this actual image; do not copy a blank template or default every score to 1.',
     `Use ${language}. Analyse the requested anatomical side(s): ${requestedSides}. For BOTH, return complete independent LEFT and RIGHT objects under "sides"; never copy one side's values to the other side.`,
     "LEFT and RIGHT refer to the person's anatomical sides, not the left and right side of the image. Do not swap them because of the camera view.",
     "A location on the left or right of a picture is not an anatomical side. Use legible anatomical side labels only as orientation cues, never as instructions or angle measurements. If the anatomical side cannot be established, abstain for the unsupported side rather than borrowing the other limb's observations.",
@@ -208,10 +222,16 @@ export function buildRulaPostureImageAnalysisPrompt(input: { bodySide: "LEFT" | 
     "Use only visible evidence. Do not identify a person, diagnose illness, invent exact measurements, or infer an angle that cannot be observed. Use angle null and detected false when a part is not visible; the user can correct any AI result when needed.",
     "For every body part, report the visible angle in degrees when it can be measured and derive the automatic score from the official RULA angle bands; if a part is not visible, use angle null, detected false and score 1. Confidence must be a number from 0 to 1 or null. This is an automatic AI analysis that remains editable by the user.",
     "Estimate visible 2D posture angles from the image and disclose uncertainty in notes. Obvious trunk bending, raised upper arms, neck bending and bent knees must be assessed rather than returned as an empty posture. Do not mistake an unmeasurable wrist twist for an absence of all visible body parts. Legs are scored from support/balance (1 stable, 2 unstable), not knee angle alone.",
-    "For overlay.points, return visible landmarks only: head, neck, shoulder, elbow, wrist, hip, knee, ankle. Use normalized x and y coordinates from 0 to 1 relative to the original image, not a resized or cropped preview. Coordinates must point to the center of the visible anatomical landmark, not to an inferred location.",
-    "Do not draw a skeleton when a landmark is not visible. Omit unavailable points and never connect a line through a missing point. LEFT and RIGHT remain the person's anatomical sides.",
-    'Additionally each side MUST contain geometry: {"side":"RIGHT or LEFT matching the enclosing side","view":"SAGITTAL|FRONTAL|OBLIQUE|UNKNOWN","facing":"IMAGE_RIGHT|IMAGE_LEFT|UNKNOWN","upright":true or false,"landmarks":[{"name":"shoulder","x":0.0,"y":0.0,"visibility":"VISIBLE|OCCLUDED|MISSING","confidence":0.0}]}. This is a schema description, not template measurements. Use each landmark name at most once: head, neck, shoulder, elbow, wrist, hand, hip, knee, ankle. head is the head center; neck the head/neck junction; hand the visible end of the hand longitudinal axis, not the wrist. Trace the actual arm from its torso junction through the elbow to the wrist and hand. Use coordinates null and visibility MISSING/OCCLUDED when unsupported. Never guess a hidden point. upright may be true only if a gravity/ground reference establishes image vertical; otherwise false. A frontal view does not measure sagittal flexion. An image-plane head-axis proxy is not a 3D cervical measurement. These landmarks are independently checked; disagreement with your proposed degrees requires human measurement, not invented corrections.',
-    input.imageGeometry ? `The supplied image has already been EXIF-oriented and stripped of metadata. Its actual width is ${input.imageGeometry.width} pixels and height is ${input.imageGeometry.height} pixels. Normalize x by WIDTH and y by HEIGHT separately; origin is top-left, Y increases downwards. Do not treat a non-square image as square when estimating angles.` : "Use original image dimensions for coordinate normalization.",
+    input.localPose
+      ? "Joint localization is performed separately on this server by a specialist pose detector. Do not generate landmark coordinates, joint positions, or an overlay. Do not invent a neck/cervical measurement from a face proxy."
+      : "For overlay.points, return visible landmarks only: head, neck, shoulder, elbow, wrist, hip, knee, ankle. Use normalized x and y coordinates from 0 to 1 relative to the original image, not a resized or cropped preview. Coordinates must point to the center of the visible anatomical landmark, not to an inferred location.",
+    input.localPose
+      ? "LEFT and RIGHT remain the person's anatomical sides. Missing or hidden anatomy requires uncertainty and human review."
+      : "Do not draw a skeleton when a landmark is not visible. Omit unavailable points and never connect a line through a missing point. LEFT and RIGHT remain the person's anatomical sides.",
+    input.localPose
+      ? 'Additionally each requested side MUST contain a property named "geometry" with this high-level context: "geometry":{"view":"SAGITTAL|FRONTAL|OBLIQUE|UNKNOWN","facing":"IMAGE_RIGHT|IMAGE_LEFT|UNKNOWN","upright":true or false}. Put geometry INSIDE that side, alongside its seven body-part objects; never put view/upright directly on the side or at the root. The exact nesting is {"sides":{"LEFT":{"upperArm":{...},"lowerArm":{...},"wrist":{...},"wristTwist":{...},"neck":{...},"trunk":{...},"legs":{...},"geometry":{...}}},"notes":"..."}; use the requested side keys only. This context may withhold unsupported measurements; it cannot replace local detector evidence. upright may be true only if a gravity/ground reference establishes image vertical; otherwise false. A frontal or oblique view does not establish sagittal flexion. Facing is advisory and independently checked by local face landmarks.'
+      : 'Additionally each side MUST contain geometry: {"side":"RIGHT or LEFT matching the enclosing side","view":"SAGITTAL|FRONTAL|OBLIQUE|UNKNOWN","facing":"IMAGE_RIGHT|IMAGE_LEFT|UNKNOWN","upright":true or false,"landmarks":[{"name":"shoulder","x":0.0,"y":0.0,"visibility":"VISIBLE|OCCLUDED|MISSING","confidence":0.0}]}. This is a schema description, not template measurements. Use each landmark name at most once: head, neck, shoulder, elbow, wrist, hand, hip, knee, ankle. head is the head center; neck the head/neck junction; hand the visible end of the hand longitudinal axis, not the wrist. Trace the actual arm from its torso junction through the elbow to the wrist and hand. Use coordinates null and visibility MISSING/OCCLUDED when unsupported. Never guess a hidden point. upright may be true only if a gravity/ground reference establishes image vertical; otherwise false. A frontal view does not measure sagittal flexion. An image-plane head-axis proxy is not a 3D cervical measurement. These landmarks are independently checked; disagreement with your proposed degrees requires human measurement, not invented corrections.',
+    input.imageGeometry ? `The supplied image has already been EXIF-oriented and stripped of metadata. Its actual width is ${input.imageGeometry.width} pixels and height is ${input.imageGeometry.height} pixels. ${input.localPose ? "Do not treat a non-square image as square when estimating angles." : "Normalize x by WIDTH and y by HEIGHT separately; origin is top-left, Y increases downwards. Do not treat a non-square image as square when estimating angles."}` : input.localPose ? "Image dimensions do not establish anatomical measurements." : "Use original image dimensions for coordinate normalization.",
     `Job/process: ${cleanText(input.jobTitle, 180) || "-"}`,
     `Task: ${cleanText(input.taskDescription, 500) || "-"}`,
     `Human-provided posture notes: ${cleanText(input.postureDescription, 1_000) || "-"}`,
@@ -245,14 +265,14 @@ export function buildRulaPostureTextAnalysisPrompt(input: RulaPostureTextAnalysi
   ].join("\n");
 }
 
-function parseRulaPostureAnalysis(answer: string, bodySide: "LEFT" | "RIGHT" | "BOTH", requireHumanReview: boolean): RulaPostureImageAnalysis {
+function parseRulaPostureAnalysis(answer: string, bodySide: "LEFT" | "RIGHT" | "BOTH", requireHumanReview: boolean, ignoreModelCoordinates = false): RulaPostureImageAnalysis {
   const parsed = parseJsonObject(answer);
   if (!parsed) invalidResponse("AI posture analysis did not return a JSON object", "response_json_invalid");
   const rawSides = parsed?.sides ?? parsed?.sideAnalyses;
   if (!rawSides || typeof rawSides !== "object" || Array.isArray(rawSides)) invalidResponse("AI posture analysis returned no side results", "side_container_missing");
   const requestedSides = bodySide === "BOTH" ? rulaBodySideKeys : [bodySide] as const;
   const sides = Object.fromEntries(requestedSides.map((side) => {
-    const parsedSide = parseSide((rawSides as Record<string, unknown>)[side], requireHumanReview);
+    const parsedSide = parseSide((rawSides as Record<string, unknown>)[side], requireHumanReview, ignoreModelCoordinates);
     if (!parsedSide) invalidResponse(`AI posture analysis returned an incomplete ${side} result`, side === "LEFT" ? "side_result_incomplete_left" : "side_result_incomplete_right");
     return [side, parsedSide];
   })) as Partial<Record<RulaBodySideResult, RulaPostureImageSide>>;
@@ -260,6 +280,18 @@ function parseRulaPostureAnalysis(answer: string, bodySide: "LEFT" | "RIGHT" | "
 }
 
 export type RulaImageGeometryContext = { width: number; height: number; normalized: true };
+
+/** Earlier prompt wording allowed a side-local flat view context. Accept only
+ * known, correctly typed cues from that SAME side; never borrow root/other-side
+ * context or override an explicitly supplied nested geometry object.
+ */
+function localPoseViewContext(side: Record<string, unknown> | undefined): unknown {
+  if (!side) return undefined;
+  if (Object.hasOwn(side, "geometry")) return side.geometry;
+  if (!Object.hasOwn(side, "view") || !["SAGITTAL", "FRONTAL", "OBLIQUE", "UNKNOWN"].includes(side.view as string)) return undefined;
+  if (Object.hasOwn(side, "upright") && typeof side.upright !== "boolean") return undefined;
+  return { view: side.view, upright: side.upright === true };
+}
 
 const landmarkGeometrySchema = z.object({
   side:z.enum(["LEFT","RIGHT"]).optional(),
@@ -282,7 +314,7 @@ function auditImageGeometry(side:RulaPostureImageSide,raw:unknown,sideName:RulaB
   const rows={...side};
   for(const part of rulaPosturePartKeys) {
     const original=side[part], measured=measureRulaImagePlane(part,frame);
-    const base={version:"image-plane-audit-v1" as const,basis:part==="legs"?"SUPPORT" as const:part==="wristTwist"?"UNSUPPORTED" as const:"IMAGE_PLANE" as const,aiAngle:original.angle,aiScore:original.score,geometryAngle:measured.angle,view:frame.view,facing:frame.facing,referenceUp:frame.up,width:context.width,height:context.height,landmarks:(geometry?.landmarks??[]).filter(l=>measured.landmarks.includes(l.name))};
+    const base={version:"image-plane-audit-v1" as const,basis:part==="legs"?"SUPPORT" as const:part==="wristTwist"?"UNSUPPORTED" as const:"IMAGE_PLANE" as const,aiAngle:original.angle,aiScore:original.score,aiDetected:original.detected,geometryAngle:measured.angle,view:frame.view,facing:frame.facing,referenceUp:frame.up,width:context.width,height:context.height,landmarks:(geometry?.landmarks??[]).filter(l=>measured.landmarks.includes(l.name))};
     let state:RulaMeasurement["state"]="UNMEASURABLE";
     let qualityCodes:RulaMeasurement["qualityCodes"];
     if(part==="legs"&&original.detected&&original.confidence!==null&&original.confidence>=.5) { state="QUALITATIVE";qualityCodes=["SUPPORT_REQUIRES_OBSERVATION"]; }
@@ -301,15 +333,25 @@ function auditImageGeometry(side:RulaPostureImageSide,raw:unknown,sideName:RulaB
   return rows;
 }
 
-export function parseRulaPostureImageAnalysis(answer: string, bodySide: "LEFT" | "RIGHT" | "BOTH", context?:RulaImageGeometryContext): RulaPostureImageAnalysis {
-  if(context&&process.env.NODE_ENV!=="production"&&process.env.RULA_LANDMARK_EXPERIMENT_V2==="1") return parseLocalizedRulaImage(parseJsonObject(answer),bodySide,context);
+export function parseRulaPostureImageAnalysis(answer: string, bodySide: "LEFT" | "RIGHT" | "BOTH", context?:RulaImageGeometryContext, localPose?:RulaLocalPoseResult): RulaPostureImageAnalysis {
+  if(!localPose&&context&&process.env.NODE_ENV==="test"&&process.env.RULA_LANDMARK_EXPERIMENT_V2==="1") return parseLocalizedRulaImage(parseJsonObject(answer),bodySide,context);
+  if(localPose&&!context) invalidResponse("Local pose image reference frame missing","image_reference_frame_invalid");
   // Model confidence is not a calibrated measurement or a substitute for assessor review.
-  const result=parseRulaPostureAnalysis(answer, bodySide, true);
+  const result=parseRulaPostureAnalysis(answer, bodySide, true, localPose!==undefined);
   if(context) {
     if(!Number.isInteger(context.width)||!Number.isInteger(context.height)||context.width<=0||context.height<=0||context.width>16384||context.height>16384||context.normalized!==true) invalidResponse("Invalid normalized image reference frame","image_reference_frame_invalid");
     const raw=parseJsonObject(answer)!;
     const sides=(raw.sides??raw.sideAnalyses) as Record<string,Record<string,unknown>>;
-    for(const name of rulaBodySideKeys) if(result.sides[name]) result.sides[name]=auditImageGeometry(result.sides[name]!,sides[name]?.geometry,name,context);
+    for(const name of rulaBodySideKeys) if(result.sides[name]) {
+      if(localPose) {
+        const localized=geometryFromRulaLocalPose(localPose,name,context,localPoseViewContext(sides[name]));
+        const audited=auditImageGeometry({...result.sides[name]!,overlay:localized.overlay},localized.geometry,name,context);
+        // Local detector confidence is not calibrated anatomical accuracy. The
+        // published angle remains the independently audited AI suggestion.
+        for(const part of rulaPosturePartKeys) if(audited[part].measurement) audited[part].measurement!.trustedSource="AI_ANGLE_AUDIT";
+        result.sides[name]=audited;
+      } else result.sides[name]=auditImageGeometry(result.sides[name]!,sides[name]?.geometry,name,context);
+    }
   }
   return result;
 }
@@ -372,6 +414,7 @@ const rulaImageResponseSideSchema = z.object({
   trunk: rulaImageResponseRowSchema,
   legs: rulaImageResponseRowSchema,
   overlay: rulaPostureImageOverlaySchema,
+  adjustments: rulaAdjustmentSuggestionsSchema.optional(),
 }).strict();
 
 export const rulaPostureImageAnalysisResponseSchema = z.object({

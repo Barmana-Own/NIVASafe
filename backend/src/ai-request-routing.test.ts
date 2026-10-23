@@ -5,17 +5,21 @@ import { z } from "zod";
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   findUniqueOrThrow: vi.fn(),
+  findFirst: vi.fn(),
+  findMany: vi.fn(),
+  count: vi.fn(),
+  update: vi.fn(),
   enqueueAI: vi.fn(),
   audit: vi.fn(),
 }));
 
 vi.mock("./core.js", () => ({
-  prisma: { aIAnalysisRequest: { create: mocks.create, findUniqueOrThrow: mocks.findUniqueOrThrow } },
+  prisma: { aIAnalysisRequest: { create: mocks.create, findUniqueOrThrow: mocks.findUniqueOrThrow, findFirst: mocks.findFirst, findMany: mocks.findMany, count: mocks.count, update: mocks.update } },
   requireOrg: () => "org-a",
   envelope: (data: unknown) => ({ data }),
   parse: (schema: z.ZodType, data: unknown) => schema.parse(data),
   audit: mocks.audit,
-  pageParams: vi.fn(),
+  pageParams: () => ({ page: 1, limit: 20 }),
 }));
 vi.mock("./auth-guard.js", () => ({ authenticate: async (request: { actor: unknown }) => { request.actor = { userId: "user-a" }; } }));
 vi.mock("./ai-provider.js", () => ({
@@ -35,9 +39,60 @@ beforeEach(() => {
   mocks.enqueueAI.mockResolvedValue(true);
   mocks.create.mockResolvedValue({ id: "request-a" });
   mocks.findUniqueOrThrow.mockResolvedValue({ id: "request-a", provider: "arvancloud" });
+  mocks.findMany.mockResolvedValue([]);
+  mocks.count.mockResolvedValue(0);
 });
 
 describe("assessment provider routing", () => {
+  it.each(["RULA_POSTURE_IMAGE", "rula_posture_image"])("does not let a generic text request impersonate private image type %s", async type => {
+    const app = Fastify();
+    await app.register(registerAIRoutes);
+    try {
+      const response = await app.inject({ method: "POST", url: "/api/v1/ai/requests", payload: { type, message: "Synthetic request" } });
+      expect(response.statusCode).toBe(400);
+      expect(mocks.create).not.toHaveBeenCalled();
+      expect(mocks.enqueueAI).not.toHaveBeenCalled();
+    } finally { await app.close(); }
+  });
+
+  it("keeps private posture results out of generic tenant listings", async () => {
+    const app = Fastify();
+    await app.register(registerAIRoutes);
+    try {
+      expect((await app.inject({ url: "/api/v1/ai/requests" })).statusCode).toBe(200);
+      expect(mocks.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { organizationId: "org-a", type: { not: "RULA_POSTURE_IMAGE" } } }));
+      expect(mocks.count).toHaveBeenCalledWith({ where: { organizationId: "org-a", type: { not: "RULA_POSTURE_IMAGE" } } });
+    } finally { await app.close(); }
+  });
+
+  it("does not expose or replay an image result through generic get/retry routes", async () => {
+    const id = "7d6d9bb4-54be-48f8-b5fe-110ba1ad0624";
+    const privateRow = { id, organizationId: "org-a", type: "RULA_POSTURE_IMAGE", output: { privateFindings: true } };
+    mocks.findFirst.mockImplementation(async ({ where }) => where.type?.not === privateRow.type ? null : privateRow);
+    const app = Fastify();
+    await app.register(registerAIRoutes);
+    try {
+      for (const options of [{ url: `/api/v1/ai/requests/${id}` }, { method: "POST" as const, url: `/api/v1/ai/requests/${id}/retry` }]) {
+        const response = await app.inject(options);
+        expect(response.statusCode).toBe(404);
+        expect(response.body).not.toContain("privateFindings");
+      }
+      expect(mocks.update).not.toHaveBeenCalled();
+      expect(mocks.enqueueAI).not.toHaveBeenCalled();
+    } finally { await app.close(); }
+  });
+
+  it("preserves the ordinary text retry flow", async () => {
+    const id = "7d6d9bb4-54be-48f8-b5fe-110ba1ad0624";
+    mocks.findFirst.mockResolvedValue({ id, organizationId: "org-a", userId: "user-a", type: "GENERAL", provider: "arvancloud", input: { message: "Synthetic task" } });
+    const app = Fastify();
+    await app.register(registerAIRoutes);
+    try {
+      expect((await app.inject({ method: "POST", url: `/api/v1/ai/requests/${id}/retry` })).statusCode).toBe(202);
+      expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id }, data: expect.objectContaining({ status: "PENDING" }) }));
+      expect(mocks.enqueueAI).toHaveBeenCalledWith(id);
+    } finally { await app.close(); }
+  });
   it("rejects a caller-selected provider that differs from server configuration", async () => {
     const app = Fastify();
     app.setErrorHandler((error, _request, reply) => {

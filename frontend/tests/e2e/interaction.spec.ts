@@ -447,4 +447,34 @@ test.describe("responsive shell and critical interactions", () => {
     await expect(page.getByRole("heading", { name: "اعلان‌ها" })).toBeVisible();
     await expect(page.getByText("نتیجه ارزیابی آماده است")).toBeVisible();
   });
+
+  test("keeps the reply confirmation visible while refreshing support requests", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await authenticate(page, "/support");
+    await page.getByRole("button", { name: /مشاهده و ادامه گفتگو/ }).click();
+    await page.getByRole("textbox", { name: "پاسخ شما" }).fill("پیام ساختگی برای آزمون تایید ارسال پاسخ");
+    await page.getByRole("button", { name: "ارسال پاسخ" }).click();
+    await expect(page.locator(".support-thread-panel [role=status]")).toContainText("پاسخ در پرونده ثبت شد.");
+  });
+
+  test("shows the default AI allowance and confirms an admin quota update", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await authenticate(page, "/admin");
+    await page.getByRole("tab", { name: /هوش مصنوعی/ }).click();
+    const firstUser = page.getByRole("row", { name: /کاربر آزمون ریسپانسیو/ });
+    await expect(firstUser.getByRole("checkbox", { name: /دسترسی هوش مصنوعی/ })).toBeChecked();
+    const limit = firstUser.getByRole("textbox", { name: /سقف توکن/ });
+    await expect(limit).toHaveValue("1000000");
+    await limit.fill("1250000");
+    await firstUser.getByRole("button", { name: /ذخیره: کاربر آزمون ریسپانسیو/ }).click();
+    await expect(page.getByRole("status")).toContainText("سهمیه هوش مصنوعی به‌روزرسانی شد.");
+    await expect(limit).toHaveValue("1250000");
+  });
+
+  test("renders the notification inbox with the summary response shape", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await authenticate(page, "/notifications");
+    await expect(page.getByRole("heading", { name: "اعلان‌ها" })).toBeVisible();
+    await expect(page.getByText("نتیجه ارزیابی آماده است")).toBeVisible();
+  });
 });

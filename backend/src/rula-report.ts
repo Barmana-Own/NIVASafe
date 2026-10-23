@@ -149,6 +149,7 @@ export function buildRulaSuggestions(analysis: RulaPostureAnalysis, inputs: Rula
 export function rulaInputsForAnalysis(inputs: RulaInput, analysis: RulaPostureAnalysis): RulaInput {
   return {
     ...inputs,
+    ...analysis.adjustments,
     upperArm: analysis.upperArm.score,
     lowerArm: analysis.lowerArm.score,
     wrist: analysis.wrist.score,

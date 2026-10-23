@@ -11,6 +11,8 @@ import { useMenuPlacement } from "../../components/useMenuPlacement";
 import { LoadState } from "../../components/LoadState";
 import { useModalFocus } from "../../components/useModalFocus";
 import { OrganizationImageButton } from "../files/OrganizationImagePicker";
+import { assessmentImageFileKey, organizationImageSource } from "../files/organizationImageSource";
+import { persistAssessmentImage } from "./assessmentImagePersistence";
 import { RulaReportOverview } from "./RulaReportOverview";
 import { RulaEvaluationRowDialog } from "./RulaEvaluationRowDialog";
 import { buildRulaEvaluationRows } from "./rulaEvaluationRows";
@@ -28,10 +30,12 @@ import { assessmentAiFailure, rulaImageManualRetryAllowed } from "./assessmentAi
 import { rulaAiRequest } from "./rulaAiRequest";
 import { canAdvanceRulaImageReview, isManualRulaReviewComplete, type RulaPhotoReviewStatus } from "./rulaImageReviewFlow";
 import { areRulaPostureRowsReviewed, areRulaPostureSidesReviewed, isRulaPostureResultReviewed, summarizeReviewedRulaAssessments } from "./rulaPostureReview";
-import { canStartRulaAutomaticAnalysis, getRulaAutomaticAnalysisMode, hasRulaActivityContext, runRulaAnalysisQueue } from "./rulaAnalysisQueue";
+import { canStartRulaAutomaticAnalysis, getRulaAutomaticAnalysisMode, hasRulaActivityContext, rulaAutomaticReviewContext, runRulaAnalysisQueue } from "./rulaAnalysisQueue";
 import { prepareRulaVisionImage } from "./rulaVisionImage";
-import { authorizeRulaAutomaticImage, rulaImagePolicyErrorKey, type RulaImageAnalysisPolicy } from "./rulaImageAnalysisPolicy";
-import { authorizeFmeaAutomaticImage, fmeaImagePolicyErrorKey, type FmeaImageAnalysisPolicy } from "./fmeaImageAnalysisPolicy";
+import { authorizeRulaAutomaticImage, isRulaImageOwnershipValid, rulaImagePolicyErrorKey, type RulaImageAnalysisPolicy, type RulaImageOwnership } from "./rulaImageAnalysisPolicy";
+import { type PostureImageAuthorizationsResponse } from "../account/postureImageAuthorization";
+import { ACCOUNT_IMAGE_CONSENT_VERSION } from "../account/imageProcessingPolicy";
+import { RulaImageSubjectSelector, rulaImageOwnershipCopy } from "./RulaImageSubjectSelector";
 import { RulaImageReviewDialog } from "./RulaImageReviewDialog";
 import { RulaPostureImageCard } from "./RulaPostureImageCard";
 import { measurementFromValue, measurementQualityLabel, type RulaMeasurement } from "./rulaMeasurement";
@@ -72,13 +76,14 @@ export type RulaPostureRow = { angle: number | null; score: number; detected: bo
 type RulaOverlayPoint = "head" | "neck" | "shoulder" | "elbow" | "wrist" | "hand" | "hip" | "knee" | "ankle";
 type RulaPostureImagePoint = { x: number; y: number; confidence?: number | null };
 type RulaPostureImageOverlay = { points: Partial<Record<RulaOverlayPoint, RulaPostureImagePoint>> };
-type RulaPostureImageSide = Record<RulaPosturePart, { angle: number | null; score: number; detected: boolean; confidence: number | null; requiresReview?: boolean; measurement?: RulaMeasurement }> & { overlay: RulaPostureImageOverlay };
-type RulaPostureAnalysisResponse = { sides: Partial<Record<"LEFT" | "RIGHT", RulaPostureImageSide>>; notes: string; provider: string; model?: string; aiStatus: "connected" | "fallback" };
+type RulaAdjustments = { force: number; muscleUse: boolean };
+type RulaPostureImageSide = Record<RulaPosturePart, { angle: number | null; score: number; detected: boolean; confidence: number | null; requiresReview?: boolean; measurement?: RulaMeasurement }> & { overlay: RulaPostureImageOverlay; adjustments?: Partial<RulaAdjustments> };
+type RulaPostureAnalysisResponse = { sides: Partial<Record<"LEFT" | "RIGHT", RulaPostureImageSide>>; notes: string; provider: string; model?: string; aiStatus: "connected" | "fallback"; analysisRequestId?: string; analysisRequestIds?: string[] };
 type RulaPostureImageAnalysisResponse = RulaPostureAnalysisResponse;
 type RulaBodySide = "LEFT" | "RIGHT";
 type RulaActionBodySide = "LEFT" | "RIGHT" | "BOTH";
 export type RulaEvaluationDetails = { id: string; group?: string; bodyPart?: string; scoreShare?: number; title?: string; description?: string; priority?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"; status?: "UNSELECTED" | "IN_PROGRESS" | "COMPLETED"; deleted?: boolean };
-type RulaSinglePostureAnalysis = Record<RulaPosturePart, RulaPostureRow> & { evaluationRows?: RulaEvaluationDetails[] };
+type RulaSinglePostureAnalysis = Record<RulaPosturePart, RulaPostureRow> & { evaluationRows?: RulaEvaluationDetails[]; adjustments?: RulaAdjustments; bodySide?: RulaBodySide };
 type RulaPostureAnalysis = RulaSinglePostureAnalysis & { sideAnalyses?: Partial<Record<RulaBodySide, RulaSinglePostureAnalysis>>; imageOverlay?: RulaPostureImageOverlay; sideImageOverlays?: Partial<Record<RulaBodySide, RulaPostureImageOverlay>>; imageAssessments?: RulaImageAssessment[] };
 type RulaImageAssessment = { imageKey: string; fileName: string; analysis: Omit<RulaPostureAnalysis, "imageAssessments">; model?: string; attachmentId?: string; force: number; muscleUse: boolean };
 type RulaWizardStep = 1 | 2 | 3;
@@ -794,7 +799,7 @@ function ProcessSuggestionPicker({ category, suggestions, selected, newValue, on
 
 
 function fmeaProcessImageFileKey(file: File) {
-  return `${file.name}:${file.size}:${file.lastModified}`;
+  return assessmentImageFileKey(file);
 }
 
 function normaliseFmeaImageAnnotations(value: unknown): FmeaImageAnnotation[] {
@@ -874,7 +879,6 @@ function FmeaProcessPage() {
   const [department, setDepartment] = useState(() => draftValue(readLocalDraft(draftKey), "department"));
   const [activityDescription, setActivityDescription] = useState(() => draftValue(readLocalDraft(draftKey), "activityDescription"));
   const [processImages, setProcessImages] = useState<File[]>([]);
-  const fmeaImagePolicy = useLoad<FmeaImageAnalysisPolicy>(processImages.length ? "/fmea/image-analysis-policy" : null, [processImages.map(fmeaProcessImageFileKey).join("|")]);
   const [processImagePreviews, setProcessImagePreviews] = useState<string[]>([]);
   const [processImageError, setProcessImageError] = useState("");
   const [processImageAnalysis, setProcessImageAnalysis] = useState<FmeaProcessImageAnalysis | null>(null);
@@ -1139,12 +1143,7 @@ function FmeaProcessPage() {
 
   useEffect(() => {
     if (!processImages.length) return;
-    if (fmeaImagePolicy.loading || (!fmeaImagePolicy.data && !fmeaImagePolicy.error)) return;
-    if (!fmeaImagePolicy.data?.available) {
-      setProcessImageAnalysisError(fmeaImagePolicy.error || t(fmeaImagePolicyErrorKey(fmeaImagePolicy.data)));
-      return;
-    }
-    const imageKey = processImages.map((file) => `${file.name}:${file.size}:${file.lastModified}`).join("|");
+    const imageKey = processImages.map(fmeaProcessImageFileKey).join("|");
     const contextKey = `${imageKey}\u0000${locale}\u0000${jobQuery.trim()}\u0000${department.trim()}\u0000${activityDescription.trim()}`;
     if (processImageAnalysisContextKey.current === contextKey) return;
     if (jobQuery.trim().length < 2) {
@@ -1154,7 +1153,7 @@ function FmeaProcessPage() {
     processImageAnalysisContextKey.current = contextKey;
     const analysisTimer = window.setTimeout(() => { void requestFmeaProcessImageAnalysis(processImages); }, 450);
     return () => { window.clearTimeout(analysisTimer); processImageAnalysisRequestId.current += 1; };
-  }, [activityDescription, department, fmeaImagePolicy.data, fmeaImagePolicy.error, fmeaImagePolicy.loading, jobQuery, locale, processImages]);
+  }, [activityDescription, department, jobQuery, locale, processImages]);
 
   useEffect(() => {
     setRiskPage(1);
@@ -1496,7 +1495,7 @@ function FmeaProcessPage() {
     if (!selectedFiles.length) return;
     setExpandedFmeaImage(null);
     const nextFiles = [...processImages];
-    const existingKeys = new Set(nextFiles.map((file) => `${file.name}:${file.size}:${file.lastModified}`));
+    const existingKeys = new Set(nextFiles.map(fmeaProcessImageFileKey));
     let validationError = "";
     for (const file of selectedFiles) {
       if (!FMEA_PROCESS_IMAGE_TYPES.has(file.type)) {
@@ -1507,7 +1506,7 @@ function FmeaProcessPage() {
         validationError ||= t("assessment.fmeaProcessImageTooLarge");
         continue;
       }
-      const key = `${file.name}:${file.size}:${file.lastModified}`;
+      const key = fmeaProcessImageFileKey(file);
       if (existingKeys.has(key)) continue;
       if (nextFiles.length >= FMEA_PROCESS_IMAGE_MAX_COUNT) {
         validationError ||= t("assessment.fmeaProcessImageTooMany");
@@ -1539,10 +1538,6 @@ function FmeaProcessPage() {
 
   async function requestFmeaProcessImageAnalysis(files = processImages) {
     if (!files.length) return;
-    if (!fmeaImagePolicy.data?.available) {
-      setProcessImageAnalysisError(t(fmeaImagePolicyErrorKey(fmeaImagePolicy.data)));
-      return;
-    }
     const title = jobQuery.trim();
     if (title.length < 2) return;
     const requestId = ++processImageAnalysisRequestId.current;
@@ -1565,7 +1560,7 @@ function FmeaProcessPage() {
         body.append("department", department.trim());
         body.append("activityDescription", activityDescription.trim());
         body.append("locale", locale);
-        authorizeFmeaAutomaticImage(body, fmeaImagePolicy.data);
+      if (formRef.current) body.append("activityInfo", JSON.stringify(rulaActivityInfoFromForm(new FormData(formRef.current))));
         body.append("file", file);
         try {
           const result = await api<FmeaProcessImageAnalysis>("/fmea/process-image-analysis", { method: "POST", body });
@@ -1841,12 +1836,8 @@ function FmeaProcessPage() {
   async function uploadFmeaProcessImages(assessmentId: string) {
     let failed = false;
     for (const image of processImages) {
-      const upload = new FormData();
-      upload.append("entityType", "FmeaAssessment");
-      upload.append("entityId", assessmentId);
-      upload.append("file", image);
       try {
-        await api<{ id: string }>("/files", { method: "POST", body: upload });
+        await persistAssessmentImage("FmeaAssessment", assessmentId, image);
       } catch {
         failed = true;
       }
@@ -2309,9 +2300,6 @@ function FmeaProcessPage() {
                 </div><div className="organization-image-buttons fmea-selected-image-actions"><button aria-label={t("assessment.fmeaProcessImageChange")} type="button" className="ghost" title={t("assessment.fmeaProcessImageChange")} onClick={event => { event.preventDefault(); event.stopPropagation(); processImageInputRef.current?.click(); }}><Icon name="files" size={16}/>{t("assessment.choosePhoto")}</button><OrganizationImageButton maxCount={FMEA_PROCESS_IMAGE_MAX_COUNT - processImages.length} maxBytes={FMEA_PROCESS_IMAGE_MAX_BYTES} onSelect={selectFmeaProcessImages}/></div></> : <><Icon name="files" size={20}/><strong>{t("assessment.fmeaProcessImageChoose")}</strong><small>{t("assessment.fmeaProcessImageChooseHint")}</small><div className="organization-image-buttons"><button type="button" className="ghost fake-button" onClick={event => { event.preventDefault(); event.stopPropagation(); processImageInputRef.current?.click(); }}><Icon name="files" size={16}/>{t("assessment.choosePhoto")}</button><OrganizationImageButton maxCount={FMEA_PROCESS_IMAGE_MAX_COUNT - processImages.length} maxBytes={FMEA_PROCESS_IMAGE_MAX_BYTES} onSelect={selectFmeaProcessImages}/></div></>}
               </label>
               {processImages.length > 0 && <div className="fmea-process-image-meta"><span>{t("assessment.fmeaProcessImageCount", { count: processImages.length.toLocaleString(numberLocale), max: FMEA_PROCESS_IMAGE_MAX_COUNT.toLocaleString(numberLocale) })}</span><button type="button" className="text-button" onClick={() => removeFmeaProcessImage()}>{t("assessment.fmeaProcessImageRemove")}</button></div>}
-              {processImages.length > 0 && <div className="fmea-image-policy-status">
-                {fmeaImagePolicy.loading ? <small role="status">{t("assessment.fmeaImagePolicyChecking")}</small> : fmeaImagePolicy.data?.available ? null : <div className="fmea-image-policy-error"><small role="status">{t(fmeaImagePolicy.error ? "assessment.fmeaProcessImageUnavailable" : fmeaImagePolicyErrorKey(fmeaImagePolicy.data))}</small>{fmeaImagePolicy.data?.reasonCode === "account-consent-required" && <Link to="/profile#image-processing-consent">{t("assessment.fmeaImageAccountConsentLink")}</Link>}</div>}
-              </div>}
               {processImageError && <small id="fmea-process-image-error" className="field-error" role="alert">{processImageError}</small>}
               {processImageAnalysisError && <small className="field-error" role="status">{processImageAnalysisError}</small>}
             </div>
@@ -2342,7 +2330,7 @@ function FmeaProcessPage() {
              <button type="button" className="ghost risk-sort-direction" onClick={() => setRiskSortDirection((direction) => direction === "asc" ? "desc" : "asc")} aria-label={t("assessment.toggleSortDirection")}>{riskSortDirection === "asc" ? "↑" : "↓"}</button>
            </div>
          </div>
-         <details className="risk-score-guide"><summary><Icon name="chart" size={16}/>{t("assessment.scoreGuide")}</summary><p>{t("assessment.scoreGuideDescription")}</p><TableRegion className="table-wrap score-guide-container"><table className="score-guide-table"><thead><tr><th scope="col">{t("assessment.scoreRange")}</th><th scope="col">{t("assessment.severity")}</th><th scope="col">{t("assessment.occurrence")}</th><th scope="col">{t("assessment.detection")}</th></tr></thead><tbody>{fmeaScoreCriteria[locale].severity.map((criterion, index) => <tr key={criterion.score}><td data-label={t("assessment.scoreRange")}><strong>{criterion.score.toLocaleString(numberLocale)}</strong></td><td data-label={t("assessment.severity")}><strong>{criterion.label}</strong><small>{criterion.description}</small></td><td data-label={t("assessment.occurrence")}><strong>{fmeaScoreCriteria[locale].occurrence[index].label}</strong><small>{fmeaScoreCriteria[locale].occurrence[index].description}</small></td><td data-label={t("assessment.detection")}><strong>{fmeaScoreCriteria[locale].detection[index].label}</strong><small>{fmeaScoreCriteria[locale].detection[index].description}</small></td></tr>)}</tbody></table></TableRegion></details>
+         <details className="risk-score-guide"><summary><Icon name="chart" size={16}/>{t("assessment.scoreGuide")}</summary><p>{t("assessment.scoreGuideDescription")}</p><TableRegion className="table-wrap"><table className="score-guide-table"><thead><tr><th scope="col">{t("assessment.scoreRange")}</th><th scope="col">{t("assessment.severity")}</th><th scope="col">{t("assessment.occurrence")}</th><th scope="col">{t("assessment.detection")}</th></tr></thead><tbody>{fmeaScoreCriteria[locale].severity.map((criterion, index) => <tr key={criterion.score}><td><strong>{criterion.score.toLocaleString(numberLocale)}</strong></td><td><strong>{criterion.label}</strong><small>{criterion.description}</small></td><td><strong>{fmeaScoreCriteria[locale].occurrence[index].label}</strong><small>{fmeaScoreCriteria[locale].occurrence[index].description}</small></td><td><strong>{fmeaScoreCriteria[locale].detection[index].label}</strong><small>{fmeaScoreCriteria[locale].detection[index].description}</small></td></tr>)}</tbody></table></TableRegion></details>
          {viewingItem && <div className="risk-detail-panel" role="region" aria-label={t("assessment.riskDetails")}><div className="risk-detail-head"><div><strong>{t("assessment.riskDetails")}</strong><small>{viewingItem.failureMode}</small></div><button type="button" className="text-button" onClick={() => setViewingItem(null)}>{t("assessment.closeDetails")}</button></div><div className="risk-detail-grid"><div><span>{t("assessment.processActivity")}</span><strong>{viewingItem.processStep}</strong></div><div><span>{t("assessment.effect")}</span><strong>{viewingItem.effect}</strong></div><div><span>{t("assessment.cause")}</span><strong>{viewingItem.cause}</strong></div><div><span>{t("assessment.recommendation")}</span><strong>{viewingItem.recommendation || "—"}</strong></div><div className="risk-detail-wide"><span>{t("assessment.existingControls")}</span><strong>{[viewingItem.preventiveControls, viewingItem.detectionControls].filter(Boolean).join(" · ") || "—"}</strong></div><div className="risk-detail-scores"><span>S <b>{viewingItem.severity}</b></span><span>O <b>{viewingItem.occurrence}</b></span><span>D <b>{viewingItem.detection}</b></span><span>RPN <b>{viewingItem.rpn.toLocaleString(numberLocale)}</b></span><StatusBadge value={viewingItem.riskLevel}/></div></div></div>}
          {editingItem && <FmeaItemEditor key={editingItem.id} item={editingItem} riskThresholds={fmeaRiskThresholds} saving={itemSaving} onCancel={() => setEditingItem(null)} onSave={saveEditedItem}/>}
          {filteredRiskRows.length ? <><TableRegion className="table-wrap risk-table-wrap"><table className="assessment-report-table fmea-risk-table"><thead><tr><th scope="col">{t("assessment.row")}</th><th scope="col">{t("assessment.processActivity")}</th><th scope="col">{t("assessment.failureMode")}</th><th scope="col">{t("assessment.effect")}</th><th scope="col">{t("assessment.cause")}</th><th scope="col">{t("assessment.existingControls")}</th><th scope="col" title={t("assessment.severity")}>S</th><th scope="col" title={t("assessment.occurrence")}>O</th><th scope="col" title={t("assessment.detection")}>D</th><th scope="col">RPN</th><th scope="col">{t("assessment.riskLevel")}</th><th scope="col">{t("assessment.recommendation")}</th><th scope="col">{t("assessment.operations")}</th></tr></thead><tbody>{paginatedRiskRows.map((row) => <tr key={row.id}><td>{row.rowNumber.toLocaleString(numberLocale)}</td><td className="risk-text-cell">{assessmentProcessName(selectedAssessment, locale)}</td><td className="risk-text-cell"><strong>{row.failureMode}</strong></td><td className="risk-text-cell">{row.effect}</td><td className="risk-text-cell">{row.cause}</td><td className="risk-controls-cell">{row.preventiveControls && <span><b>{t("assessment.preventiveControls")}:</b> {row.preventiveControls}</span>}{row.detectionControls && <span><b>{t("assessment.detectionControls")}:</b> {row.detectionControls}</span>}{!row.preventiveControls && !row.detectionControls && <span>—</span>}</td><td>{row.severity}</td><td>{row.occurrence}</td><td>{row.detection}</td><td><strong className="rpn-number">{row.rpn.toLocaleString(numberLocale)}</strong></td><td><StatusBadge value={row.riskLevel}/></td><td className="risk-text-cell">{row.recommendation || "—"}</td><td><div className="risk-row-actions"><button type="button" className="icon-button" title={t("assessment.viewDetails")} aria-label={t("assessment.viewDetails")} onClick={() => { setViewingItem(row); setEditingItem(null); }}><Icon name="eye" size={16}/></button>{canEdit() && <><button type="button" className="icon-button" title={t("assessment.editRiskRow")} aria-label={t("assessment.editRiskRow")} onClick={() => { setEditingItem(row); setViewingItem(null); }}><Icon name="activity" size={16}/></button><button type="button" className="icon-button danger" title={t("assessment.deleteRow")} aria-label={t("assessment.deleteRow")} onClick={() => void deleteItem(row)}><Icon name="trash" size={16}/></button></>}</div></td></tr>)}</tbody></table></TableRegion>{riskPageCount > 1 && <nav className="risk-table-pagination" aria-label={t("assessment.riskPagination")}><span>{t("assessment.riskPageOf", { current: riskPage, total: riskPageCount })}</span><div><button type="button" className="ghost" onClick={() => setRiskPage((page) => Math.max(1, page - 1))} disabled={riskPage === 1}>{t("assessment.previousPage")}</button><button type="button" className="ghost" onClick={() => setRiskPage((page) => Math.min(riskPageCount, page + 1))} disabled={riskPage === riskPageCount}>{t("assessment.nextPage")}</button></div></nav>}</> : <EmptyState title={t("assessment.noRiskMatches")} icon="search"/>}
@@ -2447,7 +2435,7 @@ return <tr key={item.id}><td className="report-table-number">{item.rowNumber.toL
 function FmeaScoreGuide({ locale }: { locale: "fa" | "en" }) {
   const { t } = useI18n();
   const numberLocale = locale === "en" ? "en-US" : "fa-IR";
-  return <details className="risk-score-guide"><summary><Icon name="chart" size={16}/>{t("assessment.scoreGuide")}</summary><p>{t("assessment.scoreGuideDescription")}</p><TableRegion className="table-wrap score-guide-container"><table className="score-guide-table"><thead><tr><th scope="col">{t("assessment.scoreRange")}</th><th scope="col">{t("assessment.severity")}</th><th scope="col">{t("assessment.occurrence")}</th><th scope="col">{t("assessment.detection")}</th></tr></thead><tbody>{fmeaScoreCriteria[locale].severity.map((criterion, index) => <tr key={criterion.score}><td data-label={t("assessment.scoreRange")}><strong>{criterion.score.toLocaleString(numberLocale)}</strong></td><td data-label={t("assessment.severity")}><strong>{criterion.label}</strong><small>{criterion.description}</small></td><td data-label={t("assessment.occurrence")}><strong>{fmeaScoreCriteria[locale].occurrence[index].label}</strong><small>{fmeaScoreCriteria[locale].occurrence[index].description}</small></td><td data-label={t("assessment.detection")}><strong>{fmeaScoreCriteria[locale].detection[index].label}</strong><small>{fmeaScoreCriteria[locale].detection[index].description}</small></td></tr>)}</tbody></table></TableRegion></details>;
+  return <details className="risk-score-guide"><summary><Icon name="chart" size={16}/>{t("assessment.scoreGuide")}</summary><p>{t("assessment.scoreGuideDescription")}</p><TableRegion className="table-wrap"><table className="score-guide-table"><thead><tr><th scope="col">{t("assessment.scoreRange")}</th><th scope="col">{t("assessment.severity")}</th><th scope="col">{t("assessment.occurrence")}</th><th scope="col">{t("assessment.detection")}</th></tr></thead><tbody>{fmeaScoreCriteria[locale].severity.map((criterion, index) => <tr key={criterion.score}><td><strong>{criterion.score.toLocaleString(numberLocale)}</strong></td><td><strong>{criterion.label}</strong><small>{criterion.description}</small></td><td><strong>{fmeaScoreCriteria[locale].occurrence[index].label}</strong><small>{fmeaScoreCriteria[locale].occurrence[index].description}</small></td><td><strong>{fmeaScoreCriteria[locale].detection[index].label}</strong><small>{fmeaScoreCriteria[locale].detection[index].description}</small></td></tr>)}</tbody></table></TableRegion></details>;
 }
 
 export function FmeaInteractiveReportRiskTable({ items, processName, evaluationDate, locale, riskThresholds = DEFAULT_THRESHOLDS, pageSize = FMEA_RISK_PAGE_SIZE, canEdit, canDelete = canEdit, canMove = false, showOperations = true, compactMobile = false, tableActions, onView, onEdit, onDelete, onMove, onComplete, completingRowId }: { items: FmeaReportItem[]; processName: string; evaluationDate?: string; locale: "fa" | "en"; riskThresholds?: RiskThresholds; pageSize?: number; canEdit: boolean; canDelete?: boolean | ((item: FmeaReportItem) => boolean); canMove?: boolean | ((item: FmeaReportItem, index: number, visibleItems: FmeaReportItem[]) => boolean); showOperations?: boolean; compactMobile?: boolean; tableActions?: ReactNode; onView: (item: FmeaReportItem) => void; onEdit: (item: FmeaReportItem) => void; onDelete: (item: FmeaReportItem) => void; onMove?: (item: FmeaReportItem, direction: FmeaRowMoveDirection) => void; onComplete?: (item: FmeaReportItem) => void; completingRowId?: string }) {
@@ -2831,9 +2819,17 @@ function postureAngle(value: unknown) {
   return value === null || value === undefined || value === "" || !Number.isFinite(angle) || angle < -180 || angle > 180 ? null : angle;
 }
 
+function rulaAdjustmentsFromValue(value: unknown): Partial<RulaAdjustments> | undefined {
+  if (!isRecord(value)) return undefined;
+  const force = typeof value.force === "number" && Number.isInteger(value.force) && value.force >= 0 && value.force <= 3 ? value.force : undefined;
+  const muscleUse = typeof value.muscleUse === "boolean" ? value.muscleUse : undefined;
+  return force === undefined && muscleUse === undefined ? undefined : { ...(force === undefined ? {} : { force }), ...(muscleUse === undefined ? {} : { muscleUse }) };
+}
+
 function postureAnalysisRowsFromValue(value: unknown): RulaSinglePostureAnalysis {
   const source = isRecord(value) ? value : {};
-  return { ...(Array.isArray(source.evaluationRows) ? { evaluationRows: source.evaluationRows.slice(0, 200) as RulaEvaluationDetails[] } : {}), ...Object.fromEntries(rulaPostureRows.map(({ key }) => {
+  const adjustments = rulaAdjustmentsFromValue(source.adjustments);
+  return { ...(adjustments?.force !== undefined && adjustments.muscleUse !== undefined ? { adjustments: adjustments as RulaAdjustments } : {}), ...(source.bodySide === "LEFT" || source.bodySide === "RIGHT" ? { bodySide: source.bodySide } : {}), ...(Array.isArray(source.evaluationRows) ? { evaluationRows: source.evaluationRows.slice(0, 200) as RulaEvaluationDetails[] } : {}), ...Object.fromEntries(rulaPostureRows.map(({ key }) => {
     const candidate = isRecord(source[key]) ? source[key] : {};
     const score = hasPostureScore(candidate.score) ? postureScore(candidate.score, 1) : 1;
     const postureSource = candidate.source === "AI" || candidate.source === "USER" || candidate.source === "DEFAULT" ? candidate.source : "DEFAULT";
@@ -2866,7 +2862,7 @@ function postureOverlayFromValue(value: unknown): RulaPostureImageOverlay | unde
   return Object.keys(points).length ? { points } : undefined;
 }
 
-function rulaAnalysisFromImageSide(value: unknown): { analysis: RulaSinglePostureAnalysis; overlay?: RulaPostureImageOverlay } | null {
+export function rulaAnalysisFromImageSide(value: unknown, fallback: RulaAdjustments = { force: 0, muscleUse: false }, bodySide?: RulaBodySide): { analysis: RulaSinglePostureAnalysis; overlay?: RulaPostureImageOverlay } | null {
   if (!isRecord(value)) return null;
   const analysis: Partial<RulaSinglePostureAnalysis> = {};
   for (const { key } of rulaPostureRows) {
@@ -2887,14 +2883,20 @@ function rulaAnalysisFromImageSide(value: unknown): { analysis: RulaSinglePostur
       ...(measurementFromValue(candidate.measurement) ? {measurement:measurementFromValue(candidate.measurement)} : {}),
     };
   }
-  return { analysis: analysis as RulaSinglePostureAnalysis, overlay: postureOverlayFromValue(value.overlay) };
+  const adjustments = rulaAdjustmentsFromValue(value.adjustments);
+  return { analysis: { ...analysis, ...(bodySide ? { bodySide } : {}), adjustments: { ...fallback, ...adjustments } } as RulaSinglePostureAnalysis, overlay: postureOverlayFromValue(value.overlay) };
 }
 
-function postureAnalysisFromValue(value: unknown): RulaPostureAnalysis {
+function postureAnalysisFromValue(value: unknown, fallback?: RulaAdjustments): RulaPostureAnalysis {
   const source = isRecord(value) ? value : {};
+  const savedFallback = fallback ? { force: 0, muscleUse: false, ...rulaAdjustmentsFromValue(fallback) } : undefined;
   const direct = postureAnalysisRowsFromValue(source);
+  if (!direct.adjustments && savedFallback) direct.adjustments = savedFallback;
   const rawSides = isRecord(source.sideAnalyses) ? source.sideAnalyses : {};
-  const sideAnalyses = Object.fromEntries((["LEFT", "RIGHT"] as const).filter((side) => isRecord(rawSides[side])).map((side) => [side, postureAnalysisRowsFromValue(rawSides[side])])) as Partial<Record<RulaBodySide, RulaSinglePostureAnalysis>>;
+  const sideAnalyses = Object.fromEntries((["LEFT", "RIGHT"] as const).filter((side) => isRecord(rawSides[side])).map((side) => {
+    const analysis = postureAnalysisRowsFromValue(rawSides[side]);
+    return [side, { ...analysis, ...(analysis.adjustments || !savedFallback ? {} : { adjustments: savedFallback }) }];
+  })) as Partial<Record<RulaBodySide, RulaSinglePostureAnalysis>>;
   const imageOverlay = postureOverlayFromValue(source.imageOverlay);
   const rawSideOverlays = isRecord(source.sideImageOverlays) ? source.sideImageOverlays : {};
   const sideImageOverlays = Object.fromEntries((["LEFT", "RIGHT"] as const).flatMap((side) => {
@@ -2909,26 +2911,109 @@ function postureAnalysisFromValue(value: unknown): RulaPostureAnalysis {
     ...(Array.isArray(source.imageAssessments) ? { imageAssessments: source.imageAssessments.slice(0, 4).flatMap((image) => {
       if (!isRecord(image) || typeof image.imageKey !== "string" || typeof image.fileName !== "string" || !isRecord(image.analysis)) return [];
       const { imageAssessments: _nested, ...observation } = image.analysis;
-      return [{ imageKey: image.imageKey, fileName: image.fileName, analysis: postureAnalysisFromValue(observation), ...(typeof image.model === "string" ? { model: image.model } : {}), ...(typeof image.attachmentId === "string" ? { attachmentId: image.attachmentId } : {}), force: Number(image.force) || 0, muscleUse: image.muscleUse === true }];
+      return [{ imageKey: image.imageKey, fileName: image.fileName, analysis: postureAnalysisFromValue(observation, { force: Number(image.force) || 0, muscleUse: image.muscleUse === true }), ...(typeof image.model === "string" ? { model: image.model } : {}), ...(typeof image.attachmentId === "string" ? { attachmentId: image.attachmentId } : {}), force: Number(image.force) || 0, muscleUse: image.muscleUse === true }];
     }) } : {}),
   };
 }
 
-function parsePostureAnalysis(value: unknown) {
+/** Restore each saved side before a primary side can change the shared controls. */
+export function parsePostureAnalysis(value: unknown, fallback?: RulaAdjustments) {
   if (typeof value === "string") {
-    try { return postureAnalysisFromValue(JSON.parse(value)); } catch { return postureAnalysisFromValue(null); }
+    try { return postureAnalysisFromValue(JSON.parse(value), fallback); } catch { return postureAnalysisFromValue(null, fallback); }
   }
-  return postureAnalysisFromValue(value);
+  return postureAnalysisFromValue(value, fallback);
 }
 
-function rulaInputsFromAnalysis(analysis: RulaPostureAnalysis, force: number, muscleUse: boolean): RulaInput {
-  return { upperArm: analysis.upperArm.score, lowerArm: analysis.lowerArm.score, wrist: analysis.wrist.score, wristTwist: analysis.wristTwist.score, neck: analysis.neck.score, trunk: analysis.trunk.score, legs: analysis.legs.score, muscleUse, force };
+export function rulaInputsFromAnalysis(analysis: RulaPostureAnalysis, force: number, muscleUse: boolean): RulaInput {
+  return { upperArm: analysis.upperArm.score, lowerArm: analysis.lowerArm.score, wrist: analysis.wrist.score, wristTwist: analysis.wristTwist.score, neck: analysis.neck.score, trunk: analysis.trunk.score, legs: analysis.legs.score, ...(analysis.adjustments ?? { muscleUse, force }) };
+}
+
+/** A missing or explicitly different anatomical side is never substituted with the opposite side. */
+export function rulaAnalysisForSide(analysis: RulaPostureAnalysis, side: RulaBodySide): RulaSinglePostureAnalysis {
+  return analysis.sideAnalyses?.[side] ?? (!analysis.sideAnalyses && (!analysis.bodySide || analysis.bodySide === side) ? analysis : postureAnalysisRowsFromValue(null));
+}
+
+export function rulaAnalysisWithAdjustments(analysis: RulaPostureAnalysis, side: RulaBodySide, bodySide: RulaActionBodySide, adjustments: RulaAdjustments, fallback: RulaAdjustments = { force: 0, muscleUse: false }): RulaPostureAnalysis {
+  if (bodySide !== "BOTH") return { ...analysis, bodySide: side, adjustments };
+  const normalized = withBothSideAnalyses(analysis);
+  const nextSide = { ...rulaAnalysisForSide(normalized, side), bodySide: side, adjustments };
+  const sides = { LEFT: { ...normalized.sideAnalyses!.LEFT!, adjustments: normalized.sideAnalyses!.LEFT!.adjustments ?? fallback }, RIGHT: { ...normalized.sideAnalyses!.RIGHT!, adjustments: normalized.sideAnalyses!.RIGHT!.adjustments ?? fallback }, [side]: nextSide };
+  return { ...normalized, ...sides.RIGHT, sideAnalyses: sides };
+}
+
+/** Provisional visibility is independent of the existing human approval gate. */
+export function rulaPostureResultUsable(row: RulaPostureRow) {
+  if (row.source === "DEFAULT" || !hasPostureScore(row.score)) return false;
+  if (isRulaPostureResultReviewed(row)) return true;
+  if (row.measurement?.state === "QUALITATIVE") return row.detected;
+  return row.measurement?.state === "ESTIMATED" && row.detected && typeof row.angle === "number" && Number.isFinite(row.angle);
+}
+
+export function isRulaSingleAnalysisUsable(analysis: RulaSinglePostureAnalysis | undefined) {
+  return Boolean(analysis && rulaPostureRows.every(({ key }) => rulaPostureResultUsable(analysis[key])));
+}
+
+/** Display original AI proposals without turning unaudited observations into approved measurements. */
+export function rulaPostureProposal(part: RulaPosturePart, row: RulaPostureRow): { angle: number | null; score: number; detected: boolean } | undefined {
+  const validScore = (score: unknown): score is number => typeof score === "number" && Number.isInteger(score) && score >= 1 && score <= RULA_POSTURE_SCORE_LIMITS[part];
+  if (rulaPostureResultUsable(row) && validScore(row.score)) return { angle: row.angle, score: row.score, detected: row.detected };
+  const measurement = row.measurement;
+  if (row.source !== "AI" || !measurement || measurement.trustedSource === "DETERMINISTIC_IMAGE_PLANE" || !validScore(measurement.aiScore)) return;
+  const angle = typeof measurement.aiAngle === "number" && Number.isFinite(measurement.aiAngle) && measurement.aiAngle >= -180 && measurement.aiAngle <= 180 ? measurement.aiAngle : null;
+  // Legacy responses did not retain detection; a real angle is their only positive proposal evidence.
+  if (measurement.aiDetected !== true && !(measurement.aiDetected === undefined && angle !== null)) return;
+  if (measurement.aiAngle !== null && angle === null) return;
+  return { angle, score: measurement.aiScore, detected: true };
+}
+
+export function rulaProposalSummary(analysis: RulaSinglePostureAnalysis, fallback: RulaAdjustments = { force: 0, muscleUse: false }) {
+  const proposals = Object.fromEntries(rulaPostureRows.map(({ key }) => [key, rulaPostureProposal(key, analysis[key])])) as Partial<Record<RulaPosturePart, NonNullable<ReturnType<typeof rulaPostureProposal>>>>;
+  const count = rulaPostureRows.filter(({ key }) => proposals[key]).length;
+  const inputs = rulaInputsFromAnalysis(analysis, fallback.force, fallback.muscleUse);
+  for (const { key } of rulaPostureRows) if (proposals[key]) inputs[key] = proposals[key]!.score;
+  const result = calculateRula(inputs);
+  return { count, result, groupAAvailable: rulaGroupARows.every(({ key }) => proposals[key]), groupBAvailable: rulaGroupBRows.every(({ key }) => proposals[key]), complete: count === rulaPostureRows.length };
+}
+
+/** A display interval enumerates unknown scores without changing the underlying observations. */
+export function rulaGroupScoreBounds(analysis: RulaSinglePostureAnalysis, group: "A" | "B", fallback: RulaAdjustments = { force: 0, muscleUse: false }) {
+  const rows = group === "A" ? rulaGroupARows : rulaGroupBRows;
+  if (rows.some(({ key }) => analysis[key].source === "DEFAULT")) return;
+  const proposals = rows.map(({ key }) => rulaPostureProposal(key, analysis[key]));
+  const known = proposals.filter(Boolean).length;
+  const { force, muscleUse } = rulaInputsFromAnalysis(analysis, fallback.force, fallback.muscleUse);
+  // The other group's neutral lookup indices cannot affect the requested group.
+  const inputs: RulaInput = { upperArm: 1, lowerArm: 1, wrist: 1, wristTwist: 1, neck: 1, trunk: 1, legs: 1, force, muscleUse };
+  let min = Number.POSITIVE_INFINITY, max = Number.NEGATIVE_INFINITY;
+  function visit(index: number) {
+    if (index === rows.length) {
+      const result = calculateRula(inputs), score = group === "A" ? result.groupA : result.groupB;
+      min = Math.min(min, score); max = Math.max(max, score);
+      return;
+    }
+    const part = rows[index].key, proposal = proposals[index];
+    for (let score = proposal?.score ?? 1; score <= (proposal?.score ?? RULA_POSTURE_SCORE_LIMITS[part]); score += 1) {
+      inputs[part] = score;
+      visit(index + 1);
+    }
+  }
+  visit(0);
+  return { known, total: rows.length, min, max, complete: known === rows.length };
+}
+
+function rulaGroupScoreInterval(bounds: NonNullable<ReturnType<typeof rulaGroupScoreBounds>>, locale: "fa" | "en") {
+  const format = (value: number) => value.toLocaleString(locale === "en" ? "en-US" : "fa-IR");
+  const text = `${format(bounds.min)}–${format(bounds.max)}`;
+  const description = locale === "en"
+    ? `Possible group score range using current force and muscle use: ${text}. Some body-part scores are unavailable.`
+    : `بازهٔ ممکن امتیاز گروه با نیرو و استفادهٔ عضلانی فعلی: ${text}. بعضی امتیازهای اعضا مشخص نیستند.`;
+  return { text, description };
 }
 
 export function rulaImageAssessmentResult(image: RulaImageAssessment, bodySide: RulaActionBodySide) {
   const sides = bodySide === "BOTH"
     ? [image.analysis.sideAnalyses?.LEFT, image.analysis.sideAnalyses?.RIGHT]
-    : [image.analysis.sideAnalyses?.[bodySide] ?? image.analysis];
+    : [rulaAnalysisForSide(image.analysis, bodySide)];
   const results = sides.filter((side): side is RulaSinglePostureAnalysis => Boolean(side)).map(side => calculateRula(rulaInputsFromAnalysis(side, image.force, image.muscleUse)));
   return results.reduce((worst, current) => current.score > worst.score ? current : worst, results[0] ?? calculateRula(rulaInputsFromAnalysis(image.analysis, image.force, image.muscleUse)));
 }
@@ -2976,7 +3061,7 @@ function isRulaImageAnalysisReviewed(analysis: RulaPostureAnalysis, bodySide: Ru
     analysis.sideAnalyses?.LEFT ? rulaPostureRows.map(({ key }) => analysis.sideAnalyses!.LEFT![key]) : undefined,
     analysis.sideAnalyses?.RIGHT ? rulaPostureRows.map(({ key }) => analysis.sideAnalyses!.RIGHT![key]) : undefined,
   ]);
-  return isRulaSingleAnalysisReviewed(analysis.sideAnalyses?.[bodySide] ?? analysis);
+  return isRulaSingleAnalysisReviewed(rulaAnalysisForSide(analysis, bodySide));
 }
 
 function rulaActivityInfoFromForm(values: FormData): RulaActivityInfo {
@@ -3004,9 +3089,29 @@ function rulaActivityInfoFromForm(values: FormData): RulaActivityInfo {
   };
 }
 
+/** Only explicit load and static duration establish these worksheet adjustments. */
+export function rulaActivityAdjustments(activity: RulaActivityInfo): Partial<RulaAdjustments> {
+  const suggestions: Partial<RulaAdjustments> = {};
+  const multiplier = { SECOND: 1, MINUTE: 60, HOUR: 3600 };
+  const hold = activity.postureHoldDuration;
+  const seconds = typeof hold === "number" && Number.isFinite(hold) && hold > 0 && activity.postureHoldUnit ? hold * multiplier[activity.postureHoldUnit] : undefined;
+  if (seconds !== undefined && seconds > 60) suggestions.muscleUse = true;
+  const weight = activity.loadWeight;
+  if (typeof weight !== "number" || !Number.isFinite(weight) || weight < 0 || !activity.loadUnit) return suggestions;
+  const kilograms = activity.loadUnit === "LB" ? weight * 0.45359237 : weight;
+  if (kilograms === 0) suggestions.force = 0;
+  else if (kilograms > 10) suggestions.force = 3;
+  else if (kilograms >= 2 && suggestions.muscleUse === true) suggestions.force = 2;
+  return suggestions;
+}
+
+function rulaActivityAdjustmentsKey(activity: RulaActivityInfo) {
+  return JSON.stringify([activity.loadWeight ?? null, activity.loadUnit, activity.postureHoldDuration ?? null, activity.postureHoldUnit]);
+}
+
 function rulaPayloadFromForm(form: HTMLFormElement) {
   const values = new FormData(form);
-  const rawPostureAnalysis = parsePostureAnalysis(values.get("postureAnalysis"));
+  const rawPostureAnalysis = parsePostureAnalysis(values.get("postureAnalysis"), { force: Number(values.get("force")), muscleUse: rulaMuscleUseFromValue(values.get("muscleUse")) });
   const bodySide = values.get("bodySide") === "LEFT" ? "LEFT" : values.get("bodySide") === "BOTH" ? "BOTH" : "RIGHT";
   const postureAnalysis = bodySide === "BOTH" ? withBothSideAnalyses(rawPostureAnalysis) : rawPostureAnalysis;
   const inputs = rulaInputsFromAnalysis(postureAnalysis, Number(values.get("force")), rulaMuscleUseFromValue(values.get("muscleUse")));
@@ -3025,7 +3130,7 @@ function rulaPayloadFromDraft(value: unknown) {
     return Number.isFinite(value) ? value : undefined;
   };
   const muscleUse = draftValueFor("muscleUse");
-  const rawPostureAnalysis = parsePostureAnalysis(draft.postureAnalysis);
+  const rawPostureAnalysis = parsePostureAnalysis(draft.postureAnalysis, { force: number("force", 0), muscleUse: rulaMuscleUseFromValue(muscleUse) });
   const jobTitle = String(draft.jobTitle ?? "").trim();
   const taskDescription = String(draft.taskDescription ?? "").trim();
   const postureDescription = String(draft.postureDescription ?? "").trim();
@@ -3120,9 +3225,10 @@ function RulaPostureEditDialog({ part, row, hasImage, onCancel, onSave }: { part
   const { t, locale } = useI18n();
   const dialogRef = useRef<HTMLElement>(null);
   useModalFocus(dialogRef, true, onCancel);
-  const [angle, setAngle] = useState(row.angle === null ? "" : String(row.angle));
-  const [score, setScore] = useState(String(row.score));
-  const [detected, setDetected] = useState(row.detected);
+  const initialProposal = rulaPostureProposal(part, row) ?? row;
+  const [angle, setAngle] = useState(initialProposal.angle === null ? "" : String(initialProposal.angle));
+  const [score, setScore] = useState(String(initialProposal.score));
+  const [detected, setDetected] = useState(initialProposal.detected);
   const [validationError, setValidationError] = useState("");
   const rowLabel = rulaPostureRows.find((item) => item.key === part)?.labelKey ?? "assessment.posturePart";
   function changeAngle(value: string) {
@@ -3166,13 +3272,13 @@ function RulaPostureEditDialog({ part, row, hasImage, onCancel, onSave }: { part
 function RulaPostureTable({ title, rows, analysis, locale, onEdit }: { title: string; rows: Array<{ key: RulaPosturePart; labelKey: string; group: "A" | "B" }>; analysis: RulaPostureAnalysis; locale: "fa" | "en"; onEdit: (part: RulaPosturePart) => void }) {
   const { t } = useI18n();
   const numberLocale = locale === "en" ? "en-US" : "fa-IR";
-  return <section className="rula-analysis-table-card"><div className="rula-analysis-table-head"><strong>{title}</strong><small>{t("assessment.rulaAiResultsHint")}</small></div><TableRegion className="table-wrap"><table className="rula-analysis-table"><thead><tr><th scope="col">{t("assessment.bodyPart")}</th><th scope="col">{t("assessment.detectedAngle")}</th><th scope="col">{t("assessment.detectedStatus")}</th><th scope="col">{t("assessment.resultSource")}</th><th scope="col">{t("assessment.suggestedScore")}</th><th scope="col">{t("assessment.operations")}</th></tr></thead><tbody>{rows.map((item) => { const row = analysis[item.key]; const reviewed = isRulaPostureResultReviewed(row); const needsConfirmation = row.requiresReview === true && !row.confirmedByUser; const status = needsConfirmation ? t("assessment.pendingDetection") : item.key === "wristTwist" ? row.detected ? t("assessment.present") : t("assessment.notPresent") : row.detected ? t("assessment.detected") : row.source === "DEFAULT" ? t("assessment.pendingDetection") : t("assessment.notDetected"); const reviewLabel = row.confirmedByUser ? t("assessment.confirmedByUser") : needsConfirmation || row.source !== "AI" ? t("assessment.manualReviewRequiredShort") : ""; return <tr key={item.key}><td data-label={t("assessment.bodyPart")}><strong>{t(item.labelKey)}</strong>{measurementQualityLabel(row.measurement,locale) && <small role="status">{measurementQualityLabel(row.measurement,locale)}</small>}</td><td data-label={t("assessment.detectedAngle")} className="rula-angle-value">{reviewed ? formatPostureAngle(row.angle, locale) : "—"}</td><td data-label={t("assessment.detectedStatus")}><span className={`rula-detection-badge ${row.detected && !needsConfirmation ? "detected" : "pending"}`}>{status}</span>{typeof row.confidence === "number" && <small className="rula-model-confidence">{t("assessment.rulaModelConfidence", { confidence: Math.round(row.confidence * 100).toLocaleString(numberLocale) })}</small>}</td><td data-label={t("assessment.resultSource")}><div className="rula-source-stack"><small className={`rula-source-badge source-${row.source.toLowerCase()}`}>{t(rulaSourceLabelKey(row.source))}</small>{reviewLabel && <small className={reviewed ? "rula-confirmed-badge" : "rula-awaiting-badge"}>{reviewLabel}</small>}</div></td><td data-label={t("assessment.suggestedScore")}><strong className={`rula-suggested-score ${reviewed ? "" : "rula-unreviewed-value"}`}>{reviewed ? row.score.toLocaleString(numberLocale) : "—"}</strong></td><td data-label={t("assessment.operations")}><div className="rula-row-actions"><button type="button" className="icon-button rula-edit-button" onClick={() => onEdit(item.key)} title={t("assessment.editPostureResult")} aria-label={`${t("assessment.editPostureResult")}: ${t(item.labelKey)}`}><Icon name="edit" size={15}/></button></div></td></tr>; })}</tbody></table></TableRegion></section>;
+  return <section className="rula-analysis-table-card"><div className="rula-analysis-table-head"><strong>{title}</strong><small>{t("assessment.rulaAiResultsHint")}</small></div><TableRegion className="table-wrap"><table className="rula-analysis-table"><thead><tr><th scope="col">{t("assessment.bodyPart")}</th><th scope="col">{t("assessment.detectedAngle")}</th><th scope="col">{t("assessment.detectedStatus")}</th><th scope="col">{t("assessment.resultSource")}</th><th scope="col">{t("assessment.suggestedScore")}</th><th scope="col">{t("assessment.operations")}</th></tr></thead><tbody>{rows.map((item) => { const row = analysis[item.key]; const reviewed = isRulaPostureResultReviewed(row); const usable = rulaPostureResultUsable(row); const proposal = rulaPostureProposal(item.key, row); const needsConfirmation = row.requiresReview === true && !row.confirmedByUser; const status = row.source === "AI" ? proposal?.detected ? item.key === "wristTwist" ? t("assessment.present") : t("assessment.detected") : t("assessment.notDetected") : needsConfirmation && !usable ? t("assessment.pendingDetection") : item.key === "wristTwist" ? row.detected ? t("assessment.present") : t("assessment.notPresent") : row.detected ? t("assessment.detected") : row.source === "DEFAULT" ? t("assessment.pendingDetection") : t("assessment.notDetected"); const reviewLabel = row.confirmedByUser ? t("assessment.confirmedByUser") : row.source === "AI" ? "" : t("assessment.manualReviewRequiredShort"); return <tr key={item.key}><td data-label={t("assessment.bodyPart")}><strong>{t(item.labelKey)}</strong>{measurementQualityLabel(row.measurement,locale) && <small role="status">{measurementQualityLabel(row.measurement,locale)}</small>}</td><td data-label={t("assessment.detectedAngle")} className="rula-angle-value">{proposal ? formatPostureAngle(proposal.angle, locale) : "—"}</td><td data-label={t("assessment.detectedStatus")}><span className={`rula-detection-badge ${proposal?.detected ? "detected" : "pending"}`}>{status}</span>{typeof row.confidence === "number" && <small className="rula-model-confidence">{t("assessment.rulaModelConfidence", { confidence: Math.round(row.confidence * 100).toLocaleString(numberLocale) })}</small>}</td><td data-label={t("assessment.resultSource")}><div className="rula-source-stack"><small className={`rula-source-badge source-${row.source.toLowerCase()}`}>{t(rulaSourceLabelKey(row.source))}</small>{reviewLabel && <small className={reviewed ? "rula-confirmed-badge" : "rula-awaiting-badge"}>{reviewLabel}</small>}</div></td><td data-label={t("assessment.suggestedScore")}><strong className={`rula-suggested-score ${reviewed ? "" : "rula-unreviewed-value"}`}>{proposal ? proposal.score.toLocaleString(numberLocale) : "—"}</strong></td><td data-label={t("assessment.operations")}><div className="rula-row-actions"><button type="button" className="icon-button rula-edit-button" onClick={() => onEdit(item.key)} title={t("assessment.editPostureResult")} aria-label={`${t("assessment.editPostureResult")}: ${t(item.labelKey)}`}><Icon name="edit" size={15}/></button></div></td></tr>; })}</tbody></table></TableRegion></section>;
 }
 
 const RULA_OVERLAY_MIN_CONFIDENCE = 0.6;
-const rulaOverlaySegments: Array<[RulaOverlayPoint, RulaOverlayPoint]> = [["head", "neck"], ["neck", "shoulder"], ["shoulder", "elbow"], ["elbow", "wrist"], ["shoulder", "hip"], ["hip", "knee"], ["knee", "ankle"]];
+const rulaOverlaySegments: Array<[RulaOverlayPoint, RulaOverlayPoint]> = [["head", "neck"], ["neck", "shoulder"], ["shoulder", "elbow"], ["elbow", "wrist"], ["wrist", "hand"], ["shoulder", "hip"], ["hip", "knee"], ["knee", "ankle"]];
 
-function RulaPostureOverlayLayer({ overlay }: { overlay?: RulaPostureImageOverlay }) {
+export function RulaPostureOverlayLayer({ overlay }: { overlay?: RulaPostureImageOverlay }) {
   if (!overlay) return null;
   const visiblePoint = (key: RulaOverlayPoint) => {
     const point = overlay.points[key];
@@ -3182,7 +3288,10 @@ function RulaPostureOverlayLayer({ overlay }: { overlay?: RulaPostureImageOverla
     const point = visiblePoint(key);
     return point ? [[key, point]] : [];
   })) as Partial<Record<RulaOverlayPoint, RulaPostureImagePoint>>;
-  const segments = rulaOverlaySegments.flatMap(([start, end]) => {
+  // A direct display link keeps the head attached when no visible neck exists;
+  // it introduces no inferred joint or measurement.
+  const connections: Array<[RulaOverlayPoint, RulaOverlayPoint]> = points.neck ? rulaOverlaySegments : [...rulaOverlaySegments, ["head", "shoulder"]];
+  const segments = connections.flatMap(([start, end]) => {
     const startPoint = points[start];
     const endPoint = points[end];
     return startPoint && endPoint ? [{ start, end, startPoint, endPoint }] : [];
@@ -3197,7 +3306,7 @@ function AssessmentImageLightbox({ title, alt, preview, annotations = [], overla
   return <div className="assessment-image-lightbox-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <section ref={dialogRef} tabIndex={-1} className="assessment-image-lightbox" role="dialog" aria-modal="true" aria-label={title} onMouseDown={(event) => event.stopPropagation()}>
       <div className="assessment-image-lightbox-head"><div><strong>{title}</strong><small>{t("assessment.expandImage")}</small></div><button type="button" className="icon-button" onClick={onClose} aria-label={t("assessment.closeImage")}><span aria-hidden="true">×</span></button></div>
-      <div className="assessment-image-lightbox-body"><div className="assessment-image-lightbox-canvas"><img src={preview} alt={alt}/><FmeaImageAnnotationOverlay annotations={annotations} alt={alt}/><RulaPostureOverlayLayer overlay={overlay}/></div>{details && <div className="assessment-image-lightbox-details">{details}</div>}</div>
+      <div className="assessment-image-lightbox-body"><div className={`assessment-image-lightbox-canvas${overlay ? " rula-image-lightbox-canvas" : ""}`}><img src={preview} alt={alt}/><FmeaImageAnnotationOverlay annotations={annotations} alt={alt}/><RulaPostureOverlayLayer overlay={overlay}/></div>{details && <div className="assessment-image-lightbox-details">{details}</div>}</div>
     </section>
   </div>;
 }
@@ -3209,7 +3318,7 @@ function RulaPostureVisual({ imagePreview, overlay, postureDescription, analysis
   const visualTitle = hasImage ? imageTitle : t("assessment.rulaTextAnalysisTitle");
   const visualHint = hasImage ? t("assessment.rulaAnalysisImageHint") : t("assessment.rulaTextAnalysisHint");
   const numberLocale = locale === "en" ? "en-US" : "fa-IR";
-  const details = <div className="assessment-image-analysis-details"><strong>{t("assessment.imageAnalysisDetails")}</strong><div className="rula-image-analysis-rows">{rulaPostureRows.map((item) => { const row = analysis[item.key]; const reviewed = isRulaPostureResultReviewed(row); return <div key={item.key}><span>{t(item.labelKey)}</span><strong>{reviewed ? formatPostureAngle(row.angle, locale) : "—"}</strong><b>{t("assessment.suggestedScore")}: {reviewed ? row.score.toLocaleString(numberLocale) : "—"}</b><small>{row.confirmedByUser ? t("assessment.confirmedByUser") : t(rulaSourceLabelKey(row.source))}</small></div>; })}</div>{postureDescription.trim() && <p>{postureDescription.trim()}</p>}</div>;
+  const details = <div className="assessment-image-analysis-details"><strong>{t("assessment.imageAnalysisDetails")}</strong><div className="rula-image-analysis-rows">{rulaPostureRows.map((item) => { const row = analysis[item.key]; const usable = rulaPostureResultUsable(row); return <div key={item.key}><span>{t(item.labelKey)}</span><strong>{usable ? formatPostureAngle(row.angle, locale) : "—"}</strong><b>{t("assessment.suggestedScore")}: {usable ? row.score.toLocaleString(numberLocale) : "—"}</b><small>{row.confirmedByUser ? t("assessment.confirmedByUser") : t(rulaSourceLabelKey(row.source))}</small></div>; })}</div>{postureDescription.trim() && <p>{postureDescription.trim()}</p>}</div>;
   const [expanded, setExpanded] = useState(false);
   useEffect(() => { if (!imagePreview) setExpanded(false); }, [imagePreview]);
   return <section className="rula-analysis-visual"><div className="rula-analysis-visual-head"><div><strong>{visualTitle}</strong><small>{visualHint}</small></div><span className="rula-ai-chip"><Icon name="sparkles" size={14}/> {hasImage ? t("assessment.rulaFutureModel") : t("assessment.rulaTextAnalysisTitle")}</span></div><div className={`rula-analysis-canvas ${imagePreview ? "has-image" : "empty"}`}>{imagePreview ? <button type="button" className="rula-analysis-image-button" onClick={() => setExpanded(true)} aria-label={t("assessment.expandImage")}><img src={imagePreview} alt={imageTitle}/><RulaPostureOverlayLayer overlay={overlay}/><span className="rula-image-expand-hint">{t("assessment.expandImage")}</span></button> : <div className="rula-visual-empty"><Icon name="rula" size={36}/><strong>{t("assessment.rulaTextAnalysisTitle")}</strong><small>{t("assessment.rulaTextAnalysisHint")}</small></div>}</div>{postureDescription.trim() && <div className="rula-posture-description-preview"><strong>{t("assessment.rulaPostureDescription")}</strong><p>{postureDescription.trim()}</p></div>}<small className="rula-analysis-visual-note">{hasImage ? t("assessment.rulaOverlayFutureHint") : t("assessment.rulaTextAnalysisNote")}</small>{expanded && <AssessmentImageLightbox title={imageTitle} alt={imageTitle} preview={imagePreview} overlay={overlay} details={details} onClose={() => setExpanded(false)}/>}</section>;
@@ -3220,26 +3329,35 @@ function RulaMuscleUseSelector({ value, onChange }: { value: boolean; onChange: 
   return <label className="rula-muscle-use-field"><span className="field-label-line"><span>{t("assessment.repetitiveMuscle")}</span><span className="required-label">{t("common.required")}</span></span><StyledSelect name="muscleUseOption" value={value ? "1" : "0"} required aria-label={t("assessment.repetitiveMuscle")} onChange={(event) => onChange(event.target.value === "1")}><option value="1">{t("assessment.repetitiveMuscleCriterionOne")} — {t("assessment.repetitiveMuscleCriterionOneScore")}</option><option value="0">{t("assessment.repetitiveMuscleCriterionZero")} — {t("assessment.repetitiveMuscleCriterionZeroScore")}</option></StyledSelect></label>;
 }
 
-export function RulaPostureAnalysisStep({ analysis, result, sideResults, bodySide, imagePreview, postureDescription, locale, initialEditPart, initialSide, onChange }: { analysis: RulaPostureAnalysis; result: ReturnType<typeof calculateRula>; sideResults?: Partial<Record<RulaBodySide, ReturnType<typeof calculateRula>>>; bodySide: "LEFT" | "RIGHT" | "BOTH"; imagePreview: string; postureDescription: string; locale: "fa" | "en"; initialEditPart?: RulaPosturePart; initialSide?: RulaBodySide; onChange: (part: RulaPosturePart, row: RulaPostureRow, side?: RulaBodySide) => void }) {
+export function RulaPostureAnalysisStep({ analysis, result, sideResults, bodySide, imagePreview, postureDescription, locale, initialEditPart, initialSide, activeSide: controlledSide, onSideChange, fallbackAdjustments = { force: 0, muscleUse: false }, onChange }: { analysis: RulaPostureAnalysis; result: ReturnType<typeof calculateRula>; sideResults?: Partial<Record<RulaBodySide, ReturnType<typeof calculateRula>>>; bodySide: "LEFT" | "RIGHT" | "BOTH"; imagePreview: string; postureDescription: string; locale: "fa" | "en"; initialEditPart?: RulaPosturePart; initialSide?: RulaBodySide; activeSide?: RulaBodySide; onSideChange?: (side: RulaBodySide) => void; fallbackAdjustments?: RulaAdjustments; onChange: (part: RulaPosturePart, row: RulaPostureRow, side?: RulaBodySide) => void }) {
   const { t } = useI18n();
   const requestedPosturePartValue = typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("part")?.trim() ?? "";
   const initialRequestedPart = rulaPostureRows.some(({ key }) => key === requestedPosturePartValue) ? requestedPosturePartValue as RulaPosturePart : undefined;
   const requestedSideValue = typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("side")?.trim() ?? "";
   const initialRequestedSide = requestedSideValue === "LEFT" || requestedSideValue === "RIGHT" ? requestedSideValue : undefined;
   const [editing, setEditing] = useState<RulaPosturePart | null>(initialEditPart ?? initialRequestedPart ?? null);
-  const [activeSide, setActiveSide] = useState<RulaBodySide>(initialSide ?? initialRequestedSide ?? "RIGHT");
-  const visibleAnalysis = bodySide === "BOTH" ? analysis.sideAnalyses?.[activeSide] ?? analysis : analysis;
-  const visibleResult = bodySide === "BOTH" ? sideResults?.[activeSide] ?? result : result;
+  const [localSide, setLocalSide] = useState<RulaBodySide>(initialSide ?? initialRequestedSide ?? "RIGHT");
+  const activeSide = controlledSide ?? localSide;
+  function setActiveSide(side: RulaBodySide) { setLocalSide(side); onSideChange?.(side); }
+  const visibleAnalysis = rulaAnalysisForSide(analysis, bodySide === "BOTH" ? activeSide : bodySide);
+  const proposalSummary = rulaProposalSummary(visibleAnalysis, fallbackAdjustments);
+  const groupBounds = useMemo(() => ({ A: rulaGroupScoreBounds(visibleAnalysis, "A", fallbackAdjustments), B: rulaGroupScoreBounds(visibleAnalysis, "B", fallbackAdjustments) }), [visibleAnalysis, fallbackAdjustments.force, fallbackAdjustments.muscleUse]);
+  const groupIntervals = { A: groupBounds.A && !groupBounds.A.complete ? rulaGroupScoreInterval(groupBounds.A, locale) : undefined, B: groupBounds.B && !groupBounds.B.complete ? rulaGroupScoreInterval(groupBounds.B, locale) : undefined };
+  const visibleResult = isRulaSingleAnalysisUsable(visibleAnalysis) ? bodySide === "BOTH" ? sideResults?.[activeSide] ?? result : result : proposalSummary.result;
+  const sideSummaries = { LEFT: analysis.sideAnalyses?.LEFT ? rulaProposalSummary(analysis.sideAnalyses.LEFT, fallbackAdjustments) : undefined, RIGHT: analysis.sideAnalyses?.RIGHT ? rulaProposalSummary(analysis.sideAnalyses.RIGHT, fallbackAdjustments) : undefined };
+  const analysisCompleted = rulaPostureRows.every(({ key }) => visibleAnalysis[key].source !== "DEFAULT");
   const actionLevel = rulaActionLevelFor(visibleResult.actionLevel);
   const mainFactor = rulaMainFactorKey(visibleAnalysis);
   const numberLocale = locale === "en" ? "en-US" : "fa-IR";
   const visibleOverlay = bodySide === "BOTH" ? analysis.sideImageOverlays?.[activeSide] : analysis.imageOverlay;
   const resultReady = bodySide === "BOTH" ? isRulaSingleAnalysisReviewed(analysis.sideAnalyses?.LEFT) && isRulaSingleAnalysisReviewed(analysis.sideAnalyses?.RIGHT) : isRulaSingleAnalysisReviewed(analysis);
-  const scoreForGauge = resultReady ? Math.max(1, Math.min(7, visibleResult.score)) : 0;
+  const resultAvailable = proposalSummary.complete;
+  const bothResultsAvailable = sideSummaries.LEFT?.complete && sideSummaries.RIGHT?.complete;
+  const scoreForGauge = resultAvailable ? Math.max(1, Math.min(7, visibleResult.score)) : 0;
   const gaugeStyle = { "--rula-score-angle": `${scoreForGauge ? Math.round((scoreForGauge / 7) * 270) : 0}deg` } as CSSProperties;
   const hasImage = Boolean(imagePreview);
   function change(part: RulaPosturePart, row: RulaPostureRow) { onChange(part, row, bodySide === "BOTH" ? activeSide : undefined); }
-  return <div className="rula-analysis-step rula-smart-analysis"><div className="rula-analysis-intro"><div className="rula-analysis-heading"><span className="rula-analysis-heading-icon"><Icon name="rula" size={19}/></span><div><strong>{t("assessment.rulaSmartPostureTitle")}</strong><small>{t("assessment.rulaSmartPostureDescription")}</small></div></div><span className={`rula-analysis-source ${resultReady ? "ready" : "pending"}`}><Icon name={resultReady ? "check" : "activity"} size={15}/> {resultReady ? t("assessment.rulaAnalysisCompleted") : t("assessment.rulaModelReviewable")}</span></div>{bodySide === "BOTH" && <><div className="rula-side-tabs" role="tablist" aria-label={t("assessment.bodySide")}>{(["RIGHT", "LEFT"] as const).map((side) => <button type="button" role="tab" aria-selected={activeSide === side} className={activeSide === side ? "active" : ""} onClick={() => { setActiveSide(side); setEditing(null); }} key={side}>{side === "RIGHT" ? t("assessment.right") : t("assessment.left")}</button>)}</div>{sideResults?.LEFT && sideResults.RIGHT && <div className="rula-side-score-strip" aria-label={t("assessment.bothSides")}><span><small>{t("assessment.right")}</small><strong>{resultReady ? sideResults.RIGHT.score.toLocaleString(numberLocale) : "—"}</strong></span><span><small>{t("assessment.left")}</small><strong>{resultReady ? sideResults.LEFT.score.toLocaleString(numberLocale) : "—"}</strong></span><span className="final"><small>{t("assessment.bothSides")}</small><strong>{resultReady ? result.score.toLocaleString(numberLocale) : "—"}</strong></span></div>}</>}<div className="rula-analysis-layout"><div className="rula-analysis-table-stack"><RulaPostureTable title={t("assessment.rulaGroupA")} rows={rulaGroupARows} analysis={visibleAnalysis} locale={locale} onEdit={setEditing}/><RulaPostureTable title={t("assessment.rulaGroupB")} rows={rulaGroupBRows} analysis={visibleAnalysis} locale={locale} onEdit={setEditing}/><div className="rula-group-summary" aria-label={t("assessment.rulaGroupScores")}><div><span>{t("assessment.rulaGroupA")}</span><strong>{resultReady ? visibleResult.groupA.toLocaleString(numberLocale) : "—"}</strong></div><div><span>{t("assessment.rulaGroupB")}</span><strong>{resultReady ? visibleResult.groupB.toLocaleString(numberLocale) : "—"}</strong></div></div></div><RulaPostureVisual imagePreview={imagePreview} overlay={visibleOverlay} postureDescription={postureDescription} analysis={visibleAnalysis} locale={locale}/></div><section className="rula-analysis-summary"><div className="rula-score-summary-main"><div className="rula-score-gauge" style={gaugeStyle} role="progressbar" aria-label={t("assessment.rulaScoreLabel")} aria-valuemin={1} aria-valuemax={7} aria-valuenow={scoreForGauge || undefined}><span className="rula-score-gauge-progress"/><strong>{resultReady ? visibleResult.score.toLocaleString(numberLocale) : "—"}</strong><small>{t("assessment.rulaCurrentScore")}</small></div><div className="rula-summary-score"><small>{t("assessment.rulaAnalysisSummary")}</small><strong>{resultReady ? `RULA Score = ${visibleResult.score.toLocaleString(numberLocale)}` : t("assessment.rulaAutomaticAnalysisPending")}</strong></div></div>{resultReady && <><span className={`rula-summary-badge ${actionLevel.className}`}>{t(actionLevel.labelKey)}</span><p>{t("assessment.rulaMainFactorSummary", { factor: t(`assessment.${mainFactor}`) })}</p></>}</section>{editing && <RulaPostureEditDialog part={editing} row={visibleAnalysis[editing]} hasImage={hasImage} onCancel={() => setEditing(null)} onSave={(row) => { change(editing, row); setEditing(null); }}/>}</div>;
+  return <div className="rula-analysis-step rula-smart-analysis"><div className="rula-analysis-intro"><div className="rula-analysis-heading"><span className="rula-analysis-heading-icon"><Icon name="rula" size={19}/></span><div><strong>{t("assessment.rulaSmartPostureTitle")}</strong><small>{t("assessment.rulaSmartPostureDescription")}</small></div></div><span className={`rula-analysis-source ${resultReady ? "ready" : "pending"}`}><Icon name={resultReady ? "check" : "activity"} size={15}/> {resultReady ? t("assessment.rulaAnalysisCompleted") : t("assessment.rulaModelReviewable")}</span></div>{bodySide === "BOTH" && <><div className="rula-side-tabs" role="tablist" aria-label={t("assessment.bodySide")}>{(["RIGHT", "LEFT"] as const).map((side) => <button type="button" role="tab" aria-selected={activeSide === side} className={activeSide === side ? "active" : ""} onClick={() => { setActiveSide(side); setEditing(null); }} key={side}>{side === "RIGHT" ? t("assessment.right") : t("assessment.left")}</button>)}</div>{sideResults?.LEFT && sideResults.RIGHT && <div className="rula-side-score-strip" aria-label={t("assessment.bothSides")}><span><small>{t("assessment.right")}</small><strong>{sideSummaries.RIGHT?.complete ? sideSummaries.RIGHT.result.score.toLocaleString(numberLocale) : "—"}</strong></span><span><small>{t("assessment.left")}</small><strong>{sideSummaries.LEFT?.complete ? sideSummaries.LEFT.result.score.toLocaleString(numberLocale) : "—"}</strong></span><span className="final"><small>{t("assessment.bothSides")}</small><strong>{bothResultsAvailable ? Math.max(sideSummaries.LEFT!.result.score, sideSummaries.RIGHT!.result.score).toLocaleString(numberLocale) : "—"}</strong></span></div>}</>}{!resultReady && <div className="rula-review-notice" role="status"><div><strong>{analysisCompleted ? t("assessment.rulaAnalysisSuggestionsAvailable", { count: proposalSummary.count.toLocaleString(numberLocale), total: rulaPostureRows.length.toLocaleString(numberLocale) }) : t("assessment.rulaAutomaticAnalysisPending")}</strong><small>{t(analysisCompleted ? "assessment.rulaAiReviewNotice" : hasImage ? "assessment.rulaAutomaticAnalysisHint" : "assessment.rulaTextAnalysisNote")}</small></div></div>}<div className="rula-analysis-layout"><div className="rula-analysis-table-stack"><RulaPostureTable title={t("assessment.rulaGroupA")} rows={rulaGroupARows} analysis={visibleAnalysis} locale={locale} onEdit={setEditing}/><RulaPostureTable title={t("assessment.rulaGroupB")} rows={rulaGroupBRows} analysis={visibleAnalysis} locale={locale} onEdit={setEditing}/><div className="rula-group-summary" aria-label={t("assessment.rulaGroupScores")}><div><span>{t("assessment.rulaGroupA")}</span><strong style={groupIntervals.A ? { whiteSpace: "nowrap", flexShrink: 0 } : undefined} role={groupIntervals.A ? "note" : undefined} dir={groupIntervals.A ? "ltr" : undefined} title={groupIntervals.A?.description} aria-label={groupIntervals.A?.description}>{groupBounds.A?.complete ? visibleResult.groupA.toLocaleString(numberLocale) : groupIntervals.A?.text ?? "—"}</strong></div><div><span>{t("assessment.rulaGroupB")}</span><strong style={groupIntervals.B ? { whiteSpace: "nowrap", flexShrink: 0 } : undefined} role={groupIntervals.B ? "note" : undefined} dir={groupIntervals.B ? "ltr" : undefined} title={groupIntervals.B?.description} aria-label={groupIntervals.B?.description}>{groupBounds.B?.complete ? visibleResult.groupB.toLocaleString(numberLocale) : groupIntervals.B?.text ?? "—"}</strong></div></div></div><RulaPostureVisual imagePreview={imagePreview} overlay={visibleOverlay} postureDescription={postureDescription} analysis={visibleAnalysis} locale={locale}/></div><section className="rula-analysis-summary"><div className="rula-score-summary-main"><div className="rula-score-gauge" style={gaugeStyle} role="progressbar" aria-label={t("assessment.rulaScoreLabel")} aria-valuemin={1} aria-valuemax={7} aria-valuenow={scoreForGauge || undefined}><span className="rula-score-gauge-progress"/><strong>{resultAvailable ? visibleResult.score.toLocaleString(numberLocale) : "—"}</strong><small>{t("assessment.rulaCurrentScore")}</small></div><div className="rula-summary-score"><small>{t("assessment.rulaAnalysisSummary")}</small><strong>{resultAvailable ? `RULA Score = ${visibleResult.score.toLocaleString(numberLocale)}` : analysisCompleted ? t("assessment.rulaAnalysisSuggestionsAvailable", { count: proposalSummary.count.toLocaleString(numberLocale), total: rulaPostureRows.length.toLocaleString(numberLocale) }) : t("assessment.rulaAutomaticAnalysisPending")}</strong></div></div>{resultReady && <><span className={`rula-summary-badge ${actionLevel.className}`}>{t(actionLevel.labelKey)}</span><p>{t("assessment.rulaMainFactorSummary", { factor: t(`assessment.${mainFactor}`) })}</p></>}</section>{editing && <RulaPostureEditDialog part={editing} row={visibleAnalysis[editing]} hasImage={hasImage} onCancel={() => setEditing(null)} onSave={(row) => { change(editing, row); setEditing(null); }}/>}</div>;
 }
 
 const rulaFactorImpactKeys: Record<RulaReportFactor["impactLevel"], string> = { LOW: "assessment.rulaEffectLow", MEDIUM: "assessment.rulaEffectMedium", HIGH: "assessment.rulaEffectHigh" };
@@ -3331,7 +3449,7 @@ export function RulaReportDataTable({ analysis, imageAssessments = analysis.imag
     };
   });
   for (const [imageIndex, image] of (imageAssessments ?? []).entries()) {
-    const observation = image.analysis.sideAnalyses?.[imageBodySide] ?? image.analysis;
+    const observation = rulaAnalysisForSide(image.analysis, imageBodySide);
     const result = calculateRula(rulaInputsFromAnalysis(observation, image.force, image.muscleUse));
     const imageReviewed = isRulaSingleAnalysisReviewed(observation);
     const total = Math.max(1, rulaPostureRows.reduce((sum, item) => sum + (isRulaPostureResultReviewed(observation[item.key]) ? observation[item.key].score : 0), 0));
@@ -3373,7 +3491,7 @@ export function RulaReportDataTable({ analysis, imageAssessments = analysis.imag
       </div></td>
     </tr>;
   })}{imageAssessments?.map((image, imageIndex) => {
-    const observation = image.analysis.sideAnalyses?.[imageBodySide] ?? image.analysis;
+    const observation = rulaAnalysisForSide(image.analysis, imageBodySide);
     const result = calculateRula(rulaInputsFromAnalysis(observation, image.force, image.muscleUse));
     const imageReviewed = isRulaSingleAnalysisReviewed(observation);
     const total = Math.max(1, rulaPostureRows.reduce((sum, item) => sum + (isRulaPostureResultReviewed(observation[item.key]) ? observation[item.key].score : 0), 0));
@@ -3819,6 +3937,7 @@ export function RulaPage() {
   const editingAssessmentId = searchParams.get("edit")?.trim() ?? "";
   const requestedWizardStep: RulaWizardStep = searchParams.get("step") === "3" ? 3 : searchParams.get("step") === "2" ? 2 : 1;
   const editingExistingAssessment = Boolean(editingAssessmentId);
+  const { orgId, session } = getSession();
   const requestedProjectId = searchParams.get("project")?.trim() ?? "";
   const numberLocale = locale === "en" ? "en-US" : "fa-IR";
   const assessmentLabel = "RULA";
@@ -3826,16 +3945,30 @@ export function RulaPage() {
   const initialDraft = editingExistingAssessment ? null : readLocalDraft(draftKey);
   const state = useLoad<Rula[]>("/rula");
   const projects = useLoad<Project[]>("/projects");
-  const [error, setError] = useState(""); const [draftNotice, setDraftNotice] = useState(""); const [draftSyncAvailable, setDraftSyncAvailable] = useState(false); const [history, setHistory] = useState<VersionRow[]>([]); const [historyAssessment, setHistoryAssessment] = useState(""); const [wizardStep, setWizardStep] = useState<RulaWizardStep>(() => editingExistingAssessment ? requestedWizardStep : 1); const [draft, setDraftState] = useState<DraftRecord | null>(initialDraft); const [selectedProjectId, setSelectedProjectId] = useState(() => draftValue(initialDraft, "projectId")); const [lastSaved, setLastSaved] = useState<Date | null>(null); const [autosaveError, setAutosaveError] = useState(false); const [postureImage, setPostureImage] = useState<File | null>(null); const [postureImagePreview, setPostureImagePreview] = useState(""); const [postureImageError, setPostureImageError] = useState(""); const [postureImageAnalysisLoading, setPostureImageAnalysisLoading] = useState(false); const [postureImageAnalysisError, setPostureImageAnalysisError] = useState(""); const [postureImageAttachmentId, setPostureImageAttachmentId] = useState(""); const [postureDescription, setPostureDescription] = useState(() => String(initialDraft?.postureDescription ?? "")); const [rulaTaskDescription, setRulaTaskDescription] = useState(() => String(initialDraft?.taskDescription ?? "")); const [rulaBodySide, setRulaBodySide] = useState<"LEFT" | "RIGHT" | "BOTH">(() => initialDraft?.bodySide === "LEFT" ? "LEFT" : initialDraft?.bodySide === "BOTH" ? "BOTH" : "RIGHT"); const [submitting, setSubmitting] = useState(false); const [postureAnalysis, setPostureAnalysis] = useState<RulaPostureAnalysis>(() => parsePostureAnalysis(initialDraft?.postureAnalysis)); const [rulaForce, setRulaForce] = useState(() => { const value = Number(initialDraft?.force ?? 0); return Number.isInteger(value) && value >= 0 && value <= 3 ? value : 0; }); const [rulaMuscleUse, setRulaMuscleUse] = useState(() => rulaMuscleUseFromValue(initialDraft?.muscleUse)); const [selectedRulaActions, setSelectedRulaActions] = useState<RulaCorrectionAction[]>([]); const dialog = useDialog(); const formRef = useRef<HTMLFormElement>(null); const postureImageInputRef = useRef<HTMLInputElement>(null); const postureImageAnalysisRequestId = useRef(0); const postureImageAnalysisContextKey = useRef(""); const saveTimer = useRef<number | null>(null); const draftWriteQueue = useRef<Promise<void>>(Promise.resolve()); const suppressRulaDraftPersistence = useRef(false);
+  const [error, setError] = useState(""); const [draftNotice, setDraftNotice] = useState(""); const [draftSyncAvailable, setDraftSyncAvailable] = useState(false); const [history, setHistory] = useState<VersionRow[]>([]); const [historyAssessment, setHistoryAssessment] = useState(""); const [wizardStep, setWizardStep] = useState<RulaWizardStep>(() => editingExistingAssessment ? requestedWizardStep : 1); const [draft, setDraftState] = useState<DraftRecord | null>(initialDraft); const [selectedProjectId, setSelectedProjectId] = useState(() => draftValue(initialDraft, "projectId")); const [lastSaved, setLastSaved] = useState<Date | null>(null); const [autosaveError, setAutosaveError] = useState(false); const [postureImage, setPostureImage] = useState<File | null>(null); const [postureImagePreview, setPostureImagePreview] = useState(""); const [postureImageError, setPostureImageError] = useState(""); const [postureImageAnalysisLoading, setPostureImageAnalysisLoading] = useState(false); const [postureImageAnalysisError, setPostureImageAnalysisError] = useState(""); const [postureImageAttachmentId, setPostureImageAttachmentId] = useState(""); const [postureDescription, setPostureDescription] = useState(() => String(initialDraft?.postureDescription ?? "")); const [rulaTaskDescription, setRulaTaskDescription] = useState(() => String(initialDraft?.taskDescription ?? "")); const [rulaBodySide, setRulaBodySide] = useState<"LEFT" | "RIGHT" | "BOTH">(() => initialDraft?.bodySide === "LEFT" ? "LEFT" : initialDraft?.bodySide === "BOTH" ? "BOTH" : "RIGHT"); const [submitting, setSubmitting] = useState(false); const [postureAnalysis, setPostureAnalysis] = useState<RulaPostureAnalysis>(() => initialDraft ? rulaPayloadFromDraft(initialDraft).postureAnalysis : parsePostureAnalysis(null)); const [rulaForce, setRulaForce] = useState(() => { const value = Number(initialDraft?.force ?? 0); return Number.isInteger(value) && value >= 0 && value <= 3 ? value : 0; }); const [rulaMuscleUse, setRulaMuscleUse] = useState(() => rulaMuscleUseFromValue(initialDraft?.muscleUse)); const [selectedRulaActions, setSelectedRulaActions] = useState<RulaCorrectionAction[]>([]); const dialog = useDialog(); const formRef = useRef<HTMLFormElement>(null); const postureImageInputRef = useRef<HTMLInputElement>(null); const postureImageAnalysisRequestId = useRef(0); const postureImageAnalysisContextKey = useRef(""); const saveTimer = useRef<number | null>(null); const draftWriteQueue = useRef<Promise<void>>(Promise.resolve()); const suppressRulaDraftPersistence = useRef(false);
   const [manualRulaFallback, setManualRulaFallback] = useState(false);
   const [imageReviewOpen, setImageReviewOpen] = useState(false);
+  const [rulaReviewSide, setRulaReviewSide] = useState<RulaBodySide>(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("side") === "LEFT") || initialDraft?.bodySide === "LEFT" ? "LEFT" : "RIGHT");
+  const manualImageOverrides = useRef<Record<string, Partial<Record<RulaBodySide, { adjustments?: Partial<RulaAdjustments>; rows?: Partial<Record<RulaPosturePart, RulaPostureRow>> }>>>>({});
+  const rulaActivityContextKey = useRef<string | null>(null);
+  const currentRulaObservation = useRef({ analysis: postureAnalysis, force: rulaForce, muscleUse: rulaMuscleUse });
+  currentRulaObservation.current = { analysis: postureAnalysis, force: rulaForce, muscleUse: rulaMuscleUse };
+  const activeRulaSide = rulaBodySide === "BOTH" ? rulaReviewSide : rulaBodySide;
+  const activeRulaAdjustments = rulaAnalysisForSide(postureAnalysis, activeRulaSide).adjustments ?? { force: rulaForce, muscleUse: rulaMuscleUse };
   const rulaErrorAlertRef = useRef<HTMLDivElement>(null);
   const previousRulaWizardStep = useRef(wizardStep);
   const previousRulaAnalysisLoading = useRef(postureImageAnalysisLoading);
   const [additionalPostureImages, setAdditionalPostureImages] = useState<File[]>([]);
   const [savedPostureImages, setSavedPostureImages] = useState<RulaPostureImageAttachment[]>([]);
-  const rulaImagePolicy = useLoad<RulaImageAnalysisPolicy>(postureImage || additionalPostureImages.length || savedPostureImages.length ? "/rula/image-analysis-policy" : null);
-  const rulaAccountImageConsent = rulaImagePolicy.data?.consentAccepted === true;
+  const [rulaImageOwnership, setRulaImageOwnership] = useState<RulaImageOwnership>({ imageSubject: "SELF" });
+  const currentImageAuthorizationContext = `${session?.user.id ?? ""}:${orgId}`;
+  const [imageAuthorizationContext, setImageAuthorizationContext] = useState(currentImageAuthorizationContext);
+  const [imageAuthorizationRevision, setImageAuthorizationRevision] = useState(0);
+  const receivedImageAuthorizations = useLoad<PostureImageAuthorizationsResponse>(rulaImageOwnership.imageSubject === "THIRD_PARTY" ? "/profile/posture-image-authorizations?direction=received" : null, [orgId, session?.user.id, imageAuthorizationRevision]);
+  const receivedImageGrants = imageAuthorizationContext === currentImageAuthorizationContext && !receivedImageAuthorizations.loading && !receivedImageAuthorizations.error ? receivedImageAuthorizations.data?.grants ?? [] : [];
+  const rulaImagePolicy = useLoad<RulaImageAnalysisPolicy>(postureImage || additionalPostureImages.length || savedPostureImages.length ? "/rula/image-analysis-policy" : null, [orgId, session?.user.id, imageAuthorizationRevision]);
+  const rulaImageAnalysisConsent = rulaImagePolicy.data?.consentAccepted === true && rulaImagePolicy.data.consentVersion === ACCOUNT_IMAGE_CONSENT_VERSION;
+  const rulaImageOwnershipValid = imageAuthorizationContext === currentImageAuthorizationContext && isRulaImageOwnershipValid(rulaImageOwnership, receivedImageGrants, session?.user.id ?? "");
   const [postureImagePreviews, setPostureImagePreviews] = useState<Record<string, string>>({});
   const [postureImageReviews, setPostureImageReviews] = useState<Record<string, RulaPostureImageReview>>({});
   const selectedPostureImageKeyRef = useRef("");
@@ -3863,7 +3996,6 @@ export function RulaPage() {
    const [jobCatalogSaveError, setJobCatalogSaveError] = useState(false);
    const [jobSearchError, setJobSearchError] = useState("");
    const [jobSearchOpen, setJobSearchOpen] = useState(false);
-   const { orgId } = getSession();
    const rulaJobRequestId = useRef(0);
    const taskDescriptionRequestId = useRef(0);
    const overview = useMemo(() => rulaOverview(state.data ?? []), [state.data]);
@@ -3948,9 +4080,12 @@ export function RulaPage() {
     setDraftNotice("");
     setDraftSyncAvailable(false);
     setSelectedProjectId(assessment.project.id);
-    savedImageAssessments.current = parsePostureAnalysis(assessment.postureAnalysis).imageAssessments ?? [];
+    const restoredAnalysis = parsePostureAnalysis(assessment.postureAnalysis, { force: Number(assessment.inputs?.force ?? 0), muscleUse: rulaMuscleUseFromValue(assessment.inputs?.muscleUse) });
+    savedImageAssessments.current = restoredAnalysis.imageAssessments ?? [];
+    manualImageOverrides.current = {};
+    preserveSavedRulaAdjustments(restoredAnalysis);
     savedImageBodySide.current = assessment.bodySide === "LEFT" ? "LEFT" : assessment.bodySide === "BOTH" ? "BOTH" : "RIGHT";
-    setPostureAnalysis(parsePostureAnalysis(assessment.postureAnalysis));
+    setPostureAnalysis(restoredAnalysis);
     setRulaBodySide(assessment.bodySide === "LEFT" ? "LEFT" : assessment.bodySide === "BOTH" ? "BOTH" : "RIGHT");
     setRulaForce(Number.isInteger(assessment.inputs?.force) && Number(assessment.inputs?.force) >= 0 && Number(assessment.inputs?.force) <= 3 ? Number(assessment.inputs?.force) : 0);
     setRulaMuscleUse(rulaMuscleUseFromValue(assessment.inputs?.muscleUse));
@@ -3971,7 +4106,7 @@ export function RulaPage() {
     setWizardStep(requestedWizardStep);
   }, [editingAssessmentId, requestedWizardStep, state.data]);
   useEffect(() => { if (editingExistingAssessment) return; let active = true; const localDraft = readLocalDraft(draftKey); if (localDraft) { setDraftState(localDraft); setDraftNotice(t("assessment.draftAvailable", { type: assessmentLabel })); setDraftSyncAvailable(true); } void getDraft<DraftRecord>(draftKey).then((value) => { if (active && !localDraft && value && typeof value === "object" && !Array.isArray(value)) { setDraftState(value); setDraftNotice(t("assessment.draftAvailable", { type: assessmentLabel })); setDraftSyncAvailable(true); } }).catch(() => { if (active && !localDraft) setAutosaveError(true); }); return () => { active = false; cancelDraftTimer(saveTimer); }; }, [assessmentLabel, draftKey, editingExistingAssessment, locale]);
-   useEffect(() => { if (!draft || editingExistingAssessment) return; const nestedInputs = draft.inputs && typeof draft.inputs === "object" && !Array.isArray(draft.inputs) ? draft.inputs as Record<string, unknown> : {}; setSelectedProjectId(String(draft.projectId ?? nestedInputs.projectId ?? "")); setPostureAnalysis(parsePostureAnalysis(draft.postureAnalysis)); setRulaBodySide(draft.bodySide === "LEFT" ? "LEFT" : draft.bodySide === "BOTH" ? "BOTH" : "RIGHT"); const force = Number(draft.force ?? nestedInputs.force ?? 0); setRulaForce(Number.isInteger(force) && force >= 0 && force <= 3 ? force : 0); const muscleUse = draft.muscleUse ?? nestedInputs.muscleUse; setRulaMuscleUse(rulaMuscleUseFromValue(muscleUse)); setPostureDescription(String(draft.postureDescription ?? "")); setRulaTaskDescription(String(draft.taskDescription ?? "")); }, [draft, editingExistingAssessment]);
+   useEffect(() => { if (!draft || editingExistingAssessment) return; const nestedInputs = draft.inputs && typeof draft.inputs === "object" && !Array.isArray(draft.inputs) ? draft.inputs as Record<string, unknown> : {}; setSelectedProjectId(String(draft.projectId ?? nestedInputs.projectId ?? "")); const restoredAnalysis = rulaPayloadFromDraft(draft).postureAnalysis; setPostureAnalysis(restoredAnalysis); preserveSavedRulaAdjustments(restoredAnalysis); setRulaBodySide(draft.bodySide === "LEFT" ? "LEFT" : draft.bodySide === "BOTH" ? "BOTH" : "RIGHT"); const force = Number(draft.force ?? nestedInputs.force ?? 0); setRulaForce(Number.isInteger(force) && force >= 0 && force <= 3 ? force : 0); const muscleUse = draft.muscleUse ?? nestedInputs.muscleUse; setRulaMuscleUse(rulaMuscleUseFromValue(muscleUse)); setPostureDescription(String(draft.postureDescription ?? "")); setRulaTaskDescription(String(draft.taskDescription ?? "")); }, [draft, editingExistingAssessment]);
     useEffect(() => {
      if (!draft || editingExistingAssessment) return;
       setJobQuery(draftValue(draft, "jobTitle"));
@@ -4044,20 +4179,46 @@ export function RulaPage() {
      postureImagePreviewsRef.current = previews;
      setPostureImagePreviews(previews);
      setSelectedPostureImageKey((current) => {
-       const nextKey = current && previews[current] ? current : entries[0]?.[0] ?? "";
+       const nextKey = current && (previews[current] || current.startsWith("saved:")) ? current : entries[0]?.[0] ?? "";
        selectedPostureImageKeyRef.current = nextKey;
-       setPostureImagePreview(previews[nextKey] ?? "");
+       if (!nextKey.startsWith("saved:")) setPostureImagePreview(previews[nextKey] ?? "");
        return nextKey;
      });
      return () => entries.forEach(([, preview]) => URL.revokeObjectURL(preview));
    }, [selectedPostureImages]);
 
   useEffect(() => {
+    if (imageAuthorizationContext === currentImageAuthorizationContext) return;
+    clearRulaPostureImageAnalysis();
+    savedImageAssessments.current = [];
+    setRulaImageOwnership(current => ({ imageSubject: current.imageSubject }));
+    setImageAuthorizationContext(currentImageAuthorizationContext);
+  }, [currentImageAuthorizationContext, imageAuthorizationContext]);
+
+  useEffect(() => {
+    const refreshAuthorization = () => {
+      postureAnalysisAbort.current?.abort();
+      postureImageAnalysisRequestId.current += 1;
+      postureImageAnalysisContextKey.current = "";
+      setPostureImageAnalysisLoading(false);
+      setImageAuthorizationRevision(current => current + 1);
+    };
+    window.addEventListener("nivasafe-image-consent-changed", refreshAuthorization);
+    window.addEventListener("nivasafe-posture-authorizations-changed", refreshAuthorization);
+    return () => {
+      window.removeEventListener("nivasafe-image-consent-changed", refreshAuthorization);
+      window.removeEventListener("nivasafe-posture-authorizations-changed", refreshAuthorization);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!automaticAnalysisMode) return;
+    if (imageAuthorizationContext !== currentImageAuthorizationContext) return;
     if (selectedPostureImages.length > 0 || savedPostureImages.length > 0) {
       if (rulaImagePolicy.loading || !rulaImagePolicy.data && !rulaImagePolicy.error) return;
-      if (!rulaImagePolicy.data?.available) {
-        const message = rulaImagePolicy.error || t(rulaImagePolicyErrorKey(rulaImagePolicy.data));
+      if (!rulaImagePolicy.data?.available || !rulaImageAnalysisConsent) {
+        const messageKey = !rulaImageAnalysisConsent ? "assessment.rulaImageConsentRequired" : rulaImagePolicyErrorKey(rulaImagePolicy.data);
+        const message = rulaImagePolicy.error || (messageKey ? t(messageKey) : "");
         const imageKeys = [...savedPostureImages.map(image => "saved:" + image.id), ...selectedPostureImages.map(rulaPostureImageFileKey)];
         const blockedKey = JSON.stringify(["image-policy", rulaBodySide, imageKeys, message]);
         if (postureImageAnalysisContextKey.current !== blockedKey) {
@@ -4070,6 +4231,16 @@ export function RulaPage() {
         return;
       }
     }
+    if (automaticAnalysisMode === "images" && !rulaImageOwnershipValid) {
+      if (receivedImageAuthorizations.loading) return;
+      const message = receivedImageAuthorizations.error || rulaImageOwnershipCopy[locale].required;
+      const blocked: RulaPostureImageReview = { status: "error", errorMessage: message, errorCode: "RULA_IMAGE_OWNER_AUTHORIZATION_REQUIRED", retryable: false };
+      for (const key of [...savedPostureImages.map(image => "saved:" + image.id), ...selectedPostureImages.map(rulaPostureImageFileKey)]) if (postureImageReviewCache.current[key]?.status !== "ready") postureImageReviewCache.current[key] = { ...blocked };
+      setPostureImageReviews({ ...postureImageReviewCache.current });
+      setPostureImageAnalysisLoading(false);
+      setPostureImageAnalysisError(message);
+      return;
+    }
     if (savedImageBodySide.current !== rulaBodySide) { savedImageAssessments.current = []; savedImageBodySide.current = rulaBodySide; setPostureAnalysis(current => ({ ...current, imageAssessments: [] })); }
     const jobTitle = jobQuery.trim();
     const taskDescription = rulaTaskDescription.trim();
@@ -4078,11 +4249,11 @@ export function RulaPage() {
       return;
     }
     const activityInfo = formRef.current ? rulaActivityInfoFromForm(new FormData(formRef.current)) : null;
-    const imageKey = selectedPostureImages.length ? selectedPostureImages.map(rulaPostureImageFileKey).join("|") : "text-only";
-    const reviewContext = JSON.stringify([rulaBodySide, locale, jobTitle, taskDescription, postureDescription.trim(), activityInfo]);
+    const imageKey = automaticAnalysisMode === "images" ? [...savedPostureImages.map(image => `saved:${image.id}`), ...selectedPostureImages.map(rulaPostureImageFileKey)].join("|") : "text-only";
+    const reviewContext = rulaAutomaticReviewContext(automaticAnalysisMode, { bodySide: rulaBodySide, locale, jobTitle, taskDescription, postureDescription, activityInfo, imageSubject: rulaImageOwnership.imageSubject, ownerAuthorizationId: rulaImageOwnership.ownerAuthorizationId, organizationId: orgId, userId: session?.user.id });
     if (savedPostureImages.length && postureImageReviewContext.current && postureImageReviewContext.current !== reviewContext) savedImageAssessments.current = [];
     if (!selectedPostureImages.length && savedImageAssessments.current.length === savedPostureImages.length && savedPostureImages.length > 0) { postureImageReviewContext.current = reviewContext; setPostureImageAnalysisLoading(false); return; }
-    const contextKey = selectedPostureImages.length ? `${imageKey}:${reviewContext}` : `${reviewContext}:${rulaForce}:${rulaMuscleUse}:${JSON.stringify(activityInfo)}`;
+    const contextKey = automaticAnalysisMode === "images" ? `${imageKey}:${reviewContext}` : `${reviewContext}:${rulaForce}:${rulaMuscleUse}:${JSON.stringify(activityInfo)}`;
     if (postureImageAnalysisContextKey.current === contextKey) return;
     postureImageAnalysisContextKey.current = contextKey;
     const requestId = ++postureImageAnalysisRequestId.current;
@@ -4113,7 +4284,7 @@ export function RulaPage() {
       postureImageAnalysisRequestId.current += 1;
       postureImageAnalysisContextKey.current = "";
     };
-  }, [additionalPostureImages, automaticAnalysisMode, jobQuery, locale, postureDescription, postureImage, rulaBodySide, rulaAccountImageConsent, rulaImagePolicy.data, rulaImagePolicy.error, rulaImagePolicy.loading, selectedPostureImages.length ? null : rulaForce, selectedPostureImages.length ? null : rulaMuscleUse, rulaTaskDescription, selectedPostureImages, savedPostureImages]);
+  }, [additionalPostureImages, automaticAnalysisMode, automaticAnalysisMode === "images" ? null : jobQuery, locale, postureDescription, postureImage, rulaBodySide, rulaImageAnalysisConsent, rulaImagePolicy.data, rulaImagePolicy.error, rulaImagePolicy.loading, automaticAnalysisMode === "images" ? null : rulaForce, automaticAnalysisMode === "images" ? null : rulaMuscleUse, automaticAnalysisMode === "images" ? null : rulaTaskDescription, selectedPostureImages, savedPostureImages, rulaImageOwnership, rulaImageOwnershipValid, receivedImageAuthorizations.data, receivedImageAuthorizations.loading, receivedImageAuthorizations.error, imageAuthorizationContext, currentImageAuthorizationContext]);
 
   useEffect(() => {
     const review = postureImageReviewCache.current[selectedPostureImageKey];
@@ -4159,13 +4330,97 @@ export function RulaPage() {
   const updateRulaPosturePart: Parameters<typeof RulaPostureAnalysisStep>[0]["onChange"] = (part, row, side) => {
     const review = postureImageReviewCache.current[selectedPostureImageKey];
     if (review?.status === "error" || review?.status === "cancelled") setManualRulaFallback(true);
-    setPostureAnalysis((current) => { if (rulaBodySide === "BOTH" && side) { const normalized = withBothSideAnalyses(current); const nextSides = { ...normalized.sideAnalyses!, [side]: { ...normalized.sideAnalyses![side]!, [part]: row } }; return { ...normalized, ...(side === "RIGHT" ? nextSides.RIGHT! : {}), sideAnalyses: nextSides }; } return { ...current, [part]: row }; });
+    const targetSide = side ?? activeRulaSide;
+    const imageOverrides = manualImageOverrides.current[selectedPostureImageKey] ?? {};
+    imageOverrides[targetSide] = { ...imageOverrides[targetSide], rows: { ...imageOverrides[targetSide]?.rows, [part]: row } };
+    manualImageOverrides.current[selectedPostureImageKey] = imageOverrides;
+    setPostureAnalysis((current) => { if (rulaBodySide === "BOTH") { const normalized = withBothSideAnalyses(current); const nextSides = { ...normalized.sideAnalyses!, [targetSide]: { ...normalized.sideAnalyses![targetSide]!, [part]: row } }; return { ...normalized, ...(targetSide === "RIGHT" ? nextSides.RIGHT! : {}), sideAnalyses: nextSides }; } return { ...current, bodySide: targetSide, [part]: row }; });
   };
+
+  function updateRulaAdjustments(update: Partial<RulaAdjustments>) {
+    const imageKey = selectedPostureImageKeyRef.current;
+    const imageOverrides = manualImageOverrides.current[imageKey] ?? {};
+    imageOverrides[activeRulaSide] = { ...imageOverrides[activeRulaSide], adjustments: { ...imageOverrides[activeRulaSide]?.adjustments, ...update } };
+    manualImageOverrides.current[imageKey] = imageOverrides;
+    const adjustments = { ...activeRulaAdjustments, ...update };
+    const next = rulaAnalysisWithAdjustments(currentRulaObservation.current.analysis, activeRulaSide, rulaBodySide, adjustments, { force: rulaForce, muscleUse: rulaMuscleUse });
+    currentRulaObservation.current = { analysis: next, force: next.adjustments?.force ?? rulaForce, muscleUse: next.adjustments?.muscleUse ?? rulaMuscleUse };
+    setPostureAnalysis(next);
+    if (rulaBodySide !== "BOTH" || activeRulaSide === "RIGHT") { setRulaForce(adjustments.force); setRulaMuscleUse(adjustments.muscleUse); }
+  }
+
+  function publishSelectedRulaObservation(analysis: RulaPostureAnalysis, fallback: RulaAdjustments = { force: 0, muscleUse: false }) {
+    const adjustments = analysis.adjustments ?? fallback;
+    currentRulaObservation.current = { analysis, ...adjustments };
+    setPostureAnalysis(analysis);
+    setRulaForce(adjustments.force);
+    setRulaMuscleUse(adjustments.muscleUse);
+  }
+
+  function preserveSavedRulaAdjustments(analysis: RulaPostureAnalysis, fallback: RulaAdjustments = { force: rulaForce, muscleUse: rulaMuscleUse }) {
+    const images: Array<{ imageKey: string; analysis: RulaPostureAnalysis; force?: number; muscleUse?: boolean; attachmentId?: string }> = analysis.imageAssessments ?? [{ imageKey: "", analysis }];
+    for (const image of images) {
+      const overrides: typeof manualImageOverrides.current[string] = {};
+      for (const side of ["LEFT", "RIGHT"] as const) {
+        if (!image.analysis.sideAnalyses?.[side] && image.analysis.bodySide && image.analysis.bodySide !== side) continue;
+        const value = rulaAnalysisForSide(image.analysis, side);
+        overrides[side] = { adjustments: value.adjustments ?? { force: image.force ?? fallback.force, muscleUse: image.muscleUse ?? fallback.muscleUse } };
+      }
+      if (Object.keys(overrides).length) {
+        manualImageOverrides.current[image.imageKey] = overrides;
+        if (image.attachmentId) manualImageOverrides.current[`saved:${image.attachmentId}`] = overrides;
+      }
+    }
+  }
+
+  function contextualRulaAnalysis(analysis: RulaPostureAnalysis, imageKey: string, suggestions: Partial<RulaAdjustments>): RulaPostureAnalysis {
+    const apply = (side: RulaBodySide): RulaSinglePostureAnalysis => {
+      const value = rulaAnalysisForSide(analysis, side);
+      const override = manualImageOverrides.current[imageKey]?.[side]?.adjustments;
+      return { ...value, bodySide: side, adjustments: { force: 0, muscleUse: false, ...suggestions, ...override } };
+    };
+    if (rulaBodySide !== "BOTH") return { ...analysis, ...apply(rulaBodySide) };
+    const sides = { LEFT: apply("LEFT"), RIGHT: apply("RIGHT") };
+    return { ...analysis, ...sides.RIGHT, sideAnalyses: sides };
+  }
+
+  function synchronizeRulaActivityAdjustments(form: HTMLFormElement) {
+    const activity = rulaActivityInfoFromForm(new FormData(form));
+    const key = rulaActivityAdjustmentsKey(activity);
+    if (rulaActivityContextKey.current === key) return;
+    rulaActivityContextKey.current = key;
+    const suggestions = rulaActivityAdjustments(activity);
+    for (const [imageKey, review] of Object.entries(postureImageReviewCache.current)) {
+      if (review.editedAnalysis) {
+        review.editedAnalysis = contextualRulaAnalysis(review.editedAnalysis, imageKey, suggestions);
+        Object.assign(review, review.editedAnalysis.adjustments);
+      }
+    }
+    savedImageAssessments.current = savedImageAssessments.current.map(image => {
+      const analysis = contextualRulaAnalysis(image.analysis, image.imageKey, suggestions);
+      return { ...image, analysis, ...analysis.adjustments };
+    });
+    publishSelectedRulaObservation(contextualRulaAnalysis(currentRulaObservation.current.analysis, selectedPostureImageKeyRef.current, suggestions));
+    setPostureImageReviews({ ...postureImageReviewCache.current });
+  }
+
+  function appendRulaImageActivity(body: FormData) {
+    const activity = formRef.current ? rulaActivityInfoFromForm(new FormData(formRef.current)) : { jobTitle: jobQuery.trim(), taskDescription: rulaTaskDescription.trim(), postureDescription: postureDescription.trim() };
+    body.append("bodySide", rulaBodySide);
+    body.append("jobTitle", activity.jobTitle);
+    body.append("taskDescription", activity.taskDescription);
+    body.append("postureDescription", activity.postureDescription ?? "");
+    body.append("locale", locale);
+    if (hasRulaActivityContext(activity.jobTitle, activity.taskDescription)) body.append("activityInfo", JSON.stringify(activity));
+    return rulaActivityAdjustmentsKey(activity);
+  }
 
   function clearRulaPostureImageAnalysis(preserveReviews = false) {
     postureAnalysisAbort.current?.abort();
     if (!preserveReviews) {
       postureImageReviewCache.current = {};
+      manualImageOverrides.current = {};
+      rulaActivityContextKey.current = null;
       postureImageReviewContext.current = "";
     }
     postureImageAnalysisRequestId.current += 1;
@@ -4174,6 +4429,14 @@ export function RulaPage() {
     setPostureImageAnalysisError("");
     setPostureImageReviews({});
     setPostureAnalysis(postureAnalysisFromValue(null));
+  }
+
+  function changeRulaImageOwnership(next: RulaImageOwnership) {
+    if (next.imageSubject === rulaImageOwnership.imageSubject && next.ownerAuthorizationId === rulaImageOwnership.ownerAuthorizationId) return;
+    clearRulaPostureImageAnalysis();
+    savedImageAssessments.current = [];
+    setManualRulaFallback(false);
+    setRulaImageOwnership(next);
   }
 
   async function requestIndependentRulaAnalysis(path: string, body: FormData | Record<string, unknown>, signal: AbortSignal) {
@@ -4194,36 +4457,58 @@ export function RulaPage() {
     }
     return { data: {
       ...results[0]!,
+      analysisRequestIds: results.flatMap(result => result.analysisRequestId ? [result.analysisRequestId] : []),
       sides: Object.fromEntries(sides.map((side, index) => [side, results[index]!.sides[side]])),
       notes: results.map(result => result.notes).filter(Boolean).join(" · "),
       aiStatus: results.some(result => result.aiStatus === "fallback") ? "fallback" as const : "connected" as const,
     } };
   }
 
-  function analysisFromRulaResponse(result: RulaPostureAnalysisResponse): RulaPostureAnalysis {
+  function analysisFromRulaResponse(result: RulaPostureAnalysisResponse, imageKey = "", requestActivityKey?: string): RulaPostureAnalysis {
+    const review = postureImageReviewCache.current[imageKey];
+    const fallback = { force: review?.force ?? (imageKey ? 0 : currentRulaObservation.current.force), muscleUse: review?.muscleUse ?? (imageKey ? false : currentRulaObservation.current.muscleUse) };
+    const latestActivity = formRef.current ? rulaActivityInfoFromForm(new FormData(formRef.current)) : undefined;
+    const finish = (analysis: RulaPostureAnalysis) => {
+      if (!latestActivity) return analysis;
+      const suggestions = rulaActivityAdjustments(latestActivity);
+      if (requestActivityKey !== undefined && requestActivityKey !== rulaActivityAdjustmentsKey(latestActivity)) return contextualRulaAnalysis(analysis, imageKey, suggestions);
+      if (!Object.keys(suggestions).length) return analysis;
+      const apply = (side: RulaBodySide) => {
+        const value = rulaAnalysisForSide(analysis, side);
+        return { ...value, adjustments: { ...fallback, ...value.adjustments, ...suggestions, ...manualImageOverrides.current[imageKey]?.[side]?.adjustments } };
+      };
+      if (rulaBodySide !== "BOTH") return { ...analysis, ...apply(rulaBodySide) };
+      const sides = { LEFT: apply("LEFT"), RIGHT: apply("RIGHT") };
+      return { ...analysis, ...sides.RIGHT, sideAnalyses: sides };
+    };
     const requestedSides = rulaBodySide === "BOTH" ? (["RIGHT", "LEFT"] as const) : [rulaBodySide] as const;
-    const sideResults = requestedSides.map((side) => ({ side, value: rulaAnalysisFromImageSide(result.sides[side]) }));
+    const sideResults = requestedSides.map((side) => {
+      const value = rulaAnalysisFromImageSide(result.sides[side], fallback, side);
+      const override = manualImageOverrides.current[imageKey]?.[side];
+      if (value && override) value.analysis = { ...value.analysis, ...override.rows, ...(override.adjustments ? { adjustments: { ...(value.analysis.adjustments ?? fallback), ...override.adjustments } } : {}) };
+      return { side, value };
+    });
     if (sideResults.some((item) => !item.value)) throw new Error("Invalid RULA posture-analysis response");
     if (rulaBodySide === "BOTH") {
       const right = sideResults.find((item) => item.side === "RIGHT")!.value!;
       const left = sideResults.find((item) => item.side === "LEFT")!.value!;
       const sideImageOverlays = { RIGHT: right.overlay, LEFT: left.overlay };
-      return {
+      return finish({
         ...right.analysis,
         sideAnalyses: { RIGHT: right.analysis, LEFT: left.analysis },
         ...(right.overlay || left.overlay ? { sideImageOverlays } : {}),
-      };
+      });
     }
     const current = sideResults[0].value!;
-    return { ...current.analysis, ...(current.overlay ? { imageOverlay: current.overlay } : {}) };
+    return finish({ ...current.analysis, ...(current.overlay ? { imageOverlay: current.overlay } : {}) });
   }
 
   function applyRulaPostureAnalysisResponse(result: RulaPostureAnalysisResponse) {
-    setPostureAnalysis(analysisFromRulaResponse(result));
+    publishSelectedRulaObservation(analysisFromRulaResponse(result, selectedPostureImageKeyRef.current));
   }
 
   async function requestAllRulaPostureAnalyses(requestId: number) {
-    if ((savedPostureImages.length > 0 || selectedPostureImages.length > 0) && !rulaAccountImageConsent) return;
+    if ((savedPostureImages.length > 0 || selectedPostureImages.length > 0) && !rulaImageAnalysisConsent) return;
     if (savedPostureImages.length > savedImageAssessments.current.length) await requestSavedRulaPostureAnalyses(requestId);
     if (requestId !== postureImageAnalysisRequestId.current) return;
     if (selectedPostureImages.length) await requestRulaPostureImageAnalyses(selectedPostureImages, requestId);
@@ -4231,8 +4516,9 @@ export function RulaPage() {
   }
 
   async function requestSavedRulaPostureAnalyses(requestId: number, targetImages = savedPostureImages) {
-    if (!rulaAccountImageConsent) { setPostureImageAnalysisError(t("assessment.rulaImageConsentRequired")); return; }
-    if (!rulaImagePolicy.data?.available) { setPostureImageAnalysisError(t(rulaImagePolicyErrorKey(rulaImagePolicy.data))); return; }
+    if (!rulaImageAnalysisConsent) { setPostureImageAnalysisError(t("assessment.rulaImageConsentRequired")); return; }
+    if (!rulaImageOwnershipValid) { setPostureImageAnalysisError(rulaImageOwnershipCopy[locale].required); return; }
+    if (!rulaImagePolicy.data?.available) { const messageKey = rulaImagePolicyErrorKey(rulaImagePolicy.data); setPostureImageAnalysisError(messageKey ? t(messageKey) : ""); return; }
     const controller = new AbortController();
     postureAnalysisAbort.current = controller;
     setPostureImageAnalysisLoading(true);
@@ -4240,9 +4526,16 @@ export function RulaPage() {
     let savedBlocked = false;
     let savedBlockedReview: RulaPostureImageReview | undefined;
     const pendingImages = targetImages.filter(image => !savedImageAssessments.current.some(snapshot => snapshot.attachmentId === image.id));
+    if (!selectedPostureImageKeyRef.current && !selectedPostureImages.length && targetImages[0]) {
+      const firstKey = `saved:${targetImages[0].id}`;
+      selectedPostureImageKeyRef.current = firstKey;
+      setSelectedPostureImageKey(firstKey);
+      setSelectedSavedImageId(targetImages[0].id);
+      publishSelectedRulaObservation(postureAnalysisFromValue(null));
+    }
     await runRulaAnalysisQueue(pendingImages, async (image) => {
       const imageKey = `saved:${image.id}`;
-      const workingReview: RulaPostureImageReview = { status: "loading" };
+      const workingReview: RulaPostureImageReview = { ...postureImageReviewCache.current[imageKey], status: "loading" };
       postureImageReviewCache.current[imageKey] = workingReview;
       setPostureImageReviews((current) => ({ ...current, [imageKey]: workingReview }));
       try {
@@ -4251,14 +4544,18 @@ export function RulaPage() {
         const file = new File([blob], image.originalName, { type: blob.type });
         const prepared = await prepareRulaVisionImage(file);
         const body = new FormData();
-        body.append("bodySide", rulaBodySide); body.append("jobTitle", jobQuery.trim()); body.append("taskDescription", rulaTaskDescription.trim()); body.append("postureDescription", postureDescription.trim()); body.append("locale", locale); authorizeRulaAutomaticImage(body, rulaImagePolicy.data); if (formRef.current && hasRulaActivityContext(jobQuery, rulaTaskDescription)) body.append("activityInfo", JSON.stringify(rulaActivityInfoFromForm(new FormData(formRef.current)))); body.append("file", prepared);
+        const requestActivityKey = appendRulaImageActivity(body);
+        authorizeRulaAutomaticImage(body, rulaImagePolicy.data, rulaImageOwnership, receivedImageGrants, session?.user.id);
+        body.append("file", prepared);
         const result = await requestIndependentRulaAnalysis("/rula/posture-image-analysis", body, controller.signal);
         if (controller.signal.aborted || requestId !== postureImageAnalysisRequestId.current) return;
-        const analysis = analysisFromRulaResponse(result.data);
-        savedImageAssessments.current = [...savedImageAssessments.current.filter(snapshot => snapshot.attachmentId !== image.id), { imageKey: `saved:${image.id}`, attachmentId: image.id, fileName: image.originalName, analysis, model: result.data.model, force: rulaForce, muscleUse: rulaMuscleUse }];
-        const readyReview: RulaPostureImageReview = { status: "ready", result: result.data, editedAnalysis: analysis, force: rulaForce, muscleUse: rulaMuscleUse };
+        const analysis = analysisFromRulaResponse(result.data, imageKey, requestActivityKey);
+        const adjustments = analysis.adjustments ?? { force: 0, muscleUse: false };
+        savedImageAssessments.current = [...savedImageAssessments.current.filter(snapshot => snapshot.attachmentId !== image.id), { imageKey: `saved:${image.id}`, attachmentId: image.id, fileName: image.originalName, analysis, model: result.data.model, ...adjustments }];
+        const readyReview: RulaPostureImageReview = { status: "ready", result: result.data, editedAnalysis: analysis, ...adjustments };
         postureImageReviewCache.current[imageKey] = readyReview;
         setPostureImageReviews((current) => ({ ...current, [imageKey]: readyReview }));
+        if (selectedPostureImageKeyRef.current === imageKey) publishSelectedRulaObservation({ ...analysis, imageAssessments: savedImageAssessments.current }, adjustments);
       } catch (reason) {
         if (!controller.signal.aborted && requestId === postureImageAnalysisRequestId.current) {
           const failure = rulaImageFailureDetails(reason);
@@ -4282,53 +4579,44 @@ export function RulaPage() {
     }
     setPostureImageAnalysisLoading(false);
     setPostureAnalysis(current => ({ ...current, imageAssessments: savedImageAssessments.current }));
-    if (!selectedPostureImages.length && savedImageAssessments.current[0]) applySavedRulaPostureImage(savedImageAssessments.current[0]);
     if (savedImageAssessments.current.length < savedPostureImages.length) setPostureImageAnalysisError(savedFailure || t("assessment.rulaImageAnalysisUnavailable"));
   }
 
   async function requestRulaPostureImageAnalyses(files = selectedPostureImages, requestId: number) {
-    if (!rulaAccountImageConsent) { setPostureImageAnalysisError(t("assessment.rulaImageConsentRequired")); return; }
-    if (!rulaImagePolicy.data?.available) { setPostureImageAnalysisError(t(rulaImagePolicyErrorKey(rulaImagePolicy.data))); return; }
+    if (!rulaImageAnalysisConsent) { setPostureImageAnalysisError(t("assessment.rulaImageConsentRequired")); return; }
+    if (!rulaImageOwnershipValid) { setPostureImageAnalysisError(rulaImageOwnershipCopy[locale].required); return; }
+    if (!rulaImagePolicy.data?.available) { const messageKey = rulaImagePolicyErrorKey(rulaImagePolicy.data); setPostureImageAnalysisError(messageKey ? t(messageKey) : ""); return; }
     if (!files.length) return;
     setPostureImageAnalysisLoading(true);
     setPostureImageAnalysisError("");
     const controller = new AbortController();
     postureAnalysisAbort.current = controller;
-    const selectedReview = postureImageReviewCache.current[selectedPostureImageKeyRef.current];
-    if (selectedReview?.status === "ready" && selectedReview.result) {
-      if (selectedReview.editedAnalysis) setPostureAnalysis(selectedReview.editedAnalysis);
-      else applyRulaPostureAnalysisResponse(selectedReview.result);
-    } else setPostureAnalysis(postureAnalysisFromValue(null));
     let blockedMessage = "";
     const pending = files.filter((file) => postureImageReviewCache.current[rulaPostureImageFileKey(file)]?.status !== "ready");
     pending.sort((a, b) => Number(rulaPostureImageFileKey(b) === selectedPostureImageKeyRef.current) - Number(rulaPostureImageFileKey(a) === selectedPostureImageKeyRef.current));
     await runRulaAnalysisQueue(pending, async (file) => {
       if (requestId !== postureImageAnalysisRequestId.current) return;
       const fileKey = rulaPostureImageFileKey(file);
-      const workingReview: RulaPostureImageReview = { status: "loading" };
+      const workingReview: RulaPostureImageReview = { ...postureImageReviewCache.current[fileKey], status: "loading" };
       postureImageReviewCache.current[fileKey] = workingReview;
       setPostureImageReviews((current) => ({ ...current, [fileKey]: workingReview }));
       const body = new FormData();
-      body.append("bodySide", rulaBodySide);
-      body.append("jobTitle", jobQuery.trim());
-      body.append("taskDescription", rulaTaskDescription.trim());
-      body.append("postureDescription", postureDescription.trim());
-      body.append("locale", locale);
-      authorizeRulaAutomaticImage(body, rulaImagePolicy.data);
-      if (formRef.current && hasRulaActivityContext(jobQuery, rulaTaskDescription)) body.append("activityInfo", JSON.stringify(rulaActivityInfoFromForm(new FormData(formRef.current))));
+      const requestActivityKey = appendRulaImageActivity(body);
       try {
         const image = await prepareRulaVisionImage(file);
         if (requestId !== postureImageAnalysisRequestId.current || controller.signal.aborted) return;
+        authorizeRulaAutomaticImage(body, rulaImagePolicy.data, rulaImageOwnership, receivedImageGrants, session?.user.id);
         body.append("file", image);
         const result = await requestIndependentRulaAnalysis("/rula/posture-image-analysis", body, controller.signal);
-        if (requestId !== postureImageAnalysisRequestId.current) return;
-        const analysis = analysisFromRulaResponse(result.data);
-        const review: RulaPostureImageReview = { status: "ready", result: result.data, editedAnalysis: analysis, force: rulaForce, muscleUse: rulaMuscleUse };
+        if (requestId !== postureImageAnalysisRequestId.current || controller.signal.aborted) return;
+        const analysis = analysisFromRulaResponse(result.data, fileKey, requestActivityKey);
+        const adjustments = analysis.adjustments ?? { force: 0, muscleUse: false };
+        const review: RulaPostureImageReview = { status: "ready", result: result.data, editedAnalysis: analysis, ...adjustments };
         postureImageReviewCache.current[fileKey] = review;
         setPostureImageReviews((current) => ({ ...current, [fileKey]: review }));
         if (selectedPostureImageKeyRef.current === fileKey) {
           setPostureImageAnalysisError("");
-          setPostureAnalysis(analysis);
+          publishSelectedRulaObservation(analysis, adjustments);
         }
       } catch (reason) {
         if (requestId !== postureImageAnalysisRequestId.current || controller.signal.aborted) return;
@@ -4431,14 +4719,14 @@ export function RulaPage() {
   function applySavedRulaPostureImage(image: RulaImageAssessment) {
     const currentKey = selectedPostureImageKeyRef.current;
     storeCurrentRulaImageReview(currentKey);
-    const { imageAssessments: _snapshots, ...observation } = postureAnalysis;
-    savedImageAssessments.current = savedImageAssessments.current.map(current => current.imageKey === currentKey ? { ...current, analysis: observation, force: rulaForce, muscleUse: rulaMuscleUse } : current);
+    if (image.attachmentId) {
+      image = { ...image, imageKey: `saved:${image.attachmentId}` };
+      savedImageAssessments.current = savedImageAssessments.current.map(current => current.attachmentId === image.attachmentId ? image : current);
+    }
     selectedPostureImageKeyRef.current = image.imageKey;
     setSelectedPostureImageKey(image.imageKey);
     setSelectedSavedImageId(image.attachmentId ?? "");
-    setPostureAnalysis({ ...image.analysis, imageAssessments: savedImageAssessments.current });
-    setRulaForce(image.force);
-    setRulaMuscleUse(image.muscleUse);
+    publishSelectedRulaObservation({ ...image.analysis, imageAssessments: savedImageAssessments.current }, image);
     setPostureImageAnalysisError("");
     setWizardStep(2);
   }
@@ -4452,9 +4740,7 @@ export function RulaPage() {
     selectedPostureImageKeyRef.current = key;
     setSelectedPostureImageKey(key);
     setSelectedSavedImageId(image.id);
-    setPostureAnalysis(review?.editedAnalysis ?? postureAnalysisFromValue(null));
-    setRulaForce(review?.force ?? rulaForce);
-    setRulaMuscleUse(review?.muscleUse ?? rulaMuscleUse);
+    publishSelectedRulaObservation(review?.editedAnalysis ?? postureAnalysisFromValue(null), { force: review?.force ?? 0, muscleUse: review?.muscleUse ?? false });
     setPostureImageAnalysisError(review?.status === "error" ? review.errorMessage ?? t("assessment.rulaImageAnalysisUnavailable") : "");
     setWizardStep(2);
   }
@@ -4463,10 +4749,11 @@ export function RulaPage() {
     const review = postureImageReviewCache.current[imageKey];
     const manualFailure = manualRulaFallback && (review?.status === "error" || review?.status === "cancelled");
     if (!review || (review.status !== "ready" && !manualFailure)) return;
-    const { imageAssessments: _snapshots, ...analysis } = postureAnalysis;
+    const { analysis: currentAnalysis, force, muscleUse } = currentRulaObservation.current;
+    const { imageAssessments: _snapshots, ...analysis } = currentAnalysis;
     review.editedAnalysis = analysis;
-    review.force = rulaForce;
-    review.muscleUse = rulaMuscleUse;
+    review.force = force;
+    review.muscleUse = muscleUse;
     postureImageReviewCache.current[imageKey] = review;
     setPostureImageReviews((current) => ({ ...current, [imageKey]: { ...review } }));
     if (manualFailure && isManualRulaReviewComplete(analysis, rulaBodySide) && imageKey.startsWith("saved:")) {
@@ -4488,12 +4775,10 @@ export function RulaPage() {
     setPostureImagePreview(postureImagePreviews[fileKey] ?? "");
     setPostureImageAnalysisError(review?.status === "error" ? review.errorMessage ?? t("assessment.rulaImageAnalysisUnavailable") : review?.status === "cancelled" ? t("assessment.rulaImageStatusCancelled") : "");
     if (review?.status === "ready" && review.result) {
-      setRulaForce(review.force ?? 0);
-      setRulaMuscleUse(review.muscleUse ?? false);
-      if (review.editedAnalysis) setPostureAnalysis(review.editedAnalysis);
+      if (review.editedAnalysis) publishSelectedRulaObservation(review.editedAnalysis, { force: review.force ?? 0, muscleUse: review.muscleUse ?? false });
       else applyRulaPostureAnalysisResponse(review.result);
-    } else if (review?.editedAnalysis) { setRulaForce(review.force ?? 0); setRulaMuscleUse(review.muscleUse ?? false); setPostureAnalysis(review.editedAnalysis); }
-    else setPostureAnalysis(postureAnalysisFromValue(null));
+    } else if (review?.editedAnalysis) publishSelectedRulaObservation(review.editedAnalysis, { force: review.force ?? 0, muscleUse: review.muscleUse ?? false });
+    else publishSelectedRulaObservation(postureAnalysisFromValue(null));
   }
 
   async function requestRulaPostureTextAnalysis(requestId: number) {
@@ -4525,7 +4810,8 @@ export function RulaPage() {
 
   function selectPostureImages(selected: File[]) {
     if (!selected.length) return;
-    const selection = appendRulaPostureImages(selectedPostureImages, selected, savedPostureImages.length);
+    const savedIds = new Set(savedPostureImages.map(image => image.id));
+    const selection = appendRulaPostureImages(selectedPostureImages, selected.filter(file => !savedIds.has(organizationImageSource(file)?.id ?? "")), savedPostureImages.length);
     if (selection.files.length !== selectedPostureImages.length) {
       clearRulaPostureImageAnalysis(true);
       setPostureImage(selection.files[0] ?? null);
@@ -4546,10 +4832,10 @@ export function RulaPage() {
   }
   function changeBodySide(value: "LEFT" | "RIGHT" | "BOTH") {
     setRulaBodySide(value);
+    if (value !== "BOTH") setRulaReviewSide(value);
     setPostureAnalysis((current) => {
       if (value === "BOTH") return withBothSideAnalyses(current, rulaBodySide === "LEFT" ? "LEFT" : "RIGHT");
-      const selected = current.sideAnalyses?.[value];
-      return selected ? { ...selected, sideAnalyses: current.sideAnalyses } : current;
+      return { ...rulaAnalysisForSide(current, value), bodySide: value, ...(current.sideAnalyses ? { sideAnalyses: current.sideAnalyses } : {}) };
     });
   }
    function openRulaProjectCreator() {
@@ -4666,6 +4952,7 @@ export function RulaPage() {
       setJobCatalogSaveError(false);
       setJobSearchOpen(false);
       setJobSearchError("");
+      setRulaImageOwnership({ imageSubject: "SELF" });
       setPostureImage(null);
       setAdditionalPostureImages([]);
       savedImageAssessments.current = [];
@@ -4807,6 +5094,7 @@ export function RulaPage() {
   }
   function advanceRulaWizard() {
     if (submitting) return;
+    if (wizardStep === 1 && formRef.current) synchronizeRulaActivityAdjustments(formRef.current);
     if (wizardStep === 2) storeCurrentRulaImageReview(selectedPostureImageKeyRef.current);
     if (!validateWizardStep()) return;
     setError("");
@@ -4817,15 +5105,11 @@ export function RulaPage() {
     const snapshots = reportImageAssessments.map(image => ({ ...image }));
     let failed = false;
     for (const file of files) {
-      const upload = new FormData();
-      upload.append("entityType", "RulaAssessment");
-      upload.append("entityId", assessmentId);
-      upload.append("file", file);
       try {
-        const attachment = await api<{ id: string }>("/files", { method: "POST", body: upload });
-        firstUploadedId ||= attachment.data.id;
+        const attachment = await persistAssessmentImage("RulaAssessment", assessmentId, file);
+        firstUploadedId ||= attachment.id;
         const snapshot = snapshots.find(image => image.imageKey === rulaPostureImageFileKey(file));
-        if (snapshot) snapshot.attachmentId = attachment.data.id;
+        if (snapshot) snapshot.attachmentId = attachment.id;
       } catch {
         failed = true;
       }
@@ -4947,7 +5231,7 @@ export function RulaPage() {
     {!resultsView && draftNotice && <div className="alert info" role="status"><Icon name="files"/>{draftNotice}{navigator.onLine && draftSyncAvailable && <button type="button" className="text-button" onClick={() => void syncDraft()}>{t("common.sync")}</button>}</div>}
     {!resultsView && <div className="mini-stats"><div><Icon name="rula"/><strong>{overview.total.toLocaleString(numberLocale)}</strong><span>{t("assessment.assessmentCount")}</span></div><div><Icon name="warning"/><strong>{overview.high.toLocaleString(numberLocale)}</strong><span>{t("assessment.needsAction")}</span></div><div><Icon name="chart"/><strong>{overview.average === null ? "—" : overview.average.toLocaleString(numberLocale)}</strong><span>{t("assessment.averageScore")}</span></div></div>}
     {!resultsView && canEdit() && <SectionCard title={editingExistingAssessment ? t("assessment.editRula") : t("assessment.evaluateNew", { type: assessmentLabel })} description={t("assessment.threeSteps", { steps: t("assessment.stepRulaProcessScoreReview") })} icon="plus">
-       <form ref={formRef} className="rula-form assessment-wizard" key={editingExistingAssessment ? editingAssessment ? `edit-${editingAssessment.id}-${editingAssessment.version}-${draft ? "ready" : "loading"}` : `edit-loading-${editingAssessmentId}` : draft ? "restored-draft" : "new-draft"} noValidate aria-busy={submitting} onInput={(event) => { if (!editingExistingAssessment && !suppressRulaDraftPersistence.current) queueDraft(event.currentTarget, draftKey, saveTimer, draftWriteQueue, (time) => { setAutosaveError(false); setLastSaved(time); }, () => setAutosaveError(true)); }} onChange={(event) => { if (!editingExistingAssessment && !suppressRulaDraftPersistence.current) queueDraft(event.currentTarget, draftKey, saveTimer, draftWriteQueue, (time) => { setAutosaveError(false); setLastSaved(time); }, () => setAutosaveError(true)); }} onSubmit={create}>
+       <form ref={formRef} className="rula-form assessment-wizard" key={editingExistingAssessment ? editingAssessment ? `edit-${editingAssessment.id}-${editingAssessment.version}-${draft ? "ready" : "loading"}` : `edit-loading-${editingAssessmentId}` : draft ? "restored-draft" : "new-draft"} noValidate aria-busy={submitting} onInput={(event) => { synchronizeRulaActivityAdjustments(event.currentTarget); if (!editingExistingAssessment && !suppressRulaDraftPersistence.current) queueDraft(event.currentTarget, draftKey, saveTimer, draftWriteQueue, (time) => { setAutosaveError(false); setLastSaved(time); }, () => setAutosaveError(true)); }} onChange={(event) => { synchronizeRulaActivityAdjustments(event.currentTarget); if (!editingExistingAssessment && !suppressRulaDraftPersistence.current) queueDraft(event.currentTarget, draftKey, saveTimer, draftWriteQueue, (time) => { setAutosaveError(false); setLastSaved(time); }, () => setAutosaveError(true)); }} onSubmit={create}>
         <div className="wizard-stepper" aria-label={t("assessment.stepsLabel", { type: assessmentLabel })}>{[t("assessment.processInformation"), t("assessment.rulaReviewScoring"), t("assessment.rulaAssessmentReporting")].map((label, index) => { const step = (index + 1) as 1 | 2 | 3; return <button type="button" className={wizardStep === step ? "current" : wizardStep > step ? "done" : ""} aria-current={wizardStep === step ? "step" : undefined} onClick={() => { if (step === 3) { if (!validateRulaProcessInfo()) return; storeCurrentRulaImageReview(selectedPostureImageKeyRef.current); if (!validateWizardStep(2)) return; } setError(""); setWizardStep(step); }} disabled={submitting} key={label}><b>{wizardStep > step ? "✓" : step}</b>{label}</button>; })}</div>
          <fieldset hidden={wizardStep !== 1}>
            <legend tabIndex={-1}>{t("assessment.processInformation")}</legend>
@@ -4977,6 +5261,7 @@ export function RulaPage() {
              </div>
              <div className="rula-posture-panel">
                <div className="rula-posture-heading"><span className="rula-posture-icon"><Icon name="rula" size={21}/></span><div><strong>{t("assessment.rulaPosturePhoto")}</strong><small>{t("assessment.rulaPosturePhotoHint")}</small></div></div>
+               <RulaImageSubjectSelector value={rulaImageOwnership} onChange={changeRulaImageOwnership} grants={receivedImageGrants} recipientUserId={session?.user.id ?? ""} loading={receivedImageAuthorizations.loading} error={receivedImageAuthorizations.error}/>
                 <div className="rula-posture-upload">
                  <label className="rula-posture-dropzone">
                    <input ref={postureImageInputRef} name="postureImage" type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={Boolean(editingAssessmentId && !editingAssessment) || savedPostureImages.length + selectedPostureImages.length >= RULA_POSTURE_IMAGE_MAX_COUNT} aria-invalid={postureImageError ? true : undefined} aria-describedby={postureImageError ? "rula-posture-image-error" : undefined} onChange={handlePostureImageChange}/>
@@ -4990,34 +5275,34 @@ export function RulaPage() {
                      const review = postureImageReviews[key] ?? postureImageReviewCache.current[key];
                      const snapshot = savedImageAssessments.current.find((item) => item.attachmentId === image.id);
                      const status: RulaPhotoReviewStatus = review?.status === "error" || review?.status === "cancelled" ? review.status : snapshot ? "ready" : review?.status ?? "queued";
-                     return <RulaPostureImageCard key={image.id} index={index + 1} selected={selectedPostureImageKey === key} status={status} blocked={status !== "ready" && (!rulaAccountImageConsent || review?.errorCode === "RULA_IMAGE_PLATFORM_UNAVAILABLE")} preview={selectedSavedImageId === image.id ? postureImagePreview : undefined} onSelect={() => selectSavedRulaPostureImage(image)} onEdit={() => editRulaImage(image)} editDisabled={!snapshot && status !== "error" && status !== "cancelled"} errorMessage={review?.errorMessage} onRetry={review?.retryable ? () => retrySavedRulaPostureImage(image) : undefined}/>;
+                     return <RulaPostureImageCard key={image.id} index={index + 1} selected={selectedPostureImageKey === key} status={status} blocked={status !== "ready" && (!rulaImageAnalysisConsent || (review?.errorCode === "RULA_IMAGE_PLATFORM_UNAVAILABLE" || review?.errorCode === "RULA_IMAGE_OWNER_AUTHORIZATION_REQUIRED"))} preview={selectedSavedImageId === image.id ? postureImagePreview : undefined} onSelect={() => selectSavedRulaPostureImage(image)} onEdit={() => editRulaImage(image)} editDisabled={!snapshot && status !== "error" && status !== "cancelled"} errorMessage={review?.errorMessage} onRetry={review?.retryable ? () => retrySavedRulaPostureImage(image) : undefined}/>;
                    })}
                    {selectedPostureImages.map((file, index) => {
                      const fileKey = rulaPostureImageFileKey(file);
                      const review = postureImageReviews[fileKey];
                      const preview = postureImagePreviews[fileKey];
                      const status = review?.status ?? "queued";
-                     return <RulaPostureImageCard key={fileKey} index={savedPostureImages.length + index + 1} selected={selectedPostureImageKey === fileKey} status={status} blocked={status !== "ready" && (!rulaAccountImageConsent || review?.errorCode === "RULA_IMAGE_PLATFORM_UNAVAILABLE")} preview={preview} onSelect={() => applyRulaPostureImageReview(file)} onEdit={() => editRulaImage(file)} onRemove={() => removePostureImage(file)} errorMessage={review?.errorMessage} onRetry={review?.retryable ? () => retryRulaPostureImage(file) : undefined}/>;
+                     return <RulaPostureImageCard key={fileKey} index={savedPostureImages.length + index + 1} selected={selectedPostureImageKey === fileKey} status={status} blocked={status !== "ready" && (!rulaImageAnalysisConsent || (review?.errorCode === "RULA_IMAGE_PLATFORM_UNAVAILABLE" || review?.errorCode === "RULA_IMAGE_OWNER_AUTHORIZATION_REQUIRED"))} preview={preview} onSelect={() => applyRulaPostureImageReview(file)} onEdit={() => editRulaImage(file)} onRemove={() => removePostureImage(file)} errorMessage={review?.errorMessage} onRetry={review?.retryable ? () => retryRulaPostureImage(file) : undefined}/>;
                    })}
                  </div>}
                  {postureImageError && <small id="rula-posture-image-error" className="field-error" role="alert">{postureImageError}</small>}
                </div>
                <label className="rula-posture-description-field"><span className="field-label-line"><span>{t("assessment.rulaPostureDescription")}</span><span className="optional-label">{t("common.optional")}</span></span><textarea name="postureDescription" value={postureDescription} maxLength={1000} rows={4} aria-describedby="rula-posture-description-hint" placeholder={t("assessment.rulaPostureDescriptionPlaceholder")} onChange={(event) => setPostureDescription(event.target.value)}/><small id="rula-posture-description-hint" className="field-hint">{t("assessment.rulaPostureDescriptionHint")} · <span className="rula-posture-description-counter">{postureDescription.length.toLocaleString(numberLocale)} / {Number(1000).toLocaleString(numberLocale)}</span></small></label>
                <div className="rula-photo-guidance"><strong>{t("assessment.rulaPhotoGuidanceTitle")}</strong><ul><li>{t("assessment.rulaPhotoGuidanceOne")}</li><li>{t("assessment.rulaPhotoGuidanceTwo")}</li><li>{t("assessment.rulaPhotoGuidanceThree")}</li></ul></div>
-               <div className={`rula-ai-image-note ${postureImageAnalysisLoading ? "is-loading" : postureImageAnalysisError ? "has-error" : "is-active"}`} role="status"><Icon name="sparkles" size={17}/><span><strong>{postureImageAnalysisLoading ? t(postureAnalysisWorkingKey) : postureImageAnalysisError ? t(postureAnalysisUnavailableKey) : t(postureAnalysisActiveKey)}</strong><small>{postureImageAnalysisError || t(postureAnalysisActiveHintKey)}</small></span>{postureImageAnalysisLoading && <button type="button" className="secondary" onClick={cancelRulaImageAnalysis}>{t("assessment.rulaImageCancel")}</button>}</div>
+               {(automaticAnalysisMode !== "images" || rulaImagePolicy.data?.available || postureImageAnalysisLoading || postureImageAnalysisError) && <div className={`rula-ai-image-note ${postureImageAnalysisLoading ? "is-loading" : postureImageAnalysisError ? "has-error" : "is-active"}`} role="status"><Icon name="sparkles" size={17}/><span><strong>{postureImageAnalysisLoading ? t(postureAnalysisWorkingKey) : postureImageAnalysisError ? t(postureAnalysisUnavailableKey) : t(postureAnalysisActiveKey)}</strong><small>{postureImageAnalysisError || t(postureAnalysisActiveHintKey)}</small></span>{postureImageAnalysisLoading && <button type="button" className="secondary" onClick={cancelRulaImageAnalysis}>{t("assessment.rulaImageCancel")}</button>}</div>}
              </div>
            </div>
          </fieldset>
          {wizardStep === 2 && (selectedPostureImages.length > 0 || savedPostureImages.length > 0) && <>
            <section className="rula-analysis-image-switcher" aria-label={t("assessment.rulaPosturePhoto")}>
-              {!rulaAccountImageConsent && <Link className="text-link rula-account-consent-link" to="/profile#image-processing-consent">{t("assessment.rulaImageAccountSettings")}</Link>}
+              {!rulaImageAnalysisConsent && <Link className="text-link rula-account-consent-link" to="/profile#image-processing-consent">{t("assessment.rulaImageAccountSettings")}</Link>}
              <div className="rula-posture-image-gallery">
                {savedPostureImages.map((image, index) => {
                  const key = `saved:${image.id}`;
                  const review = postureImageReviews[key] ?? postureImageReviewCache.current[key];
                  const snapshot = savedImageAssessments.current.find((item) => item.attachmentId === image.id);
                  const status: RulaPhotoReviewStatus = review?.status === "error" || review?.status === "cancelled" ? review.status : snapshot ? "ready" : review?.status ?? "queued";
-                 return <RulaPostureImageCard key={image.id} index={index + 1} selected={selectedPostureImageKey === key} status={status} blocked={status !== "ready" && (!rulaAccountImageConsent || review?.errorCode === "RULA_IMAGE_PLATFORM_UNAVAILABLE")} preview={selectedSavedImageId === image.id ? postureImagePreview : undefined} onSelect={() => selectSavedRulaPostureImage(image)} onEdit={() => editRulaImage(image)} editDisabled={!snapshot && status !== "error" && status !== "cancelled"} errorMessage={review?.errorMessage} onRetry={review?.retryable ? () => retrySavedRulaPostureImage(image) : undefined}>
+                 return <RulaPostureImageCard key={image.id} index={index + 1} selected={selectedPostureImageKey === key} status={status} blocked={status !== "ready" && (!rulaImageAnalysisConsent || (review?.errorCode === "RULA_IMAGE_PLATFORM_UNAVAILABLE" || review?.errorCode === "RULA_IMAGE_OWNER_AUTHORIZATION_REQUIRED"))} preview={selectedSavedImageId === image.id ? postureImagePreview : undefined} onSelect={() => selectSavedRulaPostureImage(image)} onEdit={() => editRulaImage(image)} editDisabled={!snapshot && status !== "error" && status !== "cancelled"} errorMessage={review?.errorMessage} onRetry={review?.retryable ? () => retrySavedRulaPostureImage(image) : undefined}>
                      {status === "ready" && snapshot && isRulaImageAnalysisReviewed(key === selectedPostureImageKey ? postureAnalysis : review?.editedAnalysis ?? snapshot.analysis, rulaBodySide) && <strong dir="ltr">RULA: {rulaImageAssessmentResult({ ...snapshot, analysis: key === selectedPostureImageKey ? postureAnalysis : review?.editedAnalysis ?? snapshot.analysis }, rulaBodySide).score}</strong>}
                      {manualRulaFallback && status === "error" && isManualRulaReviewComplete(review?.editedAnalysis, rulaBodySide) && <small className="rula-manual-review-complete">{t("assessment.rulaManualReviewComplete")}</small>}
                    </RulaPostureImageCard>;
@@ -5026,21 +5311,21 @@ export function RulaPage() {
                  const key = rulaPostureImageFileKey(file);
                  const review = postureImageReviews[key] ?? postureImageReviewCache.current[key];
                  const status = review?.status ?? "queued";
-                 return <RulaPostureImageCard key={key} index={savedPostureImages.length + index + 1} selected={selectedPostureImageKey === key} status={status} blocked={status !== "ready" && (!rulaAccountImageConsent || review?.errorCode === "RULA_IMAGE_PLATFORM_UNAVAILABLE")} preview={postureImagePreviews[key]} onSelect={() => applyRulaPostureImageReview(file)} onEdit={() => editRulaImage(file)} errorMessage={review?.errorMessage} onRetry={review?.retryable ? () => retryRulaPostureImage(file) : undefined}>
+                 return <RulaPostureImageCard key={key} index={savedPostureImages.length + index + 1} selected={selectedPostureImageKey === key} status={status} blocked={status !== "ready" && (!rulaImageAnalysisConsent || (review?.errorCode === "RULA_IMAGE_PLATFORM_UNAVAILABLE" || review?.errorCode === "RULA_IMAGE_OWNER_AUTHORIZATION_REQUIRED"))} preview={postureImagePreviews[key]} onSelect={() => applyRulaPostureImageReview(file)} onEdit={() => editRulaImage(file)} errorMessage={review?.errorMessage} onRetry={review?.retryable ? () => retryRulaPostureImage(file) : undefined}>
                      {(status === "ready" || manualRulaFallback && status === "error") && review?.editedAnalysis && isRulaImageAnalysisReviewed(key === selectedPostureImageKey ? postureAnalysis : review.editedAnalysis, rulaBodySide) && <strong dir="ltr">RULA: {rulaImageAssessmentResult({ imageKey: key, fileName: file.name, analysis: key === selectedPostureImageKey ? postureAnalysis : review.editedAnalysis, force: key === selectedPostureImageKey ? rulaForce : review.force ?? 0, muscleUse: key === selectedPostureImageKey ? rulaMuscleUse : review.muscleUse ?? false }, rulaBodySide).score}</strong>}
                      {manualRulaFallback && status === "error" && isManualRulaReviewComplete(review?.editedAnalysis, rulaBodySide) && <small className="rula-manual-review-complete">{t("assessment.rulaManualReviewComplete")}</small>}
                    </RulaPostureImageCard>;
                })}
              </div>
              {/* Unvalidated free-form AI prose can contradict the reviewed rows; image results use controlled per-part measurement states. */}
-             {postureImageAnalysisError && !Object.values(postureImageReviews).some(review => review.errorCode !== "RULA_IMAGE_PLATFORM_UNAVAILABLE" && review.errorMessage === postureImageAnalysisError) && <p role="status" className="rula-image-workspace-status">{postureImageAnalysisError}</p>}
+             {postureImageAnalysisError && !Object.values(postureImageReviews).some(review => review.errorCode !== "RULA_IMAGE_PLATFORM_UNAVAILABLE" && review.errorCode !== "RULA_IMAGE_OWNER_AUTHORIZATION_REQUIRED" && review.errorMessage === postureImageAnalysisError) && <p role="status" className="rula-image-workspace-status">{postureImageAnalysisError}</p>}
              {postureImageAnalysisLoading && <button type="button" className="secondary rula-image-cancel" onClick={cancelRulaImageAnalysis}>{t("assessment.rulaImageCancel")}</button>}
            </section>
 
          </>}
          <fieldset hidden={wizardStep !== 2}><legend tabIndex={-1}>{t("assessment.bodyScoring")}</legend>
            <input type="hidden" name="postureAnalysis" value={JSON.stringify(reportPostureAnalysis)} readOnly/>{rulaPostureRows.map(({ key }) => <input key={key} type="hidden" name={key} value={postureAnalysis[key].score} readOnly/>)}
-           {imageReviewOpen ? <RulaImageReviewDialog fileName={t("assessment.rulaImageNumber", { number: ([...savedPostureImages.map(image => "saved:" + image.id), ...selectedPostureImages.map(rulaPostureImageFileKey)].indexOf(selectedPostureImageKey) + 1).toLocaleString(numberLocale) })} onClose={() => setImageReviewOpen(false)}><RulaPostureAnalysisStep analysis={postureAnalysis} result={currentRulaResult} sideResults={currentRulaSideResults} bodySide={rulaBodySide} imagePreview={postureImagePreview} postureDescription={postureDescription} locale={locale} onChange={updateRulaPosturePart}/><div className="rula-extra"><label><span className="field-label-line"><span>{t("assessment.force")}</span><span className="required-label">{t("common.required")}</span></span><StyledSelect aria-label={t("assessment.force")} name="force" value={rulaForce} onChange={(event) => setRulaForce(Number(event.target.value))}><option value="0">{t("assessment.noSignificantForce")} — {t("assessment.noSignificantForcePoints")} — {t("assessment.noSignificantForceRange")}</option><option value="1">{t("assessment.lowForce")} — {t("assessment.lowForcePoints")} — {t("assessment.lowForceRange")}</option><option value="2">{t("assessment.mediumForce")} — {t("assessment.mediumForcePoints")} — {t("assessment.mediumForceRange")}</option><option value="3">{t("assessment.highForce")} — {t("assessment.highForcePoints")} — {t("assessment.highForceRange")}</option></StyledSelect></label><input type="hidden" name="muscleUse" value={rulaMuscleUse ? "1" : "0"}/><RulaMuscleUseSelector value={rulaMuscleUse} onChange={setRulaMuscleUse}/></div></RulaImageReviewDialog> : <><RulaPostureAnalysisStep analysis={postureAnalysis} result={currentRulaResult} sideResults={currentRulaSideResults} bodySide={rulaBodySide} imagePreview={postureImagePreview} postureDescription={postureDescription} locale={locale} onChange={updateRulaPosturePart}/><div className="rula-extra"><label><span className="field-label-line"><span>{t("assessment.force")}</span><span className="required-label">{t("common.required")}</span></span><StyledSelect aria-label={t("assessment.force")} name="force" value={rulaForce} onChange={(event) => setRulaForce(Number(event.target.value))}><option value="0">{t("assessment.noSignificantForce")} — {t("assessment.noSignificantForcePoints")} — {t("assessment.noSignificantForceRange")}</option><option value="1">{t("assessment.lowForce")} — {t("assessment.lowForcePoints")} — {t("assessment.lowForceRange")}</option><option value="2">{t("assessment.mediumForce")} — {t("assessment.mediumForcePoints")} — {t("assessment.mediumForceRange")}</option><option value="3">{t("assessment.highForce")} — {t("assessment.highForcePoints")} — {t("assessment.highForceRange")}</option></StyledSelect></label><input type="hidden" name="muscleUse" value={rulaMuscleUse ? "1" : "0"}/><RulaMuscleUseSelector value={rulaMuscleUse} onChange={setRulaMuscleUse}/></div></>}
+           {imageReviewOpen ? <RulaImageReviewDialog fileName={t("assessment.rulaImageNumber", { number: ([...savedPostureImages.map(image => "saved:" + image.id), ...selectedPostureImages.map(rulaPostureImageFileKey)].indexOf(selectedPostureImageKey) + 1).toLocaleString(numberLocale) })} onClose={() => setImageReviewOpen(false)}><RulaPostureAnalysisStep analysis={postureAnalysis} result={currentRulaResult} sideResults={currentRulaSideResults} bodySide={rulaBodySide} imagePreview={postureImagePreview} postureDescription={postureDescription} locale={locale} activeSide={rulaReviewSide} onSideChange={setRulaReviewSide} fallbackAdjustments={{ force: rulaForce, muscleUse: rulaMuscleUse }} onChange={updateRulaPosturePart}/><div className="rula-extra"><label><span className="field-label-line"><span>{t("assessment.force")}</span><span className="required-label">{t("common.required")}</span></span><StyledSelect aria-label={t("assessment.force")} name="force" value={activeRulaAdjustments.force} onChange={(event) => updateRulaAdjustments({ force: Number(event.target.value) })}><option value="0">{t("assessment.noSignificantForce")} — {t("assessment.noSignificantForcePoints")} — {t("assessment.noSignificantForceRange")}</option><option value="1">{t("assessment.lowForce")} — {t("assessment.lowForcePoints")} — {t("assessment.lowForceRange")}</option><option value="2">{t("assessment.mediumForce")} — {t("assessment.mediumForcePoints")} — {t("assessment.mediumForceRange")}</option><option value="3">{t("assessment.highForce")} — {t("assessment.highForcePoints")} — {t("assessment.highForceRange")}</option></StyledSelect></label><input type="hidden" name="muscleUse" value={activeRulaAdjustments.muscleUse ? "1" : "0"}/><RulaMuscleUseSelector value={activeRulaAdjustments.muscleUse} onChange={(muscleUse) => updateRulaAdjustments({ muscleUse })}/></div></RulaImageReviewDialog> : <><RulaPostureAnalysisStep analysis={postureAnalysis} result={currentRulaResult} sideResults={currentRulaSideResults} bodySide={rulaBodySide} imagePreview={postureImagePreview} postureDescription={postureDescription} locale={locale} activeSide={rulaReviewSide} onSideChange={setRulaReviewSide} fallbackAdjustments={{ force: rulaForce, muscleUse: rulaMuscleUse }} onChange={updateRulaPosturePart}/><div className="rula-extra"><label><span className="field-label-line"><span>{t("assessment.force")}</span><span className="required-label">{t("common.required")}</span></span><StyledSelect aria-label={t("assessment.force")} name="force" value={activeRulaAdjustments.force} onChange={(event) => updateRulaAdjustments({ force: Number(event.target.value) })}><option value="0">{t("assessment.noSignificantForce")} — {t("assessment.noSignificantForcePoints")} — {t("assessment.noSignificantForceRange")}</option><option value="1">{t("assessment.lowForce")} — {t("assessment.lowForcePoints")} — {t("assessment.lowForceRange")}</option><option value="2">{t("assessment.mediumForce")} — {t("assessment.mediumForcePoints")} — {t("assessment.mediumForceRange")}</option><option value="3">{t("assessment.highForce")} — {t("assessment.highForcePoints")} — {t("assessment.highForceRange")}</option></StyledSelect></label><input type="hidden" name="muscleUse" value={activeRulaAdjustments.muscleUse ? "1" : "0"}/><RulaMuscleUseSelector value={activeRulaAdjustments.muscleUse} onChange={(muscleUse) => updateRulaAdjustments({ muscleUse })}/></div></>}
          </fieldset>
          <fieldset hidden={wizardStep !== 3}><legend tabIndex={-1}>{t("assessment.rulaAssessmentReporting")}</legend>{manualRulaFallbackApplied && <div className="rula-manual-fallback-summary" role="note"><Icon name="warning"/><span>{t("assessment.rulaManualFallbackSummary")}</span></div>}<RulaReportPreview result={reportRulaResult} analysis={reportPostureAnalysis} force={reportWorstImage?.force ?? rulaForce} muscleUse={reportWorstImage?.muscleUse ?? rulaMuscleUse} bodySide={rulaBodySide} locale={locale} selectedActions={selectedRulaActions} onSelectedActionsChange={setSelectedRulaActions} active={wizardStep === 3} activityInfo={{ jobTitle: jobQuery, taskDescription: rulaTaskDescription, postureDescription }} onAnalysisChange={(next) => { if (reportWorstImage && reportWorstImage.imageKey !== selectedPostureImageKey) { const review = postureImageReviewCache.current[reportWorstImage.imageKey]; if (review) { review.editedAnalysis = next; setPostureImageReviews(current => ({ ...current, [reportWorstImage.imageKey]: { ...review } })); } else { savedImageAssessments.current = savedImageAssessments.current.map(image => image.imageKey === reportWorstImage.imageKey ? { ...image, analysis: next } : image); setPostureAnalysis({ ...postureAnalysis, imageAssessments: savedImageAssessments.current }); } } else setPostureAnalysis(next); }}/></fieldset>
         <div className="wizard-actions"><button className="ghost" type="button" disabled={wizardStep === 1 || submitting} onClick={() => { setError(""); setWizardStep((step) => step === 3 ? 2 : 1); }}>{t("assessment.previousStep")}</button>{wizardStep < 3 ? <button key="rula-next-step" className="primary" type="button" disabled={submitting} onClick={advanceRulaWizard}>{t("common.next")} <Icon name="arrow"/></button> : <button key="rula-register" className="primary" type="submit" formNoValidate disabled={submitting}>{submitting ? <span className="button-spinner" aria-hidden="true"/> : <Icon name="chart"/>} {submitting ? t("assessment.registeringRula") : t("assessment.calculateRegisterRula")}</button>}</div>{!editingExistingAssessment && <AutoSaveStatus lastSaved={lastSaved} hasError={autosaveError}/>}

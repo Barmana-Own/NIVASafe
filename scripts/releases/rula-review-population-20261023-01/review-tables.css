@@ -1,0 +1,154 @@
+/* Only the two RULA posture review tables retain six readable columns at every width. */
+.app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-table-card > .rula-analysis-table-head {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+  overflow-x: auto;
+}
+
+.app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-table-card > .rula-analysis-table-head > strong {
+  flex: 0 0 auto;
+  font-size: .75rem;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-table-card > .rula-analysis-table-head > small {
+  flex: 1 1 16rem;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-table-card > .table-wrap {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin-inline: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-table-card > .table-wrap > .rula-analysis-table {
+  display: table;
+  width: max-content;
+  min-width: 100%;
+  max-width: none;
+  table-layout: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+  direction: rtl;
+  white-space: nowrap;
+  font-size: .75rem;
+}
+
+/* Restore the existing header and native table layout from the phone card rules. */
+.app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-table-card > .table-wrap > .rula-analysis-table > thead {
+  display: table-header-group;
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  clip: auto;
+  clip-path: none;
+  white-space: nowrap;
+}
+
+.app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-table-card > .table-wrap > .rula-analysis-table > tbody {
+  display: table-row-group;
+  padding: 0;
+}
+
+.app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-table-card > .table-wrap > .rula-analysis-table > :is(thead, tbody) > tr {
+  display: table-row;
+  grid-template-columns: none;
+  grid-template-areas: none;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background-image: none;
+  box-shadow: none;
+}
+
+/* Important cell resets are limited to prior important phone-card declarations. */
+.app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-table-card > .table-wrap > .rula-analysis-table > :is(thead, tbody) > tr > :is(th, td) {
+  display: table-cell;
+  box-sizing: border-box;
+  grid-area: auto;
+  grid-column: auto;
+  grid-row: auto;
+  width: auto !important;
+  min-width: 0;
+  max-width: none;
+  padding: 8px 10px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--color-border, #dce3ed) !important;
+  border-radius: 0;
+  text-align: start !important;
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: visible;
+  overflow-wrap: normal;
+  word-break: normal;
+  font-size: .75rem;
+  line-height: 1.6;
+}
+
+/* Physical left borders follow the RTL table even when angle numbers are LTR. */
+.app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-table-card > .table-wrap > .rula-analysis-table > :is(thead, tbody) > tr > :is(th, td):not(:last-child) {
+  border-left: 1px solid var(--color-border, #dce3ed) !important;
+}
+
+.app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-table-card > .table-wrap > .rula-analysis-table > thead > tr > th {
+  font-size: .6875rem;
+}
+
+.app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-table-card > .table-wrap > .rula-analysis-table > tbody > tr:last-child > td {
+  border-bottom: 0 !important;
+}
+
+.app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-table-card > .table-wrap > .rula-analysis-table > tbody > tr > td::before {
+  content: none;
+  display: none;
+}
+
+.app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-table-card > .table-wrap > .rula-analysis-table > tbody > tr > td :is(strong, small, span) {
+  max-width: none;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-table-card > .table-wrap > .rula-analysis-table .rula-source-stack {
+  width: max-content;
+  min-width: 0;
+  max-width: none;
+}
+
+.app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-table-card > .table-wrap > .rula-analysis-table .rula-suggested-score {
+  width: auto;
+}
+
+.app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-table-card > .table-wrap > .rula-analysis-table .rula-row-actions {
+  width: auto;
+  min-width: 44px;
+}
+
+.app[data-design="enterprise"] .rula-smart-analysis .rula-analysis-table-card > .table-wrap > .rula-analysis-table .rula-edit-button {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  inline-size: 44px;
+  min-inline-size: 44px;
+  block-size: 44px;
+  min-block-size: 44px;
+}

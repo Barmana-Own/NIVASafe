@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { eligibleOrganizationImage, organizationImageFile } from "./OrganizationImagePicker";
+import { organizationImageSource } from "./organizationImageSource";
 const item = { id: "test-image", originalName: "posture.png", mimeType: "image/png", size: 3, createdAt: "2026-10-09T10:00:00Z" };
 describe("organization image reuse", () => {
   it("filters documents, invalid identifiers, empty and oversized images", () => {
@@ -14,5 +15,6 @@ describe("organization image reuse", () => {
   it("preserves filename, MIME type and stable duplicate identity for the existing assessment pipeline", () => {
     const file = organizationImageFile(item, new Blob([new Uint8Array(3)], { type: "image/png" }), 10);
     expect(file.name).toBe(item.originalName); expect(file.type).toBe(item.mimeType); expect(file.size).toBe(3); expect(file.lastModified).toBe(Date.parse(item.createdAt));
+    expect(organizationImageSource(file)).toEqual(item);
   });
 });

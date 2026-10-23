@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { api, getSession, useLoad } from "../../api/client";
 import { EmptyState, Icon, formatDate } from "../../components/UI";
 import { useModalFocus } from "../../components/useModalFocus";
@@ -9,6 +9,25 @@ import "./assistant-design.css";
 
 type Conversation = { id: string; title: string; updatedAt?: string };
 type Message = { id: string; role: string; content: string; provider?: string; createdAt: string; citations?: Array<{ id: string; title: string }> };
+
+export function resizeAssistantComposer(input: HTMLTextAreaElement): void {
+  if (!input.isConnected) return;
+  const style = getComputedStyle(input);
+  const pixels = (value: string) => Math.max(0, Number.parseFloat(value) || 0);
+  const lineHeight = pixels(style.lineHeight) || pixels(style.fontSize) * 1.2 || 24;
+  const padding = pixels(style.paddingTop) + pixels(style.paddingBottom);
+  const border = pixels(style.borderTopWidth) + pixels(style.borderBottomWidth);
+  const boxExtra = style.boxSizing === "border-box" ? padding + border : 0;
+  const minimum = lineHeight + boxExtra;
+  const maximum = lineHeight * 3 + boxExtra;
+  input.style.minHeight = `${minimum}px`;
+  input.style.maxHeight = `${maximum}px`;
+  input.style.overflowY = "hidden";
+  input.style.height = "auto";
+  const measured = input.value.length === 0 ? minimum : Math.max(lineHeight, input.scrollHeight - padding) + boxExtra;
+  input.style.height = `${Math.min(maximum, Math.max(minimum, measured))}px`;
+  input.style.overflowY = measured > maximum ? "auto" : "hidden";
+}
 
 export function AssistantPage() {
   const conversations = useLoad<Conversation[]>("/chat/conversations");
@@ -31,9 +50,51 @@ export function AssistantPage() {
   const composerDraftKey = scopedDraftKey(`chat-composer:${selected || `new:${newChatDraftId.current}`}`, session?.user.id, orgId);
   const messages = useLoad<Message[]>(selected ? `/chat/conversations/${selected}/messages` : null, [selected]);
   const logRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => setCharacterCount(document.querySelector<HTMLTextAreaElement>(".assistant-redesign textarea[name=content]")?.value.length ?? 0));
-    return () => cancelAnimationFrame(frame);
+  const composerInputRef = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const input = composerInputRef.current;
+    if (!input) return undefined;
+    let active = true;
+    let frame = 0;
+    const sync = () => {
+      frame = 0;
+      if (!active || !input.isConnected) return;
+      resizeAssistantComposer(input);
+      setCharacterCount(input.value.length);
+    };
+    const schedule = () => { if (active && !frame) frame = requestAnimationFrame(sync); };
+    // Autosave may restore a value asynchronously without an input event.
+    const ownValue = Object.getOwnPropertyDescriptor(input, "value");
+    const value = ownValue ?? Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value");
+    const observedSet = value?.get && value.set && value.configurable !== false ? function (this: HTMLTextAreaElement, next: string) {
+      value.set!.call(this, next);
+      schedule();
+    } : undefined;
+    if (observedSet) Object.defineProperty(input, "value", { ...value, set: observedSet });
+    input.addEventListener("input", schedule);
+    input.addEventListener("change", schedule);
+    const form = input.form;
+    form?.addEventListener("reset", schedule);
+    let width = input.getBoundingClientRect().width;
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => {
+      const nextWidth = input.getBoundingClientRect().width;
+      if (nextWidth !== width) { width = nextWidth; schedule(); }
+    });
+    observer?.observe(input);
+    void document.fonts?.ready.then(schedule);
+    sync();
+    return () => {
+      active = false;
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
+      input.removeEventListener("input", schedule);
+      input.removeEventListener("change", schedule);
+      form?.removeEventListener("reset", schedule);
+      if (observedSet && Object.getOwnPropertyDescriptor(input, "value")?.set === observedSet) {
+        if (ownValue) Object.defineProperty(input, "value", ownValue);
+        else Reflect.deleteProperty(input, "value");
+      }
+    };
   }, [composerDraftKey]);
   useEffect(() => { if (pendingResponse && messages.data?.some((item) => item.id === pendingResponse.id)) setPendingResponse(null); }, [messages.data, pendingResponse]);
   useEffect(() => {
@@ -110,7 +171,7 @@ export function AssistantPage() {
       } else {
         setError(failure.message);
       }
-      const currentInput = document.querySelector<HTMLTextAreaElement>('.assistant-page textarea[name="content"]') ?? input;
+      const currentInput = composerInputRef.current ?? input;
       if ((currentInput instanceof HTMLInputElement || currentInput instanceof HTMLTextAreaElement) && !currentInput.value.trim()) {
         currentInput.value = content;
         setCharacterCount(content.length);
@@ -124,7 +185,7 @@ export function AssistantPage() {
   }
 
   function fillSuggestion(value: string) {
-    const input = document.querySelector<HTMLTextAreaElement>('textarea[name="content"]');
+    const input = composerInputRef.current;
     if (input) {
       input.value = value;
       setCharacterCount(value.length);
@@ -164,7 +225,7 @@ export function AssistantPage() {
         <div className="chat-log" ref={logRef} role="log" aria-live="polite" aria-relevant="additions" aria-busy={sending}>{selected && messages.loading && !pendingMessage && !pendingResponse ? <div className="state"><div className="spinner"/></div> : messages.error ? <div className="alert error" role="alert">{messages.error}<button type="button" className="button" onClick={messages.reload}>{t("common.retry")}</button></div> : !messages.data?.length && !pendingMessage && !pendingResponse ? <div className="empty-state"><div className="welcome"><div className="welcome-icon"><img src="/icon-64.png" alt="NIVASafe" width="40" height="40"/></div><h2>{t("redesign.chatWelcome")}</h2><p>{t("redesign.chatWelcomeDescription")}</p></div><div className="suggestions"><p className="suggestion-label">{t("redesign.chatSuggestions")}</p><div className="prompt-grid">{prompts.map((prompt, index) => <button key={prompt.icon} type="button" className={`prompt ${index === 0 ? "featured" : "secondary-prompt"}`} onClick={() => fillSuggestion(prompt.text)} disabled={sending}><span className="prompt-icon"><Icon name={prompt.icon}/></span><div className="prompt-copy"><strong>{prompt.title}</strong><p>{prompt.description}</p></div><Icon name="arrow" className="prompt-arrow"/></button>)}</div></div></div> : <div className="message-thread">{messages.data?.map(renderMessage)}{pendingResponse && !messages.data?.some(item => item.id === pendingResponse.id) && renderMessage(pendingResponse)}{pendingMessage && <div className="message user pending-message"><div className="message-bubble"><strong>{t("assistant.you")}</strong><p>{pendingMessage}</p><small>{t("assistant.sending")}</small></div></div>}{sending && <div className="message assistant pending-message"><div className="message-bubble"><strong>{t("assistant.assistant")}</strong><p>{t("assistant.waitingForResponse")}</p><span className="assistant-typing" aria-hidden="true"><i/><i/><i/></span></div></div>}</div>}</div>
         <AutoSaveForm key={composerDraftKey} storageKey={composerDraftKey} className="composer-section" showSaveStatus={false} onInput={event => { const input = event.currentTarget.elements.namedItem("content"); if (input instanceof HTMLTextAreaElement) setCharacterCount(input.value.length); }} onSubmit={send}>
           <div className="composer-label"><label htmlFor="assistant-message">{t("redesign.yourMessage")}</label><span>{characterCount.toLocaleString(numberLocale)} / {(32_000).toLocaleString(numberLocale)}</span></div>
-          <div className="composer"><textarea id="assistant-message" name="content" placeholder={t("assistant.questionPlaceholder")} autoComplete="off" minLength={2} maxLength={32_000} rows={1} required aria-busy={sending} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing && window.matchMedia("(min-width: 769px)").matches) { event.preventDefault(); if (!sendingRef.current) event.currentTarget.form?.requestSubmit(); } }}/><div className="composer-actions"><button type="submit" className="button send" disabled={sending} aria-label={t("assistant.send")}>{sending ? <span className="composer-spinner"/> : <Icon name="arrow"/>}{t("assistant.send")}</button></div></div>
+          <div className="composer"><textarea ref={composerInputRef} id="assistant-message" name="content" placeholder={t("assistant.questionPlaceholder")} autoComplete="off" minLength={2} maxLength={32_000} rows={1} required aria-busy={sending} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing && window.matchMedia("(min-width: 769px)").matches) { event.preventDefault(); if (!sendingRef.current) event.currentTarget.form?.requestSubmit(); } }}/><div className="composer-actions"><button type="submit" className="button send" disabled={sending} aria-label={t("assistant.send")}>{sending ? <span className="composer-spinner"/> : <Icon name="arrow"/>}{t("assistant.send")}</button></div></div>
           {sending && <small className="composer-send-status" role="status">{t("assistant.waitingForResponse")}</small>}
         </AutoSaveForm>
       </section>

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { authenticate } from "../auth-guard.js";
 import { audit, envelope, pageParams, parse, prisma, requireOrg, requirePermission } from "../core.js";
 import { openLocalObject, storage } from "../storage.js";
+import { assessmentImageTargetSchema, assessmentImageTransactionOptions, assertAssessmentImageCapacity, assertNoAssessmentImageLinks, countAssessmentImages, assessmentLinkedFilePage, linkAssessmentImage, lockAssessmentImageTarget, lockImageSource, unlinkAssessmentImage, type AssessmentImageTarget } from "../assessment-image-links.js";
 
 export const allowedMime = new Set(["image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm", "application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword", "application/vnd.ms-excel", "text/csv", "text/plain"]);
 export const MAX_ATTACHMENT_FILE_BYTES = 10 * 1024 * 1024;
@@ -83,7 +84,19 @@ async function addAttachmentReferenceMetadata<T extends AttachmentWithReference>
 }
 
 export async function registerFileRoutes(app: FastifyInstance) {
-  app.get("/api/v1/files", { preHandler: authenticate }, async (request) => { const organizationId = requireOrg(request); const q = pageParams(request.query); const extra = parse(z.object({ entityType: z.string().optional(), entityId: z.string().uuid().optional() }), request.query); const where = { organizationId, deletedAt: null, ...(extra.entityType ? { entityType: extra.entityType } : {}), ...(extra.entityId ? { entityId: extra.entityId } : {}), ...(q.search ? { originalName: { contains: q.search } } : {}) }; const [attachments, total] = await Promise.all([prisma.attachment.findMany({ where, skip: (q.page - 1) * q.limit, take: q.limit, orderBy: { createdAt: "desc" } }), prisma.attachment.count({ where })]); const data = await addAttachmentReferenceMetadata(attachments, organizationId); return envelope(data, { page: q.page, limit: q.limit, total }); });
+  app.get("/api/v1/files", { preHandler: authenticate }, async (request) => {
+    const organizationId = requireOrg(request);
+    const q = pageParams(request.query);
+    const extra = parse(z.object({ entityType: z.string().optional(), entityId: z.string().uuid().optional() }), request.query);
+    const linkedPage = await assessmentLinkedFilePage(prisma, organizationId, extra, q);
+    const where = { organizationId, deletedAt: null, ...(linkedPage ? { id: { in: linkedPage.ids } } : { ...(extra.entityType ? { entityType: extra.entityType } : {}), ...(extra.entityId ? { entityId: extra.entityId } : {}) }), ...(q.search ? { originalName: { contains: q.search } } : {}) };
+    const [attachments, total] = await Promise.all([
+      prisma.attachment.findMany({ where, skip: linkedPage ? 0 : (q.page - 1) * q.limit, take: q.limit, orderBy: { createdAt: "desc" } }),
+      linkedPage ? Promise.resolve(linkedPage.total) : prisma.attachment.count({ where }),
+    ]);
+    const data = await addAttachmentReferenceMetadata(attachments, organizationId);
+    return envelope(data, { page: q.page, limit: q.limit, total });
+  });
   app.post("/api/v1/files", { preHandler: authenticate }, async (request, reply) => {
     const organizationId = requireOrg(request); requirePermission(request, "assessments.update"); const file = await request.file({ limits: { fileSize: MAX_ATTACHMENT_FILE_BYTES } }); if (!file) throw Object.assign(new Error("File is required"), { statusCode: 400, code: "FILE_REQUIRED" });
     if (!allowedMime.has(file.mimetype)) throw Object.assign(new Error("Unsupported file type"), { statusCode: 415, code: "FILE_TYPE_NOT_ALLOWED" });
@@ -103,22 +116,19 @@ export async function registerFileRoutes(app: FastifyInstance) {
       if (!file.mimetype.startsWith("image/")) throw Object.assign(new Error("برای تصویر فرآیند FMEA فقط فایل تصویری مجاز است."), { statusCode: 415, code: "FMEA_ATTACHMENT_IMAGE_REQUIRED" });
       const assessment = await prisma.fmeaAssessment.findFirst({ where: { id: entityId, organizationId, deletedAt: null }, select: { id: true } });
       if (!assessment) throw Object.assign(new Error("ارزیابی FMEA پیدا نشد."), { statusCode: 404, code: "FMEA_ATTACHMENT_ASSESSMENT_NOT_FOUND" });
-      const imageCount = await prisma.attachment.count({ where: { organizationId, entityType, entityId, kind: AttachmentKind.IMAGE, deletedAt: null } });
-      if (imageCount >= FMEA_PROCESS_IMAGE_MAX_COUNT) throw Object.assign(new Error("برای هر ارزیابی FMEA حداکثر ۳ تصویر فرآیند مجاز است."), { statusCode: 409, code: "FMEA_ATTACHMENT_IMAGE_COUNT_LIMIT" });
     }
     const objectKey = `${randomUUID()}${extname(file.filename).toLowerCase()}`;
     await storage.put(objectKey, buffer, file.mimetype);
     const data = { organizationId, uploadedById: request.actor!.userId, originalName: file.filename, objectKey, mimeType: file.mimetype, size: buffer.length, kind: kindOf(file.mimetype), entityType, entityId, checksum: createHash("sha256").update(buffer).digest("hex") };
     let item: Awaited<ReturnType<typeof prisma.attachment.create>>;
     try {
-      item = entityType === "RulaAssessment" && entityId
+      item = (entityType === "RulaAssessment" || entityType === "FmeaAssessment") && entityId
         ? await prisma.$transaction(async (tx) => {
-          const lockedAssessment = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM RulaAssessment WHERE id = ${entityId} AND organizationId = ${organizationId} FOR UPDATE`;
-          if (!lockedAssessment.length) throw Object.assign(new Error("ارزیابی RULA پیدا نشد."), { statusCode: 404, code: "RULA_ATTACHMENT_ASSESSMENT_NOT_FOUND" });
-          const imageCount = await tx.attachment.count({ where: { organizationId, entityType, entityId, kind: AttachmentKind.IMAGE, deletedAt: null } });
-          assertRulaPostureImageLimit(imageCount);
+          const target: AssessmentImageTarget = { entityType, entityId };
+          await lockAssessmentImageTarget(tx, organizationId, target, { allowArchivedRula: true });
+          assertAssessmentImageCapacity(entityType, await countAssessmentImages(tx, organizationId, target));
           return tx.attachment.create({ data });
-        })
+        }, assessmentImageTransactionOptions)
         : await prisma.attachment.create({ data });
     } catch (error) {
       await storage.delete(objectKey).catch(() => undefined);
@@ -127,8 +137,26 @@ export async function registerFileRoutes(app: FastifyInstance) {
     await audit(request, "FILE_UPLOAD", "Attachment", item.id);
     return reply.code(201).send(envelope(item));
   });
+  app.post("/api/v1/files/:id/assessment-links", { preHandler: authenticate }, async (request) => {
+    const organizationId = requireOrg(request);
+    requirePermission(request, "assessments.update");
+    const { id } = parse(z.object({ id: z.string().uuid() }), request.params);
+    const target = parse(assessmentImageTargetSchema, request.body);
+    const source = await prisma.$transaction(tx => linkAssessmentImage(tx, organizationId, id, target), assessmentImageTransactionOptions);
+    await audit(request, "ASSESSMENT_IMAGE_LINK", "Attachment", id, target);
+    return envelope(source);
+  });
+  app.delete("/api/v1/files/:id/assessment-links", { preHandler: authenticate }, async (request) => {
+    const organizationId = requireOrg(request);
+    requirePermission(request, "assessments.update");
+    const { id } = parse(z.object({ id: z.string().uuid() }), request.params);
+    const target = parse(assessmentImageTargetSchema, request.body);
+    await prisma.$transaction(tx => unlinkAssessmentImage(tx, organizationId, id, target), assessmentImageTransactionOptions);
+    await audit(request, "ASSESSMENT_IMAGE_UNLINK", "Attachment", id, target);
+    return envelope({ success: true });
+  });
   app.get("/api/v1/files/:id/download", { preHandler: authenticate }, async (request, reply) => { const organizationId = requireOrg(request); const { id } = parse(z.object({ id: z.string().uuid() }), request.params); const item = await prisma.attachment.findFirst({ where: { id, organizationId, deletedAt: null } }); if (!item) throw Object.assign(new Error("File not found"), { statusCode: 404 }); const local = openLocalObject(item.objectKey); if (local) return reply.header("content-type", item.mimeType).header("content-disposition", `attachment; filename*=UTF-8''${encodeURIComponent(item.originalName)}`).send(local); return reply.redirect(await storage.downloadUrl(item.objectKey)); });
-  app.delete("/api/v1/files/:id", { preHandler: authenticate }, async (request) => { const organizationId = requireOrg(request); requirePermission(request, "assessments.delete"); const { id } = parse(z.object({ id: z.string().uuid() }), request.params); const item = await prisma.attachment.findFirst({ where: { id, organizationId, deletedAt: null } }); if (!item) throw Object.assign(new Error("File not found"), { statusCode: 404 }); await prisma.attachment.update({ where: { id }, data: { deletedAt: new Date() } });
+  app.delete("/api/v1/files/:id", { preHandler: authenticate }, async (request) => { const organizationId = requireOrg(request); requirePermission(request, "assessments.delete"); const { id } = parse(z.object({ id: z.string().uuid() }), request.params); const item = await prisma.$transaction(async tx => { const source = await lockImageSource(tx, organizationId, id); await assertNoAssessmentImageLinks(tx, organizationId, id); await tx.attachment.update({ where: { id }, data: { deletedAt: new Date() } }); return source; }, assessmentImageTransactionOptions);
     try { await storage.delete(item.objectKey); } catch (error) { await prisma.attachment.update({ where: { id }, data: { deletedAt: null } }); throw error; }
     await audit(request, "FILE_DELETE", "Attachment", id); return envelope({ success: true }); });
 }

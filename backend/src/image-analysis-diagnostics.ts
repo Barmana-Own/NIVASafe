@@ -1,4 +1,4 @@
-type ImageFailure = { code?: unknown; statusCode?: unknown; retryable?: unknown; name?: unknown; upstreamRequestId?: unknown; providerErrorCode?: unknown; responseValidationCode?: unknown };
+type ImageFailure = { code?: unknown; statusCode?: unknown; retryable?: unknown; name?: unknown; upstreamRequestId?: unknown; providerErrorCode?: unknown; responseValidationCode?: unknown; cause?: unknown; networkErrorCode?: unknown; connectionAttempts?: unknown };
 const retryableStatuses = new Set([408, 425, 429, 500, 502, 503, 504]);
 const retryableCodes = new Set(["PROVIDER_TIMEOUT", "ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "EAI_AGAIN"]);
 const safeProviderErrorCodes = new Set([
@@ -11,8 +11,11 @@ const safeProviderErrorCodes = new Set([
 const safeResponseValidationCodes = new Set([
   "response_json_invalid", "side_container_missing", "side_result_incomplete_left", "side_result_incomplete_right",
   "invalid_overlay", "invalid_overlay_points", "invalid_overlay_landmark", "overlay_landmark_out_of_bounds",
-  "overlay_landmark_confidence_invalid", "overlay_schema_invalid", "summary_missing", "risk_rows_missing",
-  "risk_rows_exceeded_limit", "risk_row_invalid", "annotations_invalid",
+  "overlay_landmark_confidence_invalid", "overlay_schema_invalid",
+]);
+const safeNetworkErrorCodes = new Set([
+  "UND_ERR_CONNECT_TIMEOUT", "EAI_AGAIN", "ECONNREFUSED", "ENOTFOUND", "ENETUNREACH",
+  "UND_ERR_SOCKET", "UND_ERR_HEADERS_TIMEOUT", "UND_ERR_BODY_TIMEOUT", "ECONNRESET", "ETIMEDOUT",
 ]);
 
 function asFailure(error: unknown): ImageFailure {
@@ -49,8 +52,11 @@ export function classifyRulaImageFailure(error: unknown) {
 /** Audit-safe diagnostics: never persist provider bodies, messages or uploaded data. */
 export function imageAnalysisFailureMetadata(error: unknown) {
   const value = asFailure(error);
-  const allowedCodes = new Set(["PROVIDER_REQUEST_FAILED", "PROVIDER_TIMEOUT", "EMPTY_PROVIDER_RESPONSE", "AI_MODEL_MISMATCH", "RULA_IMAGE_AI_INVALID_RESPONSE", "RULA_IMAGE_AI_EMPTY_OBSERVATION", "FMEA_IMAGE_AI_INVALID_RESPONSE", "ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "EAI_AGAIN"]);
-  const failureCode = typeof value.code === "string" && allowedCodes.has(value.code) ? value.code : "IMAGE_ANALYSIS_INTERNAL_ERROR";
+  const allowedCodes = new Set(["PROVIDER_REQUEST_FAILED", "PROVIDER_TIMEOUT", "PROVIDER_CONNECT_FAILED", "EMPTY_PROVIDER_RESPONSE", "AI_MODEL_MISMATCH", "RULA_IMAGE_AI_INVALID_RESPONSE", "RULA_IMAGE_AI_EMPTY_OBSERVATION", "ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "EAI_AGAIN"]);
+  const causeCode = value.cause && typeof value.cause === "object" && "code" in value.cause ? value.cause.code : undefined;
+  const networkCandidate = value.networkErrorCode ?? causeCode;
+  const networkErrorCode = typeof networkCandidate === "string" && safeNetworkErrorCodes.has(networkCandidate) ? networkCandidate : undefined;
+  const failureCode = typeof value.code === "string" && allowedCodes.has(value.code) ? value.code : networkErrorCode ? "PROVIDER_NETWORK_FAILED" : "IMAGE_ANALYSIS_INTERNAL_ERROR";
   const status = value.statusCode;
   const providerErrorCode = typeof value.providerErrorCode === "string"
     && safeProviderErrorCodes.has(value.providerErrorCode.trim().toLowerCase())
@@ -70,6 +76,8 @@ export function imageAnalysisFailureMetadata(error: unknown) {
     ...(providerErrorCode ? { providerErrorCode } : {}),
     ...(upstreamRequestId ? { upstreamRequestId } : {}),
     ...(responseValidationCode ? { responseValidationCode } : {}),
+    ...(networkErrorCode ? { networkErrorCode } : {}),
+    ...(typeof value.connectionAttempts === "number" && Number.isInteger(value.connectionAttempts) && value.connectionAttempts >= 1 && value.connectionAttempts <= 3 ? { connectionAttempts: value.connectionAttempts } : {}),
     retryable: isRetryableImageAnalysisFailure(error),
   };
 }

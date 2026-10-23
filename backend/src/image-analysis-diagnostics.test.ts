@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { classifyRulaImageFailure, imageAnalysisFailureMetadata } from "./image-analysis-diagnostics.js";
 describe("image analysis audit diagnostics", () => {
+  it("identifies a preconnect failure without retaining private network details", () => {
+    const error = Object.assign(new Error("private connector details"), { code: "PROVIDER_CONNECT_FAILED", retryable: true, networkErrorCode: "UND_ERR_CONNECT_TIMEOUT", connectionAttempts: 3, cause: { code: "UND_ERR_CONNECT_TIMEOUT", message: "private addresses and headers" } });
+    expect(imageAnalysisFailureMetadata(error)).toEqual({ failureCode: "PROVIDER_CONNECT_FAILED", networkErrorCode: "UND_ERR_CONNECT_TIMEOUT", connectionAttempts: 3, retryable: true });
+    expect(classifyRulaImageFailure(error)).toMatchObject({ statusCode: 503, retryable: false });
+  });
+  it("retains only recognized nested network codes instead of misclassifying fetch failures as internal", () => {
+    expect(imageAnalysisFailureMetadata(Object.assign(new TypeError("fetch failed"), { cause: { code: "UND_ERR_CONNECT_TIMEOUT", message: "private" } }))).toEqual({ failureCode: "PROVIDER_NETWORK_FAILED", networkErrorCode: "UND_ERR_CONNECT_TIMEOUT", retryable: true });
+    expect(imageAnalysisFailureMetadata({ cause: { code: "Bearer secret" }, connectionAttempts: 999 })).toEqual({ failureCode: "IMAGE_ANALYSIS_INTERNAL_ERROR", retryable: false });
+    expect(imageAnalysisFailureMetadata({ cause: { code: { toString: () => "UND_ERR_SOCKET" } } })).toEqual({ failureCode: "IMAGE_ANALYSIS_INTERNAL_ERROR", retryable: false });
+  });
   it("retains model identity rejection without storing the response or claimed model", () => {
     expect(imageAnalysisFailureMetadata({ code: "AI_MODEL_MISMATCH", message: "private response", model: "untrusted model", response: "secret" })).toEqual({ failureCode: "AI_MODEL_MISMATCH", retryable: false });
     expect(classifyRulaImageFailure({ code: "AI_MODEL_MISMATCH" })).toMatchObject({ statusCode: 503, retryable: false });
@@ -36,10 +46,6 @@ describe("image analysis audit diagnostics", () => {
   it("persists an allowlisted response-validation reason without the provider answer", () => {
     expect(imageAnalysisFailureMetadata({code:"RULA_IMAGE_AI_INVALID_RESPONSE",responseValidationCode:"side_result_incomplete_left",message:"private answer content"})).toEqual({failureCode:"RULA_IMAGE_AI_INVALID_RESPONSE",responseValidationCode:"side_result_incomplete_left",retryable:false});
     expect(imageAnalysisFailureMetadata({code:"RULA_IMAGE_AI_INVALID_RESPONSE",responseValidationCode:"private answer content",message:"private answer content"})).toEqual({failureCode:"RULA_IMAGE_AI_INVALID_RESPONSE",retryable:false});
-  });
-  it("retains allowlisted FMEA response-validation reasons without storing the provider answer", () => {
-    expect(imageAnalysisFailureMetadata({code:"FMEA_IMAGE_AI_INVALID_RESPONSE",responseValidationCode:"risk_row_invalid",message:"private answer content"})).toEqual({failureCode:"FMEA_IMAGE_AI_INVALID_RESPONSE",responseValidationCode:"risk_row_invalid",retryable:false});
-    expect(imageAnalysisFailureMetadata({code:"FMEA_IMAGE_AI_INVALID_RESPONSE",responseValidationCode:"private answer content",message:"private answer content"})).toEqual({failureCode:"FMEA_IMAGE_AI_INVALID_RESPONSE",retryable:false});
   });
   it("marks only transient provider failures as safely retryable and returns stable public errors", () => {
     expect(classifyRulaImageFailure(Object.assign(new Error("secret"), { code: "PROVIDER_TIMEOUT", retryable: true }))).toEqual({ statusCode: 503, code: "RULA_IMAGE_AI_UNAVAILABLE", message: "Image analysis is temporarily unavailable. You can retry this request.", retryable: false });

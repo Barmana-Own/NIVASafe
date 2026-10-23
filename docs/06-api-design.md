@@ -54,7 +54,3 @@ Scoped status: PASS — safe code release with public image processing disabled.
 Image multipart adds imageAnalysisConsentVersion; missing/outdated versions403. Existing paths preserved:93 frontend paths/155 backend routes. Genuine final-candidate3 image requests parsed;2 provider-derived assessments saved/reopened/PDF.
 
 Evidence: C:/NIVASafe/reports/evidence/rula-image-experience-20261019-01. Full-product status is not COMPLETE.
-
-### Local desktop update — 2026-10-20
-
-The active FMEA and RULA upload flows automatically queue each selected image when the account-level image-processing preference and provider approval gates allow it. Per-image consent UI and the multipart `imageAnalysisConsent` / `imageAnalysisConsentVersion` requirements were removed. Both image APIs continue to enforce the durable account-level policy server-side and record a transfer-authorization audit receipt before external dispatch. Production deployment configuration is unchanged.

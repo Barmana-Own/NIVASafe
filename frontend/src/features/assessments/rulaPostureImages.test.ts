@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { appendRulaPostureImages, RULA_POSTURE_IMAGE_MAX_COUNT } from "./rulaPostureImages.js";
+import { organizationImageFile } from "../files/OrganizationImagePicker";
 
 function image(name: string, type = "image/jpeg", size = 128, lastModified = 1) {
   return new File([new Uint8Array(size)], name, { type, lastModified });
 }
 
 describe("RULA posture image selection", () => {
+  it("deduplicates the same original attachment while preserving distinct stored images with identical metadata", () => {
+    const metadata = { id: "first-image", originalName: "same.png", mimeType: "image/png", size: 3, createdAt: "2026-10-22T12:00:00Z" };
+    const file = (id: string) => organizationImageFile({ ...metadata, id }, new Blob([new Uint8Array(3)], { type: metadata.mimeType }), 10);
+    const original = file(metadata.id);
+    expect(appendRulaPostureImages([original], [file(metadata.id), file("different-image")]).files).toHaveLength(2);
+  });
   it("allows up to four distinct supported images", () => {
     const result = appendRulaPostureImages([], [image("one.jpg"), image("two.png", "image/png"), image("three.webp", "image/webp"), image("four.jpg", "image/jpeg", 128, 2)]);
 

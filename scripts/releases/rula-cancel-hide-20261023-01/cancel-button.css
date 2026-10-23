@@ -1,0 +1,39 @@
+/* Owner-requested cancellation-button styling, retained while its UI is temporarily hidden. */
+.app .rula-image-cancel,
+.app .rula-ai-image-note.is-loading > button.secondary {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid var(--color-control-border, var(--line));
+  border-radius: 8px;
+  background: var(--color-surface, var(--surface));
+  color: var(--color-ink, var(--ink));
+  font: inherit;
+  font-size: .8125rem;
+  font-weight: 600;
+  line-height: 1.6;
+  cursor: pointer;
+}
+.app .rula-image-cancel:hover:not(:disabled),
+.app .rula-ai-image-note.is-loading > button.secondary:hover:not(:disabled) {
+  background: var(--color-accent-soft, var(--green-50));
+}
+.app .rula-image-cancel:focus-visible,
+.app .rula-ai-image-note.is-loading > button.secondary:focus-visible {
+  outline: 3px solid var(--color-focus, var(--blue));
+  outline-offset: 2px;
+}
+.app .rula-image-cancel:disabled,
+.app .rula-ai-image-note.is-loading > button.secondary:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+/* Frontend visibility only; cancellation and analysis lifecycle code remain intact. */
+.app .rula-image-cancel,
+.app .rula-ai-image-note.is-loading > button.secondary {
+  display: none;
+}

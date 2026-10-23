@@ -7,6 +7,8 @@ export const rulaMeasurementSchema=z.object({
   basis:z.enum(["IMAGE_PLANE","SUPPORT","UNSUPPORTED"]),
   aiAngle:z.number().min(-180).max(180).nullable(),
   aiScore:z.number().int().min(1).max(6),
+  /** Original model detection, distinct from an independently usable measurement. */
+  aiDetected:z.boolean().optional(),
   geometryAngle:z.number().min(-180).max(180).nullable(),
   qualityCodes:z.array(z.enum(["LANDMARK_MISSING","LANDMARK_NOT_VISIBLE","LANDMARK_LOW_CONFIDENCE","LANDMARK_OUT_OF_BOUNDS","DEGENERATE_SEGMENT","VIEW_UNSUITABLE","REFERENCE_FRAME_UNKNOWN","OUT_OF_PLANE_UNMEASURABLE","SUPPORT_REQUIRES_OBSERVATION","ANGLE_LANDMARK_CONFLICT","AI_ANGLE_MISSING","AI_CONFIDENCE_LOW","LANDMARK_CONTRACT_MISSING","SUBJECT_ASSOCIATION_CONFLICT","LIMB_CONNECTIVITY_CONFLICT","SUBJECT_NOT_IDENTIFIED"])).max(4),
   trustedSource:z.enum(["AI_ANGLE_AUDIT","DETERMINISTIC_IMAGE_PLANE"]).optional(),

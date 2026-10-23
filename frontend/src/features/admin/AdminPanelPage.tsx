@@ -7,7 +7,6 @@ import { useModalFocus } from "../../components/useModalFocus";
 import { useUnsavedChanges } from "../../components/useUnsavedChanges";
 import { WorkspaceTabs as AdminWorkspaceTabs } from "../../components/WorkspaceTabs";
 import { useI18n } from "../../i18n";
-import { SupportInboxSection } from "../support/SupportPage";
 
 type UserRole = "USER" | "SUPER_ADMIN";
 type AdminMembership = { id: string; role: string; active: boolean; organization: { id: string; nameFa: string; nameEn: string; active: boolean } };
@@ -27,7 +26,7 @@ type OrganizationMember = { id: string; role: string; active: boolean; user: { i
 type AdminMemberRequest = { id: string; username: string | null; email: string | null; displayName: string; phone: string | null; jobTitle: string | null; role: string; status: string; rejectionReason: string | null; createdAt: string; reviewedAt: string | null; organization: { id: string; nameFa: string; nameEn: string; active: boolean }; requestedBy: { id: string; displayName: string; email: string; username: string | null } };
 type AdminAIUsageRow = { userId: string; displayName: string; username: string | null; email: string; active: boolean; requestCount: number; inputTokens: number; outputTokens: number; totalTokens: number; aiEnabled: boolean; aiTokenLimit?: number; aiTokensUsed?: number };
 type AdminAIUsage = { users: AdminAIUsageRow[]; totals: Pick<AdminAIUsageRow, "requestCount" | "inputTokens" | "outputTokens" | "totalTokens"> };
-type GlobalAdminTab = "users" | "requests" | "ai" | "overview" | "support";
+type GlobalAdminTab = "users" | "requests" | "ai" | "overview";
 type OrganizationAdminTab = "members" | "ai";
 
 
@@ -368,7 +367,6 @@ export function AdminPanelPage() {
       { id: "requests", label: t("admin.workspaceRequests"), count: overview.data?.pendingMemberRequests ?? 0 },
       { id: "ai", label: t("admin.workspaceAi") },
       { id: "overview", label: t("admin.workspaceOverview") },
-      { id: "support", label: t("admin.workspaceSupport") },
     ]}/>
     <div className="admin-workspace-panel" role="tabpanel" tabIndex={0} id="global-admin-panel-users" aria-labelledby="global-admin-tab-users" hidden={activeTab !== "users"}>
       <SectionCard className="admin-user-control" title={t("admin.userControl")} description={t("admin.userControlDescription")} icon="members">
@@ -408,9 +406,6 @@ export function AdminPanelPage() {
           </SectionCard>
         </div>
       </> : overview.loading ? <LoadingState/> : null}
-    </div>
-    <div className="admin-workspace-panel" role="tabpanel" tabIndex={0} id="global-admin-panel-support" aria-labelledby="global-admin-tab-support" hidden={activeTab !== "support"}>
-      <SectionCard title={t("support.inboxTitle")} description={t("support.inboxDescription")} icon="assistant"><SupportInboxSection/></SectionCard>
     </div>
     {editorUser && <div className="admin-user-editor-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeUserEditor(); }}>
       <section ref={userEditorRef} className="admin-user-editor" role="dialog" tabIndex={-1} aria-modal="true" aria-busy={Boolean(busyUserId)} aria-labelledby="admin-user-editor-title" aria-describedby="admin-user-editor-description">

@@ -6,18 +6,3 @@
 @import "./management.css";
 @import "./assistant.css";
 @import "./support.css";
-
-.app :is(.fmea-report-page, .rula-report-page) .page-actions-inline > button {
-  min-height: var(--touch-target-min);
-  min-block-size: var(--touch-target-min);
-}
-
-.app[data-design="enterprise"] :is(.mobile-menu, .theme-trigger) {
-  min-width: var(--touch-target-min);
-  min-inline-size: var(--touch-target-min);
-  width: var(--touch-target-min);
-}
-
-.app[data-design="enterprise"] .side-nav .side-nav-link {
-  min-height: var(--touch-target-min);
-}

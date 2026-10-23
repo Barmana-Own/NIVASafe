@@ -1,40 +1,34 @@
-# RULA image processing: platform access and account authorization
+# RULA image processing: direct account consent and platform eligibility
 
-## Local desktop behavior update — 2026-10-20
+Current as of 2026-10-22 / 1405-07-30. The superseded upload-dialog contract is preserved in [history](history/rula-image-platform-access.before-direct-consent-20261022.md); it is not the current API contract.
 
-For the local desktop build, image selection starts automatic review when the authenticated account has enabled image processing and the configured privacy and vision gates are open. A separate confirmation for each image is no longer required. The backend still verifies account-level authorization, assessment permission, file validity, rate limits, quota and provider gates, and records an account-policy transfer receipt before sending an image. RULA and FMEA results remain advisory and require human review. This local behavior does not change production PM2 settings or establish provider contract terms; use only synthetic or otherwise authorized, non-confidential images for local checks.
+## User consent and access
 
-The product capability is available to all eligible organizations once the platform provider prerequisites are established. There is no organization allowlist or manual organization activation.
+- Registration and account settings expose independent optional image consent, unchecked by default. General terms alone never authorize image transfer. Current policy is `image-processing-account-2026-10-22-v2`.
+- `/api/v1/profile/image-processing-consent` reads/writes only the authenticated account's choice. Immutable receipts record acceptance, registration decline and withdrawal. Account updates are serialized and timestamped by the server. Existing users explicitly renew outdated consent in settings.
+- Uploads do not ask for repeated confirmation. The image POST requires `imageSubject=SELF|THIRD_PARTY`; THIRD_PARTY additionally requires a valid authenticated owner grant. Multipart consent booleans or policy strings cannot replace current database authorization.
+- `/api/v1/profile/posture-image-authorizations` manages same-organization, recipient-specific, expiring and revocable owner grants. Each grant binds the owner's original consent receipt; withdrawal and reacceptance cannot revive it.
+- Current identity, organization/role/subscription, quota, user consent, owner grant and platform eligibility are rechecked immediately before each actual HTTP transfer and any malformed-answer retry. Mandatory transfer-audit failure prevents dispatch; a second fresh check closes withdrawal during the asynchronous audit.
+- Frontend guidance for missing user consent links to `/profile#image-processing-consent`. Existing drafts, private saved results, manual editing and human review remain available.
 
-## Access and consent
+## Platform provider status
 
-- `GET /api/v1/rula/image-analysis-policy` checks authenticated, active membership, `assessments.create`, subscription and AI allowance. It returns platform availability, provider and a controlled reason code, with `Cache-Control: private, no-store`.
-- `RULA_IMAGE_PRIVACY_APPROVED_PROVIDER=arvancloud` records **real platform approval** for the intended provider and image transfer. The setting itself does not create a contract or privacy authorization.
-- `RULA_IMAGE_VISION_SUPPORTED_PROVIDER=arvancloud` records verified provider image capability. It is independent of privacy approval and anatomical validation.
-- Image processing uses one durable account-level preference; there is no per-image checkbox or multipart consent version. Registration and drafts do not grant account-level authorization. With account authorization and provider gates available, newly selected images are queued automatically.
-- The image POST validates server-side account authorization and does not trust client-supplied consent fields. Server authorization, tenant checks, file validation, rate limits and quota reservation remain authoritative.
-- Before any provider call, the server awaits a durable `RULA_IMAGE_TRANSFER_AUTHORIZED` AuditLog event containing the account-policy version, actor/tenant/request linkage and image SHA256. No raw photo or full prompt is logged. Failure to record the receipt prevents transfer. Account authorization is distinct from provider contractual approval.
-- A closed platform gate prevents the frontend from queuing a paid image request. Existing saved results and explicit manual corrections remain accessible.
-- Every image has its own review/edit action. Each side and affected body part needs the existing human review. Original AI provenance and reviewer edits remain separate; uncertain results must not be labeled final.
+`RULA_IMAGE_PRIVACY_APPROVED_PROVIDER` represents established actual provider processing conditions at platform scope. It is not an organization allowlist or manual owner approval for individual users. `RULA_IMAGE_VISION_SUPPORTED_PROVIDER` separately records tested technical image capability. Consent, a working key and HTTP200 cannot establish provider contractual conditions.
 
-## Model contract
+The technical vision value is verified as `arvancloud`. The effective Production privacy value remains empty because this actual gateway's processing terms are unverified. Current research and the exact remaining evidence fields are in [provider research](legal/rula-provider-research.2026-10-22.md), [platform record](legal/rula-provider-activation-record.2026-10-22.json) and [required evidence](legal/rula-provider-required-evidence.2026-10-22.md). No ceremonial per-user or per-organization approval is introduced.
 
-RULA and FMEA use only ArvanCloud `GPT-5-Mini`; the authenticated gateway has returned `gpt-5-mini-2025-08-07`. Chat remains ArvanCloud `DeepSeek-V4-Flash`. There is no model fallback for assessments. HTTP success does not demonstrate anatomical accuracy.
+After actual terms and the applicable processing basis are established, finalize the notice and obtain a new consent version if materially changed, then configure the provider once for all eligible users/organizations. The PM2 process environment supplies the effective settings; changing `.env` alone does not override an existing process value. No pending record or document template enables the feature.
 
-The2026-10-19 bounded synthetic run also observed the exact response IDs `GPT-5-Mini` and `openai/gpt-5-mini` from that same authenticated gateway. The latter previously caused an application model-identity rejection despite upstream HTTP200; the narrow Arvan-only matcher now accepts it for the configured GPT-5-Mini family and preserves the actual response ID. It does not rewrite it to a dated snapshot, change the requested model or call OpenAI directly. The final corrected image calls returned the bare/dated IDs; a new real namespaced response was not observed after the repair. Wrong families/namespaces/suffixes and assessment-model substitution for chat remain rejected.
+## Transfer, result and model contract
 
-## Outstanding production prerequisite
+The fixed endpoint is `https://api.arvancloudai.ir/v1/chat/completions`, using the previously tested backend Bearer authentication. RULA and FMEA request `GPT-5-Mini`; chat requests `DeepSeek-V4-Flash`. Accepted effective assessment IDs are the exact configured ID, the verified Arvan `openai/gpt-5-mini` namespace, or a dated `gpt-5-mini-YYYY-MM-DD` snapshot. Other families/namespaces are rejected; assessments have no cross-model fallback.
 
-As of the 2026-10-19 release investigation, a documented platform image-transfer authorization/contract and privacy-policy approval for ArvanCloud have not been supplied or verified. Production gates remain closed.
+RULA image fetches reject redirects, use a bounded default 60-second timeout and one transport attempt. Invalid structured answers have at most one further attempt with fresh authorization. The existing 8,000-token completion ceiling and quota reservation remain. Image size/signature/normalization checks remain enforced.
 
-The owner must supply or approve a recorded platform authorization covering the intended image categories, lawful user/worker transfer, provider contractual terms, retention/deletion and transparent user information. After the authorized operator verifies that record and technical capability, set the two provider settings in the effective platform configuration and use the verified named API release procedure. The current PM2 `productionAI` profile in `deployment/ecosystem.config.cjs` supplies empty gate values; those process-environment values take precedence over `.env`, so changing `.env` alone is insufficient. This is a single platform configuration action, not an organization-by-organization process. Keep account-level image-processing authorization and mandatory human review enforced.
+Validated output is saved as private `RULA_POSTURE_IMAGE` before returning `analysisRequestId`. GET `/api/v1/rula/posture-image-analysis/:id` requires the original actor AND organization and assessment permission. Generic AI list/get/retry/create and the queue cannot expose or replay this type. Stored result metadata excludes raw image bytes and full prompts. Existing assessment/private-file/PDF contracts and human-review requirements remain.
 
-Approved synthetic staging tests are limited engineering tests; they do not constitute permission to transfer real people's photographs or independent ergonomist validation. No worker image from the reported failure is used in these tests.
+## Verification and activation status
 
-The2026-10-19 evidence review is in `docs/legal/rula-image-processing-review.2026-10-19.md`. Complete only the real owner/provider decisions in `docs/legal/rula-image-platform-approval.2026-10-19.md`; this pending template is never treated as approval by code. The current notice explicitly states gateway-specific retention/training/deletion terms remain unverified. Finalize a new notice version with actual verified terms before public image activation. No per-organization enablement is introduced.
+The 2026-10-22 frozen candidate passed 715 backend and 471 frontend tests, typecheck/lint/build, 27 authenticated HTTP/database replay checks across two ordinary-user organizations, and a fresh actual synthetic BOTH request in about 23 seconds with durable retrieval and PDF. Prior actual RIGHT/LEFT/BOTH evidence is retained. Cumulative provider usage is 5/6; no real person's photo was used. Detailed evidence is in [test results](rula-direct-consent-2026-10-22/09-test-results.md).
 
-## Compatibility
-
-The RULA landmark request uses the already supported 8,000-token completion ceiling after real 3,000-token responses ended with `finish_reason=length`. Quota reservation still applies to the full requested ceiling. In isolated staging, `RULA_IMAGE_PROVIDER_TIMEOUT_MS=120000` uses the existing supported image-specific timeout; production timing is not silently changed by publishing the code.
-
-No database schema, migration, scoring thresholds, historical scoring version, support-ticket, FMEA business logic or chatbot behavior is changed by this release. Code/artifact rollback preserves newer database rows and uploaded files.
+Safe code release `release-rula-direct-consent-20261022-01` is published. Public real-photo activation remains BLOCKED by actual processing conditions. Technical success is not independent anatomical validation; provisional output and mandatory human review remain. No schema migration, historical scoring change, FMEA workflow removal or chatbot-model change was made. Existing data and assets are preserved through rollback.

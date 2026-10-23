@@ -28,8 +28,6 @@ This lightweight baseline protects the existing product surface while focused cr
 
 ## Baseline comparison for the current change
 
-- Local desktop behavior update 2026-10-20: per-image consent prompts and multipart fields were removed from the active FMEA/RULA image-analysis paths. Automatic analysis remains gated by the account-level image-processing preference and server-side provider privacy/vision approvals; authorization receipts are recorded before external transfer. Production configuration and existing assessment, role, route, API and data surfaces remain preserved.
-
 - No page, route, API resource, database entity, role, permission or asset was removed.
 - Existing pages, routes, assets and API contracts remain available; localization was added as a presentation-layer capability without removing the Persian defaults.
 - The phone contract was tightened at shared, server and editable-client boundaries.
@@ -201,6 +199,188 @@ release-login-enamad-size-20261019-01: only authentication.css changed. Official
 INTENTIONALLY_REMOVED: exact pending-analysis banner selected by owner. One product source fragment only; no new product copy/buttons/fields, CSS, scoring, auth, consent or backend edits. Remaining controls/fields match baseline at390/1280.438 frontend tests and4 package checks,94/157 contract,29 release gates,2 staged and2 public Chrome cases PASS. Frontend release-rula-auto-banner-20261020-01,indexfad6770ef134082073eca702f51ad77f86ce5087fe010ca8e89364798ce39f30; backend release-rula-account-consent-20261019-01/PID6608 unchanged. Backup607files and rollback PASS. Owner UI change-control rule persisted in AGENTS.md. Public image processing remains BLOCKED; no new provider calls, production data mutation or restart. Evidence:C:/NIVASafe/reports/evidence/rula-auto-banner-20261020-01.
 
 
-## 2026-10-20 — local consent-gated RULA image troubleshooting
+## RULA root repair 2026-10-21
 
-Local development only: the RULA landmark prompt now accepts clearly connected illustrated posture diagrams, treats the assessor-selected LEFT/RIGHT value as authoritative for single-side requests, and ignores instructions contained in image text. The compact landmark contract remains gated by `NODE_ENV !== production` and `RULA_LANDMARK_EXPERIMENT_V2=1`; no route, role, permission, schema, asset, or production provider setting was removed or weakened. Local policy returned `available: true`, `consentAccepted: true`, and `arvancloud`. Synthetic stick-figure RULA requests did not produce landmarks (one timeout and two `RULA_IMAGE_AI_QUALITY_REVIEW` results); no assessment scores were fabricated and no real worker photo was used. Backend tests 661/661 and frontend tests 447/447 passed; backend lint/typecheck/build, frontend build, and runtime smoke passed. Root Turbo checks were blocked before package tasks because its pnpm install aborted on `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`; all package node_modules directories remained present. Human-photo recognition and ergonomic accuracy remain unverified; production image gates were not changed.
+- Source/backport: three runtime modules and image scheduler; active CSS and existing immutable assets preserved.
+- Authentication, roles, quotas, tenant ownership, private images, model routing and schema preserved.
+- Legacy per-image approval: REPLACED_EQUIVALENTLY by durable current account authorization, rechecked before each dispatch; account registration alone is insufficient.
+- Final approval review is preserved, including nested side/image denial; drafts can persist provisional results.
+- No protected page, API, database path or asset removed. No tests deleted to obtain a pass.
+- Public platform privacy prerequisite remains BLOCKED and is not represented as a completed feature.
+
+
+## RULA image notice checkpoint — 2026-10-22 / 1405-07-30
+
+- INTENTIONALLY_REMOVED: explicitly requested inactive-image sentence and its duplicate English translations.
+- PRESERVED: unsent photo state, genuine service errors, account-consent guidance, automatic image queue, auth/role/tenant/quota/provider dispatch guards.
+- Source integrity: five frontend candidate files changed; 207 source files unchanged. No route, field, API, database path, required asset or test was removed.
+- Deployment integrity: active global CSS, API process/release, protected environment and runtime configuration unchanged. Previous index retained for rollback.
+- No public activation claimed: real platform processing approval remains pending.
+- Evidence: reports/evidence/rula-image-notice-20261022-01/; technical checkpoint: docs/rula-image-notice-2026-10-22.md.
+
+
+## Direct account consent release — 2026-10-22 / 1405-07-30
+
+Safe code deployed as release-rula-direct-consent-20261022-01; full public image activation remains BLOCKED by actual gateway processing conditions and NIVASafe retention policy.43 scoped source files changed/added, zero removed;15runtime modules/149package source files match the tested frozen candidate. Existing FMEA/parser/schema/dependency versions, global CSS and secret .env are preserved. Legacy per-upload consent is REPLACED_EQUIVALENTLY by explicit current account consent and authenticated owner grants. Current API documentation replaces an obsolete upload-dialog contract with its prior contents retained under docs/history; prior roadmap retained as a dated history file.
+
+715backend/471frontend tests, typecheck/lint/build,27HTTP/DB replay checks, fresh real synthetic BOTH +private result/save/PDF,3automatic +8consent +6public browser cases,14independent package checks and old/new/old recovery PASS.18compiled private test artifacts and test isolation configuration are intentional updates outside the executable production import graph; no test removed or weakened. All four task schemas have no active fixtures/reservations; owned test DB stopped and Production healthy. No owner approval per user/organization is required. Source hashes and final evidence: reports/evidence/rula-direct-consent-20261022-01/.
+
+## Assessment image activation — 2026-10-22 / 1405-07-30
+
+Owner-authorized operational activation is separate from unverified vendor processing guarantees. V3 consent expands the existing disclosure to RULA/FMEA; prior receipts and historical photo-owner grants remain preserved and revocable. No unrelated product page, field, button, layout, route, role, required asset or test was removed. No production mock was introduced.
+
+Independent review verified73 compiled modules matching the frozen candidate, exactly7 changed runtime modules, no missing prior module,20 reachable static assets, unchanged schema/migration tree/private environment/dependencies/worker configuration, and preserved existing global CSS plus supplement. Private new release/backup directories are restricted to SYSTEM/Administrators. Historical releases and static assets remain available.
+
+744backend/475frontend tests, TypeScript/lint/build,11 isolated real integration checks,5 executable-identity regression tests and live authenticated RULA/FMEA synthetic-image save/reopen/PDF checks passed. One transient live RULA failure required an explicit retry and remains documented; no automatic image transport replay was added. The version-label false positive was repaired by verifying actual PM2/OS/listener identity. Final API PID16632 executes release-assessment-image-activation-20261022-01. Only the two owner-authorized test drafts were updated during the browser test; unrelated user drafts were preserved. No release-blocking preservation regression was found. Evidence: reports/evidence/assessment-image-activation-20261022-01/.
+
+
+## RULA local landmark checkpoint — 2026-10-22 / 1405-07-30
+
+COMPLETE_SCOPED_REPAIR: rula-landmark-accuracy-20261022-01; acceptance covers landmark localization, image-frame projection and persistence only. Verified pre-fix sanitized archive backups/NIVASafe-before-landmark-fix-20261022-aee9d06.zip, SHA-256 b1581bf6a5b8fa5ab37e196ad18afc7bde4361688035738026c869b6e2ca4a00. This local backup is not evidence of a successful remote GitHub push. Existing working changes and historical checkpoints are preserved.
+
+REPLACED_EQUIVALENTLY when explicitly enabled: generated RULA dots become native same-frame local pose evidence. Editable findings, auth/tenant/role/subscription/quota/current account and photo-owner consent, durable findings and external-transfer controls remain. Hidden/out-of-frame points are omitted, no neck is fabricated and no generated-point fallback follows local failure. One conditional RULA lightbox class and two scoped rules align image/overlay bounds. No required page, feature, route, role, schema, migration, asset, test or FMEA behavior was removed.
+
+Frozen candidate passed793 backend and475 frontend tests, zero failed/pending, plus8 domain/backend/frontend build/type/lint checks;10 Python boundary tests passed. Independent focused54 TypeScript tests also passed (overlap with full suite). Actual dedicated offline Node-worker inference returned33 native points in11788ms with maximum delta0 against direct probe and no external provider call. Node22 isolated startup passed. Pinned model/worker/lock, protected runtime/model/release/backup ACL and exact executable outbound Block were verified.
+
+Candidate/published source and worker/lock hashes match; exactly5 runtime modules changed or were added, none removed. Schema/migrations, Node manifests/lockfile, existing worker configuration/private environment and unrelated baseline artifacts are preserved. Existing global stylesheet and consent supplement remain; new scoped frame supplement/JS entry were added, old assets retained. Release release-rula-landmark-accuracy-20261022-01 deployed2026-10-22T18:17:29.495Z, actual PID13180/manager/OS/listener verified,4protected public401checks passed. First health timeout automatically restored previous release without data change; exact cause UNPROVEN, verified retry passed. Both outcomes retained.
+
+Authenticated desktop landscape inline/lightbox image/SVG bounds match exactly;8 rendered points match durable analysis within1e-12. Test draftversion6saved/reopened same geometry, original user postureAnalysis hash unchanged, no final human approval performed. PDF71071/XLSX18066/DOCX7695bytes passed browser download structural/ZIP checks; user download concern resolved without edits. Independent final reviewPASS at2026-10-22T18:29:33.448Z. Mobileviewport andportrait actual-overlay visual checks NOT_RUN; clinical/population/pixel-perfect accuracy not certified.
+
+Separate active issue: user subsequently reported first automatic image analysis can fail while manual retry succeeds. This separate reliability issue was subsequently resolved within the verified R2 first-upload scope in release-image-first-attempt-20261022-02; the point repair itself did not resolve it. No global project/all-image-processing completion is claimed. Evidence: reports/evidence/rula-landmark-accuracy-20261022-01/; aligned FA/EN scoped reports and release-manifest entry retained.
+
+
+## Assessment image timeout checkpoint — 2026-10-22 / 1405-07-30
+
+COMPLETE_SCOPED_REPAIR: image-first-attempt-20261022-01, current release release-image-first-attempt-20261022-02, deployed 2026-10-22T19:13:32.077Z, actual PID 4420/PM2/OS/listener verified. This acceptance covers approved assessment-image connection/replay/resource behavior and the two clean first-upload controls; the prior point-localization/frame/persistence repair remains preserved. No global project or universal provider/clinical success is claimed.
+
+Reproduced TLS preconnect failures near10seconds led to image-only30second verified TLS, a four-connection/pipelining-one/60second maximum-idle singleton and at most three proven pre-HTTP attempts sharing120seconds. Fresh authorization before each, current consent/owner/role/tenant/quota/audit/model/redirect controls and no ambiguous/body/status/provider-timeout replay remain. Only ai-provider.js and image-analysis-diagnostics.js runtime modules changed; no prior module removed. Sole new dependency is exact privately copied Undici6.29.1; all other baseline dependency fields preserved.
+
+Full R2 backend824tests, domain/backend build/type/lint and101productionNode22 provider/diagnostic tests passed. Independent130focused tests overlap. Independent preservation verified227candidate files,75compiled files,176private Undici files,242frontend source/700static files, schema/Python/model/offline-firewall/private environment/background-worker configuration and unchanged proxy/index. Frontend475prior passing tests are referenced without rerun; R2 performed no NGINX reload or migration. Private release/backup/Undici ACLs restrict SYSTEM/Administrators.
+
+Actual RULA first upload39210ms and FMEA24967ms each used one upload/client request/authorization, zero failed requests and zero retries. RULA stored8native points before response; FMEA produced5validated image proposals with current consent, excluding text follow-ups. Assessment drafts were not saved and no final approval performed. Independent preservation and final review PASS_SCOPED; all twelve scoped stages pass.
+
+V1 actual first-upload failure120051ms remains FAIL history, never reclassified. Its direct NGINX OpenEvent AccessDenied5 occurred before API switch; disk restoration/healthy unchanged old API were verified, then an existing verified SYSTEM task retry succeeded without permission/definition changes. The earlier point-release startup timeout retains its separate unproven cause. The rolling audit export refresh is transparently reconciled: new R2 snapshot preserved separately, historical28rows restored only after exact frozen SHA match, all21V1hashes now match and failed control evidence unchanged. All artifacts/reports and history retained under reports/evidence/image-first-attempt-20261022-01/.
+
+## RULA connected overlay — 2026-10-22
+
+Requested presentation change only: readable connectors between existing valid points. The frozen baseline inverse checks preserve the complete application outside one overlay block and two CSS rules. All 699 prior non-index static assets, three stylesheet links, API process/configuration, private environment and reverse proxy were preserved. No protected element was removed or disabled. Evidence: reports/evidence/rula-connected-overlay-20261022-01/preservation-review.json and final-review.json.
+
+
+## Owner interface refinements — 2026-10-22
+
+Four explicitly requested interface changes were deployed. The two RULA sections are INTENTIONALLY_HIDDEN_FRONTEND_ONLY at the owner's request; processing state, ownership and consent guards remain intact. Native/custom action fields reset only after confirmed creation of the submitted form, with assessment context and independent drafts preserved. The shared date control retains delayed autosave and native reset behavior. All action card information, filters, status editing, progress and all three register types remain available. All 715 previous non-index static files and four prior stylesheet links were preserved; API PID/configuration, environment and reverse proxy remained identical. Independent evidence: reports/evidence/owner-ui-refinements-20261022-01/final-review.json.
+
+
+## Knowledge option cards — 2026-10-22
+
+Owner-requested presentation changes affect only the seven existing knowledge creation option labels. No fields, hints, actions or native controls were removed, hidden or replaced. Five-card role-dependent forms retain their original controls. GeneralPages source and all JavaScript remain unchanged; all previous 731 non-index static files and 5 stylesheet links were retained, along with API process/configuration, private environment and reverse proxy. Only a scoped stylesheet and one index link were added. Evidence: reports/evidence/knowledge-options-polish-20261022-01/final-review.json.
+
+
+## Files upload selection — 2026-10-22
+
+Only the Files upload form gained the requested organization-image choice and reduced selection-box height. All existing local file types, optional reference, upload action, role permissions, report navigation, list, preview, download and delete capabilities remain. The shared organization picker and all backend/database/API contracts are unchanged. All 732 prior non-index assets and 6 stylesheet links were preserved; API identity, private configuration and reverse proxy remained unchanged. Final evidence: reports/evidence/files-organization-image-picker-20261022-01/final-review.json.
+
+
+## Canonical organization-image reuse — 2026-10-22
+
+Existing Attachment rows and stored objects are preserved. New assessment memberships use an additive association table; direct legacy memberships remain readable. No old duplicates were deleted or merged. Native uploads, image consent/analysis, report retrieval, role/tenant boundaries and UI design remain intact. All 749 prior non-index assets and 7 stylesheet links were preserved; unchanged route CSS was reused. The API executable/version was updated after a private database backup and the single reviewed migration; worker, private environment and reverse proxy were preserved. The unrelated historical fresh-install migration-chain failure is documented and left unchanged. Evidence: reports/evidence/organization-image-reuse-20261022-01/final-review.json.
+
+
+## Compact final-report cards — 2026-10-22
+
+Only scoped final-report layout rules were appended to the frontend stylesheet. All original report titles, type/project/code/date content, whole-card navigation, permissions, empty/loading/error states, uploader and organization-file controls remain intact. 765 previous non-index assets and seven existing stylesheet links are preserved byte-for-byte. JavaScript, API identity, backend/database, private environment and proxy were unchanged. Evidence: reports/evidence/final-report-cards-20261022-01/final-review.json.
+
+
+## Checklist Add item button — 2026-10-22
+
+Only the checklist template editor's direct secondary button receives new CSS. Existing text, plus icon, button type, row state logic, required toggles, removal guard, template save/publish actions, roles and routes remain intact. Existing Files report-card layout remains intact. 766 prior non-index assets and 8 stylesheet links were preserved byte-for-byte. JavaScript, API identity, backend/database, private environment and proxy were unchanged. Evidence: reports/evidence/checklist-add-button-20261022-01/final-review.json.
+
+
+## Administrator ticket-management presentation — 2026-10-22
+
+Only CSS under .app .support-administrator-page changed. Existing ticket text/IDs, search, four filters, pagination, refresh, status/priority/assignee edits, public replies, internal notes, conflict handling and permissions remain intact. No customer-support or shared AdminPanelPage styles changed. 767 prior non-index assets and 9 stylesheet links were retained byte-for-byte. JavaScript, API648 identity, backend/database, environment and proxy were unchanged. Evidence: reports/evidence/support-management-polish-20261022-01/final-review.json.
+
+
+## Four-column member and pending-request cards — 2026-10-22
+
+Only the two Members list/card subtrees receive new CSS. All identity text, usernames, emails, job titles, role/state/account-level badges, edit actions and pending request metadata remain intact. Tabpanel hidden states, the separate member-edit modal, request/invitation forms and global AdminPanel user/member cards are preserved. 768 prior non-index assets and 10 stylesheet links remain byte-identical. No JavaScript, API identity, authorization, backend/database, environment or proxy change. Evidence: reports/evidence/member-directory-cards-20261022-01/final-review.json.
+
+
+## Duplicate admin support tab removal — 2026-10-22
+
+INTENTIONALLY_REMOVED: owner-requested duplicate global AdminPanel support tab and embedded mounted inbox. Four exact source hunks remove its import, tab union member, tab item and panel. All remaining global-admin tabs/panels, organization-admin tabs, user and membership editors, AI controls, overview and every other page are preserved. The existing sidebar Ticket management entry, /support page, support APIs/data and customer support workflows remain intact. 769 prior non-index assets and all11 existing stylesheet links remain byte-identical. No backend, database, authorization, configuration, environment, proxy or API-process change. Evidence: reports/evidence/admin-support-dedup-20261022-01/final-review.json.
+
+
+## Global administration three-column cards — 2026-10-22
+
+Only list/card descendants in global-admin-panel-users and global-admin-panel-requests receive appended CSS. All user identity, roles, account/status/protected badges, organization chips, last-login metadata, Edit actions and request identity, role, organization, requester, date and approval/reject actions remain intact. Inline approval forms preserve conditional email/password/confirmation/cancel controls. Hidden tabpanels, the separate user editor, organization administration, Members, Files, Checklist, Support and AI/Overview are preserved. 785 prior non-index assets and 11 stylesheet links remain byte-identical. JavaScript entry, API/runtime, backend/database, environment, configuration and reverse proxy remain unchanged. Evidence: reports/evidence/admin-directory-cards-20261022-01/final-review.json.
+
+
+## Temporary account image authorization UI hiding — 2026-10-22
+
+INTENTIONALLY_HIDDEN: owner-requested account Permission to use my images section only. A single CSS selector under #image-processing-consent hides .posture-image-authorizations. Account image-processing consent, its checkbox/status/save/privacy copy, all component/API code, existing grants, server authorization and assessment use of received permissions remain intact. No grant was issued, revoked or deleted and no consent changed. All 786 prior non-index assets and 12 stylesheet links remain byte-identical; JavaScript/API process/environment/config/proxy/database are unchanged. Evidence: reports/evidence/hide-image-authorizations-20261022-01/final-review.json.
+
+
+## Nested sidebar disclosures — 2026-10-22
+
+REPLACED_EQUIVALENTLY: three existing nested static headings now contain native disclosure buttons. Their labels, heading IDs and every child remain; hidden inactive panels reopen on request. Initial active branch opens, individual toggles are independent, navigation opens the active branch, and desktop icon rail retains direct child destinations. Mobile uses disclosure behavior even with a stored collapsed desktop preference. Navigation tree, routes/query mapping, role filters, pending items, top-level headings and other navigation are byte-identical. All 787 old non-index assets and 13 stylesheet links remain intact. No API, authentication, authorization, backend, database, private configuration or proxy change. Evidence: reports/evidence/sidebar-disclosures-20261022-01/final-review.json.
+
+
+## RULA photo/side values — 2026-10-22
+
+REPLACED_EQUIVALENTLY: existing review display now exposes supported provisional suggestions independently from human confirmation. Each photograph and anatomical side retains independent observations and adjustment values through selection, late completions, manual edits, save/reopen and authoritative scoring. Camera-context response nesting is corrected with same-side validated compatibility. No existing page, route, field, control, label, asset, localization or stylesheet was removed or added. All 804 prior non-index assets and14 stylesheet links remain; all other source remains frozen. Optional JSON fields preserve historical payloads; database schema/migrations, real records, consent/tenant/subject authorization, proxy, private environment and worker/model configuration remain intact. No new production image inference was performed. Evidence: reports/evidence/rula-photo-side-values-20261022-01/final-review.json.
+
+
+## AI assessment text connector — 2026-10-23
+
+REPLACED_EQUIVALENTLY: only the approved Arvan assessment text transport now uses its own bounded certificate-verified connection pool. No page, control, route, contract, data path, permission, model, prompt, token budget, deadline or retry policy was removed. All 821 public files and private environment/proxy/image/chat/worker/model/schema/migration configuration are preserved. Independent evidence: reports/evidence/ai-text-connection-20261023-01/final-review.json.
+
+
+## Corrective-action context reset — 2026-10-23
+
+REPLACED_EQUIVALENTLY: successful submitted FMEA/RULA creation now resets its project/assessment/risk selectors. Failure, other-tab and newer changed remounted drafts, list filters, initial links and idempotency remain preserved. No JSX controls/text/styles, routes, API fields, backend, configuration or database path removed or added. All 820 prior non-index files and14stylesheet links are retained; API remains release-ai-text-connection-20261023-01. Evidence: reports/evidence/action-context-reset-20261023-01/final-review.json.
+
+
+## Accessible-company cards — 2026-10-23
+
+REPLACED_EQUIVALENTLY: only accessible-company rows become five desktop cards with responsive 4 / 3 / 2 / 1 columns. All company names, industry/employee metadata, statuses, Enter and administrator activation controls/handlers remain intact. Only scoped CSS and one link added; every original JS/CSS/static file, backend/API/auth/data path and protected configuration is preserved. Evidence: reports/evidence/company-directory-cards-20261023-01/final-review.json.
+
+
+## Activity Log cards — 2026-10-23
+
+REPLACED_EQUIVALENTLY: only registered-activity rows become four desktop cards with responsive 3 / 2 / 1 columns. Six fields, complete values, table header semantics, details expansion, search/filter/reset/retry and audit API boundaries are preserved. Only scoped CSS and one link are added; every original JavaScript, stylesheet, static file, backend/API/auth/data path and protected configuration remains intact. Evidence: reports/evidence/activity-log-cards-20261023-01/final-review.json.
+
+
+## Assistant chat density — 2026-10-23
+
+INTENTIONALLY_REMOVED_FROM_VIEW: only the header identity logo, as requested. REPLACED_EQUIVALENTLY: fixed-height composer becomes one-to-three-line autosizing; only user sent/pending bubbles receive compact spacing. All product DOM text/controls, assistant replies, history, draft storage, keyboard/send/API/auth boundaries remain intact. New module graph plus scoped CSS; all prior assets/stylesheets and protected backend/configuration/data preserved. Evidence: reports/evidence/assistant-chat-density-20261023-01/final-review.json.
+
+
+## RULA cancellation button visibility — 2026-10-23
+
+INTENTIONALLY_HIDDEN: two existing Cancel image analysis controls, explicitly requested by the owner. Styling retained for later restoration. All original DOM, cancellation/analysis/queue code, progress/error/retry/edit controls, JavaScript, APIs, authentication, data and protected configuration remain unchanged. Only one scoped CSS asset/link published. Evidence: reports/evidence/rula-cancel-hide-20261023-01/final-review.json.
+
+
+## RULA review population — 2026-10-23
+
+REPLACED_EQUIVALENTLY: only completed-AI waiting labels and the two table layouts, as explicitly requested. Original advisory proposals are displayed separately from audited/approved values; missing measurements are not fabricated. Existing consent, auth, tenant, data, final review gates, routes and prior assets preserved. Optional provenance has a prebuilt compatible rollback reader. Evidence: reports/evidence/rula-review-population-20261023-01/final-review.json.
+
+
+## RULA group scores — 2026-10-23
+
+REPLACED_EQUIVALENTLY: only the two requested group-score placeholders gain possible-score ranges when completed observations are partial. Complete exact values, every existing UI element, original observations, global score/approval, API/auth/data/styles/config and prior public/private assets are preserved. Evidence: reports/evidence/rula-group-scores-20261023-01/final-review.json.
+
+
+## Desktop login branding — 2026-10-23
+
+REPLACED_EQUIVALENTLY: desktop toolbar typography uses the two supplied original assets; mobile retains the prior icon. The existing form icon moves beside the welcome heading, and desktop header/footer marks and spacing become compact. INTENTIONALLY_REMOVED: only the desktop welcome instruction visibility and added park white frame, as requested. Mobile content/layout and all other pages, authentication handlers, APIs, data, private runtime, prior assets and nineteen prior stylesheets are preserved. Evidence: reports/evidence/login-desktop-branding-20261023-01/final-review.json.
+
+
+## Mobile login branding — 2026-10-23
+
+REPLACED_EQUIVALENTLY: only the mobile landing brand moves visually from the toolbar into its existing main area, with the original selected-locale typography below it. INTENTIONALLY_REMOVED: mobile landing toolbar-brand visibility only, as requested. The original hidden subtitle is retained. Desktop and mobile form layouts, original assets, all existing controls/content, authentication/API/data, private runtime and twenty prior stylesheets are preserved. Short landscape content remains reachable through vertical scrolling. Evidence: reports/evidence/login-mobile-branding-20261023-01/final-review.json.
+
+
+## Login white typography — 2026-10-23
+
+INTENTIONALLY_REPLACED: only dark-theme desktop/mobile typography source and former whitening filter, using the owner supplied original FA/EN PNGs. Blue assets retained for light theme; icons, layout constraints, controls, auth/API/data, all 21 prior stylesheets, all old public/private files and configuration preserved. Existing asset source contract updated without deleting tests. Evidence: reports/evidence/login-white-typography-20261023-01/final-review.json.

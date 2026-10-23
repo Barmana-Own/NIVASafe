@@ -1,0 +1,32 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {evidence,root,read} from './prepare-proxy.mjs';
+process.loadEnvFile(`${root}/.env`);
+const require=createRequire(import.meta.url);
+const {PrismaClient}=require(`${root}/backend/node_modules/@prisma/client`);
+const db=new PrismaClient();
+try {
+  const start=read(`${evidence}/controlled-ui-start-r2.json`);
+  const test=await db.rulaVersion.findFirstOrThrow({where:{assessmentId:start.assessmentId},orderBy:{version:'desc'},select:{createdBy:true}});
+  const assessment=await db.rulaAssessment.findUniqueOrThrow({where:{id:start.assessmentId},select:{organizationId:true}});
+  const events=await db.auditLog.findMany({where:{userId:test.createdBy,organizationId:assessment.organizationId,createdAt:{gte:new Date(start.startedAt)},action:{in:['RULA_IMAGE_TRANSFER_AUTHORIZED','RULA_POSTURE_IMAGE_ANALYSIS','RULA_POSTURE_IMAGE_ANALYSIS_FAILED']}},orderBy:{createdAt:'asc'},select:{action:true,createdAt:true,requestId:true,metadata:true},take:30});
+  assert(events.length<30,'Controlled observation window exceeded its bounded limit');
+  const successes=events.filter(x=>x.action==='RULA_POSTURE_IMAGE_ANALYSIS');
+  const requestIds=[...new Set(events.map(x=>x.requestId))];
+  assert.equal(requestIds.length,1,'A clean single client request must be isolated');
+  assert.equal(successes.length,1,'Exactly one successful completion required');
+  assert.equal(events.filter(x=>x.action.endsWith('_FAILED')).length,0);
+  const done=successes[0];
+  const saved=await db.aIAnalysisRequest.findFirstOrThrow({where:{id:done.metadata.analysisRequestId,userId:test.createdBy,organizationId:assessment.organizationId},select:{id:true,type:true,provider:true,status:true,attempts:true,input:true,output:true,startedAt:true,completedAt:true}});
+  assert.equal(saved.status,'SUCCEEDED');assert.equal(saved.attempts,1);
+  assert.equal(saved.input.sourceRequestId,requestIds[0]);
+  assert.equal(saved.output.aiStatus,'connected');
+  assert.equal(done.metadata.landmarkSource,'MEDIAPIPE_POSE_LANDMARKER');
+  const authorized=events.filter(x=>x.action==='RULA_IMAGE_TRANSFER_AUTHORIZED');
+  assert(authorized.length>=1&&authorized.length<=3);
+  assert(authorized.every(x=>x.metadata.attempt===1));
+  const result={status:'PASS',revision:2,startedAt:start.startedAt,completedAt:done.createdAt,requestId:requestIds[0],analysisRequestId:saved.id,uploadActions:start.uploadActions,retryActions:start.retryActions,clientRequests:1,failedRequests:0,providerValidationAttempts:saved.attempts,authorizationChecks:authorized.length,elapsedMs:done.createdAt-new Date(start.startedAt),provider:saved.provider,model:saved.output.model,aiStatus:saved.output.aiStatus,overlayPointCount:done.metadata.overlayPointCount,landmarkSource:done.metadata.landmarkSource,imageSha256:saved.input.imageSha256,persistedBeforeClientResponse:true,assessmentDraftSaved:false,events:events.map(x=>({action:x.action,createdAt:x.createdAt,requestId:x.requestId}))};
+  fs.writeFileSync(`${evidence}/controlled-live-r2.json`,JSON.stringify(result,null,2));
+  console.log(JSON.stringify(result));
+}finally{await db.$disconnect();}

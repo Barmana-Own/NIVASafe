@@ -3,14 +3,15 @@ import { createPortal } from "react-dom";
 import { api, download } from "../../api/client";
 import { Icon } from "../../components/UI";
 import { useI18n } from "../../i18n";
+import { registerOrganizationImage, type OrganizationImage } from "./organizationImageSource";
 
-export type OrganizationImage = { id: string; originalName: string; mimeType: string; size: number; createdAt: string };
+export type { OrganizationImage } from "./organizationImageSource";
 export function eligibleOrganizationImage(item: OrganizationImage, maxBytes: number) {
   return /^[a-zA-Z0-9-]+$/.test(item.id) && ["image/jpeg", "image/png", "image/webp"].includes(item.mimeType) && item.size > 0 && item.size <= maxBytes;
 }
 export function organizationImageFile(item: OrganizationImage, blob: Blob, maxBytes: number) {
   if (!eligibleOrganizationImage(item, maxBytes) || blob.size === 0 || blob.size > maxBytes || blob.type.split(";")[0] !== item.mimeType) throw new Error("Invalid image file");
-  return new File([blob], item.originalName, { type: item.mimeType, lastModified: Date.parse(item.createdAt) || 0 });
+  return registerOrganizationImage(new File([blob], item.originalName, { type: item.mimeType, lastModified: Date.parse(item.createdAt) || 0 }), item);
 }
 
 type Props = { maxCount: number; maxBytes: number; disabled?: boolean; onSelect: (files: File[]) => void };

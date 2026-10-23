@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isMeasurementResolved, rulaMeasurementSchema } from "./rula-measurement.js";
+import { rulaAdjustmentsSchema } from "./rula-adjustments.js";
 
 export const rulaPosturePartKeys = ["upperArm", "lowerArm", "wrist", "wristTwist", "neck", "trunk", "legs"] as const;
 export const rulaPosturePartSchema = z.enum(rulaPosturePartKeys);
@@ -50,6 +51,8 @@ export type RulaPostureResult = z.infer<typeof postureResult>;
 
 /** Persisted posture observations. AI output is complete by default and remains editable by the user. */
 export const rulaSinglePostureAnalysisSchema = z.object({
+  bodySide: z.enum(["LEFT", "RIGHT"]).optional(),
+  adjustments: rulaAdjustmentsSchema.optional(),
   upperArm: postureResult,
   lowerArm: postureResult,
   wrist: postureResult,
@@ -89,6 +92,14 @@ export const rulaPostureAnalysisSchema = rulaPostureObservationSchema.extend({
 
 export type RulaSinglePostureAnalysis = z.infer<typeof rulaSinglePostureAnalysisSchema>;
 export type RulaPostureAnalysis = z.infer<typeof rulaPostureAnalysisSchema>;
+
+/** New snapshots identify their anatomical side; historical untagged rows remain readable. */
+export function assertRulaPostureSide(bodySide: "LEFT" | "RIGHT" | "BOTH", analysis?: RulaPostureAnalysis) {
+  if (!analysis) return;
+  const mismatch = bodySide !== "BOTH" && analysis.bodySide !== undefined && analysis.bodySide !== bodySide;
+  const wrongNestedSide = rulaBodySideKeys.some(side => analysis.sideAnalyses?.[side]?.bodySide !== undefined && analysis.sideAnalyses[side]!.bodySide !== side);
+  if (mismatch || wrongNestedSide) throw Object.assign(new Error("نتیجهٔ تصویر به سمت انتخاب‌شدهٔ بدن تعلق ندارد؛ سمت صحیح را بررسی کنید."), { statusCode: 400, code: "RULA_BODY_SIDE_MISMATCH" });
+}
 
 export function isRulaPostureResultReviewed(result: RulaPostureResult) {
   return result.source !== "DEFAULT" && (result.requiresReview !== true || result.confirmedByUser) && isMeasurementResolved(result);

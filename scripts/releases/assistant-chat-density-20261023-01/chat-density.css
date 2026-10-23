@@ -1,0 +1,54 @@
+/* Owner-requested assistant header logo, three-line composer and compact user messages. */
+.app .assistant-page.assistant-redesign .assistant-header .identity > .identity-icon {
+  display: none;
+}
+.app .assistant-page.assistant-redesign .composer {
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px 12px;
+}
+.app .assistant-page.assistant-redesign .composer #assistant-message {
+  box-sizing: border-box;
+  height: 24px;
+  min-height: 24px;
+  max-height: 72px;
+  padding: 0 4px;
+  font-size: 14px;
+  line-height: 24px;
+  resize: none;
+  overflow-y: hidden;
+}
+.app .assistant-page.assistant-redesign .composer .send {
+  min-height: 44px;
+}
+.app .assistant-page.assistant-redesign .message.user {
+  width: fit-content;
+  min-width: 0;
+  max-width: min(85%, 740px);
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.65;
+}
+.app .assistant-page.assistant-redesign .message.user > .message-bubble > strong {
+  margin-bottom: 2px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.app .assistant-page.assistant-redesign .message.user > .message-bubble > p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.app .assistant-page.assistant-redesign .message.user > .message-bubble > :is(.message-time, small) {
+  margin-top: 4px;
+  font-size: 10px;
+  line-height: 1.4;
+}
+@media (max-width: 768px) {
+  .app .assistant-page.assistant-redesign .composer { padding: 8px; }
+  .app .assistant-page.assistant-redesign .composer #assistant-message { font-size: 16px; }
+  .app .assistant-page.assistant-redesign .message.user { max-width: 94%; }
+}

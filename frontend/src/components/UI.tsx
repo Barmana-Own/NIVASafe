@@ -542,10 +542,17 @@ export function LocalizedDateInput({ name, defaultValue = "", disabled = false, 
     const timer = window.setTimeout(syncFromHiddenInput, 0);
     const form = hiddenInputRef.current?.form;
     if (!form) return () => window.clearTimeout(timer);
-    const onReset = () => window.setTimeout(syncFromHiddenInput, 0);
+    let resetTimer: number | undefined;
+    const onReset = () => { window.clearTimeout(resetTimer); resetTimer = window.setTimeout(() => {
+      if (hiddenInputRef.current) hiddenInputRef.current.value = defaultValue.slice(0, 10);
+      syncFromHiddenInput();
+    }, 0); };
+    // Autosave can restore the hidden value after the initial mount timer.
+    const observer = typeof MutationObserver === "undefined" ? null : new MutationObserver(syncFromHiddenInput);
+    if (hiddenInputRef.current) observer?.observe(hiddenInputRef.current, { attributes: true, attributeFilter: ["value"] });
     form.addEventListener("reset", onReset);
-    return () => { window.clearTimeout(timer); form.removeEventListener("reset", onReset); };
-  }, []);
+    return () => { window.clearTimeout(timer); window.clearTimeout(resetTimer); observer?.disconnect(); form.removeEventListener("reset", onReset); };
+  }, [defaultValue]);
 
   useEffect(() => {
     if (!open) return;
@@ -596,7 +603,7 @@ export function LocalizedDateInput({ name, defaultValue = "", disabled = false, 
   });
 
   return <div ref={rootRef} className={`localized-date-input${open ? " is-open" : ""}`}>
-    <input ref={hiddenInputRef} type="hidden" name={name} defaultValue={defaultValue.slice(0, 10)} disabled={disabled} required={required}/>
+    <input ref={hiddenInputRef} type="hidden" name={name} value={selectedIso} readOnly disabled={disabled} required={required}/>
     <button ref={triggerRef} type="button" className={`localized-date-trigger${selectedDate ? " has-value" : ""}`} disabled={disabled} aria-label={ariaLabel ?? t("actions.dueDate")} aria-haspopup="dialog" aria-expanded={open} aria-controls={pickerId} onClick={() => setOpen((value) => !value)}>
       <span className={selectedDate ? "" : "is-placeholder"}>{selectedDate ? localizedDateLabel(selectedDate, dateLocale) : t("actions.chooseDate")}</span>
       <Icon name="calendar" size={17}/>

@@ -1,0 +1,193 @@
+/* Owner-requested three-column global admin user and membership-request cards. */
+.app .admin-panel-page #global-admin-panel-users .admin-user-list,
+.app .admin-panel-page #global-admin-panel-requests .admin-request-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, max(280px, calc((100% - 24px) / 3))), 1fr));
+  gap: 12px;
+  min-width: 0;
+  align-items: stretch;
+}
+.app .admin-panel-page #global-admin-panel-users .admin-user-card,
+.app .admin-panel-page #global-admin-panel-requests .admin-request-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--color-border, var(--line));
+  border-radius: 12px;
+  background: var(--color-surface, var(--surface));
+  color: var(--color-ink, var(--ink));
+  box-shadow: var(--elevation-surface, var(--shadow-sm));
+}
+.app .admin-panel-page #global-admin-panel-users .admin-user-card {
+  grid-template-rows: auto auto 1fr auto;
+}
+.app .admin-panel-page #global-admin-panel-requests .admin-request-card {
+  grid-template-rows: auto 1fr auto;
+}
+.app .admin-panel-page #global-admin-panel-users .admin-user-card-heading,
+.app .admin-panel-page #global-admin-panel-requests .admin-request-person {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  min-width: 0;
+}
+.app .admin-panel-page #global-admin-panel-users .admin-user-avatar,
+.app .admin-panel-page #global-admin-panel-requests .admin-request-avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--color-border, var(--line));
+  border-radius: 9px;
+  background: var(--color-accent-soft, var(--green-50));
+  color: var(--color-accent, var(--green-700));
+  font-weight: 700;
+}
+.app .admin-panel-page #global-admin-panel-users .admin-user-card-identity,
+.app .admin-panel-page #global-admin-panel-requests .admin-request-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  line-height: 1.7;
+}
+.app .admin-panel-page #global-admin-panel-users .admin-user-card-identity :is(strong, small),
+.app .admin-panel-page #global-admin-panel-requests .admin-request-copy :is(strong, small),
+.app .admin-panel-page #global-admin-panel-requests .admin-request-identifiers > span {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.app .admin-panel-page #global-admin-panel-users .admin-user-card-badges,
+.app .admin-panel-page #global-admin-panel-requests .admin-request-badges {
+  display: flex;
+  align-items: start;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+.app .admin-panel-page #global-admin-panel-users .admin-user-card-badges .status-badge,
+.app .admin-panel-page #global-admin-panel-requests .admin-request-badges .status-badge {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.app .admin-panel-page #global-admin-panel-users .admin-user-card-meta,
+.app .admin-panel-page #global-admin-panel-requests .admin-request-meta {
+  display: grid;
+  grid-column: 1;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--color-border, var(--line));
+  border-radius: 8px;
+  background: var(--color-subtle, var(--canvas));
+  font-variant-numeric: tabular-nums;
+}
+.app .admin-panel-page #global-admin-panel-users .admin-user-card-meta > span {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  min-width: 0;
+  font-size: .75rem;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.app .admin-panel-page #global-admin-panel-users .admin-user-card-meta > span > strong {
+  flex-basis: 100%;
+}
+.app .admin-panel-page #global-admin-panel-users .admin-user-card-meta .admin-membership-chip {
+  min-width: 0;
+  max-width: 100%;
+  padding: 2px 6px;
+  border: 1px solid var(--color-border, var(--line));
+  border-radius: 6px;
+  background: var(--color-surface, var(--surface));
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.app .admin-panel-page #global-admin-panel-requests .admin-request-card-head {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+.app .admin-panel-page #global-admin-panel-requests .admin-request-identifiers {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+}
+.app .admin-panel-page #global-admin-panel-requests .admin-request-meta-item {
+  grid-column: 1;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.app .admin-panel-page #global-admin-panel-users .admin-user-card-actions,
+.app .admin-panel-page #global-admin-panel-requests .admin-request-actions {
+  display: grid;
+  grid-column: 1;
+  align-self: end;
+  gap: 8px;
+  min-width: 0;
+  padding-block-start: 12px;
+  border-block-start: 1px solid var(--color-border, var(--line));
+}
+.app .admin-panel-page #global-admin-panel-requests .admin-request-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.app .admin-panel-page #global-admin-panel-requests .admin-request-approval {
+  display: grid;
+  grid-column: 1;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding-block-start: 12px;
+}
+.app .admin-panel-page #global-admin-panel-requests .admin-request-approval > .full {
+  grid-column: 1;
+}
+.app .admin-panel-page #global-admin-panel-requests .admin-request-approval :is(label, input, .field-hint) {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.app .admin-panel-page #global-admin-panel-requests .admin-request-approval input {
+  width: 100%;
+  min-height: 44px;
+}
+.app .admin-panel-page #global-admin-panel-requests .admin-request-form-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+}
+.app .admin-panel-page #global-admin-panel-users .admin-user-card-actions > button,
+.app .admin-panel-page #global-admin-panel-requests .admin-request-actions > button,
+.app .admin-panel-page #global-admin-panel-requests .admin-request-form-actions > button {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+  justify-content: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.app .admin-panel-page #global-admin-panel-users .admin-user-card-actions > button:focus-visible,
+.app .admin-panel-page #global-admin-panel-requests .admin-request-actions > button:focus-visible,
+.app .admin-panel-page #global-admin-panel-requests .admin-request-form-actions > button:focus-visible {
+  outline: 2px solid var(--color-accent, var(--blue));
+  outline-offset: 2px;
+}

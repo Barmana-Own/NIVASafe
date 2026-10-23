@@ -126,6 +126,7 @@ describe("FMEA process-information helpers", () => {
     [JSON.stringify({ riskRows: [], annotations: [] }), "summary_missing"],
     [JSON.stringify({ summary: "تصویر بررسی شد.", annotations: [] }), "risk_rows_missing"],
     [JSON.stringify({ summary: "تصویر بررسی شد.", riskRows: [{ failureMode: "لغزش", effect: "", cause: "سطح خیس", severity: 7, occurrence: 2, detection: 3 }] }), "risk_row_invalid"],
+    [JSON.stringify({ summary: "تصویر بررسی شد.", riskRows: [{ failureMode: "لغزش", effect: "آسیب", cause: "سطح خیس", severity: 11, occurrence: 2, detection: 3 }] }), "risk_row_invalid"],
   ])("rejects incomplete image analysis instead of returning an empty success (%s)", (answer, validationCode) => {
     expect(() => parseFmeaImageAnalysis(answer)).toThrow(expect.objectContaining({ code: "FMEA_IMAGE_AI_INVALID_RESPONSE", responseValidationCode: validationCode }));
   });

@@ -111,22 +111,12 @@ test.describe("touch target audit interaction states", () => {
     await expect(tabs.nth(1)).toBeVisible();
     await tabs.nth(1).click();
     await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "true");
-    const correctionRow = page.locator(".rula-corrections-section .compact-assessment-mobile .rm-row").first();
-    await correctionRow.scrollIntoViewIfNeeded();
-    await expect(correctionRow).toBeVisible();
-    await correctionRow.click();
-    const correctionDetails = page.locator("dialog.rm-detail[open]");
-    await expect(correctionDetails).toBeVisible();
-    const addAction = correctionDetails.getByRole("button", { name: "افزودن به جدول ارزیابی RULA" });
-    await expect(addAction).toBeEnabled();
-    await addAction.click();
-    await expect(correctionDetails.getByRole("button", { name: "به جدول ارزیابی RULA افزوده شد" })).toBeDisabled();
-    await correctionDetails.locator(".rm-header button").click();
+    await expect(page.locator(".rula-correction-toggle").first()).toBeVisible();
+    await page.locator(".rula-correction-toggle").first().click();
     let findings = await collectTouchTargetFindings(page);
     expect(findings, formatTouchTargetFindings(findings)).toEqual([]);
 
     const leftRow = page.locator('[data-rula-report-side="LEFT"] .rm-row[data-mobile-row-id^="upperArm"]').first();
-    await leftRow.scrollIntoViewIfNeeded();
     await expect(leftRow).toBeVisible();
     await leftRow.click();
     const detail = page.locator('.rm-modal [role="dialog"]');

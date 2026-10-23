@@ -1,0 +1,121 @@
+/* Owner-requested four-column member and pending-request cards. */
+.app .members-workspace #members-panel-members .admin-user-list,
+.app .members-workspace #members-panel-requests .member-request-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, max(220px, calc((100% - 36px) / 4))), 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+.app .members-workspace #members-panel-members .organization-member-card {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 1fr auto;
+  align-items: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: var(--elevation-surface);
+}
+.app .members-workspace #members-panel-members .organization-member-card .admin-user-card-heading {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+}
+.app .members-workspace #members-panel-members .organization-member-card .admin-user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+}
+.app .members-workspace #members-panel-members .organization-member-card .admin-user-card-identity {
+  gap: 4px;
+  line-height: 1.7;
+}
+.app .members-workspace #members-panel-members .organization-member-card .admin-user-card-identity :is(strong, small) {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.app .members-workspace #members-panel-members .organization-member-card .admin-user-card-badges {
+  align-self: start;
+  justify-content: flex-start;
+  gap: 6px;
+}
+.app .members-workspace #members-panel-members .organization-member-card .admin-user-card-actions {
+  grid-column: 1;
+  align-self: end;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  padding-block-start: 12px;
+  border-block-start: 1px solid var(--color-border, var(--line));
+}
+.app .members-workspace #members-panel-requests .member-request-card {
+  grid-template-columns: 36px minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr auto;
+  align-items: start;
+  justify-items: stretch;
+  gap: 12px 10px;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: var(--elevation-surface);
+}
+.app .members-workspace #members-panel-requests .member-request-identity,
+.app .members-workspace #members-panel-requests .member-request-copy {
+  display: contents;
+}
+.app .members-workspace #members-panel-requests .member-request-avatar {
+  grid-column: 1;
+  grid-row: 1;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: var(--color-accent-soft, var(--green-50));
+  color: var(--color-accent, var(--green-700));
+}
+.app .members-workspace #members-panel-requests .member-request-copy > strong {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: .875rem;
+  line-height: 1.7;
+}
+.app .members-workspace #members-panel-requests .member-request-identifiers {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 4px;
+  font-size: .75rem;
+  line-height: 1.7;
+}
+.app .members-workspace #members-panel-requests .member-request-identifiers > span {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.app .members-workspace #members-panel-requests .member-request-meta {
+  grid-column: 1 / -1;
+  align-content: start;
+  align-items: start;
+  gap: 6px;
+  margin: 0;
+}
+.app .members-workspace #members-panel-requests :is(.member-request-role, .member-request-date) {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: .6875rem;
+  line-height: 1.6;
+}
+.app .members-workspace #members-panel-requests .member-request-status {
+  grid-column: 1 / -1;
+  grid-row: 4;
+  align-self: end;
+  justify-self: start;
+  max-width: 100%;
+  margin-inline-start: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

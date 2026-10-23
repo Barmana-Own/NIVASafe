@@ -2,6 +2,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "./core.js";
 import { isAIAccessError, withAIAllowance } from "./ai-access.js";
 import { chatProviderUnavailableMessage, normaliseChatAnswer } from "./chat-text.js";
+import { isImageProcessingEnabled } from "./image-provider-approval.js";
+import { Agent } from "undici";
 
 export interface AIProviderResult {
   provider: string;
@@ -21,7 +23,7 @@ export interface AIUsage {
 
 export type AIConversationTurn = { role: "user" | "assistant"; content: string };
 export type AIImagePurpose = "fmea-process" | "rula-posture";
-export type AIProviderInput = { organizationId: string; userId?: string; message: string; locale?: "fa" | "en"; history?: AIConversationTurn[]; imagePurpose?: AIImagePurpose; textPurpose?: "fmea-action-suggestions"; image?: { mimeType: string; base64: string }; includeKnowledge?: boolean; maxOutputTokens?: number; structuredOutput?: boolean };
+export type AIProviderInput = { organizationId: string; userId?: string; message: string; locale?: "fa" | "en"; history?: AIConversationTurn[]; imagePurpose?: AIImagePurpose; textPurpose?: "fmea-action-suggestions"; image?: { mimeType: string; base64: string }; includeKnowledge?: boolean; maxOutputTokens?: number; structuredOutput?: boolean; beforeImageTransfer?: () => Promise<void> };
 
 export interface AIProvider {
   readonly name: string;
@@ -53,7 +55,7 @@ const MAX_DATABASE_INT = 2_147_483_647;
 const DEFAULT_PROVIDER_TIMEOUT_MS = 30_000;
 const MIN_PROVIDER_TIMEOUT_MS = 5_000;
 const MAX_PROVIDER_TIMEOUT_MS = 60_000;
-const MAX_RULA_IMAGE_TIMEOUT_MS = 120_000;
+const MAX_IMAGE_PROVIDER_TIMEOUT_MS = 120_000;
 const DEFAULT_PROVIDER_MAX_ATTEMPTS = 2;
 const MAX_PROVIDER_MAX_ATTEMPTS = 3;
 const DEFAULT_PROVIDER_RETRY_DELAY_MS = 250;
@@ -148,8 +150,15 @@ function providerTimeoutMs() {
   return boundedEnvironmentInteger("AI_PROVIDER_TIMEOUT_MS", DEFAULT_PROVIDER_TIMEOUT_MS, MIN_PROVIDER_TIMEOUT_MS, MAX_PROVIDER_TIMEOUT_MS);
 }
 
-function rulaImageTimeoutMs() {
-  return boundedEnvironmentInteger("RULA_IMAGE_PROVIDER_TIMEOUT_MS", MAX_PROVIDER_TIMEOUT_MS, MAX_PROVIDER_TIMEOUT_MS, MAX_RULA_IMAGE_TIMEOUT_MS);
+function imageProviderTimeoutMs(purpose: AIImagePurpose | undefined, useCase: AIUseCase) {
+  const setting = purpose === "fmea-process" ? "FMEA_IMAGE_PROVIDER_TIMEOUT_MS" : "RULA_IMAGE_PROVIDER_TIMEOUT_MS";
+  // A slow image completion must be allowed to finish on its first paid request.
+  // This is a bounded wait, never another image transfer or provider attempt.
+  if (useCase === "risk") return boundedEnvironmentInteger(setting, MAX_IMAGE_PROVIDER_TIMEOUT_MS, MAX_PROVIDER_TIMEOUT_MS, MAX_IMAGE_PROVIDER_TIMEOUT_MS);
+  // Keep the existing non-assessment image transport budget unchanged.
+  return purpose === "rula-posture"
+    ? boundedEnvironmentInteger(setting, MAX_PROVIDER_TIMEOUT_MS, MAX_PROVIDER_TIMEOUT_MS, MAX_IMAGE_PROVIDER_TIMEOUT_MS)
+    : MAX_PROVIDER_TIMEOUT_MS;
 }
 
 function providerMaxAttempts() {
@@ -160,7 +169,7 @@ function providerRetryDelayMs() {
   return boundedEnvironmentInteger("AI_PROVIDER_RETRY_DELAY_MS", DEFAULT_PROVIDER_RETRY_DELAY_MS, 0, MAX_PROVIDER_RETRY_DELAY_MS);
 }
 
-type ProviderRequestError = Error & { statusCode?: number; code?: string; retryable?: boolean; retryAfterMs?: number; upstreamRequestId?: string; providerErrorCode?: string };
+type ProviderRequestError = Error & { statusCode?: number; code?: string; retryable?: boolean; retryAfterMs?: number; upstreamRequestId?: string; providerErrorCode?: string; networkErrorCode?: string; connectionAttempts?: number };
 
 const safeProviderErrorCodes = new Set([
   "access_denied",
@@ -332,37 +341,102 @@ async function loadKnowledge(organizationId: string, message: string, userId: st
   };
 }
 
-async function fetchJson<T>(url: string, init: RequestInit, options?: { maxAttempts: number; timeoutMs: number }): Promise<T> {
+async function providerResponseJson<T>(response: Response): Promise<T> {
+  const text = await response.text();
+  let payload: unknown = {};
+  try { payload = text ? JSON.parse(text) : {}; } catch { payload = { message: text }; }
+  if (!response.ok) {
+    const upstreamRequestId = safeProviderRequestId(response);
+    const providerErrorCode = safeProviderErrorCode(payload);
+    throw Object.assign(new Error(`AI provider returned HTTP ${response.status}`), {
+      statusCode: response.status, code: "PROVIDER_REQUEST_FAILED",
+      retryable: transientProviderStatusCodes.has(response.status),
+      retryAfterMs: retryAfterMilliseconds(response.headers.get("retry-after")) ?? undefined,
+      ...(upstreamRequestId ? { upstreamRequestId } : {}),
+      ...(providerErrorCode ? { providerErrorCode } : {}),
+    });
+  }
+  return payload as T;
+}
+
+function preconnectErrorCode(error: unknown): string | undefined {
+  if (!(error instanceof Error) || error.name !== "TypeError") return undefined;
+  const cause = asRecord(error.cause);
+  const code = cause?.code;
+  // Undici's connector reports these before HTTP headers/image bytes are sent.
+  // Socket resets, response/body failures and generic TypeErrors are ambiguous.
+  return typeof code === "string" && ["UND_ERR_CONNECT_TIMEOUT", "EAI_AGAIN", "ECONNREFUSED"].includes(code) ? code : undefined;
+}
+
+let assessmentImageDispatcher: Agent | undefined;
+let assessmentTextDispatcher: Agent | undefined;
+function assessmentTextConnectionDispatcher() {
+  // The approved Arvan text route can fail with the bundled fetch connector.
+  // Use a bounded, certificate-verified pool without changing image transport,
+  // other providers, or the request's existing deadline and retry policy.
+  return assessmentTextDispatcher ??= new Agent({
+    connect: { timeout: 30_000, rejectUnauthorized: true },
+    connections: 4, pipelining: 1, keepAliveTimeout: 60_000, keepAliveMaxTimeout: 60_000,
+  });
+}
+function imageConnectionDispatcher() {
+  // This gateway's TLS handshake can exceed the bundled fetch connector's 10s.
+  // Scope the public dispatcher to approved assessment images; retain SNI,
+  // normal DNS resolution and certificate verification, without global changes.
+  // One process-lifetime pool: Undici bounds and retires idle sockets, and the
+  // operating system closes them at process shutdown. Never allocate per upload.
+  return assessmentImageDispatcher ??= new Agent({
+    connect: { timeout: 30_000, rejectUnauthorized: true },
+    connections: 4, pipelining: 1, keepAliveTimeout: 60_000, keepAliveMaxTimeout: 60_000,
+  });
+}
+
+async function fetchImageJson<T>(url: string, init: RequestInit, timeoutMs: number, authorize: () => Promise<void>): Promise<T> {
+  const controller = new AbortController();
+  // One wall-clock deadline covers every connection attempt and response body.
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    for (let connectionAttempt = 1; connectionAttempt <= 3; connectionAttempt++) {
+      await authorize();
+      controller.signal.throwIfAborted();
+      let response: Response;
+      try {
+        const request: RequestInit & { dispatcher: Agent } = { ...init, signal: controller.signal, dispatcher: imageConnectionDispatcher() };
+        response = await fetch(url, request);
+      } catch (error) {
+        const code = preconnectErrorCode(error);
+        if (!code || controller.signal.aborted) throw error;
+        if (connectionAttempt < 3) continue;
+        throw Object.assign(new Error("AI provider connection could not be established"), {
+          code: "PROVIDER_CONNECT_FAILED", networkErrorCode: code, connectionAttempts: connectionAttempt, retryable: true,
+        });
+      }
+      // A received HTTP response proves dispatch occurred. Never replay an image
+      // for a status, truncated/invalid body, parser error, or later socket error.
+      return await providerResponseJson<T>(response);
+    }
+    throw Object.assign(new Error("AI provider connection could not be established"), { code: "PROVIDER_CONNECT_FAILED", retryable: true });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw Object.assign(new Error("AI provider request timed out"), { code: "PROVIDER_TIMEOUT", retryable: true });
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function fetchJson<T>(url: string, init: RequestInit, options?: { maxAttempts: number; timeoutMs: number; authorizeImageConnection?: () => Promise<void>; dispatcher?: Agent }): Promise<T> {
+  if (options?.authorizeImageConnection) return fetchImageJson<T>(url, init, options.timeoutMs, options.authorizeImageConnection);
   const maxAttempts = options?.maxAttempts ?? providerMaxAttempts();
   let lastError: unknown;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), options?.timeoutMs ?? providerTimeoutMs());
     try {
-      const response = await fetch(url, { ...init, signal: controller.signal });
-      const text = await response.text();
-      let payload: unknown = {};
-      try { payload = text ? JSON.parse(text) : {}; } catch { payload = { message: text }; }
-      if (!response.ok) {
-        const upstreamRequestId = safeProviderRequestId(response);
-        const providerErrorCode = safeProviderErrorCode(payload);
-        const error = Object.assign(new Error(`AI provider returned HTTP ${response.status}`), {
-          statusCode: response.status,
-          code: "PROVIDER_REQUEST_FAILED",
-          retryable: transientProviderStatusCodes.has(response.status),
-          retryAfterMs: retryAfterMilliseconds(response.headers.get("retry-after")) ?? undefined,
-          ...(upstreamRequestId ? { upstreamRequestId } : {}),
-          ...(providerErrorCode ? { providerErrorCode } : {}),
-        });
-        if (attempt < maxAttempts && error.retryable) {
-          await sleep(retryDelayMs(attempt, error.retryAfterMs));
-          if (isAIAccessError(error)) throw error;
-        lastError = error;
-          continue;
-        }
-        throw error;
-      }
-      return payload as T;
+      const request: RequestInit & { dispatcher?: Agent } = { ...init, signal: controller.signal, ...(options?.dispatcher ? { dispatcher: options.dispatcher } : {}) };
+      const response = await fetch(url, request);
+      return await providerResponseJson<T>(response);
     } catch (error) {
       const normalized = error instanceof Error && error.name === "AbortError"
         ? Object.assign(new Error("AI provider request timed out"), { code: "PROVIDER_TIMEOUT", retryable: true })
@@ -500,12 +574,13 @@ class ArvanCloudProvider extends HttpProvider {
   async analyze(input: AIProviderInput): Promise<AIProviderResult> {
     if (this.useCase === "risk" && this.baseUrl !== ASSESSMENT_AI_GATEWAY) throw assessmentProviderPolicyError();
     if (this.useCase === "risk" && !this.available()) throw Object.assign(new Error("Assessment AI is unavailable"), { statusCode: 503, code: "PROVIDER_UNAVAILABLE", retryable: false });
+    if (this.useCase === "risk" && input.image && !input.imagePurpose) throw Object.assign(new Error("Image purpose and authorization are required"), { statusCode: 403, code: "IMAGE_TRANSFER_AUTHORIZATION_REQUIRED", retryable: false });
     const { userText, citations } = await this.prompt(input);
     const messageContent = input.image ? [
       { type: "text", text: userText },
       { type: "image_url", image_url: { url: `data:${input.image.mimeType};base64,${input.image.base64}`, ...(input.imagePurpose === "rula-posture" ? {detail:"high"} : {}) } },
     ] : userText;
-    const payload = await fetchJson<ChatCompletionPayload>(`${this.baseUrl}/chat/completions`, {
+    const request: RequestInit = {
       method: "POST",
       headers: { Authorization: `Bearer ${this.key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -514,12 +589,21 @@ class ArvanCloudProvider extends HttpProvider {
         ...outputTokenOptions(this.model, input, this.useCase, false),
         ...(this.model?.toLowerCase().startsWith("gpt-5") && (input.image || input.structuredOutput) ? {} : input.image || input.structuredOutput ? { response_format: { type: "json_object" } } : {}),
       }),
-    }, input.imagePurpose === "rula-posture" ? { maxAttempts: 1, timeoutMs: rulaImageTimeoutMs() }
+    };
+    if (input.image && this.useCase === "risk") {
+      // A redirect could replay the private image to an unapproved recipient.
+      request.redirect = "error";
+      if (!input.beforeImageTransfer) throw Object.assign(new Error("Image transfer authorization is required"), { statusCode: 403, code: "IMAGE_TRANSFER_AUTHORIZATION_REQUIRED", retryable: false });
+    }
+    const payload = await fetchJson<ChatCompletionPayload>(`${this.baseUrl}/chat/completions`, request, input.image ? { maxAttempts: 1, timeoutMs: imageProviderTimeoutMs(input.imagePurpose, this.useCase), ...(this.useCase === "risk" ? { authorizeImageConnection: input.beforeImageTransfer! } : {}) }
       : this.useCase === "chat" ? { maxAttempts: 1, timeoutMs: 60_000 }
       // This automatic report batch has a 90-second client deadline. Allow a
       // slow completion to finish, with five seconds left for error delivery.
       // A single attempt avoids duplicating a paid call after a timeout.
-      : input.textPurpose === "fmea-action-suggestions" ? { maxAttempts: 1, timeoutMs: 85_000 } : undefined);
+      : {
+        ...(input.textPurpose === "fmea-action-suggestions" ? { maxAttempts: 1, timeoutMs: 85_000 } : { maxAttempts: providerMaxAttempts(), timeoutMs: providerTimeoutMs() }),
+        dispatcher: assessmentTextConnectionDispatcher(),
+      });
     const answer = normaliseAIAnswer(extractChatCompletionText(payload), this.useCase);
     if (!answer) throw Object.assign(new Error("ArvanCloud AI returned no text output"), { code: "EMPTY_PROVIDER_RESPONSE" });
     const model = providerModel(payload.model, this.model, this.name);
@@ -751,14 +835,16 @@ export function getRoutedAIProvider(useCase: AIUseCase, requestedProvider?: stri
 function imagePurposeReadiness(provider: AIProvider, purpose: AIImagePurpose, scope: "RULA" | "FMEA") {
   const configured = provider.available();
   const privacyApprovalMatches = process.env[`${scope}_IMAGE_PRIVACY_APPROVED_PROVIDER`] === provider.name;
+  const processingEnabled = isImageProcessingEnabled(provider.name, purpose);
   const capabilityApprovalMatches = process.env[`${scope}_IMAGE_VISION_SUPPORTED_PROVIDER`] === provider.name;
   const adapterAllowsPurpose = provider.supportsImages({ imagePurpose: purpose });
   return {
     configured,
     privacyApprovalMatches,
+    processingEnabled,
     capabilityApprovalMatches,
     adapterAllowsPurpose,
-    requestGateOpen: configured && privacyApprovalMatches && capabilityApprovalMatches && adapterAllowsPurpose,
+    requestGateOpen: configured && processingEnabled && capabilityApprovalMatches && adapterAllowsPurpose,
     liveReachability: "not-verified" as const,
   };
 }

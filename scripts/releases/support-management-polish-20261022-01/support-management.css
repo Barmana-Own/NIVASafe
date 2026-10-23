@@ -1,0 +1,260 @@
+/* Owner-requested ticket-management presentation; preserve every ticket workflow. */
+.app .support-administrator-page .support-inbox-section {
+  display: grid;
+  min-width: 0;
+  gap: 16px;
+}
+.app .support-administrator-page button.secondary {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-block-size: 44px;
+  max-inline-size: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border, #dce3ed);
+  border-radius: var(--radius-control, 8px);
+  background: var(--color-surface, #fff);
+  color: var(--color-accent, #255fd2);
+  font: inherit;
+  font-size: .8125rem;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.app .support-administrator-page button.secondary:not(:disabled):hover {
+  border-color: var(--color-accent, #255fd2);
+  background: var(--color-accent-soft, #eaf1ff);
+}
+.app .support-administrator-page button.secondary:focus-visible {
+  outline: 2px solid var(--color-focus, #255fd2);
+  outline-offset: 2px;
+}
+.app .support-administrator-page button.secondary:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+.app .support-administrator-page button.secondary > svg { flex-shrink: 0; }
+.app .support-administrator-page .support-inbox-section > button.secondary {
+  justify-self: start;
+}
+.app .support-administrator-page .support-inbox-controls {
+  grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-subtle);
+}
+.app .support-administrator-page .support-inbox-controls label {
+  gap: 8px;
+  font-size: .75rem;
+  line-height: 1.6;
+}
+.app .support-administrator-page .support-request-list {
+  min-width: 0;
+  gap: 16px;
+}
+.app .support-administrator-page .support-inbox-card {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-surface);
+  box-shadow: var(--elevation-surface);
+}
+.app .support-administrator-page .support-inbox-card > :is(header, .support-request-inbox-meta, .support-request-preview, .support-thread, button) {
+  grid-column: 1 / -1;
+}
+.app .support-administrator-page .support-inbox-card > header {
+  gap: 16px;
+}
+.app .support-administrator-page .support-inbox-card > header > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.app .support-administrator-page .support-inbox-card > header h3 {
+  margin-block: 6px;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+.app .support-administrator-page .support-inbox-card > header small {
+  font-size: .75rem;
+  line-height: 1.7;
+}
+.app .support-administrator-page .support-ticket-reference bdi {
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.app .support-administrator-page .support-request-inbox-meta {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: .75rem;
+  line-height: 1.7;
+}
+.app .support-administrator-page .support-request-inbox-meta > span {
+  max-width: 100%;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--color-subtle);
+  overflow-wrap: anywhere;
+}
+.app .support-administrator-page .support-request-inbox-meta time {
+  margin-inline-start: auto;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.app .support-administrator-page .support-inbox-card > .support-request-preview {
+  padding-block-start: 12px;
+  border-block-start: 1px solid var(--color-border);
+  color: var(--color-ink);
+  font-size: .875rem;
+  line-height: 1.9;
+}
+.app .support-administrator-page .support-inbox-card > label {
+  padding: 12px;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-subtle);
+  font-size: .75rem;
+}
+.app .support-administrator-page .support-inbox-card > button.primary {
+  justify-self: start;
+  min-block-size: 44px;
+  margin: 0;
+}
+.app .support-administrator-page .support-thread {
+  justify-items: stretch;
+  gap: 12px;
+}
+.app .support-administrator-page .support-thread > .page-actions-inline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.app .support-administrator-page .support-thread-toggle[aria-expanded="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+.app .support-administrator-page .support-thread-panel {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 16px;
+  border-radius: 12px;
+}
+.app .support-administrator-page .support-thread-panel > :is(.support-thread-summary, .support-thread-messages, .support-thread-reopen-note, .alert, .state) {
+  grid-column: 1 / -1;
+}
+.app .support-administrator-page .support-thread-summary {
+  gap: 8px 12px;
+  line-height: 1.7;
+}
+.app .support-administrator-page .support-thread-message {
+  padding: 14px;
+  gap: 8px;
+  border-radius: 10px;
+}
+.app .support-administrator-page .support-thread-message header {
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 6px 10px;
+  line-height: 1.7;
+}
+.app .support-administrator-page .support-thread-message header > :is(strong, span, time) {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.app .support-administrator-page .support-thread-message p {
+  font-size: .8125rem;
+  line-height: 1.9;
+}
+.app .support-administrator-page .support-thread-message.from-support {
+  background: var(--color-accent-soft);
+}
+.app .support-administrator-page .support-thread-message.internal-note {
+  border-inline-start-color: var(--color-warning);
+  background: var(--color-warning-soft);
+}
+.app .support-administrator-page .support-thread-reply-form {
+  align-content: start;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+.app .support-administrator-page .support-thread-reply-form label {
+  line-height: 1.7;
+}
+.app .support-administrator-page .support-thread-reply-form > small {
+  min-width: 0;
+  color: var(--color-secondary);
+  font-size: .75rem;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.app .support-administrator-page .support-thread-reply-form textarea {
+  min-height: 112px;
+  line-height: 1.8;
+}
+.app .support-administrator-page .support-internal-note-form {
+  border-color: var(--color-warning);
+  background: var(--color-warning-soft);
+}
+.app .support-administrator-page .support-pagination {
+  margin: 0;
+  padding-block-start: 16px;
+  border-block-start: 1px solid var(--color-border);
+  line-height: 1.7;
+}
+@media (max-width: 1100px) {
+  .app .support-administrator-page .support-inbox-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .app .support-administrator-page .support-thread-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .app .support-administrator-page .support-inbox-controls,
+  .app .support-administrator-page .support-inbox-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .app .support-administrator-page .support-inbox-card,
+  .app .support-administrator-page .support-inbox-controls {
+    padding: 12px;
+    gap: 12px;
+  }
+  .app .support-administrator-page .support-inbox-card > header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .app .support-administrator-page .support-request-inbox-meta time {
+    flex-basis: 100%;
+    margin-inline-start: 0;
+  }
+  .app .support-administrator-page .support-thread-panel {
+    padding: 10px;
+    gap: 12px;
+  }
+  .app .support-administrator-page .support-thread-message,
+  .app .support-administrator-page .support-thread-reply-form {
+    padding: 10px;
+  }
+  .app .support-administrator-page .support-pagination > div {
+    width: 100%;
+  }
+  .app .support-administrator-page .support-pagination > div > button {
+    flex: 1 1 0;
+  }
+}

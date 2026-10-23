@@ -47,4 +47,24 @@ describe("Server authoritative multi-image RULA assessment", () => {
     expect(rulaPostureAnalysisSchema.safeParse({ ...neutral, imageAssessments: [{ ...images[0]!, attachmentId: "../private" }] }).success).toBe(false);
     expect(rulaPostureAnalysisSchema.safeParse({ ...neutral, imageAssessments: [{ ...images[0]!, analysis: { ...neutral, imageAssessments: images } }] }).success).toBe(false);
   });
+  it("uses independent side adjustments and per-image legacy fallbacks without crossing sides", () => {
+    const left = { ...neutral, bodySide: "LEFT" as const, adjustments: { force: 0, muscleUse: false } };
+    const right = { ...neutral, bodySide: "RIGHT" as const, adjustments: { force: 2, muscleUse: true } };
+    const both = { ...right, sideAnalyses: { LEFT: left, RIGHT: right } };
+    const calculation = calculateRulaAssessment("BOTH", inputs, { ...both, imageAssessments: [{ ...images[0]!, force: 1, muscleUse: false, analysis: both }] });
+    expect(calculation.sideResults?.LEFT.score).toBe(calculateRula(inputs).score);
+    expect(calculation.sideResults?.RIGHT.score).toBe(calculateRula({ ...inputs, force: 2, muscleUse: true }).score);
+    expect(calculation.inputs).toMatchObject({ force: 1, muscleUse: false });
+    const legacyRight = { ...neutral, bodySide: "RIGHT" as const };
+    const fallback = calculateRulaAssessment("BOTH", inputs, { ...both, sideAnalyses: { LEFT: left, RIGHT: legacyRight }, imageAssessments: undefined });
+    expect(fallback.sideResults?.RIGHT.score).toBe(calculateRula(inputs).score);
+  });
+  it("scores each photo's explicit adjustments and rejects tagged opposite-side snapshots", () => {
+    const adjusted = { ...neutral, bodySide: "RIGHT" as const, adjustments: { force: 3, muscleUse: true } };
+    const calculation = calculateRulaAssessment("RIGHT", inputs, { ...neutral, imageAssessments: [{ ...images[0]!, analysis: adjusted }, { ...images[0]!, imageKey: "second", analysis: neutral }] });
+    expect(calculation.result.score).toBe(calculateRula({ ...inputs, force: 3, muscleUse: true }).score);
+    expect(calculation.inputs).toMatchObject({ force: 3, muscleUse: true });
+    expect(() => calculateRulaAssessment("LEFT", inputs, adjusted, false)).toThrow();
+    expect(() => calculateRulaAssessment("LEFT", inputs, { ...neutral, imageAssessments: [{ ...images[0]!, analysis: adjusted }] }, false)).toThrow();
+  });
 });

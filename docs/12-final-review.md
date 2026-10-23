@@ -510,20 +510,3 @@ Scoped status: PASS — safe code release with public image processing disabled.
 PASS only for this closed-image-feature safe code release after source/artifact parity, secret/ACL/schema/auth/rollback/public runtime verification. Full product/image acceptance is BLOCKED pending real provider terms/platform decision, final notice revision and remaining provider stability/second-organization BOTH checks. No independent anatomical validation claimed.
 
 Evidence: C:/NIVASafe/reports/evidence/rula-image-experience-20261019-01. Full-product status is not COMPLETE.
-
-## Scoped checkpoint fmea-image-validation-20261020-01 — 2026-10-20
-
-This checkpoint verifies a focused FMEA image-response reliability fix. It is not a full product release review.
-
-| Area | Status | Evidence |
-|---|---|---|
-| Malformed FMEA provider response | PASS | Strict parsing rejects incomplete/invalid outputs, one retry is bounded, and failed analysis is not audited as successful. |
-| Backend validation | PASS | 658 backend tests, backend typecheck/build, and 53 focused image-analysis regression tests passed. |
-| Frontend and API integration | PASS | Frontend typecheck/build and contract verification passed; 94 frontend paths match 158 backend routes. |
-| Local runtime | PASS | Frontend `/rula` and backend `/api/v1/health` returned HTTP 200; database reported `up`. |
-| Security boundary | PASS | Auth, tenant/role, durable account-consent, exact-provider approval/capability, file signature, size, and rate-limit checks remain in place. FMEA failure auditing stores only allowlisted diagnostics and does not store provider response text or image content. |
-| Live image/provider verification | NOT_RUN | No image was transmitted to an external provider during this checkpoint. |
-| RULA image accuracy | BLOCKED | Existing benchmark evidence does not establish anatomical accuracy; qualified independent image annotations and a held-out reference set remain unavailable. |
-| Release verdict | BLOCKED | This scoped code fix does not establish end-to-end image-analysis accuracy or full production acceptance. |
-
-No claim of factual FMEA hazard accuracy or anatomical RULA accuracy is made from schema and unit-test validation alone. The durable per-user consent and provider approval gates were retained.

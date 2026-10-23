@@ -1,0 +1,139 @@
+/* Owner-requested four-column cards for registered activities only. */
+.app .table-wrap.activity-log-table {
+  min-width: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overscroll-behavior-inline: auto;
+}
+.app .table-wrap.activity-log-table > table {
+  display: block;
+  width: 100%;
+  min-width: 0 !important;
+  max-width: 100%;
+  table-layout: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+  white-space: normal;
+}
+.app[data-design="enterprise"] .table-wrap.activity-log-table:has(> table > thead > tr:first-child > th:nth-child(n + 6)) > table:not(.rula-analysis-table) {
+  min-width: 0 !important;
+}
+.app .table-wrap.activity-log-table > table > thead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.app .table-wrap.activity-log-table > table > tbody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+  padding: 0;
+}
+.app .table-wrap.activity-log-table > table > tbody > tr:not(.activity-log-detail-row) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--color-border, var(--line));
+  border-radius: 12px;
+  background: var(--color-surface, var(--surface));
+  color: var(--color-ink, var(--ink));
+}
+.app .table-wrap.activity-log-table > table > tbody > tr:not(.activity-log-detail-row) > td {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  width: auto !important;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  font-size: .8125rem;
+  line-height: 1.8;
+}
+.app .table-wrap.activity-log-table > table > tbody > tr:not(.activity-log-detail-row) > td::before {
+  content: attr(data-label);
+  color: var(--color-secondary, var(--muted));
+  font-size: .6875rem;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.app .table-wrap.activity-log-table > table > tbody > tr:not(.activity-log-detail-row) > td > * {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.app .table-wrap.activity-log-table > table > tbody > tr:not(.activity-log-detail-row) > td:last-child {
+  margin-block-start: auto;
+  padding-block-start: 12px;
+  border-block-start: 1px solid var(--color-border, var(--line));
+}
+.app .table-wrap.activity-log-table > table > tbody > tr:not(.activity-log-detail-row) > td:last-child > button {
+  min-width: 44px;
+  min-height: 44px;
+  justify-self: stretch;
+}
+.app .table-wrap.activity-log-table :is(.activity-category, .event-code) {
+  max-width: 100%;
+  justify-self: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.app .table-wrap.activity-log-table :is(.activity-log-assessment, .activity-log-token) {
+  min-width: 0;
+  max-width: 100%;
+}
+.app .table-wrap.activity-log-table :is(.activity-log-assessment, .activity-log-token) small {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.app .table-wrap.activity-log-table > table > tbody > tr.activity-log-detail-row {
+  display: block;
+  grid-column: 1 / -1;
+  min-width: 0;
+  background: transparent;
+}
+.app .table-wrap.activity-log-table > table > tbody > tr.activity-log-detail-row > td {
+  display: block;
+  width: auto !important;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.app .table-wrap.activity-log-table .activity-log-detail {
+  grid-template-columns: minmax(0, 1fr);
+  border: 1px solid var(--color-border, var(--line));
+  border-radius: 12px;
+  background: var(--color-subtle, var(--surface));
+}
+@media (min-width: 640px) {
+  .app .table-wrap.activity-log-table > table > tbody { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+  .app .table-wrap.activity-log-table > table > tbody { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .app .table-wrap.activity-log-table .activity-log-detail { grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1280px) {
+  .app .table-wrap.activity-log-table > table > tbody { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}

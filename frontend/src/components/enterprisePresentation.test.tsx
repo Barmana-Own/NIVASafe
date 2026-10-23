@@ -79,7 +79,7 @@ describe("compact enterprise density", () => {
     expect(overviewSource).not.toContain('description={t("assessment.rulaActionProgressDescription")}');
     expect(assessmentStyles).toContain(".rula-report-context-grid {");
     expect(assessmentStyles).toContain("grid-template-columns: repeat(4, minmax(0, 1fr));");
-    expect(assessmentStyles).toContain(".rula-report-context-description {\n  max-height:");
+    expect(assessmentStyles).toMatch(/\.rula-report-context-description \{\r?\n  max-height:/);
     expect(assessmentStyles).toContain("overflow-wrap: anywhere;");
   });
 

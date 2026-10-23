@@ -5,10 +5,10 @@ describe("compact RULA image workspace", () => {
   it("uses concise controls and distinguishes an unsent image from a failed inference", () => {
     expect(translate("assessment.rulaImageEdit", "fa")).toBe("ویرایش");
     expect(translate("assessment.rulaImageStatusFailed", "fa")).toBe("تحلیل تکمیل نشد");
-    expect(translate("assessment.rulaImagePlatformNotApproved", "fa")).toBe("تحلیل خودکار تصاویر فعال نشده است.");
+    expect(translate("assessment.rulaImageStatusNotSent", "fa")).toBe("ارسال نشده");
     expect(translate("assessment.rulaImageUploadAndAnalyze", "fa")).toBe("بارگذاری عکس");
     expect(translate("assessment.rulaImageSendForAnalysis", "fa")).toBe("تحلیل تصویر");
-    expect(translate("assessment.rulaImageConsentRequired", "fa")).toBe("برای تحلیل خودکار، پردازش تصویر را یک‌بار در تنظیمات حساب فعال کنید.");
+    expect(translate("assessment.rulaImageConsentRequired", "fa")).toBe("رضایت پردازش تصویر را در تنظیمات حساب ثبت کنید.");
   });
 });
 

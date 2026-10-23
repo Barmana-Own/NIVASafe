@@ -173,7 +173,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         },
       });
       await tx.auditLog.create({ data: { userId: createdUser.id, organizationId: organization.id, action: "USER_REGISTER", entityType: "User", entityId: createdUser.id, metadata: { registrationKind: body.registrationKind, active: false, termsVersion: body.termsVersion, termsAccepted: true }, requestId: request.id, ipAddress: request.ip?.slice(0, 64), userAgent: request.headers["user-agent"]?.slice(0, 2000) } });
-      if (body.imageProcessingConsent) await tx.auditLog.create({ data: imageConsentAuditData({ userId: createdUser.id, accepted: true, source: "REGISTRATION", requestId: request.id, ipAddress: request.ip, userAgent: request.headers["user-agent"] }) });
+      await tx.auditLog.create({ data: imageConsentAuditData({ userId: createdUser.id, accepted: body.imageProcessingConsent, source: "REGISTRATION", requestId: request.id, ipAddress: request.ip, userAgent: request.headers["user-agent"] }) });
       return createdUser;
     });
     return reply.code(201).send(envelope({ ...safeUser(user), pendingActivation: true }));

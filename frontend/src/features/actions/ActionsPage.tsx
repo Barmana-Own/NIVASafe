@@ -49,6 +49,10 @@ function validType(value: string | null): "FMEA" | "RULA" {
   return upper === "FMEA" || upper === "RULA" ? upper : "FMEA";
 }
 
+function readActionDraftSnapshot(storageKey: string): string | null {
+  try { return localStorage.getItem(storageKey); } catch { return null; }
+}
+
 function projectsForAssessments(assessments: readonly { projectId: string; project?: { name?: string; code?: string } | null }[] | null | undefined): AssessmentProject[] {
   const projects = new Map<string, AssessmentProject>();
   for (const assessment of assessments ?? []) {
@@ -145,6 +149,7 @@ export function ActionsPage() {
   const [error, setError] = useState("");
   const [savingActionId, setSavingActionId] = useState("");
   const [creatingAction, setCreatingAction] = useState(false);
+  const [createFormRevision, setCreateFormRevision] = useState({ FMEA: 0, RULA: 0 });
   const [legacyPage, setLegacyPage] = useState(1);
   const [legacyRefresh, setLegacyRefresh] = useState(0);
   const fmeaDefaultsApplied = useRef(false);
@@ -201,8 +206,9 @@ export function ActionsPage() {
     return () => { active = false; };
   }, [registerType, legacyPage, legacyRefresh]);
 
-  const draftScope = createType === "FMEA" ? `${createType}:${createFmeaId || "unselected"}` : `${createType}:${createRulaId || "unselected"}`;
-  const actionDraftKey = scopedDraftKey(`action-create-${draftScope}`, session?.user.id, orgId);
+  const fmeaActionDraftKey = scopedDraftKey(`action-create-FMEA:${createFmeaId || "unselected"}`, session?.user.id, orgId);
+  const rulaActionDraftKey = scopedDraftKey(`action-create-RULA:${createRulaId || "unselected"}`, session?.user.id, orgId);
+  const actionDraftKey = createType === "FMEA" ? fmeaActionDraftKey : rulaActionDraftKey;
 
   const displayedActions = useMemo(() => {
     let items: ActionListItem[];
@@ -260,6 +266,7 @@ export function ActionsPage() {
     setCreatingAction(true);
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
+    const submittedDraft = readActionDraftSnapshot(actionDraftKey);
     setError("");
     setMessage("");
     try {
@@ -297,8 +304,23 @@ export function ActionsPage() {
       const idempotencyKey = actionCreateKeys.current.keyFor(scope, payload);
       await api("/actions", { method: "POST", headers: { "idempotency-key": idempotencyKey }, body: JSON.stringify(payload) });
       actionCreateKeys.current.complete(scope, payload);
-      await clearAutoSaveDraft(actionDraftKey);
-      formElement.reset();
+      // A newer instance can share this assessment's key while the request is pending.
+      if (formElement.isConnected || (submittedDraft !== null && readActionDraftSnapshot(actionDraftKey) === submittedDraft)) {
+        await clearAutoSaveDraft(actionDraftKey);
+      }
+      // A response for a detached form must not clear a different assessment's draft.
+      if (formElement.isConnected) {
+        if (createType === "FMEA") {
+          setCreateFmeaProjectId("");
+          setCreateFmeaId("");
+          setCreateFmeaItemId("");
+        } else {
+          setCreateRulaProjectId("");
+          setCreateRulaId("");
+        }
+        // Remount custom selects and date controls as well as native inputs.
+        setCreateFormRevision((current) => ({ ...current, [createType]: current[createType] + 1 }));
+      }
       setMessage(t("actions.created"));
       if (createType === registerType && ((createType === "FMEA" && createFmeaId === listFmeaId) || (createType === "RULA" && createRulaId === listRulaId))) refreshRegister();
     } catch (reason) {
@@ -344,7 +366,7 @@ export function ActionsPage() {
           const selectedRiskItem = assessment.items.find((item) => item.id === createFmeaItemId);
           return <>
           <div className="action-assessment-context"><span>{t("projects.project")}: <strong>{assessment.project.name}</strong></span><span>{assessment.code}</span></div>
-          <AutoSaveForm key={actionDraftKey} storageKey={actionDraftKey} className="action-create-form" onSubmit={create}>
+          <AutoSaveForm key={`${fmeaActionDraftKey}:${createFormRevision.FMEA}`} storageKey={fmeaActionDraftKey} className="action-create-form" onSubmit={create} onChangeCapture={(event) => { const field = event.target; if (field instanceof HTMLSelectElement && field.name === "fmeaItemId") setCreateFmeaItemId(field.value); }}>
             <label className="action-create-wide">{t("actions.fmeaRiskRow")}<StyledSelect aria-label={t("actions.fmeaRiskRow")} name="fmeaItemId" value={createFmeaItemId} onChange={(event) => setCreateFmeaItemId(event.target.value)}><option value="">{t("actions.noFmeaRiskRow")}</option>{assessment.items.map((item) => <option key={item.id} value={item.id}>{`#${item.rowNumber} · ${item.failureMode} · S${item.severity}/O${item.occurrence}/D${item.detection} · RPN ${item.rpn} · AP ${t(`status.${actionPriorityForRiskLevel(item.riskLevel).toLowerCase()}`)} · ${t(riskLevelLabelKey(item.riskLevel))}`}</option>)}</StyledSelect><small className="field-hint">{t("actions.fmeaRiskContextHint")}</small></label>
             {selectedRiskItem && <section className="action-fmea-risk-context" aria-live="polite"><div className="action-fmea-risk-heading"><div><small>{t("actions.fmeaRiskRow")} · #{selectedRiskItem.rowNumber.toLocaleString(numberLocale)}</small><h3>{selectedRiskItem.failureMode}</h3></div><div><StatusBadge value={selectedRiskItem.riskLevel}/><span className="action-ap-badge">AP <StatusBadge value={actionPriorityForRiskLevel(selectedRiskItem.riskLevel)}/></span></div></div><div className="action-fmea-risk-metrics"><span><small>{t("assessment.severity")} (S)</small><strong>{selectedRiskItem.severity.toLocaleString(numberLocale)}</strong></span><span><small>{t("assessment.occurrence")} (O)</small><strong>{selectedRiskItem.occurrence.toLocaleString(numberLocale)}</strong></span><span><small>{t("assessment.detection")} (D)</small><strong>{selectedRiskItem.detection.toLocaleString(numberLocale)}</strong></span><span><small>RPN</small><strong>{selectedRiskItem.rpn.toLocaleString(numberLocale)}</strong></span></div><div className="action-fmea-risk-copy">{selectedRiskItem.effect && <p><strong>{t("assessment.effect")}:</strong> {selectedRiskItem.effect}</p>}{selectedRiskItem.cause && <p><strong>{t("assessment.cause")}:</strong> {selectedRiskItem.cause}</p>}</div><small className="field-hint">{t("actions.fmeaRiskClassificationNote")}</small></section>}
             <label>{t("actions.titleLabel")}<input name="title" maxLength={191} placeholder={t("actions.titlePlaceholder")} required minLength={2}/></label>
@@ -368,7 +390,7 @@ export function ActionsPage() {
           return <>
           <div className="action-assessment-context"><span>{t("projects.project")}: <strong>{assessment.project.name}</strong></span><span>{t("assessment.rulaScoreLabel")}: {assessment.score} · {t("assessment.actionLevel", { level: assessment.actionLevel })}</span></div>
           {(assessment.activityInfo?.jobTitle || assessment.activityInfo?.taskDescription || rulaAssessmentBodyParts(assessment).length > 0) && <div className="action-rula-assessment-context"><strong>{t("actions.rulaErgonomicContext")}</strong>{assessment.activityInfo?.jobTitle && <span>{t("assessment.rulaJobTitle")}: {assessment.activityInfo.jobTitle}</span>}{assessment.activityInfo?.taskDescription && <span>{t("assessment.rulaTask")}: {assessment.activityInfo.taskDescription}</span>}{rulaAssessmentBodyParts(assessment).length > 0 && <span>{t("actions.rulaAffectedParts")}: {rulaAssessmentBodyParts(assessment).map((part) => localizedRulaPart(part, t)).join(locale === "fa" ? "، " : ", ")}</span>}</div>}
-          <AutoSaveForm key={actionDraftKey} storageKey={actionDraftKey} className="action-create-form" onSubmit={create}>
+          <AutoSaveForm key={`${rulaActionDraftKey}:${createFormRevision.RULA}`} storageKey={rulaActionDraftKey} className="action-create-form" onSubmit={create}>
             <label>{t("actions.bodySideLabel")}<StyledSelect aria-label={t("actions.bodySideLabel")} name="bodySide" defaultValue={allowedRulaActionSides(assessment.bodySide).includes(searchParams.get("bodySide") as ActionBodySide) ? searchParams.get("bodySide") as ActionBodySide : allowedRulaActionSides(assessment.bodySide)[0]} required>{allowedRulaActionSides(assessment.bodySide).map((side) => <option key={side} value={side}>{t(side === "RIGHT" ? "assessment.right" : side === "LEFT" ? "assessment.left" : "assessment.bothSides")}</option>)}</StyledSelect><small className="field-hint">{t("actions.bodySideHint")}</small></label>
             <label>{t("actions.titleLabel")}<input name="title" maxLength={191} placeholder={t("actions.titlePlaceholder")} required minLength={2}/></label>
             <label className="action-create-wide">{t("actions.detailsLabel")}<textarea name="description" rows={3} maxLength={20000} placeholder={t("actions.detailsPlaceholder")} required minLength={2}/></label>

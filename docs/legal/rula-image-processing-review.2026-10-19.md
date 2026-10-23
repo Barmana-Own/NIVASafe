@@ -9,12 +9,6 @@
 | درگاه واقعی / Actual gateway | https://api.arvancloudai.ir/v1/chat/completions |
 | مدل / Model | Requested GPT-5-Mini; previously observed gpt-5-mini-2025-08-07 |
 
-## به‌روزرسانی رفتار محلی — ۲۰۲۶-۱۰-۲۰ / Local behavior update — 2026-10-20
-
-در نسخهٔ دسکتاپ محلی، تأیید جداگانه برای هر تصویر حذف شده است. ارسال خودکار همچنان به مجوز پایدار سطح حساب و بازبودن گیت‌های حریم خصوصی و قابلیت بینایی ارائه‌دهنده وابسته است؛ سرور پیش از انتقال، مجوز حساب را بررسی و رویداد مجوز انتقال را ثبت می‌کند. این تغییر، شرایط ارائه‌دهنده را تأیید نمی‌کند و تنظیمات Production را تغییر نمی‌دهد. بخش‌های زیر یافته‌های بررسی مورخ ۲۰۲۶-۱۰-۱۹ را نگه می‌دارند و شرح نسخهٔ محلی بعدی نیستند.
-
-In the local desktop build, a separate confirmation for each image has been removed. Automatic transfer still depends on durable account-level authorization and open provider privacy and vision gates; the server checks account authorization and records a transfer authorization event before dispatch. This change does not verify provider terms or alter production configuration. The sections below preserve findings from the 2026-10-19 review and do not describe the subsequent local build.
-
 ## یافته‌های فارسی
 
 در مخزن، صفحهٔ منتشرشدهٔ مستقل برای شرایط پردازش تصویر یا سند تأیید مالک شناسایی نشد. اسناد مهندسی موجود، بسته‌بودن دروازهٔ سطح پلتفرم را ثبت کرده‌اند؛ تنظیم فعال نیز خالی است. نبود سند در این بررسی، اثبات نبود قرارداد خارج از پروژه نیست. وب‌سایت عمومی NIVASafe از ابزار پژوهش قابل خواندن نبود و شواهد کد جای تأیید حقوقی مستقل را نمی‌گیرد.
