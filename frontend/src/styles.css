@@ -6553,6 +6553,51 @@ details.optional-fields > :not(summary),
   .app .table-wrap.activity-log-table > table > tbody { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
+/* Owner-requested notification cards; preferences and header popovers keep their layout. */
+.app .notification-list {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+.app .notification-list > .notification-card {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto 1fr;
+  gap: 12px;
+  overflow-wrap: anywhere;
+}
+.app .notification-list > .notification-card > .notification-icon {
+  grid-column: 1;
+  grid-row: 1;
+}
+.app .notification-list > .notification-card > div {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-width: 0;
+}
+.app .notification-list > .notification-card > .icon-button {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+}
+.app .notification-list .notification-title {
+  flex-wrap: wrap;
+}
+.app .notification-list .notification-title h3 {
+  min-width: 0;
+}
+.app .notification-list .notification-title > span {
+  flex: none;
+}
+@media (min-width: 640px) {
+  .app .notification-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+  .app .notification-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1280px) {
+  .app .notification-list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
 /* Owner-requested assistant header logo, three-line composer and compact user messages. */
 .app .assistant-page.assistant-redesign .assistant-header .identity > .identity-icon {
   display: none;

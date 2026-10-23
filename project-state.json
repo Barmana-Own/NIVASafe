@@ -10469,5 +10469,58 @@
       "publicationEvidence": ".local/assistant-composer-polish-20261023-01/push-verification.json"
     },
     "productionDeployment": "NOT_PERFORMED"
+  },
+  "latestNotificationCards": {
+    "status": "VERIFIED",
+    "dates": {
+      "gregorian": "2026-10-23",
+      "jalali": "1405-08-01"
+    },
+    "baseRevision": "d5b4d477c2a7e01c9b79e386a3917401175c9a91",
+    "scope": "Display the full notification feed as four desktop cards per row with responsive columns and preserved content/actions.",
+    "validation": {
+      "frontendTests": {
+        "status": "PASS",
+        "passed": 557,
+        "failed": 0,
+        "skipped": 0,
+        "files": 78
+      },
+      "frontendTypecheckAndLint": "PASS: node node_modules/typescript/bin/tsc -b --noEmit (both package scripts use this command)",
+      "frontendBuild": "PASS: node node_modules/vite/bin/vite.js build --configLoader runner; existing bundle-size warning retained",
+      "browser": {
+        "status": "PASS",
+        "checks": 24,
+        "widths": [
+          320,
+          390,
+          768,
+          1024,
+          1280,
+          1920
+        ],
+        "themes": [
+          "white",
+          "blue"
+        ],
+        "locales": [
+          "fa",
+          "en"
+        ],
+        "syntheticApiRequests": 195,
+        "realApiRequests": 0,
+        "errors": 0
+      },
+      "securityReview": "PASS: static list-scoped CSS only; existing React escaping, destination allowlist, tenant/auth guards and API contracts unchanged; escaped text and unsafe-link exclusion verified in the browser",
+      "regressionReview": "PASS: all 1309 baseline files retained; production source differs only by the notification-card CSS block; individual/read-all controls, preferences, content, empty/error/retry states and responsive order verified",
+      "fixtureBuildIsolation": "PASS: synthetic fixture markers absent from production JS"
+    },
+    "documentation": "docs/notification-cards-20261023-01.md",
+    "gitHub": {
+      "target": "https://github.com/Barmana-Own/NIVASafe",
+      "branch": "main",
+      "publicationEvidence": ".local/notification-cards-20261023-01/push-verification.json"
+    },
+    "productionDeployment": "NOT_PERFORMED"
   }
 }
