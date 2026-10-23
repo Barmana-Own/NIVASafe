@@ -6562,6 +6562,9 @@ details.optional-fields > :not(summary),
   gap: 8px;
   padding: 8px 12px;
 }
+.app .assistant-page.assistant-redesign .composer-label {
+  justify-content: flex-end;
+}
 .app .assistant-page.assistant-redesign .composer #assistant-message {
   box-sizing: border-box;
   height: 24px;
@@ -6572,6 +6575,18 @@ details.optional-fields > :not(summary),
   line-height: 24px;
   resize: none;
   overflow-y: hidden;
+  scrollbar-width: none;
+}
+.app .assistant-page.assistant-redesign .composer #assistant-message::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+.app .assistant-page.assistant-redesign .composer #assistant-message::placeholder {
+  text-align: center;
+}
+.app .assistant-page.assistant-redesign .composer #assistant-message:placeholder-shown {
+  align-self: center;
 }
 .app .assistant-page.assistant-redesign .composer .send {
   min-height: 44px;
