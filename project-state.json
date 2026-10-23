@@ -10578,5 +10578,55 @@
       "publicationEvidence": ".local/support-ticket-cards-20261023-01/push-verification.json"
     },
     "productionDeployment": "NOT_PERFORMED"
+  },
+  "latestLoginWelcomeLogo": {
+    "status": "VERIFIED",
+    "dates": {
+      "gregorian": "2026-10-23",
+      "jalali": "1405-08-01"
+    },
+    "baseRevision": "719b1881d99ffa075891191913410033c9a3e946",
+    "scope": "Place the existing login logo above the welcome heading on desktop with retained size, gap and reading-direction alignment.",
+    "validation": {
+      "frontendTests": {
+        "status": "PASS",
+        "passed": 557,
+        "failed": 0,
+        "skipped": 0,
+        "files": 78
+      },
+      "frontendTypecheckAndLint": "PASS: node node_modules/typescript/bin/tsc -b --noEmit (both package scripts use this command)",
+      "frontendBuild": "PASS: node node_modules/vite/bin/vite.js build --configLoader runner; existing bundle-size warning retained",
+      "browser": {
+        "status": "PASS",
+        "checks": 16,
+        "widths": [
+          390,
+          900,
+          901,
+          1440
+        ],
+        "themes": [
+          "white",
+          "blue"
+        ],
+        "locales": [
+          "fa",
+          "en"
+        ],
+        "actualLoginRoute": true,
+        "apiRequests": 0,
+        "errors": 0
+      },
+      "securityReview": "PASS: four static desktop CSS layout properties only; no new credential, API, auth, data, dependency or executable rendering boundary",
+      "regressionReview": "PASS: all 1317 baseline files preserved; exact four-property CSS change; mobile states, language/theme, desktop breakpoint and password controls verified"
+    },
+    "documentation": "docs/login-welcome-logo-20261023-01.md",
+    "gitHub": {
+      "target": "https://github.com/Barmana-Own/NIVASafe",
+      "branch": "main",
+      "publicationEvidence": ".local/login-welcome-logo-20261023-01/push-verification.json"
+    },
+    "productionDeployment": "NOT_PERFORMED"
   }
 }
